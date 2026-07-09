@@ -1,6 +1,6 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
-import { Express } from 'express';
+import { Express, Request, Response } from 'express';
 
 const options: swaggerJsdoc.Options = {
   definition: {
@@ -101,7 +101,7 @@ export function setupSwagger(app: Express): void {
     customSiteTitle: 'Funding Finder API Docs',
   }));
 
-  app.get('/docs.json', (req, res) => {
+  app.get('/docs.json', (_req: Request, res: Response) => {
     res.setHeader('Content-Type', 'application/json');
     res.send(swaggerSpec);
   });
