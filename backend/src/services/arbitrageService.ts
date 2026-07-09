@@ -1,0 +1,345 @@
+import { ExchangeResult, ArbitrageOpportunity, ProfitCalculation, RiskAssessment } from '../types/index.js';
+import { normalizeFundingRate } from '../utils/helpers.js';
+import { prisma } from './prisma.js';
+import { logger } from '../utils/logger.js';
+
+// Exchange fee structures (taker fees)
+const EXCHANGE_FEES: Record<string, { taker: number; maker: number }> = {
+  binance: { taker: 0.0004, maker: 0.0002 },   // 0.04%
+  gate: { taker: 0.0005, maker: 0.00025 },      // 0.05%
+  bybit: { taker: 0.00055, maker: 0.0002 },     // 0.055%
+  okx: { taker: 0.0006, maker: 0.0003 },        // 0.06%
+  mexc: { taker: 0.0006, maker: 0.0002 },       // 0.06%
+};
+
+function calculateSlippage(volumeA: number, volumeB: number): number {
+  const minVolume = Math.min(volumeA, volumeB);
+  if (minVolume > 10_000_000) return 0.0001;   // 0.01%
+  if (minVolume > 1_000_000) return 0.0003;    // 0.03%
+  if (minVolume > 100_000) return 0.0008;      // 0.08%
+  return 0.0015;                               // 0.15%
+}
+
+/**
+ * Calculate real profit for an arbitrage opportunity.
+ * Uses normalized hourly rates for accurate comparison.
+ */
+function calculateRealProfit(
+  opportunity: {
+    exchangeA: string;
+    exchangeB: string;
+    difference: number;          // hourly rate difference
+    difference_per_day: number;  // daily rate difference
+    volumeA: number;
+    volumeB: number;
+  },
+  capital: number = 1000
+): ProfitCalculation {
+  const feesA = EXCHANGE_FEES[opportunity.exchangeA]?.taker || 0.0005;
+  const feesB = EXCHANGE_FEES[opportunity.exchangeB]?.taker || 0.0005;
+  const slippage = calculateSlippage(opportunity.volumeA, opportunity.volumeB);
+
+  // Gross hourly profit (from funding rate differential)
+  const grossHourlyProfit = capital * opportunity.difference;
+  
+  // Total fees (open + close on both exchanges)
+  const totalFees = capital * (feesA + feesB) * 2;
+  
+  // Total slippage (entry + exit)
+  const totalSlippage = capital * slippage * 2;
+  
+  // Net hourly profit
+  const netHourlyProfit = grossHourlyProfit - totalFees - totalSlippage;
+
+  // Calculate returns
+  const hourlyReturn = (netHourlyProfit / capital) * 100;
+  const dailyReturn = hourlyReturn * 24;
+  const weeklyReturn = dailyReturn * 7;
+  const annualReturn = dailyReturn * 365;
+
+  return {
+    grossHourly: grossHourlyProfit,
+    netHourly: netHourlyProfit,
+    grossDaily: grossHourlyProfit * 24,
+    netDaily: netHourlyProfit * 24,
+    fees: totalFees,
+    slippage: totalSlippage,
+    hourlyReturn,
+    dailyReturn,
+    weeklyReturn,
+    annualReturn,
+    netWeekly: netHourlyProfit * 24 * 7,
+    netAnnual: netHourlyProfit * 24 * 365,
+  };
+}
+
+/**
+ * Assess risk of an arbitrage opportunity.
+ * Now includes interval mismatch as a risk factor.
+ */
+function assessRisk(opportunity: {
+  volumeA: number;
+  volumeB: number;
+  percentageDiff: number;
+  difference: number;
+  intervalA_hours: number;
+  intervalB_hours: number;
+  intervalMismatch: boolean;
+}): RiskAssessment {
+  let riskScore = 0;
+  const reasons: string[] = [];
+
+  // Risk from liquidity
+  const minVolume = Math.min(opportunity.volumeA, opportunity.volumeB);
+  if (minVolume < 500_000) {
+    riskScore += 3;
+    reasons.push('Очень низкая ликвидность');
+  } else if (minVolume < 2_000_000) {
+    riskScore += 1;
+    reasons.push('Низкая ликвидность');
+  }
+
+  // Risk from rate volatility
+  if (opportunity.percentageDiff > 100) {
+    riskScore += 2;
+    reasons.push('Высокая волатильность ставок');
+  } else if (opportunity.percentageDiff > 50) {
+    riskScore += 1;
+    reasons.push('Умеренная волатильность');
+  }
+
+  // Risk from absolute difference (too high = anomaly)
+  if (opportunity.difference > 0.001) { // > 0.1% per hour
+    riskScore += 2;
+    reasons.push('Возможная временная аномалия');
+  }
+
+  // Risk from interval mismatch
+  if (opportunity.intervalMismatch) {
+    riskScore += 2;
+    reasons.push(`Несовпадение интервалов: ${opportunity.intervalA_hours}h vs ${opportunity.intervalB_hours}h`);
+  }
+
+  // Determine risk level
+  let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  if (riskScore >= 4) riskLevel = 'HIGH';
+  else if (riskScore >= 2) riskLevel = 'MEDIUM';
+  else riskLevel = 'LOW';
+
+  return { score: riskScore, level: riskLevel, reasons };
+}
+
+/**
+ * Calculate opportunity score for sorting (profitability / risk).
+ */
+function calculateOpportunityScore(opportunity: ArbitrageOpportunity): number {
+  let score = opportunity.profit.annualReturn;
+
+  // Risk adjustments
+  if (opportunity.risk.level === 'HIGH') score *= 0.3;
+  else if (opportunity.risk.level === 'MEDIUM') score *= 0.7;
+
+  // Liquidity bonus
+  const minVolume = Math.min(opportunity.volumeA, opportunity.volumeB);
+  if (minVolume > 5_000_000) score *= 1.2;
+
+  // Interval mismatch penalty
+  if (opportunity.intervalMismatch) {
+    score *= 0.5;
+  }
+
+  return score;
+}
+
+/**
+ * Detect arbitrage opportunities using normalized hourly rates.
+ * 
+ * Key improvement: Uses normalized rates for fair comparison across
+ * different funding intervals. Flags interval mismatches as risk.
+ */
+export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): ArbitrageOpportunity[] {
+  const opportunities: ArbitrageOpportunity[] = [];
+
+  // Group by contract/pair
+  const pairsMap = new Map<string, ExchangeResult[]>();
+  scanResults.forEach((item) => {
+    if (!pairsMap.has(item.contract)) {
+      pairsMap.set(item.contract, []);
+    }
+    pairsMap.get(item.contract)!.push(item);
+  });
+
+  pairsMap.forEach((items, pair) => {
+    if (items.length < 2) return;
+
+    // Compare each exchange pair
+    for (let i = 0; i < items.length; i++) {
+      for (let j = i + 1; j < items.length; j++) {
+        const a = items[i];
+        const b = items[j];
+
+        // Use normalized hourly rates for comparison
+        const fundingA_per_hour = a.funding_rate_per_hour || 0;
+        const fundingB_per_hour = b.funding_rate_per_hour || 0;
+        const fundingA_per_day = a.funding_rate_per_day || 0;
+        const fundingB_per_day = b.funding_rate_per_day || 0;
+
+        // Calculate difference using normalized rates
+        const difference = Math.abs(fundingA_per_hour - fundingB_per_hour);
+        const difference_per_day = Math.abs(fundingA_per_day - fundingB_per_day);
+        
+        // Percentage difference (relative to smaller rate)
+        const minRate = Math.min(Math.abs(fundingA_per_hour), Math.abs(fundingB_per_hour));
+        const percentageDiff = minRate > 0 ? (difference / minRate) * 100 : 0;
+
+        // Interval info
+        const intervalA_hours = a.funding_interval_hours || 8;
+        const intervalB_hours = b.funding_interval_hours || 8;
+        const intervalMismatch = Math.abs(intervalA_hours - intervalB_hours) > 1;
+
+        // Minimum threshold: 0.001% per hour difference
+        if (difference > 0.00001) {
+          const opp: ArbitrageOpportunity = {
+            pair,
+            exchangeA: a.exchange,
+            exchangeB: b.exchange,
+            fundingA: a.currentFunding,
+            fundingB: b.currentFunding,
+            fundingA_per_hour,
+            fundingB_per_hour,
+            fundingA_per_day,
+            fundingB_per_day,
+            intervalA_hours,
+            intervalB_hours,
+            intervalMismatch,
+            difference,
+            difference_per_day,
+            percentageDiff,
+            volumeA: a.volume_24h_settle,
+            volumeB: b.volume_24h_settle,
+            markPriceA: a.mark_price,
+            markPriceB: b.mark_price,
+            opportunity:
+              fundingA_per_hour > fundingB_per_hour
+                ? `SHORT on ${a.exchange}, LONG on ${b.exchange}`
+                : `LONG on ${a.exchange}, SHORT on ${b.exchange}`,
+            profit: calculateRealProfit({
+              exchangeA: a.exchange,
+              exchangeB: b.exchange,
+              difference,
+              difference_per_day,
+              volumeA: a.volume_24h_settle,
+              volumeB: b.volume_24h_settle,
+            }),
+            risk: assessRisk({
+              volumeA: a.volume_24h_settle,
+              volumeB: b.volume_24h_settle,
+              percentageDiff,
+              difference,
+              intervalA_hours,
+              intervalB_hours,
+              intervalMismatch,
+            }),
+            score: 0,
+            timestamp: Date.now(),
+          };
+          opp.score = calculateOpportunityScore(opp);
+          opportunities.push(opp);
+        }
+      }
+    }
+  });
+
+  // Sort by score (best opportunities first)
+  return opportunities.sort((a, b) => b.score - a.score);
+}
+
+// ==================== Alert Management ====================
+
+export async function createArbitrageAlert(
+  userId: string,
+  data: {
+    pair: string;
+    exchangeA: string;
+    exchangeB: string;
+    condition?: string;
+    threshold?: number;
+    direction?: string;
+    cooldown?: number;
+  }
+) {
+  const count = await prisma.arbitrageAlert.count({ where: { userId } });
+  if (count >= 50) {
+    throw new Error('Maximum 50 arbitrage alerts per user');
+  }
+
+  return prisma.arbitrageAlert.create({
+    data: {
+      userId,
+      pair: data.pair,
+      exchangeA: data.exchangeA,
+      exchangeB: data.exchangeB,
+      condition: data.condition || 'difference',
+      threshold: data.threshold || 0.002,
+      direction: data.direction || 'both',
+      cooldown: data.cooldown || 300000,
+    },
+  });
+}
+
+export async function getUserArbitrageAlerts(userId: string, limit: number = 50, offset: number = 0) {
+  const safeLimit = Math.min(Math.max(limit, 1), 200);
+  const safeOffset = Math.max(offset, 0);
+  const [alerts, total] = await Promise.all([
+    prisma.arbitrageAlert.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: safeLimit,
+      skip: safeOffset,
+    }),
+    prisma.arbitrageAlert.count({ where: { userId } }),
+  ]);
+  return { alerts, total, limit: safeLimit, offset: safeOffset };
+}
+
+export async function deleteArbitrageAlert(userId: string, alertId: string) {
+  const result = await prisma.arbitrageAlert.deleteMany({
+    where: { id: alertId, userId },
+  });
+  return result.count > 0;
+}
+
+export async function toggleArbitrageAlert(userId: string, alertId: string) {
+  const alert = await prisma.arbitrageAlert.findFirst({
+    where: { id: alertId, userId },
+  });
+  if (!alert) return null;
+
+  return prisma.arbitrageAlert.update({
+    where: { id: alertId },
+    data: { isActive: !alert.isActive },
+  });
+}
+
+export async function calculateProfit(opportunity: ArbitrageOpportunity, capital: number) {
+  const profit = calculateRealProfit({
+    exchangeA: opportunity.exchangeA,
+    exchangeB: opportunity.exchangeB,
+    difference: opportunity.difference,
+    difference_per_day: opportunity.difference_per_day,
+    volumeA: opportunity.volumeA,
+    volumeB: opportunity.volumeB,
+  }, capital);
+  
+  const risk = assessRisk({
+    volumeA: opportunity.volumeA,
+    volumeB: opportunity.volumeB,
+    percentageDiff: opportunity.percentageDiff,
+    difference: opportunity.difference,
+    intervalA_hours: opportunity.intervalA_hours,
+    intervalB_hours: opportunity.intervalB_hours,
+    intervalMismatch: opportunity.intervalMismatch,
+  });
+
+  return { profit, risk };
+}

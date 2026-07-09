@@ -1,0 +1,82 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: funding_finder
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - '5432:5432'
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - '3001:3000'
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/funding_finder
+      NODE_ENV: development
+      PORT: '3000'
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-your_bot_token_here}
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-random-64-chars}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:-change-me-to-random-64-chars}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      AI_MODEL: x-ai/grok-4.1-fast:free
+      SETTLE: usdt
+      MIN_FUNDING_ABS: '0.0005'
+      MIN_VOLUME_24H: '1000'
+      CRYPTO_PAY_API_TOKEN: ${CRYPTO_PAY_API_TOKEN:-}
+      CRYPTO_BOT_USERNAME: CryptoBot
+      CRYPTO_PAY_NETWORK: testnet
+      CORS_ORIGINS: https://t.me,https://telegram.org
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    depends_on:
+      - backend
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:80']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  postgres_data:

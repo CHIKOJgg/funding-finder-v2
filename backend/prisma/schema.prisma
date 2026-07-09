@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  telegramId     String   @unique
+  username       String?
+  firstName      String?
+  subscription   String   @default("free")
+  trialUsed      Boolean  @default(false)
+  trialScans     Int      @default(1)
+  referralCode   String   @unique @default(cuid())
+  referredBy     String?
+  referrer       User?    @relation("Referrals", fields: [referredBy], references: [id])
+  referrals      User[]   @relation("Referrals")
+  balance        Float    @default(0)
+  lastActive     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  orders          Order[]
+  withdrawals     Withdrawal[]
+  paymentHistory  PaymentHistory[]
+  generalAlerts   GeneralAlert[]
+  arbitrageAlerts ArbitrageAlert[]
+  settings        UserSettings?
+
+  @@index([subscription])
+  @@index([createdAt])
+  @@index([lastActive])
+}
+
+model UserSettings {
+  id                     String   @id @default(cuid())
+  userId                 String   @unique
+  user                   User     @relation(fields: [userId], references: [id])
+  telegramNotifications  Boolean  @default(true)
+  emailNotifications     Boolean  @default(false)
+  emailAddress           String?
+  dailySummary           Boolean  @default(true)
+  alertSound             Boolean  @default(true)
+  defaultExchanges       String[] @default(["gate", "binance", "bybit", "mexc", "okx"])
+  theme                  String   @default("auto")
+  language               String   @default("ru")
+  timezone               String   @default("Europe/Moscow")
+  minVolumeFilter        Float    @default(1000)
+  minRateFilter          Float    @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  planId      String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  amount      Float
+  currency    String   @default("USDT")
+  status      String   @default("pending")
+  invoiceId   String?
+  invoice     Invoice?
+  transactionId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Invoice {
+  id              String   @id @default(cuid())
+  orderId         String   @unique
+  order           Order    @relation(fields: [orderId], references: [id])
+  invoiceId       String?
+  hash            String?
+  botInvoiceUrl   String?
+  miniAppInvoiceUrl String?
+  webAppInvoiceUrl  String?
+  status          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([invoiceId])
+}
+
+model Withdrawal {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  amount        Float
+  currency      String
+  address       String
+  network       String
+  status        String   @default("pending")
+  transactionId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model PaymentHistory {
+  id      String @id @default(cuid())
+  userId  String @unique
+  user    User   @relation(fields: [userId], references: [id])
+  payments PaymentRecord[]
+}
+
+model PaymentRecord {
+  id               String @id @default(cuid())
+  paymentHistoryId String
+  paymentHistory   PaymentHistory @relation(fields: [paymentHistoryId], references: [id])
+  orderId          String?
+  plan             String
+  amount           Float
+  currency         String
+  date             DateTime @default(now())
+
+  @@index([paymentHistoryId])
+}
+
+model GeneralAlert {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  pair         String
+  exchange     String
+  condition    String
+  threshold    Float
+  isActive     Boolean  @default(true)
+  cooldown     Int      @default(300000)
+  lastTriggered DateTime?
+  triggerCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([exchange, pair])
+}
+
+model ArbitrageAlert {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  pair         String
+  exchangeA    String
+  exchangeB    String
+  condition    String   @default("difference")
+  threshold    Float    @default(0.002)
+  direction    String   @default("both")
+  isActive     Boolean  @default(true)
+  cooldown     Int      @default(300000)
+  lastTriggered DateTime?
+  triggerCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([pair, exchangeA, exchangeB])
+}
+
+model FundingHistory {
+  id      String   @id @default(cuid())
+  key     String   @unique
+  records FundingRecord[]
+
+  @@index([key])
+}
+
+model FundingRecord {
+  id                String @id @default(cuid())
+  fundingHistoryId  String
+  fundingHistory    FundingHistory @relation(fields: [fundingHistoryId], references: [id])
+  timestamp         DateTime @default(now())
+  funding           Float
+
+  @@index([fundingHistoryId])
+  @@index([timestamp])
+}
+
+model AlertTrigger {
+  id          String   @id @default(cuid())
+  alertId     String
+  alertType   String   // 'general' | 'arbitrage'
+  triggeredAt DateTime @default(now())
+  data        String?  // JSON string with alert details
+
+  @@index([alertId])
+  @@index([triggeredAt])
+}
+
+model ContractMetadata {
+  id              String   @id @default(cuid())
+  key             String   @unique  // exchange:contract
+  exchange        String
+  contract        String
+  settleCurrency  String   @default("usdt")
+  baseCurrency    String?
+  quoteCurrency   String?
+  tickSize        Float?
+  minQty         Float?
+  maxLeverage    Int?
+  fundingCap     Float?
+  fundingFloor   Float?
+  openInterest   Float?
+  lastUpdated    DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@index([exchange])
+  @@index([baseCurrency])
+}

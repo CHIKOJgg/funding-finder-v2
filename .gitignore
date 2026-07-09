@@ -1,0 +1,64 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+dist/
+build/
+.next/
+out/
+
+# Runtime
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Database
+*.db
+*.sqlite
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
+
+# Docker
+docker-compose.override.yml
+
+# Prisma
+# migration_lock.toml is tracked (required for prisma migrate deploy)
+
+# TypeScript
+*.tsbuildinfo
+
+# Misc
+.cache/
+.parcel-cache/
+.webpack/
+*.tgz
+.yarn-integrity
+.eslintcache
+.node_repl_history
+
+# Telegram MiniApp
+*.local
