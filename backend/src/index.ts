@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import path from 'path';
+import fs from 'fs';
 import { createServer } from 'http';
 import rateLimit from 'express-rate-limit';
 import { config } from './config/index.js';
@@ -219,12 +220,26 @@ app.use('/api', authLimiter, validateTelegramInitData, profileRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, exportRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, settingsRoutes);
 
-// Serve frontend in production
-if (config.nodeEnv === 'production') {
-  const frontendPath = path.join(__dirname, '../../frontend/dist');
+// Serve frontend in production only if a built frontend exists.
+// On Render the frontend is deployed as a separate Static Site, so the
+// API service runs without a local frontend/dist — in that case we expose
+// a small JSON status page at "/" instead of 404-ing.
+const frontendPath = path.join(__dirname, '../../frontend/dist');
+const hasFrontend = fs.existsSync(path.join(frontendPath, 'index.html'));
+
+if (config.nodeEnv === 'production' && hasFrontend) {
   app.use(express.static(frontendPath));
   app.get('*', (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.json({
+      ok: true,
+      service: 'funding-finder-api',
+      status: 'running',
+      docs: '/api/health',
+    });
   });
 }
 
