@@ -2,6 +2,7 @@ import { ExchangeResult } from '../types/index.js';
 import { sleep, getOrCreateClient, cachedRequest } from '../utils/exchangeClient.js';
 import { safeParseFloat, safeParseInt } from '../utils/exchangeClient.js';
 import { normalizeFundingRate } from '../utils/helpers.js';
+import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const BYBIT_BASE = 'https://api.bybit.com';
@@ -66,6 +67,13 @@ export async function scanBybit(): Promise<ExchangeResult[]> {
         // Calculate interval in seconds
         const intervalSeconds = intervalMinutes * 60;
         const intervalHours = intervalMinutes / 60;
+
+        // Upsert contract metadata
+        upsertContractMetadata({
+          exchange: 'bybit',
+          contract: symbol,
+          settleCurrency: category === 'linear' ? 'USDT' : 'USD',
+        }).catch(() => {});
 
         const markPrice = safeParseFloat(t.markPrice ?? t.mark_price ?? 0);
         const turnover24h = safeParseFloat(t.turnover24h ?? t.turnover_24h ?? 0);

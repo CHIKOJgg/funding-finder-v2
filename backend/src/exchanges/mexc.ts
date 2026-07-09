@@ -1,6 +1,7 @@
 import { ExchangeResult, KNOWN_INTERVALS } from '../types/index.js';
 import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest } from '../utils/exchangeClient.js';
 import { normalizeFundingRate } from '../utils/helpers.js';
+import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const MEXC_BASE = 'https://contract.mexc.com';
@@ -40,6 +41,16 @@ export async function scanMEXC(): Promise<ExchangeResult[]> {
       { concurrency: MAX_CONCURRENCY },
       async (contract: any) => {
         const symbol = contract.symbol;
+
+        // Upsert contract metadata
+        upsertContractMetadata({
+          exchange: 'mexc',
+          contract: symbol,
+          settleCurrency: contract.settleCoin || 'USDT',
+          baseCurrency: contract.baseCoin,
+          quoteCurrency: contract.quoteCoin,
+          maxLeverage: contract.maxLeverage ? parseInt(contract.maxLeverage) : undefined,
+        }).catch(() => {});
 
         try {
           const [fundingR, tickerR] = await Promise.allSettled([

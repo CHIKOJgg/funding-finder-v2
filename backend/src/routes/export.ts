@@ -9,7 +9,7 @@ const router = Router();
 
 const exportSchema = z.object({
   exchange: z.string().optional(),
-  days: z.number().min(1).max(30).default(7),
+  days: z.coerce.number().min(1).max(30).default(7),
 });
 
 function escapeCsvValue(value: unknown): string {

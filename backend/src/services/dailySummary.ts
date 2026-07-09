@@ -60,17 +60,23 @@ export async function sendDailySummaries(): Promise<void> {
         interval: getIntervalLabel(r.funding_interval_seconds),
       }));
 
-    // Get all users with Telegram IDs
+    // Get all users with Telegram IDs who have daily summary enabled
     const users = await prisma.user.findMany({
       where: {
         telegramId: { startsWith: 'tg_' },
       },
-      select: { telegramId: true },
+      include: {
+        settings: {
+          select: { dailySummary: true },
+        },
+      },
     });
+
+    const eligibleUsers = users.filter((u) => u.settings?.dailySummary !== false);
 
     let sentCount = 0;
     let failedCount = 0;
-    for (const user of users) {
+    for (const user of eligibleUsers) {
       try {
         const chatId = parseInt(user.telegramId.replace('tg_', ''), 10);
         if (chatId && !isNaN(chatId)) {

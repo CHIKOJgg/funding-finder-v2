@@ -1,6 +1,7 @@
 import { ExchangeResult, KNOWN_INTERVALS } from '../types/index.js';
 import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest, sleep } from '../utils/exchangeClient.js';
 import { normalizeFundingRate } from '../utils/helpers.js';
+import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const OKX_BASE = 'https://www.okx.com';
@@ -61,6 +62,18 @@ export async function scanOKX(): Promise<ExchangeResult[]> {
         try {
           const ticker = tickerMap.get(symbol);
           if (!ticker) return null;
+
+          // Upsert contract metadata from instrument data
+          upsertContractMetadata({
+            exchange: 'okx',
+            contract: symbol,
+            settleCurrency: instr.settleCcy || 'USDT',
+            baseCurrency: instr.baseCcy,
+            quoteCurrency: instr.quoteCcy,
+            tickSize: parseFloat(instr.tickSz),
+            minQty: parseFloat(instr.minSz),
+            maxLeverage: instr.lever ? parseInt(instr.lever) : undefined,
+          }).catch(() => {});
 
           const fundingRes = await retry(() =>
             client.get('/api/v5/public/funding-rate', {

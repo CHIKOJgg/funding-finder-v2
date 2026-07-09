@@ -32,9 +32,11 @@ export function requireSubscription(minimumTier: PlanTier) {
         return res.status(401).json({ ok: false, error: 'Authentication required' });
       }
 
-      const user = await prisma.user.findUnique({ where: { telegramId: userId } });
+      let user = await prisma.user.findUnique({ where: { telegramId: userId } });
       if (!user) {
-        return res.status(401).json({ ok: false, error: 'User not found' });
+        user = await prisma.user.create({
+          data: { telegramId: userId, lastActive: new Date() },
+        });
       }
 
       const userTier = getPlanTier(user.subscription);
@@ -64,22 +66,4 @@ export async function getSubscriptionLimits(userId: string) {
   return { tier, ...PLAN_LIMITS[tier] };
 }
 
-export function validateExchangeCount(userId: string, exchanges: string[]) {
-  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    try {
-      const limits = await getSubscriptionLimits(userId);
-      if (exchanges.length > limits.maxExchanges) {
-        return res.status(403).json({
-          ok: false,
-          error: `Your ${limits.tier} plan allows max ${limits.maxExchanges} exchanges`,
-          requested: exchanges.length,
-          maxAllowed: limits.maxExchanges,
-        });
-      }
-      next();
-    } catch (err) {
-      logger.error({ err }, 'Exchange count validation failed');
-      return res.status(500).json({ ok: false, error: 'Exchange count verification failed' });
-    }
-  };
-}
+/* validateExchangeCount is no longer exported — scan route uses getSubscriptionLimits inline */

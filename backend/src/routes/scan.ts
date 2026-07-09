@@ -15,7 +15,7 @@ const scanSchema = z.object({
   exchanges: z.array(z.enum(['gate', 'binance', 'bybit', 'mexc', 'okx'])).min(1).max(5).default(['gate']),
 });
 
-router.post('/scan', requireSubscription('basic'), validate(scanSchema), validateExchangeList, async (req, res) => {
+router.post('/scan', requireSubscription('free'), validate(scanSchema), validateExchangeList, async (req, res) => {
   try {
     const { exchanges } = req.body;
     const userId = (req as any).userId;

@@ -2,6 +2,7 @@ import { prisma } from './prisma.js';
 import { runScan } from './scanService.js';
 import { detectArbitrageOpportunities } from './arbitrageService.js';
 import { sendAlertNotification } from './telegramNotify.js';
+import { sendAlertEmail } from './emailNotify.js';
 import { wsManager } from './websocket.js';
 import { logger } from '../utils/logger.js';
 
@@ -137,7 +138,7 @@ async function evaluateAllAlerts(): Promise<void> {
   });
   const userMap = new Map(users.map((u) => [u.telegramId, u]));
 
-  // Send notifications
+  // Send notifications (Telegram + Email)
   const notifications: Promise<any>[] = [];
   for (const triggered of triggeredAlerts) {
     const user = userMap.get(triggered.userId);
@@ -146,10 +147,22 @@ async function evaluateAllAlerts(): Promise<void> {
       if (chatId && !isNaN(chatId)) {
         notifications.push(
           sendAlertNotification(chatId, triggered.type, triggered.data).catch((err) =>
-            logger.error({ err, alertId: triggered.alertId }, 'Failed to send notification')
+            logger.error({ err, alertId: triggered.alertId }, 'Failed to send Telegram notification')
           )
         );
       }
+      // Send email notification if user has email enabled
+      const sendEmailNotification = async () => {
+        try {
+          const settings = await prisma.userSettings.findUnique({ where: { userId: user.id } });
+          if (settings?.emailNotifications && settings?.emailAddress) {
+            await sendAlertEmail(settings.emailAddress, triggered.type, triggered.data);
+          }
+        } catch (err) {
+          logger.debug({ err, userId: user.telegramId }, 'Failed to send email notification');
+        }
+      };
+      notifications.push(sendEmailNotification());
     }
   }
 

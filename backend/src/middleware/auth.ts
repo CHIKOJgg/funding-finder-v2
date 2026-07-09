@@ -14,20 +14,21 @@ export interface AuthenticatedRequest extends Request {
 
 const VALID_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'];
 
-// Track user activity (non-blocking)
-function trackActivity(userId: string): void {
-  import('../services/prisma.js').then(({ prisma }) => {
-    prisma.user.upsert({
+// Track user activity (blocking — ensures user exists before any route handler)
+async function trackActivity(userId: string): Promise<void> {
+  try {
+    const { prisma } = await import('../services/prisma.js');
+    await prisma.user.upsert({
       where: { telegramId: userId },
       create: { telegramId: userId, lastActive: new Date() },
       update: { lastActive: new Date() },
-    }).catch((err: Error) => {
-      logger.debug({ err: err.message }, 'Failed to track user activity');
     });
-  }).catch(() => {});
+  } catch (err) {
+    logger.debug({ err: (err as Error).message }, 'Failed to track user activity');
+  }
 }
 
-export function validateTelegramInitData(req: Request, res: Response, next: NextFunction) {
+export async function validateTelegramInitData(req: Request, res: Response, next: NextFunction) {
   const initData = req.headers['x-telegram-init-data'] as string;
 
   if (!initData) {
@@ -99,8 +100,8 @@ export function validateTelegramInitData(req: Request, res: Response, next: Next
     };
     (req as AuthenticatedRequest).userId = `tg_${user.id}`;
 
-    // Track activity (non-blocking)
-    trackActivity((req as AuthenticatedRequest).userId!);
+    // Ensure user exists in DB before any route handler
+    await trackActivity((req as AuthenticatedRequest).userId!);
 
     next();
   } catch (err) {

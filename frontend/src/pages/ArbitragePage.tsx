@@ -4,6 +4,7 @@ import { useApp } from '../App';
 import { useToast } from '../components/Toast';
 import { apiClient } from '../api/client';
 import { getRiskColor } from '../utils/formatters';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 export function ArbitragePage() {
   const { user } = useApp();
@@ -15,11 +16,6 @@ export function ArbitragePage() {
   const [showModal, setShowModal] = useState(false);
   const [selectedOpportunity, setSelectedOpportunity] = useState<any>(null);
   const [capital, setCapital] = useState(1000);
-
-  useEffect(() => {
-    loadOpportunities();
-    if (user?.id) loadAlerts();
-  }, [user?.id]);
 
   const loadOpportunities = useCallback(async () => {
     try {
@@ -46,6 +42,22 @@ export function ArbitragePage() {
       console.error('Failed to load alerts:', error);
     }
   }, []);
+
+  const initData = window.Telegram?.WebApp?.initData || null;
+  useWebSocket(initData, {
+    onScan: useCallback(() => {
+      loadOpportunities();
+    }, [loadOpportunities]),
+    onAlertTriggered: useCallback(() => {
+      loadAlerts();
+      showToast('Получено новое оповещение!', 'success');
+    }, [loadAlerts, showToast]),
+  });
+
+  useEffect(() => {
+    loadOpportunities();
+    if (user?.id) loadAlerts();
+  }, [user?.id, loadOpportunities, loadAlerts]);
 
   const handleToggleAlert = useCallback(async (alertId: string) => {
     try {

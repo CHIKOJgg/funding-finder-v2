@@ -1,6 +1,7 @@
 import { ExchangeResult } from '../types/index.js';
 import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest } from '../utils/exchangeClient.js';
 import { normalizeFundingRate, detectFundingInterval } from '../utils/helpers.js';
+import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 import { config } from '../config/index.js';
 
@@ -81,6 +82,13 @@ export async function scanGate(): Promise<ExchangeResult[]> {
 
         // Detect funding interval
         const interval = detectFundingInterval('gate', fundingTimestamps, apiIntervalMinutes);
+
+        // Upsert contract metadata
+        upsertContractMetadata({
+          exchange: 'gate',
+          contract,
+          settleCurrency: config.exchange.settle,
+        }).catch(() => {});
 
         // Normalize funding rate to hourly basis
         const normalized = normalizeFundingRate(fundingRate, interval.seconds);

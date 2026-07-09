@@ -1,25 +1,19 @@
-import { useEffect, useState, useMemo, useCallback, Suspense, lazy, useRef } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { apiClient } from '../api/client';
 import { useToast } from './Toast';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
 
-const ChartComponent = lazy(() =>
-  import('react-chartjs-2').then((mod) => {
-    import('chart.js').then((chartjs) => {
-      const {
-        Chart: ChartJS,
-        CategoryScale,
-        LinearScale,
-        PointElement,
-        LineElement,
-        Title,
-        Tooltip,
-        Legend,
-      } = chartjs;
-      ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
-    });
-    return { default: mod.Line };
-  })
-);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 interface HistoryRecord {
   timestamp: string;
@@ -132,9 +126,7 @@ export function HistoryChart({ exchange, contract, onClose }: HistoryChartProps)
             <div className="text-center py-8 text-gray-500" role="status">Загрузка...</div>
           ) : history.length > 0 ? (
             <div className="h-64">
-              <Suspense fallback={<div className="text-center py-8 text-gray-500">Загрузка графика...</div>}>
-                <ChartComponent data={chartData} options={chartOptions} />
-              </Suspense>
+              <Line data={chartData} options={chartOptions} />
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">Нет данных за период</div>
