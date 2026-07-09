@@ -3,13 +3,14 @@ import { AuthenticatedRequest } from './auth.js';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
 
-type PlanTier = 'free' | 'basic' | 'pro' | 'promax';
+type PlanTier = 'free' | 'basic' | 'pro' | 'promax' | 'ultimate';
 
 const PLAN_HIERARCHY: Record<PlanTier, number> = {
   free: 0,
   basic: 1,
   pro: 2,
   promax: 3,
+  ultimate: 99, // Admin tier — highest privilege
 };
 
 const PLAN_LIMITS: Record<PlanTier, { maxExchanges: number; aiEnabled: boolean; recommendationsEnabled: boolean }> = {
@@ -17,6 +18,7 @@ const PLAN_LIMITS: Record<PlanTier, { maxExchanges: number; aiEnabled: boolean; 
   basic: { maxExchanges: 3, aiEnabled: false, recommendationsEnabled: false },
   pro: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true },
   promax: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true },
+  ultimate: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true },
 };
 
 function getPlanTier(subscription: string): PlanTier {
