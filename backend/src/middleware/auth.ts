@@ -45,31 +45,15 @@ export async function validateTelegramInitData(req: Request, res: Response, next
   try {
     const urlParams = new URLSearchParams(initData);
     const hash = urlParams.get('hash');
-    urlParams.delete('hash');
-    urlParams.delete('signature');
 
     if (!hash) {
       return res.status(401).json({ ok: false, error: 'Missing hash in init data' });
     }
 
-    const dataCheckString = Array.from(urlParams.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, value]) => `${key}=${value}`)
-      .join('\n');
-
-    const secretKey = crypto
-      .createHmac('sha256', 'WebAppData')
-      .update(config.telegram.botToken)
-      .digest();
-
-    const computedHash = crypto
-      .createHmac('sha256', secretKey)
-      .update(dataCheckString)
-      .digest('hex');
-
-    if (!timingSafeEqual(computedHash, hash)) {
+    if (!verifyInitDataHash(urlParams, hash)) {
       const botId = config.telegram.botToken.split(':')[0] || 'unknown';
-      logger.warn(`Invalid Telegram init data hash (validating with bot id: ${botId})`);
+      const keys = Array.from(new URLSearchParams(initData).keys()).sort().join(',');
+      logger.warn(`Invalid Telegram init data hash (bot id: ${botId}, fields: ${keys})`);
       return res.status(401).json({ ok: false, error: 'Invalid authentication' });
     }
 
@@ -111,6 +95,49 @@ export async function validateTelegramInitData(req: Request, res: Response, next
   }
 }
 
+/**
+ * Verify the Telegram Mini App init data hash.
+ *
+ * Telegram added a `signature` field to init data (for third-party Ed25519
+ * validation). Different clients/versions differ on whether `signature` is
+ * part of the data-check-string used for the bot-token `hash`. To be robust
+ * we accept the data if EITHER variant matches (signature excluded or kept).
+ *
+ * Note: `urlParams` is mutated (the `hash` entry is removed).
+ */
+function verifyInitDataHash(urlParams: URLSearchParams, hash: string): boolean {
+  urlParams.delete('hash');
+
+  const secretKey = crypto
+    .createHmac('sha256', 'WebAppData')
+    .update(config.telegram.botToken)
+    .digest();
+
+  const computeHash = (params: URLSearchParams): string => {
+    const dataCheckString = Array.from(params.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => `${key}=${value}`)
+      .join('\n');
+    return crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+  };
+
+  // Variant A: keep signature (if present) in the data-check-string
+  if (timingSafeEqual(computeHash(urlParams), hash)) {
+    return true;
+  }
+
+  // Variant B: exclude signature from the data-check-string
+  if (urlParams.has('signature')) {
+    const withoutSignature = new URLSearchParams(urlParams.toString());
+    withoutSignature.delete('signature');
+    if (timingSafeEqual(computeHash(withoutSignature), hash)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) {
     return false;
@@ -137,27 +164,10 @@ export function validateTelegramInitDataSync(initData: string): { userId: string
   try {
     const urlParams = new URLSearchParams(initData);
     const hash = urlParams.get('hash');
-    urlParams.delete('hash');
-    urlParams.delete('signature');
 
     if (!hash) return null;
 
-    const dataCheckString = Array.from(urlParams.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, value]) => `${key}=${value}`)
-      .join('\n');
-
-    const secretKey = crypto
-      .createHmac('sha256', 'WebAppData')
-      .update(config.telegram.botToken)
-      .digest();
-
-    const computedHash = crypto
-      .createHmac('sha256', secretKey)
-      .update(dataCheckString)
-      .digest('hex');
-
-    if (!timingSafeEqual(computedHash, hash)) return null;
+    if (!verifyInitDataHash(urlParams, hash)) return null;
 
     const authDate = urlParams.get('auth_date');
     if (authDate) {
