@@ -70,7 +70,7 @@ export const config = {
   databaseUrl: env.DATABASE_URL,
 
   telegram: {
-    botToken: env.TELEGRAM_BOT_TOKEN,
+    botToken: env.TELEGRAM_BOT_TOKEN.trim(),
   },
 
   ai: {

@@ -40,6 +40,10 @@ import webhookRoutes from './routes/webhook.js';
 const app = express();
 const server = createServer(app);
 
+// Trust the reverse proxy (Render/Nginx/etc.) so express-rate-limit and
+// req.ip work correctly with the X-Forwarded-For header.
+app.set('trust proxy', 1);
+
 // Security headers
 app.use(helmet({
   contentSecurityPolicy: false,

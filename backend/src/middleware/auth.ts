@@ -68,7 +68,8 @@ export async function validateTelegramInitData(req: Request, res: Response, next
       .digest('hex');
 
     if (!timingSafeEqual(computedHash, hash)) {
-      logger.warn('Invalid Telegram init data hash');
+      const botId = config.telegram.botToken.split(':')[0] || 'unknown';
+      logger.warn(`Invalid Telegram init data hash (validating with bot id: ${botId})`);
       return res.status(401).json({ ok: false, error: 'Invalid authentication' });
     }
 
