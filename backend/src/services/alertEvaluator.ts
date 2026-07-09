@@ -154,7 +154,7 @@ async function evaluateAllAlerts(): Promise<void> {
       // Send email notification if user has email enabled
       const sendEmailNotification = async () => {
         try {
-          const settings = await prisma.userSettings.findUnique({ where: { userId: user.id } });
+          const settings = await prisma.userSettings.findUnique({ where: { userId: user.telegramId } });
           if (settings?.emailNotifications && settings?.emailAddress) {
             await sendAlertEmail(settings.emailAddress, triggered.type, triggered.data);
           }

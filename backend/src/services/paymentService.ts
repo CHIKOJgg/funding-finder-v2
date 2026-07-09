@@ -116,6 +116,9 @@ export async function createOrder(planId: PlanId, currency: string = 'USDT', tel
   const orderId = `order_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
 
   try {
+    // Ensure the user row exists (Order.userId is an FK to User.telegramId)
+    await getUser(telegramId);
+
     const invoiceData = await createCryptoPayInvoice(planId, currency, orderId, telegramId);
 
     await prisma.$transaction(async (tx) => {

@@ -39,7 +39,7 @@ model User {
 model UserSettings {
   id                     String   @id @default(cuid())
   userId                 String   @unique
-  user                   User     @relation(fields: [userId], references: [id])
+  user                   User     @relation(fields: [userId], references: [telegramId])
   telegramNotifications  Boolean  @default(true)
   emailNotifications     Boolean  @default(false)
   emailAddress           String?
@@ -59,7 +59,7 @@ model Order {
   id          String   @id @default(cuid())
   planId      String
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [telegramId])
   amount      Float
   currency    String   @default("USDT")
   status      String   @default("pending")
@@ -93,7 +93,7 @@ model Invoice {
 model Withdrawal {
   id            String   @id @default(cuid())
   userId        String
-  user          User     @relation(fields: [userId], references: [id])
+  user          User     @relation(fields: [userId], references: [telegramId])
   amount        Float
   currency      String
   address       String
@@ -110,7 +110,7 @@ model Withdrawal {
 model PaymentHistory {
   id      String @id @default(cuid())
   userId  String @unique
-  user    User   @relation(fields: [userId], references: [id])
+  user    User   @relation(fields: [userId], references: [telegramId])
   payments PaymentRecord[]
 }
 
@@ -130,7 +130,7 @@ model PaymentRecord {
 model GeneralAlert {
   id           String   @id @default(cuid())
   userId       String
-  user         User     @relation(fields: [userId], references: [id])
+  user         User     @relation(fields: [userId], references: [telegramId])
   pair         String
   exchange     String
   condition    String
@@ -150,7 +150,7 @@ model GeneralAlert {
 model ArbitrageAlert {
   id           String   @id @default(cuid())
   userId       String
-  user         User     @relation(fields: [userId], references: [id])
+  user         User     @relation(fields: [userId], references: [telegramId])
   pair         String
   exchangeA    String
   exchangeB    String

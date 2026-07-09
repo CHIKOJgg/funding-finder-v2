@@ -61,27 +61,35 @@ export async function scanGate(): Promise<ExchangeResult[]> {
           }
         }
 
-        // Fetch funding history to detect interval
-        let fundingTimestamps: number[] = [];
-        let apiIntervalMinutes: number | undefined;
-        
-        try {
-          const histRes = await retry(() =>
-            client.get(`/futures/${config.exchange.settle}/funding_rate`, {
-              params: { contract, limit: 30 },  // Get more history for better detection
-              timeout: 12000,
-            })
-          );
-          const hist = histRes.data || [];
-          if (hist.length > 1) {
-            fundingTimestamps = hist.map((x: any) => Number(x.t) * 1000); // Convert to ms
-          }
-        } catch (err) {
-          logger.debug(`Gate: Funding history fallback failed for ${contract}: ${(err as Error).message}`);
-        }
+        // Detect funding interval. This requires an extra per-contract history
+        // request, which is expensive across ~800 contracts. The interval is
+        // stable, so cache the detected value per contract for 6 hours to keep
+        // subsequent scans fast (avoids N+1 latency / frontend timeouts).
+        const interval = await cachedRequest(
+          `gate:interval:${contract}`,
+          async () => {
+            let fundingTimestamps: number[] = [];
+            const apiIntervalMinutes: number | undefined = undefined;
 
-        // Detect funding interval
-        const interval = detectFundingInterval('gate', fundingTimestamps, apiIntervalMinutes);
+            try {
+              const histRes = await retry(() =>
+                client.get(`/futures/${config.exchange.settle}/funding_rate`, {
+                  params: { contract, limit: 30 }, // Get more history for better detection
+                  timeout: 12000,
+                })
+              );
+              const hist = histRes.data || [];
+              if (hist.length > 1) {
+                fundingTimestamps = hist.map((x: any) => Number(x.t) * 1000); // Convert to ms
+              }
+            } catch (err) {
+              logger.debug(`Gate: Funding history fallback failed for ${contract}: ${(err as Error).message}`);
+            }
+
+            return detectFundingInterval('gate', fundingTimestamps, apiIntervalMinutes);
+          },
+          6 * 60 * 60 * 1000 // 6 hours
+        );
 
         // Upsert contract metadata
         upsertContractMetadata({

@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api',
-  timeout: 30000,
+  timeout: 45000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -77,7 +77,9 @@ api.interceptors.response.use(
 
 export const apiClient = {
   async scan(exchanges: string[]) {
-    return retryRequest(() => api.post('/scan', { exchanges }));
+    // Scans hit many exchange APIs (hundreds of contracts) and can take a while
+    // on a cold cache, so allow a much longer timeout than the global default.
+    return retryRequest(() => api.post('/scan', { exchanges }, { timeout: 120000 }));
   },
 
   async aiAnalyze(listText: string) {

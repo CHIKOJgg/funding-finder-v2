@@ -15,7 +15,7 @@ interface CacheEntry<T> {
 class MemoryCache {
   private store = new Map<string, CacheEntry<any>>();
   private defaultTTL = 60_000;
-  private maxSize = 1000;
+  private maxSize = 20000;
 
   get<T>(key: string): T | null {
     const entry = this.store.get(key);
