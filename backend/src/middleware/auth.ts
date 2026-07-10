@@ -18,10 +18,12 @@ const VALID_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'];
 async function trackActivity(userId: string): Promise<void> {
   try {
     const { prisma } = await import('../services/prisma.js');
+    const tgId = userId.replace('tg_', '');
+    const isAdmin = config.admin.telegramIds.includes(tgId);
     await prisma.user.upsert({
       where: { telegramId: userId },
-      create: { telegramId: userId, lastActive: new Date() },
-      update: { lastActive: new Date() },
+      create: { telegramId: userId, lastActive: new Date(), role: isAdmin ? 'admin' : 'user' },
+      update: { lastActive: new Date(), role: isAdmin ? 'admin' : undefined },
     });
   } catch (err) {
     logger.debug({ err: (err as Error).message }, 'Failed to track user activity');

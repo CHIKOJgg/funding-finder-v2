@@ -1,8 +1,9 @@
-import React, { useState, createContext, useContext, useMemo, useRef, useCallback, Suspense } from 'react';
+import React, { useState, createContext, useContext, useMemo, useRef, useCallback, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Navigation } from './components/Navigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider, useToast } from './components/Toast';
+import { Onboarding } from './components/Onboarding';
 import { useTelegram } from './hooks/useTelegram';
 import { apiClient } from './api/client';
 import type { ScanResult } from './types';
@@ -10,6 +11,10 @@ import type { ScanResult } from './types';
 const MainPage = React.lazy(() => import('./pages/MainPage').then(m => ({ default: m.MainPage })));
 const ArbitragePage = React.lazy(() => import('./pages/ArbitragePage').then(m => ({ default: m.ArbitragePage })));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const TermsPage = React.lazy(() => import('./pages/TermsPage').then(m => ({ default: m.TermsPage })));
+const PrivacyPage = React.lazy(() => import('./pages/PrivacyPage').then(m => ({ default: m.PrivacyPage })));
+const AdminPage = React.lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
+const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 
 interface AppContextType {
   user: { id: string; firstName?: string; username?: string; subscription?: string } | null;
@@ -189,6 +194,40 @@ function PageLoader() {
 }
 
 export default function App() {
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return localStorage.getItem('ff_onboarding_done') !== 'true';
+  });
+
+  const completeOnboarding = useCallback(() => {
+    localStorage.setItem('ff_onboarding_done', 'true');
+    setShowOnboarding(false);
+  }, []);
+
+  // Dark theme: detect Telegram theme and apply class
+  useEffect(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    const applyTheme = (colorScheme?: string) => {
+      if (colorScheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+
+    if (tg) {
+      applyTheme(tg.colorScheme);
+      tg.onEvent('themeChanged', () => applyTheme(tg.colorScheme));
+      return () => tg.offEvent('themeChanged', () => {});
+    } else {
+      // Fallback: check system preference
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      applyTheme(mq.matches ? 'dark' : 'light');
+      const handler = (e: MediaQueryListEvent) => applyTheme(e.matches ? 'dark' : 'light');
+      mq.addEventListener('change', handler);
+      return () => mq.removeEventListener('change', handler);
+    }
+  }, []);
+
   return (
     <ErrorBoundary>
       <ToastProvider>
@@ -200,12 +239,17 @@ export default function App() {
                   <Route path="/" element={<ErrorBoundary><MainPage /></ErrorBoundary>} />
                   <Route path="/arbitrage" element={<ErrorBoundary><ArbitragePage /></ErrorBoundary>} />
                   <Route path="/profile" element={<ErrorBoundary><ProfilePage /></ErrorBoundary>} />
+                  <Route path="/terms" element={<ErrorBoundary><TermsPage /></ErrorBoundary>} />
+                  <Route path="/privacy" element={<ErrorBoundary><PrivacyPage /></ErrorBoundary>} />
+                  <Route path="/admin" element={<ErrorBoundary><AdminPage /></ErrorBoundary>} />
+                  <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>
               <Navigation />
             </div>
           </BrowserRouter>
+          {showOnboarding && <Onboarding onComplete={completeOnboarding} />}
         </DataProvider>
       </ToastProvider>
     </ErrorBoundary>

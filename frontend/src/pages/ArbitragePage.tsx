@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { clsx } from 'clsx';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { apiClient } from '../api/client';
 import { getRiskColor } from '../utils/formatters';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -13,6 +14,7 @@ export function ArbitragePage() {
   const [showModal, setShowModal] = useState(false);
   const [selectedOpportunity, setSelectedOpportunity] = useState<any>(null);
   const [capital, setCapital] = useState(1000);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const initData = window.Telegram?.WebApp?.initData || null;
   useWebSocket(initData, {
@@ -54,6 +56,13 @@ export function ArbitragePage() {
       showToast('Не удалось удалить оповещение', 'error');
     }
   }, [setArbAlerts, showToast]);
+
+  const confirmDelete = useCallback(() => {
+    if (deleteConfirm) {
+      handleDeleteAlert(deleteConfirm);
+      setDeleteConfirm(null);
+    }
+  }, [deleteConfirm, handleDeleteAlert]);
 
   return (
     <div className="p-4">
@@ -143,7 +152,7 @@ export function ArbitragePage() {
                         {alert.isActive ? '🔕' : '🔔'}
                       </button>
                       <button
-                        onClick={() => handleDeleteAlert(alert.id)}
+                        onClick={() => setDeleteConfirm(alert.id)}
                         className="text-sm text-red-500"
                         aria-label="Delete alert"
                       >
@@ -166,6 +175,17 @@ export function ArbitragePage() {
           onClose={() => setShowModal(false)}
         />
       )}
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        title="Удалить оповещение?"
+        message="Вы уверены, что хотите удалить это оповещение? Это действие нельзя отменить."
+        confirmText="Удалить"
+        cancelText="Отмена"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   );
 }

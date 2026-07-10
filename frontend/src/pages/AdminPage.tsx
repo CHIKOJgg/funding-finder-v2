@@ -1,0 +1,406 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useApp } from '../App';
+import { useToast } from '../components/Toast';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { apiClient } from '../api/client';
+
+interface User {
+  id: string;
+  telegramId: string;
+  username: string | null;
+  firstName: string | null;
+  role: string;
+  subscription: string;
+  balance: number;
+  trialScans: number;
+  lastActive: string;
+  createdAt: string;
+  _count: {
+    orders: number;
+    generalAlerts: number;
+    arbitrageAlerts: number;
+    referrals: number;
+  };
+}
+
+interface Stats {
+  users: {
+    total: number;
+    today: number;
+    activeWeek: number;
+    activeMonth: number;
+    bySubscription: Record<string, number>;
+  };
+  orders: {
+    total: number;
+    today: number;
+    revenue: number;
+    revenueToday: number;
+  };
+  system: {
+    uptime: number;
+    memory: { heapUsed: number; heapTotal: number; rss: number };
+    websocket: { connected: number };
+    jobs: any;
+    cacheSize: number;
+  };
+  alerts: { total: number };
+  scans: { totalRecords: number };
+}
+
+export function AdminPage() {
+  const { user } = useApp();
+  const { showToast } = useToast();
+  const [tab, setTab] = useState<'users' | 'stats'>('stats');
+  const [users, setUsers] = useState<User[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [editUser, setEditUser] = useState<{ id: string; field: 'subscription' | 'balance'; value: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const res: any = await apiClient.get('/admin/stats');
+      if (res.ok) setStats(res.stats);
+    } catch { /* ignore */ }
+  }, []);
+
+  const fetchUsers = useCallback(async (p: number, q: string) => {
+    try {
+      const res: any = await apiClient.get(`/admin/users?page=${p}&limit=20${q ? `&search=${encodeURIComponent(q)}` : ''}`);
+      if (res.ok) {
+        setUsers(res.users);
+        setTotalPages(res.pagination.totalPages);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([fetchStats(), fetchUsers(page, search)]).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'users') fetchUsers(page, search);
+    if (tab === 'stats') fetchStats();
+  }, [tab, page, search, fetchUsers, fetchStats]);
+
+  const handleUpdateSubscription = useCallback(async (userId: string, subscription: string) => {
+    try {
+      const res: any = await apiClient.patch(`/admin/users/${userId}/subscription`, { subscription });
+      if (res.ok) {
+        showToast('Подписка обновлена', 'success');
+        fetchUsers(page, search);
+      }
+    } catch {
+      showToast('Ошибка обновления подписки', 'error');
+    }
+    setEditUser(null);
+  }, [page, search, fetchUsers, showToast]);
+
+  const handleUpdateBalance = useCallback(async (userId: string, balance: string) => {
+    const num = parseFloat(balance);
+    if (isNaN(num) || num < 0) {
+      showToast('Некорректный баланс', 'error');
+      return;
+    }
+    try {
+      const res: any = await apiClient.patch(`/admin/users/${userId}/balance`, { balance: num });
+      if (res.ok) {
+        showToast('Баланс обновлён', 'success');
+        fetchUsers(page, search);
+      }
+    } catch {
+      showToast('Ошибка обновления баланса', 'error');
+    }
+    setEditUser(null);
+  }, [page, search, fetchUsers, showToast]);
+
+  const handleDeleteUser = useCallback(async () => {
+    if (!deleteConfirm) return;
+    try {
+      const res: any = await apiClient.delete(`/admin/users/${deleteConfirm}`);
+      if (res.ok) {
+        showToast('Пользователь удалён', 'success');
+        fetchUsers(page, search);
+      }
+    } catch {
+      showToast('Ошибка удаления пользователя', 'error');
+    }
+    setDeleteConfirm(null);
+  }, [deleteConfirm, page, search, fetchUsers, showToast]);
+
+  const formatUptime = (seconds: number) => {
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return `${d}д ${h}ч ${m}м`;
+  };
+
+  if (!user) {
+    return <div className="p-4 text-center text-gray-500">Войдите в систему</div>;
+  }
+
+  return (
+    <div className="p-4 max-w-4xl mx-auto">
+      <div className="card">
+        <h1 className="text-xl font-bold mb-2">Admin Panel</h1>
+        <p className="text-sm text-gray-600 mb-4">Управление пользователями и мониторинг системы</p>
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setTab('stats')}
+            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'stats' ? 'bg-telegram-blue text-white' : 'bg-gray-200'}`}
+          >
+            Статистика
+          </button>
+          <button
+            onClick={() => setTab('users')}
+            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'users' ? 'bg-telegram-blue text-white' : 'bg-gray-200'}`}
+          >
+            Пользователи
+          </button>
+        </div>
+      </div>
+
+      {tab === 'stats' && stats && (
+        <>
+          <div className="card">
+            <h2 className="text-lg font-semibold mb-3">Пользователи</h2>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-700">{stats.users.total}</div>
+                <div className="text-blue-600">Всего</div>
+              </div>
+              <div className="p-3 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-700">{stats.users.today}</div>
+                <div className="text-green-600">Сегодня</div>
+              </div>
+              <div className="p-3 bg-yellow-50 rounded-lg">
+                <div className="text-2xl font-bold text-yellow-700">{stats.users.activeWeek}</div>
+                <div className="text-yellow-600">Активных (7д)</div>
+              </div>
+              <div className="p-3 bg-purple-50 rounded-lg">
+                <div className="text-2xl font-bold text-purple-700">{stats.users.activeMonth}</div>
+                <div className="text-purple-600">Активных (30д)</div>
+              </div>
+            </div>
+            {Object.keys(stats.users.bySubscription).length > 0 && (
+              <div className="mt-3">
+                <p className="text-sm font-medium mb-1">По подпискам:</p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(stats.users.bySubscription).map(([plan, count]) => (
+                    <span key={plan} className="text-xs bg-gray-100 px-2 py-1 rounded">{plan}: {String(count)}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="card">
+            <h2 className="text-lg font-semibold mb-3">Финансы</h2>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="p-3 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-700">{stats.orders.revenue.toFixed(2)} USDT</div>
+                <div className="text-green-600">Общий доход</div>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-700">{stats.orders.revenueToday.toFixed(2)} USDT</div>
+                <div className="text-blue-600">За сегодня</div>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold">{stats.orders.total}</div>
+                <div className="text-gray-600">Всего заказов</div>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold">{stats.orders.today}</div>
+                <div className="text-gray-600">Заказов сегодня</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2 className="text-lg font-semibold mb-3">Система</h2>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="font-bold">{formatUptime(stats.system.uptime)}</div>
+                <div className="text-gray-600">Аптайм</div>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="font-bold">{stats.system.memory.heapUsed} MB</div>
+                <div className="text-gray-600">Heap Used</div>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="font-bold">{stats.system.memory.rss} MB</div>
+                <div className="text-gray-600">RSS</div>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="font-bold">{stats.system.websocket.connected}</div>
+                <div className="text-gray-600">WebSocket</div>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="font-bold">{stats.system.cacheSize}</div>
+                <div className="text-gray-600">Кеш</div>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="font-bold">{stats.alerts.total}</div>
+                <div className="text-gray-600">Алертов</div>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="font-bold">{stats.scans.totalRecords.toLocaleString()}</div>
+                <div className="text-gray-600">Записей сканов</div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {tab === 'users' && (
+        <div className="card">
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              placeholder="Поиск по ID, имени или username..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="input-field flex-1 text-sm"
+            />
+          </div>
+
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">Загрузка...</div>
+          ) : users.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">Пользователи не найдены</div>
+          ) : (
+            <div className="space-y-2">
+              {users.map((u) => (
+                <div key={u.telegramId} className="p-3 border border-gray-200 rounded-lg text-sm">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">
+                        {u.firstName || u.username || u.telegramId}
+                        {u.role === 'admin' && <span className="ml-1 text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">admin</span>}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate">
+                        ID: {u.telegramId} · {u.username ? `@${u.username}` : ''}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        Создан: {new Date(u.createdAt).toLocaleDateString()} · Активен: {new Date(u.lastActive).toLocaleDateString()}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        Заказов: {u._count.orders} · Алертов: {u._count.generalAlerts + u._count.arbitrageAlerts} · Рефералов: {u._count.referrals}
+                      </div>
+                    </div>
+                    <div className="text-right ml-2 flex-shrink-0">
+                      <div className="font-semibold">{u.subscription}</div>
+                      <div className="text-xs text-gray-500">{u.balance} USDT</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-1 mt-2">
+                    <button
+                      onClick={() => setEditUser({ id: u.telegramId, field: 'subscription', value: u.subscription })}
+                      className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded hover:bg-blue-100"
+                    >
+                      Изменить подписку
+                    </button>
+                    <button
+                      onClick={() => setEditUser({ id: u.telegramId, field: 'balance', value: String(u.balance) })}
+                      className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded hover:bg-green-100"
+                    >
+                      Изменить баланс
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm(u.telegramId)}
+                      className="text-xs bg-red-50 text-red-700 px-2 py-1 rounded hover:bg-red-100 ml-auto"
+                    >
+                      Удалить
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="btn text-sm py-1 px-3 w-auto"
+              >
+                ← Назад
+              </button>
+              <span className="py-1 text-sm text-gray-600">{page} / {totalPages}</span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="btn text-sm py-1 px-3 w-auto"
+              >
+                Вперед →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {editUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-sm w-full">
+            <div className="card">
+              <h2 className="text-lg font-semibold mb-4">
+                {editUser.field === 'subscription' ? 'Изменить подписку' : 'Изменить баланс'}
+              </h2>
+              {editUser.field === 'subscription' ? (
+                <select
+                  value={editUser.value}
+                  onChange={(e) => setEditUser({ ...editUser, value: e.target.value })}
+                  className="input-field mb-4"
+                >
+                  <option value="free">Free</option>
+                  <option value="basic">Basic</option>
+                  <option value="pro">Pro</option>
+                  <option value="promax">Pro Max</option>
+                </select>
+              ) : (
+                <input
+                  type="number"
+                  value={editUser.value}
+                  onChange={(e) => setEditUser({ ...editUser, value: e.target.value })}
+                  min={0}
+                  step={0.01}
+                  className="input-field mb-4"
+                />
+              )}
+              <div className="flex gap-2">
+                <button onClick={() => setEditUser(null)} className="btn btn-secondary flex-1">Отмена</button>
+                <button
+                  onClick={() =>
+                    editUser.field === 'subscription'
+                      ? handleUpdateSubscription(editUser.id, editUser.value)
+                      : handleUpdateBalance(editUser.id, editUser.value)
+                  }
+                  className="btn btn-primary flex-1"
+                >
+                  Сохранить
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        title="Удалить пользователя?"
+        message="Все данные пользователя будут безвозвратно удалены: алерты, заказы, платежи, настройки."
+        confirmText="Удалить"
+        cancelText="Отмена"
+        variant="danger"
+        onConfirm={handleDeleteUser}
+        onCancel={() => setDeleteConfirm(null)}
+      />
+    </div>
+  );
+}

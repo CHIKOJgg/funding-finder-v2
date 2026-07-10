@@ -24,6 +24,10 @@ export function MainPage() {
   const [historyModal, setHistoryModal] = useState<{ exchange: string; contract: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('rate');
+  const [alertModal, setAlertModal] = useState<{ exchange: string; contract: string } | null>(null);
+  const [alertCondition, setAlertCondition] = useState<'above' | 'below'>('above');
+  const [alertThreshold, setAlertThreshold] = useState(0.01);
+  const [alertCreating, setAlertCreating] = useState(false);
 
   const toggleExchange = useCallback((exchange: string) => {
     setSelectedExchanges((prev: string[]) =>
@@ -91,6 +95,29 @@ export function MainPage() {
       setActionLoading(false);
     }
   }, [scanResults, capital]);
+
+  const handleCreateAlert = useCallback(async () => {
+    if (!alertModal) return;
+    setAlertCreating(true);
+    try {
+      const response: any = await apiClient.createGeneralAlert({
+        pair: alertModal.contract,
+        exchange: alertModal.exchange,
+        condition: alertCondition,
+        threshold: alertThreshold / 100, // convert from % to decimal
+      });
+      if (response.ok) {
+        showToast('Оповещение создано', 'success');
+        setAlertModal(null);
+      } else {
+        showToast('Ошибка: ' + (response.error || 'Неизвестная ошибка'), 'error');
+      }
+    } catch (error) {
+      showToast('Ошибка сети: ' + (error as Error).message, 'error');
+    } finally {
+      setAlertCreating(false);
+    }
+  }, [alertModal, alertCondition, alertThreshold, showToast]);
 
   const isPremium = user?.id && (user as any).subscription !== 'basic';
 
@@ -205,6 +232,7 @@ export function MainPage() {
               items={scanResults.highYield.slice(0, 10)}
               colorClass="text-green-700"
               onHistory={setHistoryModal}
+              onAlert={setAlertModal}
               searchQuery={searchQuery}
               sortBy={sortBy}
             />
@@ -217,6 +245,7 @@ export function MainPage() {
               items={scanResults.mediumYield.slice(0, 10)}
               colorClass="text-yellow-700"
               onHistory={setHistoryModal}
+              onAlert={setAlertModal}
               searchQuery={searchQuery}
               sortBy={sortBy}
             />
@@ -229,6 +258,7 @@ export function MainPage() {
               items={scanResults.lowYield.slice(0, 5)}
               colorClass="text-gray-700"
               onHistory={setHistoryModal}
+              onAlert={setAlertModal}
               searchQuery={searchQuery}
               sortBy={sortBy}
             />
@@ -287,6 +317,67 @@ export function MainPage() {
           onClose={() => setHistoryModal(null)}
         />
       )}
+
+      {alertModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="alert-dialog-title"
+        >
+          <div className="bg-white rounded-xl max-w-sm w-full">
+            <div className="card">
+              <h2 id="alert-dialog-title" className="text-lg font-semibold mb-2">🔔 Создать оповещение</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                {alertModal.exchange.toUpperCase()}: {alertModal.contract}
+              </p>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Условие</label>
+                <select
+                  value={alertCondition}
+                  onChange={(e) => setAlertCondition(e.target.value as 'above' | 'below')}
+                  className="input-field"
+                >
+                  <option value="above">Выше</option>
+                  <option value="below">Ниже</option>
+                </select>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="alert-threshold">
+                  Порог (% в час)
+                </label>
+                <input
+                  id="alert-threshold"
+                  type="number"
+                  value={alertThreshold}
+                  onChange={(e) => setAlertThreshold(Number(e.target.value) || 0)}
+                  step={0.001}
+                  min={0}
+                  className="input-field"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setAlertModal(null)}
+                  className="btn btn-secondary flex-1"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={handleCreateAlert}
+                  disabled={alertCreating || alertThreshold <= 0}
+                  className="btn btn-primary flex-1"
+                >
+                  {alertCreating ? 'Создание...' : 'Создать'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -297,6 +388,7 @@ const ResultSection = memo(function ResultSection({
   items,
   colorClass,
   onHistory,
+  onAlert,
   searchQuery,
   sortBy,
 }: {
@@ -305,6 +397,7 @@ const ResultSection = memo(function ResultSection({
   items: ExchangeResult[];
   colorClass: string;
   onHistory: (data: { exchange: string; contract: string }) => void;
+  onAlert: (data: { exchange: string; contract: string }) => void;
   searchQuery: string;
   sortBy: SortKey;
 }) {
@@ -336,7 +429,7 @@ const ResultSection = memo(function ResultSection({
       </h3>
       <div className="space-y-2">
         {sorted.map((item) => (
-          <ResultItem key={`${item.exchange}:${item.contract}`} item={item} onHistory={onHistory} />
+          <ResultItem key={`${item.exchange}:${item.contract}`} item={item} onHistory={onHistory} onAlert={onAlert} />
         ))}
       </div>
     </div>
@@ -346,9 +439,11 @@ const ResultSection = memo(function ResultSection({
 const ResultItem = memo(function ResultItem({
   item,
   onHistory,
+  onAlert,
 }: {
   item: ExchangeResult;
   onHistory: (data: { exchange: string; contract: string }) => void;
+  onAlert: (data: { exchange: string; contract: string }) => void;
 }) {
   return (
     <div className="border-b border-gray-100 pb-2">
@@ -375,13 +470,22 @@ const ResultItem = memo(function ResultItem({
           <div className="text-xs text-gray-500">
             ≈ {(item.annualized_rate * 100)?.toFixed(2)}%/год
           </div>
-          <button
-            onClick={() => onHistory({ exchange: item.exchange, contract: item.contract })}
-            className="text-xs text-telegram-blue hover:underline mt-1"
-            aria-label={`View history for ${item.exchange} ${item.contract}`}
-          >
-            📊 История
-          </button>
+          <div className="flex gap-2 justify-end mt-1">
+            <button
+              onClick={() => onAlert({ exchange: item.exchange, contract: item.contract })}
+              className="text-xs text-orange-500 hover:underline"
+              aria-label={`Create alert for ${item.exchange} ${item.contract}`}
+            >
+              🔔
+            </button>
+            <button
+              onClick={() => onHistory({ exchange: item.exchange, contract: item.contract })}
+              className="text-xs text-telegram-blue hover:underline"
+              aria-label={`View history for ${item.exchange} ${item.contract}`}
+            >
+              📊
+            </button>
+          </div>
         </div>
       </div>
     </div>

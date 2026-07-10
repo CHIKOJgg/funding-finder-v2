@@ -224,4 +224,25 @@ export const apiClient = {
   async batchDeleteAlerts(alertIds: string[]) {
     return api.post('/alerts/batch/delete', { alertIds });
   },
+
+  // Generic HTTP methods (for admin panel, etc.)
+  async get<T = any>(url: string) {
+    return api.get(url) as Promise<T>;
+  },
+
+  async post<T = any>(url: string, data?: any) {
+    return api.post(url, data) as Promise<T>;
+  },
+
+  async put<T = any>(url: string, data?: any) {
+    return api.put(url, data) as Promise<T>;
+  },
+
+  async patch<T = any>(url: string, data?: any) {
+    return api.patch(url, data) as Promise<T>;
+  },
+
+  async delete<T = any>(url: string) {
+    return api.delete(url) as Promise<T>;
+  },
 };

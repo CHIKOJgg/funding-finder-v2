@@ -1,0 +1,19 @@
+{
+  "name": "Funding Finder",
+  "short_name": "FundingFinder",
+  "description": "Мониторинг ставок финансирования криптовалютных бирж",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f4f6",
+  "theme_color": "#3390ec",
+  "orientation": "portrait",
+  "categories": ["finance", "cryptocurrency"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

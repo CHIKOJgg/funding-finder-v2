@@ -13,6 +13,7 @@ model User {
   telegramId     String   @unique
   username       String?
   firstName      String?
+  role           String   @default("user")
   subscription   String   @default("free")
   trialUsed      Boolean  @default(false)
   trialScans     Int      @default(1)
@@ -32,6 +33,7 @@ model User {
   arbitrageAlerts ArbitrageAlert[]
   settings        UserSettings?
 
+  @@index([role])
   @@index([subscription])
   @@index([createdAt])
   @@index([lastActive])

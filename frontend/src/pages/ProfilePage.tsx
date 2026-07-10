@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, memo } from 'react';
+import { Link } from 'react-router-dom';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
 import { apiClient } from '../api/client';
@@ -8,6 +9,8 @@ export function ProfilePage() {
   const { showToast } = useToast();
   const [referralLink, setReferralLink] = useState('');
   const [referralStats, setReferralStats] = useState({ referrals: 0, bonusScans: 0 });
+  const [referralCode, setReferralCode] = useState('');
+  const [applyingReferral, setApplyingReferral] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   const [withdrawalHistory, setWithdrawalHistory] = useState<any[]>([]);
   const [balance, setBalance] = useState(0);
@@ -80,6 +83,28 @@ export function ProfilePage() {
     }
   }, [showToast]);
 
+  const handleApplyReferral = useCallback(async () => {
+    if (!referralCode.trim()) {
+      showToast('Введите реферальный код', 'error');
+      return;
+    }
+    setApplyingReferral(true);
+    try {
+      const response: any = await apiClient.post('/referral/apply', { code: referralCode.trim() });
+      if (response.ok) {
+        showToast('Реферальный код применён!', 'success');
+        setReferralCode('');
+        loadUserData();
+      } else {
+        showToast(response.error || 'Недействительный код', 'error');
+      }
+    } catch (error) {
+      showToast('Ошибка сети: ' + (error as Error).message, 'error');
+    } finally {
+      setApplyingReferral(false);
+    }
+  }, [referralCode, showToast]);
+
   if (loading) {
     return (
       <div className="p-4">
@@ -93,6 +118,24 @@ export function ProfilePage() {
       <div className="card">
         <h2 className="text-lg font-semibold mb-2">Реферальная программа</h2>
         <p className="text-sm text-gray-600 mb-3">Приглашайте друзей — +1 пробный скан за каждого!</p>
+
+        <div className="flex gap-2 mb-3">
+          <input
+            type="text"
+            placeholder="Введите реферальный код..."
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value)}
+            className="input-field flex-1 text-sm"
+          />
+          <button
+            onClick={handleApplyReferral}
+            disabled={applyingReferral || !referralCode.trim()}
+            className="btn btn-primary text-sm py-2 w-auto px-4"
+          >
+            {applyingReferral ? '...' : 'Применить'}
+          </button>
+        </div>
+
         <button
           onClick={() => {
             navigator.clipboard.writeText(referralLink);
@@ -187,6 +230,16 @@ export function ProfilePage() {
             ))}
           </div>
         )}
+      </div>
+
+      <div className="card">
+        <Link to="/settings" className="btn btn-secondary text-sm py-2 mb-2">⚙️ Настройки</Link>
+      </div>
+
+      <div className="card text-center">
+        <Link to="/terms" className="text-sm text-telegram-blue hover:underline mx-2">Пользовательское соглашение</Link>
+        <span className="text-gray-400">·</span>
+        <Link to="/privacy" className="text-sm text-telegram-blue hover:underline mx-2">Политика конфиденциальности</Link>
       </div>
     </div>
   );

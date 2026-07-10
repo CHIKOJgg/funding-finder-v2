@@ -1,7 +1,9 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_API_URL: string | undefined;
+  VITE_API_URL: string | undefined;
+  VITE_SENTRY_DSN: string | undefined;
+  VITE_NODE_ENV: string | undefined;
 }
 
 interface ImportMeta {

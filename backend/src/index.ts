@@ -36,9 +36,30 @@ import exportRoutes from './routes/export.js';
 import settingsRoutes from './routes/settings.js';
 import analyticsRoutes from './routes/analytics.js';
 import webhookRoutes from './routes/webhook.js';
+import adminRoutes from './routes/admin.js';
+
+async function initSentry() {
+  if (config.sentry.dsn) {
+    try {
+      const Sentry = await import('@sentry/node');
+      Sentry.init({
+        dsn: config.sentry.dsn,
+        environment: config.nodeEnv,
+        tracesSampleRate: config.isProduction ? 0.1 : 0,
+        integrations: [Sentry.expressIntegration()],
+      });
+      logger.info('Sentry initialized');
+      return Sentry;
+    } catch (err) {
+      logger.warn('Failed to initialize Sentry:', err);
+    }
+  }
+  return null;
+}
 
 const app = express();
 const server = createServer(app);
+const sentryPromise = initSentry();
 
 // Trust the reverse proxy (Render/Nginx/etc.) so express-rate-limit and
 // req.ip work correctly with the X-Forwarded-For header.
@@ -211,6 +232,9 @@ app.use('/api', authLimiter, validateTelegramInitData, scanRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, aiRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, historyRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, analyticsRoutes);
+
+// Admin routes (require admin role)
+app.use('/api', validateTelegramInitData, adminRoutes);
 
 // Webhook routes (no user auth, webhook token/signature verified inside)
 app.use('/api/webhook', webhookRoutes);

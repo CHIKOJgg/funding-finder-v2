@@ -33,6 +33,8 @@ const baseSchema = z.object({
   SMTP_USER: z.string().optional().default(''),
   SMTP_PASS: z.string().optional().default(''),
   EMAIL_FROM: z.string().optional().default('Funding Finder <noreply@fundingfinder.app>'),
+  ADMIN_TELEGRAM_IDS: z.string().optional().default(''),
+  SENTRY_DSN: z.string().optional().default(''),
 });
 
 const devSchema = baseSchema.extend({
@@ -135,6 +137,14 @@ export const config = {
       pass: env.SMTP_PASS,
     },
     from: env.EMAIL_FROM,
+  },
+
+  admin: {
+    telegramIds: env.ADMIN_TELEGRAM_IDS.split(',').map((id) => id.trim()).filter(Boolean),
+  },
+
+  sentry: {
+    dsn: env.SENTRY_DSN || undefined,
   },
 } as const;
 
