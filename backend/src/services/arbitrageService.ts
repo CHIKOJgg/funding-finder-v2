@@ -157,20 +157,56 @@ function calculateOpportunityScore(opportunity: ArbitrageOpportunity): number {
  * Key improvement: Uses normalized rates for fair comparison across
  * different funding intervals. Flags interval mismatches as risk.
  */
+const QUOTE_CURRENCIES = ['USDT', 'USDC', 'USD', 'BTC', 'ETH', 'DAI'];
+
+/**
+ * Normalize an exchange-specific contract symbol to a canonical key so the same
+ * market can be matched across exchanges. Examples:
+ *   gate  BTC_USDT       -> BTCUSDT
+ *   bybit BTCUSDT        -> BTCUSDT
+ *   okx   BTC-USDT-SWAP  -> BTCUSDT
+ *   mexc  BTC_USDT       -> BTCUSDT
+ */
+function canonicalPairKey(contract: string): string {
+  return (contract || '')
+    .toUpperCase()
+    .replace(/[-_/]/g, ' ')          // separators -> space
+    .replace(/\bSWAP\b/g, ' ')       // OKX suffix
+    .replace(/\bPERP\b/g, ' ')       // perp suffix
+    .replace(/[^A-Z0-9]/g, '');      // strip everything else
+}
+
+/**
+ * Human-readable pair (e.g. "BTC/USDT") derived from the canonical key.
+ */
+function formatPair(contract: string): string {
+  const key = canonicalPairKey(contract);
+  for (const q of QUOTE_CURRENCIES) {
+    if (key.endsWith(q) && key.length > q.length) {
+      return `${key.slice(0, -q.length)}/${q}`;
+    }
+  }
+  return key;
+}
+
 export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): ArbitrageOpportunity[] {
   const opportunities: ArbitrageOpportunity[] = [];
 
-  // Group by contract/pair
+  // Group by canonical pair key (so different exchange symbol formats match)
   const pairsMap = new Map<string, ExchangeResult[]>();
   scanResults.forEach((item) => {
-    if (!pairsMap.has(item.contract)) {
-      pairsMap.set(item.contract, []);
+    const key = canonicalPairKey(item.contract);
+    if (!key) return;
+    if (!pairsMap.has(key)) {
+      pairsMap.set(key, []);
     }
-    pairsMap.get(item.contract)!.push(item);
+    pairsMap.get(key)!.push(item);
   });
 
-  pairsMap.forEach((items, pair) => {
+  pairsMap.forEach((items) => {
     if (items.length < 2) return;
+
+    const pair = formatPair(items[0].contract);
 
     // Compare each exchange pair
     for (let i = 0; i < items.length; i++) {
@@ -178,6 +214,8 @@ export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): Arb
         const a = items[i];
         const b = items[j];
 
+        // Don't compare an exchange against itself
+        if (a.exchange === b.exchange) continue;
         // Use normalized hourly rates for comparison
         const fundingA_per_hour = a.funding_rate_per_hour || 0;
         const fundingB_per_hour = b.funding_rate_per_hour || 0;
