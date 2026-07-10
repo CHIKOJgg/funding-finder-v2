@@ -39,37 +39,47 @@ function calculateRealProfit(
   const feesB = EXCHANGE_FEES[opportunity.exchangeB]?.taker || 0.0005;
   const slippage = calculateSlippage(opportunity.volumeA, opportunity.volumeB);
 
-  // Gross hourly profit (from funding rate differential)
+  // Recurring funding income per hour (from the normalized rate differential).
   const grossHourlyProfit = capital * opportunity.difference;
-  
-  // Total fees (open + close on both exchanges)
-  const totalFees = capital * (feesA + feesB) * 2;
-  
-  // Total slippage (entry + exit)
-  const totalSlippage = capital * slippage * 2;
-  
-  // Net hourly profit
-  const netHourlyProfit = grossHourlyProfit - totalFees - totalSlippage;
 
-  // Calculate returns
-  const hourlyReturn = (netHourlyProfit / capital) * 100;
-  const dailyReturn = hourlyReturn * 24;
-  const weeklyReturn = dailyReturn * 7;
-  const annualReturn = dailyReturn * 365;
+  // One-time round-trip costs: open + close on BOTH legs, plus entry + exit
+  // slippage. These are paid ONCE per position, not every hour.
+  const totalFees = capital * (feesA + feesB) * 2;
+  const totalSlippage = capital * slippage * 2;
+  const oneTimeCost = totalFees + totalSlippage;
+
+  // Gross funding income by horizon (before one-time costs).
+  const grossDaily = grossHourlyProfit * 24;
+  const grossWeekly = grossDaily * 7;
+  const grossAnnual = grossDaily * 365;
+
+  // Net profit assumes a single entry/exit per horizon, so the one-time cost is
+  // subtracted ONCE (not annualized). This is the key fix — previously the
+  // one-time cost was baked into the hourly figure and then multiplied by 8760,
+  // producing absurd negative APY values.
+  const netHourly = grossHourlyProfit - oneTimeCost;
+  const netDaily = grossDaily - oneTimeCost;
+  const netWeekly = grossWeekly - oneTimeCost;
+  const netAnnual = grossAnnual - oneTimeCost;
+
+  const hourlyReturn = (netHourly / capital) * 100;
+  const dailyReturn = (netDaily / capital) * 100;
+  const weeklyReturn = (netWeekly / capital) * 100;
+  const annualReturn = (netAnnual / capital) * 100;
 
   return {
     grossHourly: grossHourlyProfit,
-    netHourly: netHourlyProfit,
-    grossDaily: grossHourlyProfit * 24,
-    netDaily: netHourlyProfit * 24,
+    netHourly,
+    grossDaily,
+    netDaily,
     fees: totalFees,
     slippage: totalSlippage,
     hourlyReturn,
     dailyReturn,
     weeklyReturn,
     annualReturn,
-    netWeekly: netHourlyProfit * 24 * 7,
-    netAnnual: netHourlyProfit * 24 * 365,
+    netWeekly,
+    netAnnual,
   };
 }
 
@@ -234,6 +244,11 @@ export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): Arb
         const intervalA_hours = a.funding_interval_hours || 8;
         const intervalB_hours = b.funding_interval_hours || 8;
         const intervalMismatch = Math.abs(intervalA_hours - intervalB_hours) > 1;
+
+        // Only compare contracts with the SAME funding interval. Comparing e.g.
+        // an 8h contract against a 24h one via per-hour normalization produces
+        // misleading, non-collectible "opportunities", so skip mismatches.
+        if (intervalMismatch) continue;
 
         // Minimum threshold: 0.001% per hour difference
         if (difference > 0.00001) {

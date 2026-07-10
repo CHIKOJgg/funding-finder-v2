@@ -240,9 +240,14 @@ const OpportunityCard = memo(function OpportunityCard({
       )}
 
       <div className="text-sm mb-2">
-        <div>Час: +${opp.profit?.netHourly?.toFixed(4)}</div>
-        <div>День: +${opp.profit?.netDaily?.toFixed(2)}</div>
-        <div>Год: {opp.profit?.annualReturn?.toFixed(1)}% APY</div>
+        <div>Доход фандинга: +${opp.profit?.grossHourly?.toFixed(4)}/ч · +${opp.profit?.grossDaily?.toFixed(2)}/день</div>
+        <div>Разовые издержки (вход/выход): ${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)}</div>
+        <div>
+          Чистыми за день: <span className={clsx((opp.profit?.netDaily ?? 0) >= 0 ? 'text-green-600' : 'text-red-500')}>
+            {(opp.profit?.netDaily ?? 0) >= 0 ? '+' : ''}${opp.profit?.netDaily?.toFixed(2)}
+          </span>
+        </div>
+        <div>Год (APY): <strong>{opp.profit?.annualReturn?.toFixed(1)}%</strong></div>
       </div>
 
       <div className="text-xs text-gray-500 mb-2">
@@ -348,20 +353,23 @@ function ProfitCalculator({
 
           {result && (
             <div className="bg-gray-50 p-3 rounded-lg">
+              <div className="text-xs text-gray-500 mb-2">
+                Чистая прибыль при удержании период (разовый вход/выход)
+              </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>В час:</div>
-                <div className="font-bold text-green-500">${result.profit.netHourly.toFixed(4)}</div>
+                <div className={clsx('font-bold', result.profit.netHourly >= 0 ? 'text-green-500' : 'text-red-500')}>${result.profit.netHourly.toFixed(4)}</div>
                 <div>В день:</div>
-                <div className="font-bold text-green-500">${result.profit.netDaily.toFixed(2)}</div>
+                <div className={clsx('font-bold', result.profit.netDaily >= 0 ? 'text-green-500' : 'text-red-500')}>${result.profit.netDaily.toFixed(2)}</div>
                 <div>В неделю:</div>
-                <div className="font-bold text-green-500">${result.profit.netWeekly.toFixed(2)}</div>
+                <div className={clsx('font-bold', result.profit.netWeekly >= 0 ? 'text-green-500' : 'text-red-500')}>${result.profit.netWeekly.toFixed(2)}</div>
                 <div>В год:</div>
-                <div className="font-bold text-green-500">${result.profit.netAnnual.toFixed(2)}</div>
+                <div className={clsx('font-bold', result.profit.netAnnual >= 0 ? 'text-green-500' : 'text-red-500')}>${result.profit.netAnnual.toFixed(2)}</div>
               </div>
               <div className="mt-2 pt-2 border-t border-gray-200">
                 <div className="flex justify-between">
                   <span>Годовая доходность (APY):</span>
-                  <strong className="text-green-500">{result.profit.annualReturn.toFixed(2)}%</strong>
+                  <strong className={clsx(result.profit.annualReturn >= 0 ? 'text-green-500' : 'text-red-500')}>{result.profit.annualReturn.toFixed(2)}%</strong>
                 </div>
               </div>
             </div>
