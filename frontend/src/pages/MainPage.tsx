@@ -367,10 +367,10 @@ const ResultItem = memo(function ResultItem({
         </div>
         <div className="text-right">
           <div className={clsx('font-bold', getFundingColor(item.funding_rate_per_hour))}>
-            {item.funding_rate_per_hour?.toFixed(6)}%/ч
+            {((item.funding_rate_per_hour ?? 0) * 100).toFixed(6)}%/ч
           </div>
           <div className="text-xs text-gray-500">
-            ≈ {item.funding_rate_per_day?.toFixed(4)}%/день
+            ≈ {((item.funding_rate_per_day ?? 0) * 100).toFixed(4)}%/день
           </div>
           <div className="text-xs text-gray-500">
             ≈ {(item.annualized_rate * 100)?.toFixed(2)}%/год
@@ -393,13 +393,13 @@ function createListText(results: any) {
   if (results.highYield?.length > 0) {
     text += 'Высокая доходность (>0.01%/час):\n';
     results.highYield.slice(0, 10).forEach((item: any) => {
-      text += `${item.exchange.toUpperCase()}:${item.contract} | rate/h=${item.funding_rate_per_hour?.toFixed(6)}% | interval=${item.funding_interval_hours}h | mark=${item.mark_price} | vol24=${item.volume_24h_settle}\n`;
+      text += `${item.exchange.toUpperCase()}:${item.contract} | rate/h=${((item.funding_rate_per_hour ?? 0) * 100).toFixed(6)}% | interval=${item.funding_interval_hours}h | mark=${item.mark_price} | vol24=${item.volume_24h_settle}\n`;
     });
   }
   if (results.mediumYield?.length > 0) {
     text += '\nСредняя доходность (0.001-0.01%/час):\n';
     results.mediumYield.slice(0, 10).forEach((item: any) => {
-      text += `${item.exchange.toUpperCase()}:${item.contract} | rate/h=${item.funding_rate_per_hour?.toFixed(6)}% | interval=${item.funding_interval_hours}h | mark=${item.mark_price} | vol24=${item.volume_24h_settle}\n`;
+      text += `${item.exchange.toUpperCase()}:${item.contract} | rate/h=${((item.funding_rate_per_hour ?? 0) * 100).toFixed(6)}% | interval=${item.funding_interval_hours}h | mark=${item.mark_price} | vol24=${item.volume_24h_settle}\n`;
     });
   }
   return text;
