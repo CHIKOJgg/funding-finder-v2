@@ -102,23 +102,24 @@ app.use(requestId);
 app.use(requestLogger);
 app.use(metricsMiddleware);
 
-// Rate limiting
+// Rate limiting (generous global cap — the app is request-heavy: each page
+// load fires ~10-15 authenticated calls, plus scan polling).
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 1500,
   standardHeaders: true,
   legacyHeaders: false,
   message: { ok: false, error: 'Too many requests, please try again later' },
 });
 app.use('/api/', limiter);
 
-// Stricter rate limit for auth endpoints
+// Rate limit for auth-protected app endpoints (scan, arbitrage, profile, etc.)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 800,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { ok: false, error: 'Too many auth requests' },
+  message: { ok: false, error: 'Too many requests, please try again later' },
 });
 
 // Health check (no auth required)
