@@ -10,7 +10,15 @@ const baseSchema = z.object({
   PORT: z.string().regex(/^\d+$/, 'PORT must be a number').default('3000'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   OPENROUTER_API_KEY: z.string().optional().default(''),
-  AI_MODEL: z.string().optional().default('x-ai/grok-4.1-fast:free'),
+  AI_MODEL: z.string().optional().default('deepseek/deepseek-chat-v3-0324:free'),
+  AI_MODELS: z
+    .string()
+    .optional()
+    .default(
+      'deepseek/deepseek-chat-v3-0324:free,meta-llama/llama-3.3-70b-instruct:free,google/gemini-2.0-flash-exp:free,qwen/qwen-2.5-72b-instruct:free,mistralai/mistral-small-3.1-24b-instruct:free'
+    ),
+  AI_APP_URL: z.string().optional().default('https://funding-finder-frontend.onrender.com'),
+  AI_APP_TITLE: z.string().optional().default('Funding Finder'),
   SETTLE: z.string().optional().default('usdt'),
   MIN_FUNDING_ABS: z.string().optional().default('0.0005'),
   MIN_VOLUME_24H: z.string().optional().default('1000'),
@@ -75,7 +83,18 @@ export const config = {
 
   ai: {
     openrouterApiKey: env.OPENROUTER_API_KEY,
+    // Primary model + fallback chain. Only free-tier models (":free") are kept.
     model: env.AI_MODEL,
+    models: Array.from(
+      new Set(
+        [env.AI_MODEL, ...env.AI_MODELS.split(',')]
+          .map((m) => m.trim())
+          .filter(Boolean)
+          .filter((m) => m.endsWith(':free'))
+      )
+    ),
+    appUrl: env.AI_APP_URL,
+    appTitle: env.AI_APP_TITLE,
   },
 
   exchange: {
