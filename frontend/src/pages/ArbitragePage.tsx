@@ -7,63 +7,33 @@ import { getRiskColor } from '../utils/formatters';
 import { useWebSocket } from '../hooks/useWebSocket';
 
 export function ArbitragePage() {
-  const { user } = useApp();
+  const { user, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts } = useApp();
   const { showToast } = useToast();
-  const [opportunities, setOpportunities] = useState<any[]>([]);
-  const [alerts, setAlerts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'opportunities' | 'alerts'>('opportunities');
   const [showModal, setShowModal] = useState(false);
   const [selectedOpportunity, setSelectedOpportunity] = useState<any>(null);
   const [capital, setCapital] = useState(1000);
 
-  const loadOpportunities = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response: any = await apiClient.getArbitrageOpportunities();
-      if (response.ok) {
-        setOpportunities(response.opportunities || []);
-      }
-    } catch (error) {
-      console.error('Failed to load opportunities:', error);
-      showToast('Не удалось загрузить возможности', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [showToast]);
-
-  const loadAlerts = useCallback(async () => {
-    try {
-      const response: any = await apiClient.getArbitrageAlerts();
-      if (response.ok) {
-        setAlerts(response.alerts || []);
-      }
-    } catch (error) {
-      console.error('Failed to load alerts:', error);
-    }
-  }, []);
-
   const initData = window.Telegram?.WebApp?.initData || null;
   useWebSocket(initData, {
-    onScan: useCallback(() => {
-      loadOpportunities();
-    }, [loadOpportunities]),
     onAlertTriggered: useCallback(() => {
-      loadAlerts();
+      loadAlerts(true);
       showToast('Получено новое оповещение!', 'success');
     }, [loadAlerts, showToast]),
   });
 
   useEffect(() => {
-    loadOpportunities();
+    // Cache-first: these only fetch if data isn't already loaded (or in-flight),
+    // so switching tabs keeps the previously loaded data instead of refetching.
+    loadArbitrage();
     if (user?.id) loadAlerts();
-  }, [user?.id, loadOpportunities, loadAlerts]);
+  }, [user?.id, loadArbitrage, loadAlerts]);
 
   const handleToggleAlert = useCallback(async (alertId: string) => {
     try {
       const response: any = await apiClient.toggleArbitrageAlert(alertId);
       if (response.ok) {
-        setAlerts((prev) =>
+        setArbAlerts((prev) =>
           prev.map((a) => (a.id === alertId ? { ...a, isActive: !a.isActive } : a))
         );
         showToast('Оповещение обновлено', 'success');
@@ -71,19 +41,19 @@ export function ArbitragePage() {
     } catch (error) {
       showToast('Не удалось обновить оповещение', 'error');
     }
-  }, [showToast]);
+  }, [setArbAlerts, showToast]);
 
   const handleDeleteAlert = useCallback(async (alertId: string) => {
     try {
       const response: any = await apiClient.deleteArbitrageAlert(alertId);
       if (response.ok) {
-        setAlerts((prev) => prev.filter((a) => a.id !== alertId));
+        setArbAlerts((prev) => prev.filter((a) => a.id !== alertId));
         showToast('Оповещение удалено', 'success');
       }
     } catch (error) {
       showToast('Не удалось удалить оповещение', 'error');
     }
-  }, [showToast]);
+  }, [setArbAlerts, showToast]);
 
   return (
     <div className="p-4">
@@ -116,18 +86,18 @@ export function ArbitragePage() {
         <div className="card">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-semibold">Арбитражные возможности</h2>
-            <button onClick={loadOpportunities} disabled={loading} className="text-sm text-telegram-blue">
+            <button onClick={() => loadArbitrage(true)} disabled={arbLoading} className="text-sm text-telegram-blue">
               🔄 Обновить
             </button>
           </div>
 
-          {loading ? (
+          {arbLoading ? (
             <div className="text-center py-8 text-gray-500" role="status">Загрузка...</div>
-          ) : opportunities.length === 0 ? (
+          ) : arbOpportunities.length === 0 ? (
             <div className="text-center py-8 text-gray-500">Арбитражные возможности не найдены</div>
           ) : (
             <div className="space-y-3">
-              {opportunities.slice(0, 15).map((opp, idx) => (
+              {arbOpportunities.slice(0, 15).map((opp, idx) => (
                 <OpportunityCard
                   key={`${opp.pair}-${opp.exchangeA}-${opp.exchangeB}-${idx}`}
                   opportunity={opp}
@@ -148,11 +118,11 @@ export function ArbitragePage() {
 
           {!user?.id ? (
             <div className="text-center py-8 text-gray-500">Войдите в систему для управления оповещениями</div>
-          ) : alerts.length === 0 ? (
+          ) : arbAlerts.length === 0 ? (
             <div className="text-center py-8 text-gray-500">У вас нет оповещений</div>
           ) : (
             <div className="space-y-2">
-              {alerts.map((alert) => (
+              {arbAlerts.map((alert) => (
                 <div key={alert.id} className={clsx('p-3 rounded-lg border-l-4', alert.isActive ? 'border-green-500 bg-green-50' : 'border-gray-400 bg-gray-50 opacity-70')}>
                   <div className="flex justify-between items-start">
                     <div>

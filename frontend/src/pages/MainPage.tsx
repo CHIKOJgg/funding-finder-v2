@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, memo } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { clsx } from 'clsx';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
@@ -13,10 +13,9 @@ const EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'] as const;
 type SortKey = 'rate' | 'volume' | 'interval';
 
 export function MainPage() {
-  const { scanResults, setScanResults, selectedExchanges, setSelectedExchanges, user } = useApp();
+  const { scanResults, scanLoading, scanStatus, runScan, selectedExchanges, setSelectedExchanges, user } = useApp();
   const { showToast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState('Готов к сканированию');
+  const [actionLoading, setActionLoading] = useState(false);
   const [capital, setCapital] = useState(1000);
   const [aiText, setAiText] = useState('');
   const [recommendationsText, setRecommendationsText] = useState('');
@@ -25,12 +24,6 @@ export function MainPage() {
   const [historyModal, setHistoryModal] = useState<{ exchange: string; contract: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('rate');
-  const mountedRef = useRef(true);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
 
   const toggleExchange = useCallback((exchange: string) => {
     setSelectedExchanges((prev: string[]) =>
@@ -45,37 +38,17 @@ export function MainPage() {
       showToast('Выберите хотя бы одну биржу', 'error');
       return;
     }
-
-    setLoading(true);
-    setStatus('Сканирование... Это может занять несколько секунд');
     setShowAi(false);
     setShowRecommendations(false);
-
-    try {
-      const response: any = await apiClient.scan(selectedExchanges);
-      if (!mountedRef.current) return;
-      if (response.ok) {
-        setScanResults(response.result);
-        setStatus(`Найдено ${response.result.scanned} инструментов`);
-        showToast('Сканирование завершено', 'success');
-      } else {
-        setStatus('Ошибка при сканировании: ' + response.error);
-        showToast('Ошибка сканирования', 'error');
-      }
-    } catch (error) {
-      if (!mountedRef.current) return;
-      setStatus('Ошибка сети: ' + (error as Error).message);
-      showToast('Ошибка сети', 'error');
-    } finally {
-      if (mountedRef.current) setLoading(false);
-    }
-  }, [selectedExchanges, setScanResults, showToast]);
+    // Fire-and-continue: the scan runs in shared state and keeps going even if
+    // the user switches tabs; results are stored centrally.
+    await runScan(selectedExchanges);
+  }, [selectedExchanges, runScan, showToast]);
 
   const handleAiAnalysis = useCallback(async () => {
     if (!scanResults) return;
 
-    setLoading(true);
-    setStatus('Запрос AI анализа...');
+    setActionLoading(true);
     setShowAi(true);
     setAiText('Анализируем данные...');
 
@@ -84,24 +57,20 @@ export function MainPage() {
       const response: any = await apiClient.aiAnalyze(listText);
       if (response.ok && response.ai?.text) {
         setAiText(response.ai.text);
-        setStatus('AI анализ завершен');
       } else {
         setAiText('AI не вернул результатов');
-        setStatus('AI анализ не удался');
       }
     } catch (error) {
       setAiText('Ошибка при запросе AI: ' + (error as Error).message);
-      setStatus('Ошибка при запросе AI');
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   }, [scanResults]);
 
   const handleRecommendations = useCallback(async () => {
     if (!scanResults) return;
 
-    setLoading(true);
-    setStatus('Генерация рекомендаций...');
+    setActionLoading(true);
     setShowRecommendations(true);
     setRecommendationsText('Генерируем рекомендации...');
 
@@ -113,14 +82,13 @@ export function MainPage() {
       const response: any = await apiClient.getRecommendations(allResults, capital);
       if (response.ok && response.text) {
         setRecommendationsText(response.text);
-        setStatus('Рекомендации сгенерированы');
       } else {
         setRecommendationsText('Ошибка при генерации рекомендаций');
       }
     } catch (error) {
       setRecommendationsText('Ошибка при запросе рекомендаций: ' + (error as Error).message);
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   }, [scanResults, capital]);
 
@@ -170,26 +138,26 @@ export function MainPage() {
 
         <button
           onClick={handleScan}
-          disabled={loading}
+          disabled={scanLoading}
           className="btn btn-primary w-full"
           aria-label="Scan exchanges for funding rates"
         >
-          {loading ? 'Сканирование...' : '🔎 Сканировать'}
+          {scanLoading ? 'Сканирование...' : '🔎 Сканировать'}
         </button>
       </div>
 
       <div className="card bg-gray-50">
-        <p className="text-center text-gray-600" role="status">{status}</p>
+        <p className="text-center text-gray-600" role="status">{scanStatus}</p>
       </div>
 
-      {loading && (
+      {scanLoading && (
         <div className="card">
           <h2 className="text-lg font-semibold mb-3">Результаты сканирования</h2>
           <ResultSkeleton />
         </div>
       )}
 
-      {!loading && scanResults && (
+      {!scanLoading && scanResults && (
         <div className="card">
           <h2 className="text-lg font-semibold mb-3">Результаты сканирования</h2>
 
@@ -269,7 +237,7 @@ export function MainPage() {
           <div className="flex gap-2 mt-4">
             <button
               onClick={handleAiAnalysis}
-              disabled={loading || !isPremium}
+              disabled={actionLoading || scanLoading || !isPremium}
               aria-disabled={!isPremium}
               className={clsx('btn btn-secondary flex-1', !isPremium && 'opacity-50 cursor-not-allowed')}
               title={!isPremium ? 'Требуется подписка Pro' : ''}
@@ -278,7 +246,7 @@ export function MainPage() {
             </button>
             <button
               onClick={handleRecommendations}
-              disabled={loading || !isPremium}
+              disabled={actionLoading || scanLoading || !isPremium}
               aria-disabled={!isPremium}
               className={clsx('btn btn-success flex-1', !isPremium && 'opacity-50 cursor-not-allowed')}
               title={!isPremium ? 'Требуется подписка Pro' : ''}
