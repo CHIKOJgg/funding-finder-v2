@@ -2,7 +2,28 @@ import { useEffect, useRef, useCallback } from 'react';
 
 type MessageHandler = (data: any) => void;
 
-const WS_BASE = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:3000`;
+/**
+ * Resolve the WebSocket base URL.
+ * Must be a secure (wss://) URL when the page itself is served over HTTPS,
+ * otherwise the browser throws a SecurityError (mixed content) when
+ * constructing the WebSocket. We derive it from VITE_WS_URL, then VITE_API_URL,
+ * then finally the current origin.
+ */
+function resolveWsBase(): string {
+  const explicit = import.meta.env.VITE_WS_URL as string | undefined;
+  if (explicit) return explicit.replace(/^http/, 'ws');
+
+  const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
+  if (apiUrl) {
+    // https://host -> wss://host, http://host -> ws://host
+    return apiUrl.replace(/^http/, 'ws').replace(/\/$/, '');
+  }
+
+  const secure = window.location.protocol === 'https:';
+  const proto = secure ? 'wss:' : 'ws:';
+  // Same-origin fallback (no explicit port; assumes reverse-proxied /ws)
+  return `${proto}//${window.location.host}`;
+}
 
 export function useWebSocket(initData: string | null, handlers?: {
   onScan?: MessageHandler;
@@ -10,11 +31,27 @@ export function useWebSocket(initData: string | null, handlers?: {
 }) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
+  const handlersRef = useRef(handlers);
+
+  // Keep latest handlers without forcing reconnects on every render.
+  useEffect(() => {
+    handlersRef.current = handlers;
+  }, [handlers]);
 
   const connect = useCallback(() => {
     if (!initData) return;
-    const wsUrl = `${WS_BASE}/ws?initData=${encodeURIComponent(initData)}`;
-    const ws = new WebSocket(wsUrl);
+
+    let ws: WebSocket;
+    try {
+      const wsUrl = `${resolveWsBase()}/ws?initData=${encodeURIComponent(initData)}`;
+      ws = new WebSocket(wsUrl);
+    } catch (err) {
+      // Constructing a WebSocket can throw synchronously (e.g. insecure ws://
+      // from an https page). Never let this crash the app — just retry later.
+      console.warn('[WS] Failed to open connection:', err);
+      reconnectTimer.current = setTimeout(connect, 10000);
+      return;
+    }
 
     ws.onopen = () => {
       console.log('[WS] Connected');
@@ -24,9 +61,9 @@ export function useWebSocket(initData: string | null, handlers?: {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === 'broadcast' && msg.channel === 'scan') {
-          handlers?.onScan?.(msg.data);
+          handlersRef.current?.onScan?.(msg.data);
         } else if (msg.type === 'alert_triggered') {
-          handlers?.onAlertTriggered?.(msg.data);
+          handlersRef.current?.onAlertTriggered?.(msg.data);
         }
       } catch {
         // ignore parse errors
@@ -39,17 +76,25 @@ export function useWebSocket(initData: string | null, handlers?: {
     };
 
     ws.onerror = () => {
-      ws.close();
+      try {
+        ws.close();
+      } catch {
+        // ignore
+      }
     };
 
     wsRef.current = ws;
-  }, [initData, handlers]);
+  }, [initData]);
 
   useEffect(() => {
     connect();
     return () => {
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-      wsRef.current?.close();
+      try {
+        wsRef.current?.close();
+      } catch {
+        // ignore
+      }
     };
   }, [connect]);
 

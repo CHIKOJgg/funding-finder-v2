@@ -92,7 +92,9 @@ export const apiClient = {
 
   async getArbitrageOpportunities(exchanges?: string[]) {
     const params = exchanges ? { exchanges: exchanges.join(',') } : {};
-    return retryRequest(() => api.get('/arbitrage/opportunities', { params }));
+    // This endpoint runs a full multi-exchange scan server-side, which can take
+    // well over the default timeout, so allow a longer window.
+    return retryRequest(() => api.get('/arbitrage/opportunities', { params, timeout: 120000 }));
   },
 
   async calculateProfit(opportunity: any, capital: number) {

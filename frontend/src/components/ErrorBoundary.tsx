@@ -32,12 +32,20 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-gray-600 mb-4">
               Произошла непредвиденная ошибка. Попробуйте обновить страницу.
             </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="btn btn-primary"
-            >
-              Обновить страницу
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => window.location.reload()}
+                className="btn btn-primary"
+              >
+                Обновить страницу
+              </button>
+              <button
+                onClick={() => { window.location.href = '/'; }}
+                className="btn btn-secondary"
+              >
+                На главную
+              </button>
+            </div>
             {import.meta.env.DEV && this.state.error && (
               <pre className="mt-4 text-xs text-left bg-red-50 p-2 rounded overflow-auto max-h-40">
                 {this.state.error.message}
