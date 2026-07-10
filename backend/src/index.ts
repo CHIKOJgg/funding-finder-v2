@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import path from 'path';
 import fs from 'fs';
+import { execSync } from 'child_process';
 import { createServer } from 'http';
 import rateLimit from 'express-rate-limit';
 import { config } from './config/index.js';
@@ -274,10 +275,30 @@ if (config.nodeEnv === 'production' && hasFrontend) {
 // Error handling
 app.use(errorHandler);
 
+// Sync database schema (creates missing columns/tables for zero-downtime deploys)
+function syncDatabaseSchema() {
+  try {
+    const result = execSync('npx prisma db push --skip-generate', {
+      cwd: path.resolve(__dirname, '..'),
+      stdio: 'pipe',
+      timeout: 30000,
+    });
+    logger.info('Database schema synced');
+  } catch (err) {
+    const stderr = (err as { stderr?: Buffer }).stderr?.toString() || '';
+    if (stderr.includes('P3009')) {
+      logger.warn('prisma db push lock timeout — migration likely already in progress');
+    } else {
+      logger.warn('Database schema sync note:', stderr.slice(0, 200));
+    }
+  }
+}
+
 // Start server
 async function start() {
   try {
     await connectDatabase();
+    syncDatabaseSchema();
 
     server.listen(config.port, () => {
       logger.info(`Funding Finder v2 listening at http://localhost:${config.port}`);
