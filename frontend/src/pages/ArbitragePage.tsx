@@ -5,6 +5,7 @@ import { useToast } from '../components/Toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { apiClient } from '../api/client';
 import { getRiskColor } from '../utils/formatters';
+import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { useWebSocket } from '../hooks/useWebSocket';
 
 export function ArbitragePage() {
@@ -263,12 +264,31 @@ const OpportunityCard = memo(function OpportunityCard({
         </div>
       )}
 
-      <button
-        onClick={onCalculate}
-        className="btn btn-success text-sm py-2 w-full"
-      >
-        💰 Рассчитать с моим капиталом
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={onCalculate}
+          className="btn btn-success text-sm py-2 flex-[1.4]"
+        >
+          💰 Рассчитать
+        </button>
+        <button
+          onClick={() => openExchange(opp.exchangeA, opp.pair)}
+          className="btn btn-secondary text-sm py-2 flex-1"
+          title={`Открыть ${opp.pair} на ${exchangeLabel(opp.exchangeA)}`}
+        >
+          ↗ {exchangeLabel(opp.exchangeA)}
+        </button>
+        <button
+          onClick={() => openExchange(opp.exchangeB, opp.pair)}
+          className="btn btn-secondary text-sm py-2 flex-1"
+          title={`Открыть ${opp.pair} на ${exchangeLabel(opp.exchangeB)}`}
+        >
+          ↗ {exchangeLabel(opp.exchangeB)}
+        </button>
+      </div>
+      <p className="text-xs text-gray-500 mt-2 text-center">
+        💡 Рассчитайте размер позиции или сразу откройте {opp.pair} на бирже
+      </p>
     </div>
   );
 });

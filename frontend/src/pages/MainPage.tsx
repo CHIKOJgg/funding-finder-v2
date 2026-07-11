@@ -1,4 +1,4 @@
-import { useState, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { clsx } from 'clsx';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
@@ -6,6 +6,7 @@ import { PaywallModal } from '../components/PaywallModal';
 import { PaywallFeature } from '../utils/plans';
 import { apiClient } from '../api/client';
 import { formatNumber, getFundingColor } from '../utils/formatters';
+import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { HistoryChart } from '../components/HistoryChart';
 import { FundingCalendar } from '../components/FundingCalendar';
 import { ResultSkeleton } from '../components/Skeleton';
@@ -131,6 +132,26 @@ export function MainPage() {
 
   const isPremium = planLimits.aiEnabled;
 
+  // Auto-scan once on first visit so the user lands directly on opportunities
+  // instead of having to press "Сканировать" before seeing anything.
+  useEffect(() => {
+    if (!scanResults && selectedExchanges.length > 0) {
+      runScan(selectedExchanges);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // The single best actionable pick across all yield tiers — surfaces the
+  // fastest route from "opened the app" to "open a position".
+  const topPick = useMemo(() => {
+    if (!scanResults) return null;
+    const all = [...(scanResults.highYield || []), ...(scanResults.mediumYield || [])];
+    if (all.length === 0) return null;
+    return all.reduce((best, it) =>
+      Math.abs(it.funding_rate_per_hour) > Math.abs(best.funding_rate_per_hour) ? it : best
+    );
+  }, [scanResults]);
+
   return (
     <div className="p-4">
       <div className="flex items-center gap-3 mb-4">
@@ -211,6 +232,32 @@ export function MainPage() {
       {!scanLoading && scanResults && (
         <div className="card">
           <h2 className="text-lg font-semibold mb-3">Результаты сканирования</h2>
+
+          {topPick && (
+            <div
+              className="rounded-xl p-4 mb-4 relative overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand-hover) 100%)' }}
+            >
+              <div className="text-xs font-semibold uppercase tracking-wide text-white opacity-80">🔥 Лучшая возможность</div>
+              <div className="flex items-end justify-between mt-1">
+                <div>
+                  <div className="text-xl font-bold text-white">{topPick.exchange.toUpperCase()}: {topPick.contract}</div>
+                  <div className="text-white opacity-90 text-sm">
+                    {((topPick.funding_rate_per_hour ?? 0) * 100).toFixed(6)}%/ч · ≈ {((topPick.funding_rate_per_day ?? 0) * 100).toFixed(4)}%/день
+                  </div>
+                </div>
+                <button
+                  onClick={() => openExchange(topPick.exchange, topPick.contract)}
+                  className="btn text-sm py-2 px-4 shrink-0"
+                  style={{ background: '#ffffff', color: 'var(--brand)' }}
+                >
+                  ↗ Открыть позицию
+                </button>
+              </div>
+            </div>
+          )
+}
+
 
           <div className="flex gap-2 mb-4">
             <input
@@ -530,13 +577,21 @@ const ResultItem = memo(function ResultItem({
             >
               🔔
             </button>
-            <button
-              onClick={() => onHistory({ exchange: item.exchange, contract: item.contract })}
-              className="text-xs text-[var(--brand)] hover:underline"
-              aria-label={`View history for ${item.exchange} ${item.contract}`}
-            >
-              📊
-            </button>
+             <button
+               onClick={() => onHistory({ exchange: item.exchange, contract: item.contract })}
+               className="text-xs text-[var(--brand)] hover:underline"
+               aria-label={`View history for ${item.exchange} ${item.contract}`}
+             >
+               📊
+             </button>
+             <button
+               onClick={() => openExchange(item.exchange, item.contract)}
+               className="text-xs text-green-600 hover:underline"
+               aria-label={`Open ${item.exchange} ${item.contract} on exchange`}
+               title={`Открыть ${item.contract} на ${exchangeLabel(item.exchange)}`}
+             >
+               ↗ Открыть
+             </button>
           </div>
         </div>
       </div>

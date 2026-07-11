@@ -193,7 +193,7 @@ export function ProfilePage() {
       <div id="subscription" className="scroll-mt-4">
         <div className="mb-4">
           <div className="rounded-2xl p-5 text-white relative overflow-hidden"
-               style={{ background: 'linear-gradient(135deg, #3390ec 0%, #2b6fd6 60%, #1f4fb0 100%)' }}>
+                style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand-hover) 100%)' }}>
             <div className="text-xs font-semibold uppercase tracking-wide opacity-80">Ваш тариф</div>
             <div className="text-2xl font-bold mt-1 capitalize">{planLabel(subscription)}</div>
             <p className="text-sm opacity-90 mt-2">
@@ -326,10 +326,10 @@ const PlanCard = memo(function PlanCard({
     <div
       className={`relative rounded-2xl p-5 transition-all duration-200 ${
         featured
-          ? 'border-2 border-[var(--brand)] shadow-[var(--shadow-lg)]'
+          ? 'mt-4 border-2 border-[var(--brand)] shadow-[var(--shadow-lg)]'
           : 'border border-[var(--border)]'
       }`}
-      style={{ background: 'var(--surface)' }}
+      style={{ background: 'var(--surface)', color: 'var(--text)' }}
     >
       {featured && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold text-white"
@@ -338,22 +338,22 @@ const PlanCard = memo(function PlanCard({
         </div>
       )}
 
-      <div className="flex items-baseline justify-between">
-        <h3 className="text-lg font-bold">{name}</h3>
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="text-lg font-bold text-[var(--text)]">{name}</h3>
         {tagline && (
           <span className={`chip ${featured ? 'chip-brand' : ''}`}>{tagline}</span>
         )}
       </div>
 
       <div className="my-3 flex items-end gap-1">
-        <span className="text-3xl font-extrabold stat">${price}</span>
+        <span className="text-3xl font-extrabold stat text-[var(--text)]">${price}</span>
         <span className="text-sm text-muted mb-1">/ {period}</span>
       </div>
 
       <ul className="space-y-2 mb-4">
         {features.map((feature, idx) => (
-          <li key={idx} className="flex items-start gap-2 text-sm">
-            <span className="mt-0.5 text-[var(--success)] font-bold" aria-hidden="true">✓</span>
+          <li key={idx} className="flex items-start gap-2 text-sm text-[var(--text)]">
+            <span className="mt-0.5 text-[var(--success)] font-bold shrink-0" aria-hidden="true">✓</span>
             <span>{feature}</span>
           </li>
         ))}
@@ -363,7 +363,7 @@ const PlanCard = memo(function PlanCard({
         <button
           disabled
           className="btn text-sm py-2.5 w-full cursor-not-allowed"
-          style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}
+          style={{ background: 'var(--surface-2)', color: 'var(--text)' }}
         >
           ✓ Текущий план
         </button>
