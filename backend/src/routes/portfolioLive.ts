@@ -34,6 +34,7 @@ router.get('/portfolio/live', requireSubscription('pro'), async (req: Authentica
           exchange: k.exchange,
           label: k.label,
           permissions: k.permissions,
+          supportsTrading: false,
           positions: [],
           fundingTotal: 0,
           unrealizedTotal: 0,
@@ -42,6 +43,7 @@ router.get('/portfolio/live', requireSubscription('pro'), async (req: Authentica
         try {
           const creds = decryptJson<{ apiKey: string; secret: string; passphrase?: string }>(k.encPayload);
           const adapter = getAdapter(k.exchange);
+          entry.supportsTrading = Boolean(adapter.supportsTrading);
 
           const [positions, funding] = await Promise.all([
             adapter.getPositions(creds),

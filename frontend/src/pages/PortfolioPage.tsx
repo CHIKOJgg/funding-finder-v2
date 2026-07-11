@@ -406,7 +406,7 @@ const LiveTab = memo(function LiveTab({
                           <span className={`font-bold ${p.unrealizedPnl >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                             {p.unrealizedPnl >= 0 ? '+' : ''}{formatUsd(p.unrealizedPnl)}$
                           </span>
-                          {ex.permissions === 'trade' && (
+                          {ex.permissions === 'trade' && ex.supportsTrading && (
                             <button
                               onClick={() => onAuto({ exchange: ex.exchange, symbol: p.symbol, side: p.side, notional: p.notional })}
                               className="text-xs text-[var(--brand)] hover:underline"
