@@ -6,6 +6,7 @@ import { PaywallFeature } from '../utils/plans';
 import { apiClient } from '../api/client';
 import { PortfolioPosition } from '../types';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
+import { CountdownTimer } from '../components/CountdownTimer';
 
 const EXCHANGES = ['binance', 'bybit', 'okx', 'gate', 'mexc'] as const;
 const SIM_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'] as const;
@@ -401,6 +402,9 @@ const LiveTab = memo(function LiveTab({
                         <div>
                           <span className="font-medium">{p.symbol}</span>
                           <span className="text-xs text-muted ml-1">{p.side === 'long' ? 'Long' : 'Short'} · {formatUsd(p.notional)}$ · x{p.leverage}</span>
+                          <div className="text-xs text-muted">
+                            <CountdownTimer intervalHours={8} className="font-medium" /> до фандинга
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`font-bold ${p.unrealizedPnl >= 0 ? 'text-green-700' : 'text-red-700'}`}>
