@@ -140,3 +140,4 @@ export function HistoryChart({ exchange, contract, onClose }: HistoryChartProps)
     </div>
   );
 }
+

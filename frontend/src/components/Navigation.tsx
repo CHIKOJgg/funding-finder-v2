@@ -13,11 +13,12 @@ export const Navigation = memo(function Navigation() {
   const location = useLocation();
 
   return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50"
-      role="navigation"
-      aria-label="Main navigation"
-    >
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-50 border-t pb-[env(safe-area-inset-bottom)]"
+        style={{ background: 'var(--nav-bg)', borderColor: 'var(--border)' }}
+        role="navigation"
+        aria-label="Main navigation"
+      >
       <div className="flex">
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path;
@@ -28,7 +29,7 @@ export const Navigation = memo(function Navigation() {
               className={clsx(
                 'flex-1 py-2 flex flex-col items-center gap-1 text-xs transition-colors',
                 isActive
-                  ? 'text-telegram-blue'
+                  ? 'text-[var(--brand)]'
                   : 'text-gray-500 hover:text-gray-700'
               )}
               aria-label={tab.ariaLabel}
@@ -43,3 +44,4 @@ export const Navigation = memo(function Navigation() {
     </nav>
   );
 });
+

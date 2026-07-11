@@ -116,8 +116,33 @@ export function ProfilePage() {
   return (
     <div className="p-4">
       <div className="card">
-        <h2 className="text-lg font-semibold mb-2">Реферальная программа</h2>
-        <p className="text-sm text-gray-600 mb-3">Приглашайте друзей — +1 пробный скан за каждого!</p>
+        <div className="flex items-center gap-3 mb-4">
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white shrink-0"
+            style={{ background: 'linear-gradient(135deg, #3390ec, #1f4fb0)' }}
+          >
+            {(user?.firstName || 'U').charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <div className="font-semibold truncate">{user?.firstName || 'Пользователь'}</div>
+            <div className="text-sm text-muted truncate">{user?.username ? '@' + user.username : user?.id}</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
+            <div className="text-xs text-muted">Баланс</div>
+            <div className="text-lg font-bold stat">{balance} <span className="text-sm font-medium">USDT</span></div>
+          </div>
+          <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
+            <div className="text-xs text-muted">Рефералов</div>
+            <div className="text-lg font-bold stat">{referralStats.referrals}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <h2 className="text-base font-semibold mb-1">🎁 Реферальная программа</h2>
+        <p className="text-sm text-muted mb-3">Приглашайте друзей — +1 пробный скан за каждого!</p>
 
         <div className="flex gap-2 mb-3">
           <input
@@ -141,69 +166,70 @@ export function ProfilePage() {
             navigator.clipboard.writeText(referralLink);
             showToast('Ссылка скопирована', 'success');
           }}
-          className="btn btn-primary text-sm py-2"
+          className="btn btn-secondary text-sm py-2"
         >
-          Получить ссылку
+          🔗 Получить ссылку
         </button>
         {referralLink && (
-          <div className="mt-2 text-sm text-telegram-blue break-all">{referralLink}</div>
+          <div className="mt-2 text-sm break-all" style={{ color: 'var(--brand)' }}>{referralLink}</div>
         )}
-        <div className="mt-2 text-sm text-gray-500">
-          Рефералов: {referralStats.referrals} | Бонусов: {referralStats.bonusScans}
+      </div>
+
+      <div className="mb-4">
+        <div className="rounded-2xl p-5 text-white relative overflow-hidden"
+             style={{ background: 'linear-gradient(135deg, #3390ec 0%, #2b6fd6 60%, #1f4fb0 100%)' }}>
+          <div className="text-xs font-semibold uppercase tracking-wide opacity-80">Ваш тариф</div>
+          <div className="text-2xl font-bold mt-1 capitalize">{planLabel(subscription)}</div>
+          <p className="text-sm opacity-90 mt-2">
+            Откройте все биржи, AI-анализ и арбитражные сигналы — зарабатывайте на разнице ставок фандинга.
+          </p>
         </div>
       </div>
 
-      <div className="card">
-        <h1 className="text-xl font-bold mb-2">Профиль</h1>
-        <p className="text-sm">Имя: <strong>{user?.firstName || 'Загрузка...'}</strong></p>
-        <p className="text-sm">ID: <strong>{user?.id || '—'}</strong></p>
-        <p className="text-sm">Баланс: <strong>{balance} USDT</strong></p>
+      <div className="grid grid-cols-1 gap-3">
+        <PlanCard
+          name="Basic"
+          price={29}
+          period="мес"
+          tagline="Для старта"
+          features={['3 биржи', 'Рекомендации', 'Email-уведомления']}
+          currentPlan={subscription}
+          onSelect={() => handleCreateOrder('basic')}
+        />
+        <PlanCard
+          name="Pro"
+          price={99}
+          period="мес"
+          tagline="Самый популярный"
+          featured
+          features={['Все 5 бирж', 'AI-анализ рынка', 'Экспорт в CSV', 'Приоритетные сигналы']}
+          currentPlan={subscription}
+          onSelect={() => handleCreateOrder('pro')}
+        />
+        <PlanCard
+          name="Pro Max"
+          price={499}
+          period="мес"
+          tagline="Для профи"
+          features={['Всё из Pro', 'Расширенная аналитика', 'Персональная поддержка', 'Ранний доступ к фичам']}
+          currentPlan={subscription}
+          onSelect={() => handleCreateOrder('promax')}
+        />
       </div>
 
       <div className="card">
-        <h2 className="text-lg font-semibold mb-3">Подписка</h2>
-        <div className="text-sm text-gray-600 mb-3">Текущий план: <strong>{subscription}</strong></div>
-        <div className="grid grid-cols-1 gap-3">
-          <PlanCard
-            name="Basic"
-            price={29}
-            features={['3 биржи', 'Базовые рекомендации']}
-            currentPlan={subscription}
-            onSelect={() => handleCreateOrder('basic')}
-          />
-          <PlanCard
-            name="Pro"
-            price={99}
-            features={['Всё из Basic', 'AI-анализ', 'Экспорт']}
-            featured
-            currentPlan={subscription}
-            onSelect={() => handleCreateOrder('pro')}
-          />
-          <PlanCard
-            name="Pro Max"
-            price={499}
-            features={['Всё из Pro', 'Сигналы', 'Поддержка']}
-            currentPlan={subscription}
-            onSelect={() => handleCreateOrder('promax')}
-          />
-        </div>
-      </div>
-
-      <div className="card">
-        <h2 className="text-lg font-semibold mb-3">История платежей</h2>
+        <h2 className="text-base font-semibold mb-3">История платежей</h2>
         {paymentHistory.length === 0 ? (
-          <div className="text-center py-4 text-gray-500">Платежей не найдено</div>
+          <div className="text-center py-6 text-muted">Платежей пока нет</div>
         ) : (
-          <div className="space-y-2">
+          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {paymentHistory.map((payment) => (
-              <div key={payment.id} className="flex justify-between items-center py-2 border-b border-gray-100">
+              <div key={payment.id} className="flex justify-between items-center py-3">
                 <div>
-                  <div className="font-medium">{payment.plan}</div>
-                  <div className="text-sm text-gray-500">{new Date(payment.date).toLocaleDateString()}</div>
+                  <div className="font-medium">{planLabel(payment.plan)}</div>
+                  <div className="text-sm text-muted">{new Date(payment.date).toLocaleDateString()}</div>
                 </div>
-                <div className="text-right">
-                  <div className="font-bold">{payment.amount} {payment.currency}</div>
-                </div>
+                <div className="text-right font-bold stat">{payment.amount} {payment.currency}</div>
               </div>
             ))}
           </div>
@@ -211,20 +237,22 @@ export function ProfilePage() {
       </div>
 
       <div className="card">
-        <h2 className="text-lg font-semibold mb-3">История выводов</h2>
+        <h2 className="text-base font-semibold mb-3">История выводов</h2>
         {withdrawalHistory.length === 0 ? (
-          <div className="text-center py-4 text-gray-500">Выводов не найдено</div>
+          <div className="text-center py-6 text-muted">Выводов пока нет</div>
         ) : (
-          <div className="space-y-2">
+          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {withdrawalHistory.map((withdrawal) => (
-              <div key={withdrawal.id} className="flex justify-between items-center py-2 border-b border-gray-100">
+              <div key={withdrawal.id} className="flex justify-between items-center py-3">
                 <div>
-                  <div className="font-medium">{withdrawal.amount} {withdrawal.currency}</div>
-                  <div className="text-sm text-gray-500">{withdrawal.address.substring(0, 8)}...{withdrawal.address.substring(withdrawal.address.length - 6)}</div>
+                  <div className="font-medium stat">{withdrawal.amount} {withdrawal.currency}</div>
+                  <div className="text-sm text-muted font-mono">
+                    {withdrawal.address.substring(0, 8)}…{withdrawal.address.substring(withdrawal.address.length - 6)}
+                  </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-gray-500">{new Date(withdrawal.createdAt).toLocaleDateString()}</div>
-                  <div className="text-xs text-green-500">{withdrawal.status}</div>
+                  <div className="text-sm text-muted">{new Date(withdrawal.createdAt).toLocaleDateString()}</div>
+                  <div className="text-xs font-semibold" style={{ color: 'var(--success)' }}>{withdrawal.status}</div>
                 </div>
               </div>
             ))}
@@ -233,21 +261,33 @@ export function ProfilePage() {
       </div>
 
       <div className="card">
-        <Link to="/settings" className="btn btn-secondary text-sm py-2 mb-2">⚙️ Настройки</Link>
+        <Link to="/settings" className="btn btn-secondary text-sm py-2.5">⚙️ Настройки</Link>
       </div>
 
-      <div className="card text-center">
-        <Link to="/terms" className="text-sm text-telegram-blue hover:underline mx-2">Пользовательское соглашение</Link>
-        <span className="text-gray-400">·</span>
-        <Link to="/privacy" className="text-sm text-telegram-blue hover:underline mx-2">Политика конфиденциальности</Link>
+      <div className="text-center py-2">
+        <Link to="/terms" className="text-sm hover:underline mx-2" style={{ color: 'var(--brand)' }}>Пользовательское соглашение</Link>
+        <span className="text-muted">·</span>
+        <Link to="/privacy" className="text-sm hover:underline mx-2" style={{ color: 'var(--brand)' }}>Политика конфиденциальности</Link>
       </div>
     </div>
   );
 }
 
+function planLabel(plan: string): string {
+  switch (plan) {
+    case 'basic': return 'Basic';
+    case 'pro': return 'Pro';
+    case 'promax': return 'Pro Max';
+    case 'ultimate': return 'Ultimate';
+    default: return 'Free';
+  }
+}
+
 const PlanCard = memo(function PlanCard({
   name,
   price,
+  period = 'мес',
+  tagline,
   features,
   featured = false,
   currentPlan,
@@ -255,36 +295,70 @@ const PlanCard = memo(function PlanCard({
 }: {
   name: string;
   price: number;
+  period?: string;
+  tagline?: string;
   features: string[];
   featured?: boolean;
   currentPlan: string;
   onSelect: () => void;
 }) {
   const planId = name.toLowerCase().replace(' ', '');
-  const isCurrent = currentPlan === planId || (currentPlan === 'pro' && planId === 'pro');
-  
+  const isCurrent = currentPlan === planId;
+
   return (
-    <div className={`border rounded-xl p-4 ${featured ? 'border-telegram-blue bg-blue-50' : 'border-gray-200'}`}>
-      {featured && <div className="text-xs text-telegram-blue font-bold mb-1">Хит</div>}
-      <h3 className="font-bold">{name}</h3>
-      <div className="text-2xl font-bold my-2">${price}/мес</div>
-      <ul className="text-sm space-y-1 mb-3">
+    <div
+      className={`relative rounded-2xl p-5 transition-all duration-200 ${
+        featured
+          ? 'border-2 border-[var(--brand)] shadow-[var(--shadow-lg)]'
+          : 'border border-[var(--border)]'
+      }`}
+      style={{ background: 'var(--surface)' }}
+    >
+      {featured && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold text-white"
+             style={{ background: 'var(--brand)' }}>
+          ⭐ Популярный
+        </div>
+      )}
+
+      <div className="flex items-baseline justify-between">
+        <h3 className="text-lg font-bold">{name}</h3>
+        {tagline && (
+          <span className={`chip ${featured ? 'chip-brand' : ''}`}>{tagline}</span>
+        )}
+      </div>
+
+      <div className="my-3 flex items-end gap-1">
+        <span className="text-3xl font-extrabold stat">${price}</span>
+        <span className="text-sm text-muted mb-1">/ {period}</span>
+      </div>
+
+      <ul className="space-y-2 mb-4">
         {features.map((feature, idx) => (
-          <li key={idx} className="flex items-center">
-            <span className="text-green-500 mr-2" aria-hidden="true">✓</span>
-            {feature}
+          <li key={idx} className="flex items-start gap-2 text-sm">
+            <span className="mt-0.5 text-[var(--success)] font-bold" aria-hidden="true">✓</span>
+            <span>{feature}</span>
           </li>
         ))}
       </ul>
+
       {isCurrent ? (
-        <button disabled className="btn text-sm py-2 w-full bg-gray-200 text-gray-500 cursor-not-allowed">
-          Текущий план
+        <button
+          disabled
+          className="btn text-sm py-2.5 w-full cursor-not-allowed"
+          style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}
+        >
+          ✓ Текущий план
         </button>
       ) : (
-        <button onClick={onSelect} className="btn btn-primary text-sm py-2 w-full">
-          Выбрать
+        <button
+          onClick={onSelect}
+          className="btn text-sm py-2.5 w-full btn-primary"
+        >
+          {currentPlan === 'free' ? 'Подключить' : 'Перейти'}
         </button>
       )}
     </div>
   );
 });
+

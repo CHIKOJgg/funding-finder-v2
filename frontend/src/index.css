@@ -2,109 +2,276 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Design tokens
+   - Driven by Telegram themeParams when present (native, perfect
+     contrast) with hand-tuned light/dark fallbacks.
+   - All component classes below read these variables, so a single
+     switch keeps the whole app high-contrast in any theme.
+   ============================================================ */
+:root {
+  --brand: #3390ec;
+  --brand-hover: #2b7fd6;
+  --brand-soft: rgba(51, 144, 236, 0.12);
+
+  --success: #16a34a;
+  --success-soft: rgba(22, 163, 74, 0.12);
+  --danger: #e0413e;
+  --danger-soft: rgba(224, 65, 62, 0.12);
+  --warning: #d97706;
+  --warning-soft: rgba(217, 119, 6, 0.14);
+
+  /* Light theme (default) */
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-2: #eef1f4;
+  --text: #14181f;
+  --text-muted: #5b6573;
+  --border: #e4e8ee;
+  --border-strong: #cdd5df;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.05);
+  --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.10);
+  --nav-bg: #ffffff;
+}
+
+.dark {
+  --bg: #0e1621;
+  --surface: #182533;
+  --surface-2: #21303f;
+  --text: #f7f9fb;
+  --text-muted: #97a4b2;
+  --border: #2a3848;
+  --border-strong: #36495d;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --nav-bg: #182533;
+}
+
+/* Native Telegram theme params (set from JS) — overrides above */
+:root.has-tg-theme {
+  --bg: var(--tg-bg, var(--bg));
+  --text: var(--tg-text, var(--text));
+  --text-muted: var(--tg-hint, var(--text-muted));
+  --brand: var(--tg-link, var(--brand));
+  --surface: var(--tg-secondary-bg, var(--surface));
+  --surface-2: var(--tg-secondary-bg, var(--surface-2));
+  --button: var(--tg-button, var(--brand));
+  --button-text: var(--tg-button-text, #ffffff);
+  --nav-bg: var(--tg-secondary-bg, var(--nav-bg));
+}
+
 @layer base {
+  html {
+    background: var(--bg);
+  }
+
   body {
-    @apply bg-gray-100 text-gray-900 font-sans;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  .dark body,
-  body.dark {
-    @apply bg-gray-900 text-gray-100;
-  }
-
-  .dark .card {
-    @apply bg-gray-800 border-gray-700;
-  }
-
-  .dark .input-field {
-    @apply bg-gray-700 border-gray-600 text-gray-100;
-  }
-
+  /* Keep muted text readable in dark mode (was the contrast bug) */
+  .dark .text-gray-400,
   .dark .text-gray-500,
   .dark .text-gray-600,
   .dark .text-gray-700 {
-    @apply text-gray-400;
+    color: var(--text-muted) !important;
+  }
+
+  .dark .text-gray-300 {
+    color: var(--text) !important;
   }
 
   .dark .bg-gray-50 {
-    @apply bg-gray-800;
+    background: var(--surface-2) !important;
   }
 
   .dark .bg-blue-50 {
-    @apply bg-blue-900 bg-opacity-30;
+    background: var(--brand-soft) !important;
   }
 
   .dark .bg-green-50 {
-    @apply bg-green-900 bg-opacity-30;
+    background: var(--success-soft) !important;
   }
 
   .dark .bg-yellow-50 {
-    @apply bg-yellow-900 bg-opacity-30;
+    background: var(--warning-soft) !important;
   }
 
   .dark .bg-red-50 {
-    @apply bg-red-900 bg-opacity-30;
-  }
-
-  .dark .bg-orange-50 {
-    @apply bg-orange-900 bg-opacity-30;
+    background: var(--danger-soft) !important;
   }
 
   .dark .border-gray-100,
   .dark .border-gray-200 {
-    @apply border-gray-700;
+    border-color: var(--border) !important;
   }
 
   .dark .exchange-btn {
-    @apply bg-gray-700 border-gray-600 text-gray-200;
+    background: var(--surface-2);
+    border-color: var(--border);
+    color: var(--text);
   }
 
   .dark .exchange-btn.active {
-    @apply bg-telegram-blue border-telegram-blue text-white;
+    background: var(--brand);
+    border-color: var(--brand);
+    color: #ffffff;
   }
 }
 
 @layer components {
   .card {
-    @apply bg-white rounded-xl shadow-sm p-4 mb-4;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 16px;
+    margin-bottom: 16px;
   }
-  
+
+  .card-flush {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+  }
+
   .btn {
-    @apply w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.18s ease;
+    disabled: opacity-50;
+    disabled: cursor-not-allowed;
   }
-  
+
   .btn-primary {
-    @apply bg-telegram-blue text-white hover:bg-telegram-hover;
+    background: var(--button, var(--brand));
+    color: var(--button-text, #ffffff);
   }
-  
+
+  .btn-primary:hover {
+    filter: brightness(0.95);
+  }
+
   .btn-secondary {
-    @apply bg-gray-500 text-white hover:bg-gray-600;
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
   }
-  
+
+  .btn-secondary:hover {
+    background: var(--border);
+  }
+
   .btn-success {
-    @apply bg-success text-white hover:bg-green-600;
+    background: var(--success);
+    color: #ffffff;
   }
-  
+
   .btn-danger {
-    @apply bg-danger text-white hover:bg-red-600;
+    background: var(--danger);
+    color: #ffffff;
   }
-  
+
   .input-field {
-    @apply w-full py-3 px-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-telegram-blue focus:border-transparent;
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface-2);
+    color: var(--text);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
   }
-  
+
+  .input-field:focus {
+    outline: none;
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px var(--brand-soft);
+  }
+
+  .input-field::placeholder {
+    color: var(--text-muted);
+  }
+
   .exchange-btn {
-    @apply py-2 px-3 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-all duration-200 text-sm;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text);
+    transition: all 0.18s ease;
+    font-size: 0.875rem;
   }
-  
+
+  .exchange-btn:hover {
+    background: var(--surface-2);
+  }
+
   .exchange-btn.active {
-    @apply bg-telegram-blue text-white border-telegram-blue;
+    background: var(--brand);
+    border-color: var(--brand);
+    color: #ffffff;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--surface-2);
+    color: var(--text-muted);
+  }
+
+  .chip-success {
+    background: var(--success-soft);
+    color: var(--success);
+  }
+
+  .chip-brand {
+    background: var(--brand-soft);
+    color: var(--brand);
+  }
+
+  .chip-danger {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+
+  .chip-warning {
+    background: var(--warning-soft);
+    color: var(--warning);
+  }
+
+  .stat {
+    font-variant-numeric: tabular-nums;
   }
 }
 
 @layer utilities {
   .animate-slide-in {
     animation: slideIn 0.3s ease-out;
+  }
+
+  .text-muted {
+    color: var(--text-muted);
+  }
+
+  .bg-app {
+    background: var(--bg);
+  }
+
+  .bg-surface {
+    background: var(--surface);
   }
 }
 

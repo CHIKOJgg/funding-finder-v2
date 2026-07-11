@@ -35,3 +35,4 @@ describe('ResultSkeleton', () => {
     expect(container.firstChild).toBeInTheDocument();
   });
 });
+

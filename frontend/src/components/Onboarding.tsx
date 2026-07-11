@@ -52,7 +52,7 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
             {STEPS.map((_, idx) => (
               <div
                 key={idx}
-                className={`h-2 w-2 rounded-full ${idx === step ? 'bg-telegram-blue w-4' : 'bg-gray-300'}`}
+                className={`h-2 w-2 rounded-full ${idx === step ? 'bg-[var(--brand)] w-4' : 'bg-gray-300'}`}
               />
             ))}
           </div>
@@ -71,3 +71,4 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
     </div>
   );
 }
+

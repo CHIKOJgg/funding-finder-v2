@@ -62,6 +62,20 @@ export function useApp() {
 }
 
 /**
+ * Decide if a hex color is "dark" by relative luminance.
+ * Used to pick light/dark palette when Telegram only gives raw colors.
+ */
+function isColorDark(hex: string): boolean {
+  const m = hex.replace('#', '');
+  if (m.length < 6) return false;
+  const r = parseInt(m.substring(0, 2), 16);
+  const g = parseInt(m.substring(2, 4), 16);
+  const b = parseInt(m.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.5;
+}
+
+/**
  * Owns all shared, cross-tab state and the async actions that fill it.
  * Rendered ABOVE the router so it never unmounts when switching tabs — this is
  * what keeps data cached and lets an in-progress scan continue in the
@@ -203,29 +217,49 @@ export default function App() {
     setShowOnboarding(false);
   }, []);
 
-  // Dark theme: detect Telegram theme and apply class
+  // Theme: pull native Telegram theme params (guarantees correct contrast)
+  // and toggle the `dark` class based on the active color scheme.
   useEffect(() => {
+    const root = document.documentElement;
     const tg = (window as any).Telegram?.WebApp;
-    const applyTheme = (colorScheme?: string) => {
-      if (colorScheme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
+
+    const applyTheme = (colorScheme?: string, themeParams?: Record<string, string>) => {
+      const tp = themeParams || tg?.themeParams || {};
+      const set = (name: string, value?: string) => {
+        if (value) root.style.setProperty(name, value);
+      };
+
+      set('--tg-bg', tp.bg_color);
+      set('--tg-text', tp.text_color);
+      set('--tg-hint', tp.hint_color);
+      set('--tg-link', tp.link_color);
+      set('--tg-button', tp.button_color);
+      set('--tg-button-text', tp.button_text_color);
+      set('--tg-secondary-bg', tp.secondary_bg_color);
+
+      if (tp.bg_color || tp.text_color || tp.button_color) {
+        root.classList.add('has-tg-theme');
       }
+
+      const isDark =
+        colorScheme === 'dark' ||
+        (tp.bg_color && isColorDark(tp.bg_color));
+      root.classList.toggle('dark', Boolean(isDark));
     };
 
     if (tg) {
-      applyTheme(tg.colorScheme);
-      tg.onEvent('themeChanged', () => applyTheme(tg.colorScheme));
-      return () => tg.offEvent('themeChanged', () => {});
-    } else {
-      // Fallback: check system preference
-      const mq = window.matchMedia('(prefers-color-scheme: dark)');
-      applyTheme(mq.matches ? 'dark' : 'light');
-      const handler = (e: MediaQueryListEvent) => applyTheme(e.matches ? 'dark' : 'light');
-      mq.addEventListener('change', handler);
-      return () => mq.removeEventListener('change', handler);
+      applyTheme(tg.colorScheme, tg.themeParams);
+      const handler = () => applyTheme(tg.colorScheme, tg.themeParams);
+      tg.onEvent('themeChanged', handler);
+      return () => tg.offEvent('themeChanged', handler);
     }
+
+    // Fallback: follow system preference
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    applyTheme(mq.matches ? 'dark' : 'light');
+    const handler = (e: MediaQueryListEvent) => applyTheme(e.matches ? 'dark' : 'light');
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
   }, []);
 
   return (
@@ -255,3 +289,4 @@ export default function App() {
     </ErrorBoundary>
   );
 }
+

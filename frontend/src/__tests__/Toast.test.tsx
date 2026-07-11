@@ -46,3 +46,4 @@ describe('Toast', () => {
     vi.useRealTimers();
   });
 });
+

@@ -66,16 +66,23 @@ export function ArbitragePage() {
 
   return (
     <div className="p-4">
-      <div className="card">
-        <h1 className="text-xl font-bold mb-2">Арбитраж и Оповещения</h1>
-        <p className="text-gray-600 text-sm">Управляйте арбитражными возможностями и оповещениями</p>
-        <p className="text-gray-500 text-xs mt-1">Все ставки нормализованы к часовой базе</p>
+      <div className="flex items-center gap-3 mb-4">
+        <div
+          className="w-11 h-11 rounded-2xl flex items-center justify-center text-lg font-black text-white shrink-0"
+          style={{ background: 'linear-gradient(135deg, #3390ec, #1f4fb0)' }}
+        >
+          FF
+        </div>
+        <div>
+          <h1 className="text-xl font-bold leading-tight">Арбитраж</h1>
+          <p className="text-sm text-muted leading-tight">Возможности и оповещения</p>
+        </div>
       </div>
 
       <div className="flex gap-2 mb-4" role="tablist">
         <button
           onClick={() => setActiveTab('opportunities')}
-          className={clsx('flex-1 py-2 rounded-lg font-medium', activeTab === 'opportunities' ? 'bg-telegram-blue text-white' : 'bg-gray-200')}
+          className={clsx('flex-1 py-2.5 rounded-xl font-medium transition-all', activeTab === 'opportunities' ? 'btn-primary' : 'btn-secondary')}
           role="tab"
           aria-selected={activeTab === 'opportunities'}
         >
@@ -83,7 +90,7 @@ export function ArbitragePage() {
         </button>
         <button
           onClick={() => setActiveTab('alerts')}
-          className={clsx('flex-1 py-2 rounded-lg font-medium', activeTab === 'alerts' ? 'bg-telegram-blue text-white' : 'bg-gray-200')}
+          className={clsx('flex-1 py-2.5 rounded-xl font-medium transition-all', activeTab === 'alerts' ? 'btn-primary' : 'btn-secondary')}
           role="tab"
           aria-selected={activeTab === 'alerts'}
         >
@@ -95,7 +102,7 @@ export function ArbitragePage() {
         <div className="card">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-semibold">Арбитражные возможности</h2>
-            <button onClick={() => loadArbitrage(true)} disabled={arbLoading} className="text-sm text-telegram-blue">
+            <button onClick={() => loadArbitrage(true)} disabled={arbLoading} className="text-sm text-[var(--brand)]">
               🔄 Обновить
             </button>
           </div>
@@ -373,3 +380,4 @@ function ProfitCalculator({
     </div>
   );
 }
+

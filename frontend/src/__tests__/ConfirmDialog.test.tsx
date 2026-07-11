@@ -67,3 +67,4 @@ describe('ConfirmDialog', () => {
     expect(btn.className).toContain('btn-danger');
   });
 });
+

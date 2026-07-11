@@ -34,3 +34,4 @@ describe('ErrorBoundary', () => {
     spy.mockRestore();
   });
 });
+

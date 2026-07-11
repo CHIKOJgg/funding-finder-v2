@@ -123,10 +123,17 @@ export function MainPage() {
 
   return (
     <div className="p-4">
-      <div className="card">
-        <h1 className="text-xl font-bold mb-2">Funding Finder</h1>
-        <p className="text-gray-600 text-sm">Сканируйте биржи для поиска лучших ставок финансирования</p>
-        <p className="text-gray-500 text-xs mt-1">Все ставки нормализованы к часовой базе для честного сравнения</p>
+      <div className="flex items-center gap-3 mb-4">
+        <div
+          className="w-11 h-11 rounded-2xl flex items-center justify-center text-lg font-black text-white shrink-0"
+          style={{ background: 'linear-gradient(135deg, #3390ec, #1f4fb0)' }}
+        >
+          FF
+        </div>
+        <div>
+          <h1 className="text-xl font-bold leading-tight">Funding Finder</h1>
+          <p className="text-sm text-muted leading-tight">Арбитраж ставок фандинга в реальном времени</p>
+        </div>
       </div>
 
       <div className="card">
@@ -173,8 +180,8 @@ export function MainPage() {
         </button>
       </div>
 
-      <div className="card bg-gray-50">
-        <p className="text-center text-gray-600" role="status">{scanStatus}</p>
+      <div className="rounded-xl p-3 text-center text-sm" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }} role="status">
+        {scanStatus}
       </div>
 
       {scanLoading && (
@@ -210,16 +217,16 @@ export function MainPage() {
           </div>
 
           {scanResults.metrics?.intervalDistribution && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm font-medium text-blue-800 mb-1">Распределение интервалов:</p>
+            <div className="mb-4 p-3 rounded-xl" style={{ background: 'var(--brand-soft)' }}>
+              <p className="text-sm font-medium mb-1" style={{ color: 'var(--brand)' }}>Распределение интервалов:</p>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(scanResults.metrics.intervalDistribution).map(([interval, count]) => (
-                  <span key={interval} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                  <span key={interval} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--surface)', color: 'var(--text)' }}>
                     {interval}: {String(count)}
                   </span>
                 ))}
               </div>
-              <p className="text-xs text-blue-600 mt-1">
+              <p className="text-xs mt-1" style={{ color: 'var(--brand)' }}>
                 Средний интервал: {scanResults.metrics.averageIntervalHours?.toFixed(1) || '8'}ч
               </p>
             </div>
@@ -480,7 +487,7 @@ const ResultItem = memo(function ResultItem({
             </button>
             <button
               onClick={() => onHistory({ exchange: item.exchange, contract: item.contract })}
-              className="text-xs text-telegram-blue hover:underline"
+              className="text-xs text-[var(--brand)] hover:underline"
               aria-label={`View history for ${item.exchange} ${item.contract}`}
             >
               📊
@@ -508,3 +515,4 @@ function createListText(results: any) {
   }
   return text;
 }
+

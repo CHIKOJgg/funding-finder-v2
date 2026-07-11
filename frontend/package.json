@@ -13,7 +13,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@sentry/react": "^10.65.0",
     "axios": "^1.6.2",
     "chart.js": "^4.4.1",
     "clsx": "^2.1.0",
