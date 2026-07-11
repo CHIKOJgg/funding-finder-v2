@@ -14,21 +14,47 @@ export interface FundingEvent {
   secondsUntil: number;
 }
 
+// Resolve the next funding-settlement timestamp for a scanned contract.
+// Prefers the exchange-provided `funding_next_apply` when it is a valid future
+// timestamp, but falls back to deriving the next interval boundary from the
+// funding interval (the same logic the frontend countdown uses). This keeps the
+// calendar populated and consistent with the per-position countdowns even when
+// an exchange omits `funding_next_apply` or reports it in the wrong unit
+// (seconds vs ms) — both of which previously made every event get filtered out.
+function resolveNextApply(item: ExchangeResult, now: number): number {
+  const fna = item.funding_next_apply;
+  if (typeof fna === 'number' && isFinite(fna) && fna > now) {
+    return fna;
+  }
+  const intervalHours =
+    item.funding_interval_hours ||
+    (item.funding_interval_seconds ? item.funding_interval_seconds / 3600 : 0);
+  if (!intervalHours || intervalHours <= 0) return 0;
+  const stepMs = intervalHours * 3600 * 1000;
+  const epoch = Date.UTC(1970, 0, 1);
+  return Math.ceil((now - epoch) / stepMs) * stepMs + epoch;
+}
+
 function extractEvents(result: ScanResult, limit: number): FundingEvent[] {
   const all = [...result.highYield, ...result.mediumYield, ...result.lowYield];
   const now = Date.now();
 
   return all
-    .filter((item) => item.funding_next_apply && item.funding_next_apply > now)
-    .map((item: ExchangeResult) => ({
-      exchange: item.exchange,
-      pair: item.contract,
-      ratePerHour: item.funding_rate_per_hour,
-      ratePerDay: item.funding_rate_per_day,
-      annualized: item.annualized_rate,
-      nextApply: item.funding_next_apply,
-      secondsUntil: Math.round((item.funding_next_apply - now) / 1000),
-    }))
+    .map((item: ExchangeResult) => {
+      const nextApply = resolveNextApply(item, now);
+      return {
+        exchange: item.exchange,
+        pair: item.contract,
+        ratePerHour: item.funding_rate_per_hour,
+        ratePerDay: item.funding_rate_per_day,
+        annualized: item.annualized_rate,
+        nextApply,
+        secondsUntil: Math.round((nextApply - now) / 1000),
+      };
+    })
+    // Only include contracts whose next settlement is actually in the future
+    // (requires a known interval; contracts without one can't be scheduled).
+    .filter((e) => e.nextApply > now)
     .sort((a, b) => a.nextApply - b.nextApply)
     .slice(0, limit);
 }

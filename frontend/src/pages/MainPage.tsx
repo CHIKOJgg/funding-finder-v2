@@ -40,6 +40,9 @@ export function MainPage() {
   const [alertCondition, setAlertCondition] = useState<'above' | 'below'>('above');
   const [alertThreshold, setAlertThreshold] = useState(0.01);
   const [alertCreating, setAlertCreating] = useState(false);
+  // Bumped after each manual scan so the funding calendar (which polls on its
+  // own timer) refreshes immediately instead of waiting up to 60s.
+  const [calendarRefresh, setCalendarRefresh] = useState(0);
 
   const toggleExchange = useCallback((exchange: string) => {
     setSelectedExchanges((prev: string[]) => {
@@ -64,6 +67,7 @@ export function MainPage() {
     // Fire-and-continue: the scan runs in shared state and keeps going even if
     // the user switches tabs; results are stored centrally.
     await runScan(selectedExchanges);
+    setCalendarRefresh((n) => n + 1);
   }, [selectedExchanges, runScan, showToast]);
 
   const handleAiAnalysis = useCallback(async () => {
@@ -228,7 +232,7 @@ export function MainPage() {
         {scanStatus}
       </div>
 
-      <FundingCalendar exchanges={selectedExchanges} />
+      <FundingCalendar exchanges={selectedExchanges} refreshSignal={calendarRefresh} />
 
       {scanLoading && (
         <div className="card">

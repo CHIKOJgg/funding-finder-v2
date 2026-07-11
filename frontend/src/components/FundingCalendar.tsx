@@ -14,7 +14,7 @@ function formatRemaining(seconds: number): string {
   return `${s}с`;
 }
 
-export function FundingCalendar({ exchanges }: { exchanges?: string[] }) {
+export function FundingCalendar({ exchanges, refreshSignal }: { exchanges?: string[]; refreshSignal?: number }) {
   const [events, setEvents] = useState<FundingEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(Date.now());
@@ -36,6 +36,12 @@ export function FundingCalendar({ exchanges }: { exchanges?: string[] }) {
     const tick = setInterval(() => setNow(Date.now()), 1000);
     return () => { clearInterval(id); clearInterval(tick); };
   }, [load]);
+
+  // Refresh immediately after a manual scan (driven by MainPage's refreshSignal)
+  // so the calendar fills without waiting for the 60s poll.
+  useEffect(() => {
+    if (refreshSignal) load();
+  }, [refreshSignal, load]);
 
   if (loading) {
     return (
