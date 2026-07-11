@@ -5,6 +5,7 @@ describe('Config validation', () => {
     TELEGRAM_BOT_TOKEN: 'test_token',
     JWT_SECRET: 'a'.repeat(32),
     WEBHOOK_SECRET: 'a'.repeat(32),
+    ENCRYPTION_KEY: 'a'.repeat(32),
   };
 
   beforeEach(() => {

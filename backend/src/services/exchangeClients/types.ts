@@ -37,6 +37,11 @@ export interface ExchangeAdapter {
   getFundingIncome(creds: Credentials, opts?: { symbol?: string; limit?: number }): Promise<NormalizedFundingIncome[]>;
   placeMarketOrder?(
     creds: Credentials,
-    params: { symbol: string; side: 'long' | 'short'; notionalUsd: number }
+    params: {
+      symbol: string;
+      side: 'long' | 'short';
+      notionalUsd: number;
+      maxSlippageBps?: number;
+    }
   ): Promise<any>;
 }

@@ -214,21 +214,55 @@ export async function updateOrderFromWebhook(invoiceId: string, status: string =
   });
 }
 
-export function verifyCryptoPaySignature(rawBody: any, signature: string) {
+/**
+ * Verify the Crypto Pay webhook signature.
+ *
+ * Crypto Pay signs the *raw bytes* of the request body with HMAC-SHA256 using
+ * the API token as key (header `Crypto-Pay-API-Signature`). We must verify
+ * against the raw body, not a re-serialized copy, since re-stringifying a
+ * parsed object can reorder keys / change whitespace and break the check.
+ */
+export function verifyCryptoPaySignature(rawBody: string | Buffer, signature: string) {
   const token = config.cryptoPay.apiToken;
   if (!token) {
     logger.warn('Crypto Pay token not configured — skipping signature verification');
     return false;
   }
-  const hmac = crypto.createHmac('sha256', token).update(JSON.stringify(rawBody)).digest('hex');
+  if (!signature || typeof signature !== 'string') return false;
+
+  const payload = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : String(rawBody);
+  const hmac = crypto.createHmac('sha256', token).update(payload).digest('hex');
   if (hmac.length !== signature.length) return false;
   return crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(signature));
 }
 
+/** Allow a tiny float tolerance when comparing paid vs expected amounts. */
+function amountsMatch(expected: number, paid: number): boolean {
+  return Number.isFinite(paid) && Math.abs(expected - paid) < 0.01;
+}
+
 export async function handleCryptoPayWebhook(update: any) {
-  if (update.update_type === 'invoice_paid') {
-    const { invoice_id } = update.payload;
-    await updateOrderFromWebhook(invoice_id, 'paid');
+  if (update?.update_type === 'invoice_paid') {
+    const payload = update.payload || {};
+    const invoiceId = payload.invoice_id;
+    const paidAmount = parseFloat(payload.amount);
+
+    const order = await prisma.order.findFirst({ where: { invoiceId } });
+    if (!order) {
+      logger.warn({ invoiceId }, 'Crypto Pay webhook: order not found');
+      return { success: false };
+    }
+
+    // Never grant a subscription if the paid amount doesn't match the plan.
+    if (!amountsMatch(order.amount, paidAmount)) {
+      logger.error(
+        { invoiceId, paidAmount, expected: order.amount },
+        'Crypto Pay webhook: paid amount does not match order'
+      );
+      return { success: false };
+    }
+
+    await updateOrderFromWebhook(invoiceId, 'paid');
     return { success: true };
   }
   return { success: false };

@@ -12,6 +12,7 @@ import { connectDatabase, disconnectDatabase, checkDatabaseHealth } from './serv
 import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestId, requestLogger } from './middleware/requestLogger.js';
+import { perUserLimiter } from './middleware/rateLimit.js';
 import { validateTelegramInitData } from './middleware/auth.js';
 import { startAlertEvaluator, stopAlertEvaluator } from './services/alertEvaluator.js';
 import { startDailySummary, stopDailySummary } from './services/dailySummary.js';
@@ -75,8 +76,20 @@ app.set('trust proxy', 1);
 
 // Security headers
 app.use(helmet({
-  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+      fontSrc: ["'self'", 'data:'],
+      connectSrc: ["'self'", 'wss:', 'https:'],
+      frameAncestors: ["'self'", 'https://web.telegram.org', 'https://t.me'],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+    },
+  },
 }));
 
 // CORS with restricted origins
@@ -92,7 +105,14 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({
+  limit: '1mb',
+  // Retain the raw request body so webhook signature verification (Crypto Pay)
+  // can HMAC the exact bytes that were signed.
+  verify: (req, _res, buf) => {
+    (req as any).rawBody = buf;
+  },
+}));
 
 // Response compression (skip for small responses)
 app.use(compression({
@@ -237,8 +257,10 @@ app.get('/api/feature-flags', (req, res) => {
 });
 
 // Routes with auth
-app.use('/api', authLimiter, validateTelegramInitData, scanRoutes);
-app.use('/api', authLimiter, validateTelegramInitData, aiRoutes);
+// Scan hits many exchange APIs and AI calls cost money, so add a strict
+// per-user cap on top of the global limiter.
+app.use('/api', authLimiter, validateTelegramInitData, perUserLimiter(60, 15 * 60 * 1000), scanRoutes);
+app.use('/api', authLimiter, validateTelegramInitData, perUserLimiter(30, 15 * 60 * 1000), aiRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, historyRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, analyticsRoutes);
 
@@ -261,7 +283,8 @@ app.use('/api', authLimiter, validateTelegramInitData, settingsRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, trialRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, fundingRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, keysRoutes);
-app.use('/api', authLimiter, validateTelegramInitData, portfolioLiveRoutes);
+// Live portfolio + auto-execute places real orders on user exchanges — keep it tightly throttled per user.
+app.use('/api', authLimiter, validateTelegramInitData, perUserLimiter(20, 15 * 60 * 1000), portfolioLiveRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, watchlistRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, portfolioRoutes);
 
@@ -306,6 +329,18 @@ function syncDatabaseSchema() {
     logger.info('Database schema migrated (migrate deploy)');
   } catch (migrateErr) {
     const migrateStderr = (migrateErr as { stderr?: Buffer }).stderr?.toString() || '';
+
+    // In production we must NEVER fall back to `db push`: it can silently
+    // diverge from migration history and risk data loss. Fail loudly so the
+    // operator fixes the migrations instead of corrupting the schema.
+    if (config.isProduction) {
+      logger.error(
+        'migrate deploy failed in production — refusing to auto db push:',
+        migrateStderr.slice(0, 200)
+      );
+      process.exit(1);
+    }
+
     logger.warn('migrate deploy failed, falling back to db push:', migrateStderr.slice(0, 200));
     try {
       execSync('npx prisma db push --skip-generate', {

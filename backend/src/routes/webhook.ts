@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request } from 'express';
 import crypto from 'crypto';
 import { z } from 'zod';
 import { validate } from '../middleware/validation.js';
@@ -8,16 +8,24 @@ import {
   handleCryptoPayWebhook,
 } from '../services/paymentService.js';
 import { config } from '../config/index.js';
+import { getRedis } from '../utils/redis.js';
 import { logger } from '../utils/logger.js';
 
 const webhookRouter = Router();
 
-// Idempotency with Promise-based lock to prevent race conditions
-const processingWebhooks = new Map<string, Promise<any>>();
-const processedWebhooks = new Map<string, number>();
+const redis = getRedis();
+
 const WEBHOOK_IDEMPOTENCY_TTL = 60 * 60 * 1000; // 1 hour
 
-function isWebhookProcessed(webhookId: string): boolean {
+// ---- Idempotency -----------------------------------------------------------
+// When Redis is available we use it as the source of truth so that concurrent
+// deliveries across multiple app instances are de-duplicated correctly.
+// Without Redis we fall back to the in-memory maps below (single instance).
+
+const processingWebhooks = new Map<string, Promise<any>>();
+const processedWebhooks = new Map<string, number>();
+
+function isWebhookProcessedLocal(webhookId: string): boolean {
   const timestamp = processedWebhooks.get(webhookId);
   if (!timestamp) return false;
   if (Date.now() - timestamp > WEBHOOK_IDEMPOTENCY_TTL) {
@@ -27,12 +35,73 @@ function isWebhookProcessed(webhookId: string): boolean {
   return true;
 }
 
-function markWebhookProcessed(webhookId: string): void {
+function markWebhookProcessedLocal(webhookId: string): void {
   processedWebhooks.set(webhookId, Date.now());
   if (processedWebhooks.size > 1000) {
     const cutoff = Date.now() - WEBHOOK_IDEMPOTENCY_TTL;
     for (const [id, ts] of processedWebhooks) {
       if (ts < cutoff) processedWebhooks.delete(id);
+    }
+  }
+}
+
+async function isWebhookProcessed(webhookId: string): Promise<boolean> {
+  if (redis) {
+    try {
+      return (await redis.get(`wh:done:${webhookId}`)) !== null;
+    } catch {
+      return isWebhookProcessedLocal(webhookId);
+    }
+  }
+  return isWebhookProcessedLocal(webhookId);
+}
+
+async function markWebhookProcessed(webhookId: string): Promise<void> {
+  if (redis) {
+    try {
+      await redis.set(`wh:done:${webhookId}`, '1', 'PX', WEBHOOK_IDEMPOTENCY_TTL);
+      return;
+    } catch {
+      /* fall through to local */
+    }
+  }
+  markWebhookProcessedLocal(webhookId);
+}
+
+/**
+ * Acquire a processing lock. Returns true when the caller may proceed.
+ * With Redis this is a cross-instance lock (SET NX); locally it checks the
+ * in-memory promise map. Callers that receive false should treat the webhook
+ * as already handled (Crypto Pay retries, so this is safe).
+ */
+async function acquireWebhookLock(webhookId: string): Promise<boolean> {
+  if (redis) {
+    try {
+      const lock = await redis.set(
+        `wh:lock:${webhookId}`,
+        '1',
+        'PX',
+        WEBHOOK_IDEMPOTENCY_TTL,
+        'NX'
+      );
+      if (lock === 'OK') return true;
+      // Lock held by another instance (or our own). Treat as in-progress.
+      return false;
+    } catch {
+      /* fall through to local */
+    }
+  }
+  if (isWebhookProcessedLocal(webhookId)) return false;
+  if (processingWebhooks.has(webhookId)) return false;
+  return true;
+}
+
+async function releaseWebhookLock(webhookId: string): Promise<void> {
+  if (redis) {
+    try {
+      await redis.del(`wh:lock:${webhookId}`);
+    } catch {
+      /* best effort */
     }
   }
 }
@@ -48,6 +117,13 @@ function timingSafeEqual(a: string, b: string): boolean {
   return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 }
 
+function getRawBody(req: Request): Buffer | string {
+  const raw = (req as any).rawBody;
+  if (raw) return raw as Buffer;
+  // Fallback: re-stringify parsed body (legacy path, less reliable).
+  return JSON.stringify(req.body);
+}
+
 webhookRouter.post('/payment', validate(webhookSchema), async (req, res) => {
   const token = req.headers['x-webhook-token'] as string;
   if (!token || !timingSafeEqual(token, config.webhook.secret)) {
@@ -55,31 +131,29 @@ webhookRouter.post('/payment', validate(webhookSchema), async (req, res) => {
     return res.status(401).json({ ok: false, error: 'invalid token' });
   }
 
-  const { orderId, status, tx } = req.body;
+  const { orderId, status } = req.body;
 
-  // Idempotency check with lock
-  if (isWebhookProcessed(orderId)) {
+  // Idempotency check
+  if (await isWebhookProcessed(orderId)) {
     logger.debug({ orderId }, 'Duplicate payment webhook, skipping');
     return res.json({ ok: true, message: 'Already processed' });
   }
 
-  // If currently being processed, wait for it
-  const existing = processingWebhooks.get(orderId);
-  if (existing) {
-    await existing;
+  const locked = await acquireWebhookLock(orderId);
+  if (!locked) {
     return res.json({ ok: true, message: 'Already processed' });
   }
 
-  // Lock and process
   const processPromise = (async () => {
     try {
       const order = await updateOrderFromWebhook(orderId, status || 'paid');
       if (!order) throw new Error('Order not found');
-      markWebhookProcessed(orderId);
+      await markWebhookProcessed(orderId);
       logger.info({ orderId, status: order.status }, 'Order updated via webhook');
       return order;
     } finally {
       processingWebhooks.delete(orderId);
+      await releaseWebhookLock(orderId);
     }
   })();
 
@@ -97,35 +171,38 @@ webhookRouter.post('/payment', validate(webhookSchema), async (req, res) => {
 webhookRouter.post('/crypto-pay', async (req, res) => {
   try {
     const signature = req.headers['crypto-pay-api-signature'] as string;
-    if (!verifyCryptoPaySignature(req.body, signature)) {
+    if (!verifyCryptoPaySignature(getRawBody(req), signature)) {
       logger.warn('Invalid Crypto Pay webhook signature');
       return res.status(401).json({ ok: false, error: 'Invalid signature' });
     }
 
-    const webhookId = req.body.update_id || `cp_${req.body.payload?.invoice_id}_${Date.now()}`;
+    const update = req.body;
+    const webhookId =
+      update?.update_id?.toString() ||
+      `cp_${update?.payload?.invoice_id}_${Date.now()}`;
 
-    // Idempotency with lock
-    if (isWebhookProcessed(webhookId)) {
+    // Idempotency check
+    if (await isWebhookProcessed(webhookId)) {
       logger.debug({ webhookId }, 'Duplicate Crypto Pay webhook, skipping');
       return res.json({ ok: true, message: 'Already processed' });
     }
 
-    const existing = processingWebhooks.get(webhookId);
-    if (existing) {
-      await existing;
+    const locked = await acquireWebhookLock(webhookId);
+    if (!locked) {
       return res.json({ ok: true, message: 'Already processed' });
     }
 
     const processPromise = (async () => {
       try {
-        logger.info({ body: req.body }, 'Crypto Pay webhook received');
-        const result = await handleCryptoPayWebhook(req.body);
+        logger.info({ body: update }, 'Crypto Pay webhook received');
+        const result = await handleCryptoPayWebhook(update);
         if (result.success) {
-          markWebhookProcessed(webhookId);
+          await markWebhookProcessed(webhookId);
         }
         return result;
       } finally {
         processingWebhooks.delete(webhookId);
+        await releaseWebhookLock(webhookId);
       }
     })();
 

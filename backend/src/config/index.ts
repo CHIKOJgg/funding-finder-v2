@@ -50,6 +50,7 @@ const prodSchema = baseSchema.extend({
   TELEGRAM_BOT_TOKEN: z.string().min(1, 'TELEGRAM_BOT_TOKEN is required in production'),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters in production'),
   WEBHOOK_SECRET: z.string().min(32, 'WEBHOOK_SECRET must be at least 32 characters in production'),
+  ENCRYPTION_KEY: z.string().min(32, 'ENCRYPTION_KEY must be at least 32 characters in production (used to encrypt exchange API keys)'),
 });
 
 function validateEnv(): z.infer<typeof baseSchema> & {
