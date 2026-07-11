@@ -50,7 +50,7 @@ describe('Arbitrage Service', () => {
 
     const opportunities = detectArbitrageOpportunities(results);
     expect(opportunities.length).toBeGreaterThan(0);
-    expect(opportunities[0].pair).toBe('BTCUSDT');
+    expect(opportunities[0].pair).toBe('BTC/USDT');
   });
 
   it('should return empty for single exchange result', () => {
@@ -98,8 +98,8 @@ describe('Arbitrage Service', () => {
     expect(opportunities.length).toBe(2);
 
     const pairs = new Set(opportunities.map((o: any) => o.pair));
-    expect(pairs.has('BTCUSDT')).toBe(true);
-    expect(pairs.has('ETHUSDT')).toBe(true);
+    expect(pairs.has('BTC/USDT')).toBe(true);
+    expect(pairs.has('ETH/USDT')).toBe(true);
   });
 
   it('should flag interval mismatches', () => {

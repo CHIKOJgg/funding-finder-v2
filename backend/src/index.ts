@@ -287,21 +287,36 @@ if (config.nodeEnv === 'production' && hasFrontend) {
 // Error handling
 app.use(errorHandler);
 
-// Sync database schema (creates missing columns/tables for zero-downtime deploys)
+// Sync database schema at startup.
+// Prefer managed migrations (`migrate deploy`) for reproducibility and safe
+// rollbacks. Fall back to `db push` for databases that were previously
+// schema-synced via push (no migration history) so existing deployments keep
+// working without manual intervention.
 function syncDatabaseSchema() {
   try {
-    const result = execSync('npx prisma db push --skip-generate', {
+    execSync('npx prisma migrate deploy --skip-generate', {
       cwd: path.resolve(__dirname, '..'),
       stdio: 'pipe',
-      timeout: 30000,
+      timeout: 120000,
     });
-    logger.info('Database schema synced');
-  } catch (err) {
-    const stderr = (err as { stderr?: Buffer }).stderr?.toString() || '';
-    if (stderr.includes('P3009')) {
-      logger.warn('prisma db push lock timeout — migration likely already in progress');
-    } else {
-      logger.warn('Database schema sync note:', stderr.slice(0, 200));
+    logger.info('Database schema migrated (migrate deploy)');
+  } catch (migrateErr) {
+    const migrateStderr = (migrateErr as { stderr?: Buffer }).stderr?.toString() || '';
+    logger.warn('migrate deploy failed, falling back to db push:', migrateStderr.slice(0, 200));
+    try {
+      execSync('npx prisma db push --skip-generate', {
+        cwd: path.resolve(__dirname, '..'),
+        stdio: 'pipe',
+        timeout: 30000,
+      });
+      logger.info('Database schema synced (db push fallback)');
+    } catch (err) {
+      const stderr = (err as { stderr?: Buffer }).stderr?.toString() || '';
+      if (stderr.includes('P3009')) {
+        logger.warn('prisma db push lock timeout — migration likely already in progress');
+      } else {
+        logger.warn('Database schema sync note:', stderr.slice(0, 200));
+      }
     }
   }
 }
