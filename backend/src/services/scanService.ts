@@ -235,14 +235,70 @@ function normalizeExchangeResults(results: ExchangeResult[]): ExchangeResult[] {
   });
 }
 
-export async function runScan(exchanges: string[]): Promise<ScanResult> {
+// In-flight live scans, keyed by the sorted exchange list. Used to coalesce
+// concurrent callers (multiple users entering at once, the warm-up and the
+// alert evaluator all firing together) onto a SINGLE live scan. This is what
+// keeps a single shared "funding store" instead of every request hammering
+// the exchange APIs — and is what prevents Binance 418 (WAF rate-limit) storms.
+const inFlightScans = new Map<string, Promise<ScanResult>>();
+
+// Once a cached result is older than this, a background refresh is kicked off
+// so the store stays fresh between the scheduled warm-ups.
+const SCAN_REFRESH_AFTER_MS = 60_000;
+
+async function doLiveScan(exchanges: string[]): Promise<ScanResult> {
   const all = await scanExchanges(exchanges);
   const normalized = normalizeExchangeResults(all);
-  const result = processScanResults(normalized);
+  return processScanResults(normalized);
+}
 
-  // Cache the result so subsequent scans (and the calendar) return instantly
-  // via stale-while-revalidate. The background warm-up keeps this fresh.
-  cache.set(scanCacheKey(exchanges), { result, ts: Date.now() }, SCAN_CACHE_TTL_MS);
-
+function storeResult(key: string, result: ScanResult): ScanResult {
+  cache.set(key, { result, ts: Date.now() }, SCAN_CACHE_TTL_MS);
   return result;
+}
+
+/**
+ * Unified, read-through funding store. Returns the cached scan instantly when
+ * fresh; otherwise coalesces concurrent callers onto one live scan. A
+ * background refresh is triggered once the cached entry starts to age, keeping
+ * data fresh without ever blocking a user request on a live 5-exchange scan.
+ */
+export async function runScan(exchanges: string[]): Promise<ScanResult> {
+  const key = scanCacheKey(exchanges);
+  const cached = cache.get<{ result: ScanResult; ts: number }>(key);
+  const now = Date.now();
+
+  if (cached && now - cached.ts < SCAN_CACHE_TTL_MS) {
+    if (now - cached.ts > SCAN_REFRESH_AFTER_MS) {
+      void refreshScan(key, exchanges);
+    }
+    return cached.result;
+  }
+
+  // Cold or expired: serve only one live scan at a time per exchange set.
+  const existing = inFlightScans.get(key);
+  if (existing) return existing;
+
+  const promise = (async () => {
+    const result = await doLiveScan(exchanges);
+    return storeResult(key, result);
+  })().finally(() => {
+    inFlightScans.delete(key);
+  });
+
+  inFlightScans.set(key, promise);
+  return promise;
+}
+
+function refreshScan(key: string, exchanges: string[]): void {
+  if (inFlightScans.has(key)) return;
+  const promise = doLiveScan(exchanges)
+    .then((result) => storeResult(key, result))
+    .finally(() => {
+      inFlightScans.delete(key);
+    });
+  inFlightScans.set(key, promise);
+  // Swallow rejections so a failed background refresh doesn't become an
+  // unhandled rejection (it's best-effort — the next cycle will retry).
+  promise.catch(() => {});
 }
