@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import axios from 'axios';
 import type { Credentials, ExchangeAdapter, NormalizedPosition, NormalizedFundingIncome } from './types.js';
+import { getGateFundingInterval } from './fundingIntervals.js';
 
 const BASE = 'https://api.gateio.ws';
 const RECV_WINDOW = 1000; // Gate requires the timestamp to be within 1000s
@@ -44,16 +45,22 @@ export const gateAdapter: ExchangeAdapter = {
 
   async getPositions(creds) {
     const data = await gateGet('/api/v4/futures/usdt/positions', creds);
+    const entries = (data || []).filter((e: any) => e?.position && parseFloat(e.position.size));
+    const symbols = Array.from(new Set(entries.map((e: any) => toAppSymbol(e.contract)).filter(Boolean))) as string[];
+    const intervalMap: Record<string, number> = {};
+    await Promise.all(symbols.map(async (s: string) => {
+      const h = await getGateFundingInterval(s);
+      if (h) intervalMap[s] = h;
+    }));
     const positions: NormalizedPosition[] = [];
-    for (const entry of data || []) {
-      const pos = entry?.position;
-      if (!pos) continue;
+    for (const entry of entries) {
+      const pos = entry.position;
       const size = parseFloat(pos.size);
-      if (!size || size === 0) continue;
       const mark = parseFloat(pos.mark_price);
+      const symbol = toAppSymbol(entry.contract);
       positions.push({
         exchange: 'gate',
-        symbol: toAppSymbol(entry.contract),
+        symbol,
         side: size > 0 ? 'long' : 'short',
         size: Math.abs(size),
         notional: Math.abs(size) * (isFinite(mark) ? mark : 0),
@@ -61,6 +68,7 @@ export const gateAdapter: ExchangeAdapter = {
         markPrice: isFinite(mark) ? mark : parseFloat(pos.entry_price) || 0,
         leverage: parseFloat(pos.leverage) || parseFloat(entry.leverage) || 1,
         unrealizedPnl: parseFloat(pos.unrealised_pnl) || 0,
+        fundingIntervalHours: intervalMap[symbol],
       });
     }
     return positions;

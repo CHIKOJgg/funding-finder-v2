@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import axios from 'axios';
 import type { Credentials, ExchangeAdapter, NormalizedPosition, NormalizedFundingIncome } from './types.js';
+import { getMexcFundingInterval } from './fundingIntervals.js';
 
 const BASE = 'https://contract.mexc.com';
 
@@ -31,6 +32,12 @@ export const mexcAdapter: ExchangeAdapter = {
   async getPositions(creds) {
     const data = await mexcGet('/api/v1/private/position/open', creds);
     const list = data?.data?.positions || data?.data || [];
+    const symbols = Array.from(new Set(list.map((p: any) => p.symbol).filter(Boolean))) as string[];
+    const intervalMap: Record<string, number> = {};
+    await Promise.all(symbols.map(async (s: string) => {
+      const h = await getMexcFundingInterval(s);
+      if (h) intervalMap[s] = h;
+    }));
     const positions: NormalizedPosition[] = [];
     for (const p of list) {
       const amt = parseFloat(p.positionAmt ?? p.holdVol ?? p.vol);
@@ -46,6 +53,7 @@ export const mexcAdapter: ExchangeAdapter = {
         markPrice: isFinite(mark) ? mark : parseFloat(p.avgPrice ?? p.avg_price) || 0,
         leverage: parseFloat(p.leverage) || 1,
         unrealizedPnl: parseFloat(p.unRealizedPnl ?? p.unrealisedPnl ?? p.unrealizedPnl) || 0,
+        fundingIntervalHours: intervalMap[p.symbol],
       });
     }
     return positions;

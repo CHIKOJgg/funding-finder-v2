@@ -462,7 +462,7 @@ const LiveTab = memo(function LiveTab({
                           <span className="font-medium">{p.symbol}</span>
                           <span className="text-xs text-muted ml-1">{p.side === 'long' ? 'Long' : 'Short'} · {formatUsd(p.notional)}$ · x{p.leverage}</span>
                           <div className="text-xs text-muted">
-                            <CountdownTimer intervalHours={8} className="font-medium" /> до фандинга
+                            <CountdownTimer intervalHours={p.fundingIntervalHours || 8} className="font-medium" /> до фандинга
                           </div>
                         </div>
                         <div className="flex items-center gap-2">

@@ -12,6 +12,7 @@ export interface NormalizedPosition {
   markPrice: number;
   leverage: number;
   unrealizedPnl: number; // USDT
+  fundingIntervalHours?: number; // real per-contract funding interval (hours)
 }
 
 export interface NormalizedFundingIncome {

@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import axios from 'axios';
 import type { Credentials, ExchangeAdapter, NormalizedPosition } from './types.js';
+import { getBybitFundingInterval } from './fundingIntervals.js';
 
 const BASE = 'https://api.bybit.com';
 const RECV_WINDOW = '5000';
@@ -50,6 +51,12 @@ export const bybitAdapter: ExchangeAdapter = {
   async getPositions(creds) {
     const data = await bybitGet('/v5/position/list', creds, { category: 'linear', settleCoin: 'USDT', limit: '200' });
     const list = data?.result?.list || [];
+    const symbols = Array.from(new Set(list.map((p: any) => p.symbol).filter(Boolean))) as string[];
+    const intervalMap: Record<string, number> = {};
+    await Promise.all(symbols.map(async (s: string) => {
+      const h = await getBybitFundingInterval(s);
+      if (h) intervalMap[s] = h;
+    }));
     const positions: NormalizedPosition[] = [];
     for (const p of list) {
       const size = parseFloat(p.size);
@@ -65,6 +72,7 @@ export const bybitAdapter: ExchangeAdapter = {
         markPrice: isFinite(mark) ? mark : parseFloat(p.avgPrice) || 0,
         leverage: parseFloat(p.leverage) || 1,
         unrealizedPnl: parseFloat(p.unrealisedPnl) || 0,
+        fundingIntervalHours: intervalMap[p.symbol],
       });
     }
     return positions;

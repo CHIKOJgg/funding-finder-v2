@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import axios from 'axios';
 import type { Credentials, ExchangeAdapter, NormalizedPosition } from './types.js';
+import { getOkxFundingInterval } from './fundingIntervals.js';
 
 const BASE = 'https://www.okx.com';
 
@@ -50,14 +51,21 @@ export const okxAdapter: ExchangeAdapter = {
   async getPositions(creds) {
     const data = await okxGet('/account/positions', creds, { instType: 'SWAP' });
     const list = data?.data || [];
+    const symbols = Array.from(new Set(list.map((p: any) => toAppSymbol(p.instId)).filter(Boolean))) as string[];
+    const intervalMap: Record<string, number> = {};
+    await Promise.all(symbols.map(async (s: string) => {
+      const h = await getOkxFundingInterval(s);
+      if (h) intervalMap[s] = h;
+    }));
     const positions: NormalizedPosition[] = [];
     for (const p of list) {
       const pos = parseFloat(p.pos);
       if (!pos || pos === 0) continue;
       const mark = parseFloat(p.markPx);
+      const symbol = toAppSymbol(p.instId);
       positions.push({
         exchange: 'okx',
-        symbol: toAppSymbol(p.instId),
+        symbol,
         side: pos > 0 ? 'long' : 'short',
         size: Math.abs(pos),
         notional: parseFloat(p.notionalUsd) || Math.abs(pos) * (isFinite(mark) ? mark : 0),
@@ -65,6 +73,7 @@ export const okxAdapter: ExchangeAdapter = {
         markPrice: isFinite(mark) ? mark : parseFloat(p.avgPx) || 0,
         leverage: parseFloat(p.lever) || 1,
         unrealizedPnl: parseFloat(p.upl) || 0,
+        fundingIntervalHours: intervalMap[symbol],
       });
     }
     return positions;

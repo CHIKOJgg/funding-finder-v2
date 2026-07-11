@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import axios from 'axios';
 import type { Credentials, ExchangeAdapter, NormalizedPosition } from './types.js';
+import { getBinanceFundingIntervals } from './fundingIntervals.js';
 
 const BASE = 'https://fapi.binance.com';
 const RECV_WINDOW = 5000;
@@ -49,6 +50,7 @@ export const binanceAdapter: ExchangeAdapter = {
 
   async getPositions(creds) {
     const data = await signedGet('/fapi/v2/positionRisk', creds);
+    const intervalMap = await getBinanceFundingIntervals();
     const positions: NormalizedPosition[] = [];
     for (const p of data) {
       const amt = parseFloat(p.positionAmt);
@@ -66,6 +68,7 @@ export const binanceAdapter: ExchangeAdapter = {
         markPrice: isFinite(mark) ? mark : entry,
         leverage: parseFloat(p.leverage) || 1,
         unrealizedPnl: parseFloat(p.unrealizedProfit) || 0,
+        fundingIntervalHours: intervalMap[p.symbol],
       });
     }
     return positions;
