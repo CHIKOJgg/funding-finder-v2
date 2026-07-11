@@ -130,7 +130,8 @@ Render — лучший бесплатный вариант. База данны
 
    | Key | Value | Где взять |
    |-----|-------|-----------|
-   | `DATABASE_URL` | `postgresql://postgres:abc123xyz@...` | Из шага 3.2 |
+    | `DATABASE_URL` | `postgresql://postgres:abc123xyz@...` | Из шага 3.2 |
+    | `DIRECT_URL` | прямой (не-pooled) URL БД | Internal Database URL из шага 3.2 (нужен для `migrate deploy`; без него используется `db push`) |
    | `NODE_ENV` | `production` | Фиксированное значение |
    | `PORT` | `3000` | Фиксированное значение |
    | `TELEGRAM_BOT_TOKEN` | `123456:ABC-DEF...` | Из шага 1 |

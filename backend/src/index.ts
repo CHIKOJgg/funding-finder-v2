@@ -316,46 +316,55 @@ app.use(errorHandler);
 
 // Sync database schema at startup.
 // Prefer managed migrations (`migrate deploy`) for reproducibility and safe
-// rollbacks. Fall back to `db push` for databases that were previously
-// schema-synced via push (no migration history) so existing deployments keep
-// working without manual intervention.
+// rollbacks — but that requires a DIRECT (non-pooled) DB connection, since the
+// migration engine can't run over a connection pooler. On platforms like Render
+// the `DATABASE_URL` is pooled, so `migrate deploy` only works when `DIRECT_URL`
+// (the internal direct URL) is configured. When it isn't (or in dev), fall back
+// to `db push`, which works fine over pooled connections for an already-synced
+// database and keeps existing deployments working without manual intervention.
 function syncDatabaseSchema() {
-  try {
-    execSync('npx prisma migrate deploy --skip-generate', {
-      cwd: path.resolve(__dirname, '..'),
-      stdio: 'pipe',
-      timeout: 120000,
-    });
-    logger.info('Database schema migrated (migrate deploy)');
-  } catch (migrateErr) {
-    const migrateStderr = (migrateErr as { stderr?: Buffer }).stderr?.toString() || '';
+  const hasDirectUrl = Boolean(process.env.DIRECT_URL);
 
-    // In production we must NEVER fall back to `db push`: it can silently
-    // diverge from migration history and risk data loss. Fail loudly so the
-    // operator fixes the migrations instead of corrupting the schema.
-    if (config.isProduction) {
-      logger.error(
-        'migrate deploy failed in production — refusing to auto db push:',
-        migrateStderr.slice(0, 200)
-      );
-      process.exit(1);
-    }
-
-    logger.warn('migrate deploy failed, falling back to db push:', migrateStderr.slice(0, 200));
+  if (hasDirectUrl) {
     try {
-      execSync('npx prisma db push --skip-generate', {
+      execSync('npx prisma migrate deploy --skip-generate', {
         cwd: path.resolve(__dirname, '..'),
         stdio: 'pipe',
-        timeout: 30000,
+        timeout: 120000,
       });
-      logger.info('Database schema synced (db push fallback)');
-    } catch (err) {
-      const stderr = (err as { stderr?: Buffer }).stderr?.toString() || '';
-      if (stderr.includes('P3009')) {
-        logger.warn('prisma db push lock timeout — migration likely already in progress');
-      } else {
-        logger.warn('Database schema sync note:', stderr.slice(0, 200));
+      logger.info('Database schema migrated (migrate deploy)');
+      return;
+    } catch (migrateErr) {
+      const migrateStderr = (migrateErr as { stderr?: Buffer }).stderr?.toString() || '';
+      logger.error('migrate deploy failed:', migrateStderr.slice(0, 200));
+      // With a direct URL configured, a migrate failure is a real problem
+      // (drift, failed migration) — fail loudly rather than risk corruption.
+      if (config.isProduction) {
+        process.exit(1);
       }
+    }
+  } else {
+    logger.warn(
+      'DIRECT_URL not set — skipping `migrate deploy` (set DIRECT_URL to a direct DB connection for managed migrations). Falling back to `db push`.'
+    );
+  }
+
+  // Fallback: db push. Safe for keeping an already-synced schema in step and
+  // works over pooled connections. Last resort in production.
+  try {
+    execSync('npx prisma db push --skip-generate', {
+      cwd: path.resolve(__dirname, '..'),
+      stdio: 'pipe',
+      timeout: 30000,
+    });
+    logger.info('Database schema synced (db push fallback)');
+  } catch (err) {
+    const stderr = (err as { stderr?: Buffer }).stderr?.toString() || '';
+    if (stderr.includes('P3009')) {
+      logger.warn('prisma db push lock timeout — migration likely already in progress');
+    } else {
+      logger.error('Database schema sync failed:', stderr.slice(0, 200));
+      process.exit(1);
     }
   }
 }
