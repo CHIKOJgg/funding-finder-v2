@@ -5,6 +5,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider, useToast } from './components/Toast';
 import { Onboarding } from './components/Onboarding';
 import { useTelegram } from './hooks/useTelegram';
+import { useWebSocket } from './hooks/useWebSocket';
 import { apiClient } from './api/client';
 import { getPlanLimits, PlanLimits } from './utils/plans';
 import type { ScanResult, TrialStatus, WatchlistItem } from './types';
@@ -108,7 +109,7 @@ function isColorDark(hex: string): boolean {
  * background instead of restarting.
  */
 function DataProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useTelegram();
+  const { user, initData } = useTelegram();
   const { showToast } = useToast();
 
   // Subscription state
@@ -279,6 +280,21 @@ function DataProvider({ children }: { children: React.ReactNode }) {
     alertsInFlight.current = p;
     return p;
   }, [alertsLoaded]);
+
+  // Realtime "new spread" push: surface fresh arbitrage opportunities as a
+  // toast no matter which tab the user is on, and refresh the arbitrage list
+  // so the opportunity is already there when they open that tab.
+  const handleNewSpread = useCallback((data: any) => {
+    if (!data) return;
+    const diffPct = ((data.difference || 0) * 100).toFixed(2);
+    showToast(
+      `🔥 Новый спред: ${data.pair} — ${data.exchangeA} ↔ ${data.exchangeB} (${diffPct}%/ч)`,
+      'success'
+    );
+    if (user?.id) loadArbitrage(true);
+  }, [showToast, user?.id, loadArbitrage]);
+
+  useWebSocket(initData, { onNewSpread: handleNewSpread });
 
   const contextValue = useMemo<AppContextType>(() => ({
     user,

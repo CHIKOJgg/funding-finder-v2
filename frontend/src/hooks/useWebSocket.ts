@@ -28,6 +28,7 @@ function resolveWsBase(): string {
 export function useWebSocket(initData: string | null, handlers?: {
   onScan?: MessageHandler;
   onAlertTriggered?: MessageHandler;
+  onNewSpread?: MessageHandler;
 }) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -64,6 +65,8 @@ export function useWebSocket(initData: string | null, handlers?: {
           handlersRef.current?.onScan?.(msg.data);
         } else if (msg.type === 'alert_triggered') {
           handlersRef.current?.onAlertTriggered?.(msg.data);
+        } else if (msg.type === 'new_spread') {
+          handlersRef.current?.onNewSpread?.(msg.data);
         }
       } catch {
         // ignore parse errors
