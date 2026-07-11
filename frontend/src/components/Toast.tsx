@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useCallback, useRef, useEffect, Re
 interface Toast {
   id: string;
   message: string;
-  type: 'success' | 'error' | 'info';
+  type: 'success' | 'error' | 'info' | 'spread';
 }
 
 interface ToastContextType {
@@ -32,9 +32,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const showToast = useCallback((message: string, type: Toast['type'] = 'info') => {
     const id = Date.now().toString();
     setToasts((prev) => [...prev, { id, message, type }]);
+    // Important notifications (errors, new spreads) linger a bit longer so
+    // they're actually read; transient success/info toasts disappear quickly.
+    const duration = type === 'spread' || type === 'error' ? 5000 : 3000;
     const timeout = setTimeout(() => {
       removeToast(id);
-    }, 3000);
+    }, duration);
     timeoutsRef.current.set(id, timeout);
   }, [removeToast]);
 
@@ -58,6 +61,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             className={`px-4 py-3 rounded-lg shadow-lg text-white text-sm animate-slide-in ${
               toast.type === 'success' ? 'bg-green-500' :
               toast.type === 'error' ? 'bg-red-500' :
+              toast.type === 'spread' ? 'bg-amber-500' :
               'bg-blue-500'
             }`}
           >

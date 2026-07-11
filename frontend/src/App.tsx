@@ -289,7 +289,7 @@ function DataProvider({ children }: { children: React.ReactNode }) {
     const diffPct = ((data.difference || 0) * 100).toFixed(2);
     showToast(
       `🔥 Новый спред: ${data.pair} — ${data.exchangeA} ↔ ${data.exchangeB} (${diffPct}%/ч)`,
-      'success'
+      'spread'
     );
     if (user?.id) loadArbitrage(true);
   }, [showToast, user?.id, loadArbitrage]);
