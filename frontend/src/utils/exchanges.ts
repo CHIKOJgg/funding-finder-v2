@@ -10,27 +10,37 @@ export const EXCHANGE_LABELS: Record<string, string> = {
   okx: 'OKX',
 };
 
-// Our pairs are normalized to e.g. "BTCUSDT". OKX and Gate use their own
-// instrument naming, so strip the USDT quote and rebuild the symbol.
-function baseOf(pair: string): string {
-  return pair.replace(/USDT$/i, '');
+// Normalize any pair representation a caller might pass — "BTCUSDT",
+// "btc/usdt", "BTC", "BTC_USDT" — into a clean USDT-perp symbol. This is what
+// makes the deep link always point at the coin: a malformed symbol (e.g. with
+// a slash, or missing the USDT quote) makes the exchange autoroute to its
+// homepage instead of opening the trading pair.
+function normalizePerpSymbol(pair: string): string {
+  const cleaned = (pair || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!cleaned) return '';
+  return cleaned.endsWith('USDT') ? cleaned : `${cleaned}USDT`;
 }
 
 export function getExchangeTradeUrl(exchange: string, pair: string): string {
-  const base = baseOf(pair);
+  const symbol = normalizePerpSymbol(pair);
+  const base = symbol.replace(/USDT$/i, '');
+  // When no specific pair is known (e.g. an exchange-level "open" button) we
+  // still land on the exchange's futures section rather than a dead "#" link.
   switch (exchange.toLowerCase()) {
     case 'binance':
-      return `https://www.binance.com/en/futures/${pair}`;
+      return symbol ? `https://www.binance.com/en/futures/${symbol}` : 'https://www.binance.com/en/futures';
     case 'bybit':
-      return `https://www.bybit.com/en/trade/usdt/${pair}`;
+      return symbol ? `https://www.bybit.com/en/trade/usdt/${symbol}` : 'https://www.bybit.com/en/trade/usdt';
     case 'okx':
-      return `https://www.okx.com/trade-futures/${base}-USDT-SWAP`;
+      return symbol ? `https://www.okx.com/trade-futures/${base}-USDT-SWAP` : 'https://www.okx.com/trade-futures';
     case 'gate':
-      return `https://www.gate.io/futures/USDT/${base}_USDT`;
+      return symbol ? `https://www.gate.io/futures/USDT/${base}_USDT` : 'https://www.gate.io/futures/USDT';
     case 'mexc':
-      return `https://futures.mexc.com/exchange/${pair}`;
+      // MEXC requires the underscore form (BTC_USDT); the concatenated form
+      // (BTCUSDT) 404s and the exchange autoredirects to its homepage.
+      return symbol ? `https://futures.mexc.com/exchange/${base}_USDT` : 'https://futures.mexc.com';
     default:
-      return '#';
+      return symbol ? `https://www.binance.com/en/futures/${symbol}` : 'https://www.binance.com/en/futures';
   }
 }
 
