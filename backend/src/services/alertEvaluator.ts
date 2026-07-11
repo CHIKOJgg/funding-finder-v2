@@ -3,6 +3,7 @@ import { runScan } from './scanService.js';
 import { detectArbitrageOpportunities } from './arbitrageService.js';
 import { sendAlertNotification } from './telegramNotify.js';
 import { sendAlertEmail } from './emailNotify.js';
+import { notifyNewSpreads } from './spreadNotifier.js';
 import { wsManager } from './websocket.js';
 import { logger } from '../utils/logger.js';
 
@@ -181,6 +182,13 @@ async function evaluateAllAlerts(): Promise<void> {
   }
 
   logger.info(`Batch updated ${triggeredAlerts.length} triggered alerts, sent ${notifications.length} notifications`);
+
+  // Proactive "new spread" pushes for opted-in users (reuses the same scan).
+  try {
+    await notifyNewSpreads(opportunities);
+  } catch (err) {
+    logger.error({ err }, 'New-spread notification failed');
+  }
 }
 
 function evaluateGeneralAlerts(alerts: any[], allResults: any[], now: Date): TriggeredAlert[] {

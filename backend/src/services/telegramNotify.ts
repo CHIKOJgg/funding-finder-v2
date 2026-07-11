@@ -189,3 +189,52 @@ export async function sendScanCompleteNotification(
     disableNotification: true,
   });
 }
+
+// Proactive push when a fresh arbitrage opportunity (spread) appears.
+export async function sendSpreadNotification(
+  chatId: number,
+  opp: {
+    pair: string;
+    exchangeA: string;
+    exchangeB: string;
+    difference: number; // hourly rate difference (fraction)
+    difference_per_day: number;
+    opportunity: string;
+    profit?: { dailyReturn?: number; annualReturn?: number };
+    risk?: { level?: string };
+  }
+): Promise<boolean> {
+  const diffPct = (opp.difference * 100).toFixed(4);
+  const diffDayPct = (opp.difference_per_day * 100).toFixed(2);
+  const dailyReturn = opp.profit?.dailyReturn !== undefined ? opp.profit.dailyReturn.toFixed(2) : null;
+  const riskLevel = opp.risk?.level || '—';
+
+  const text = [
+    `🔥 <b>Новый спред: ${opp.pair}</b>`,
+    ``,
+    `${opp.exchangeA} ↔ ${opp.exchangeB}`,
+    `Разница ставок: <b>${diffPct}%/ч</b> (${diffDayPct}%/д)`,
+    ``,
+    `📈 ${opp.opportunity}`,
+    dailyReturn !== null ? `📊 Доходность нетто: ~${dailyReturn}%/д` : '',
+    `⚠️ Риск: ${riskLevel}`,
+    ``,
+    `⏰ ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`,
+  ].filter(Boolean).join('\n');
+
+  const replyMarkup = config.ai.appUrl
+    ? {
+        inline_keyboard: [
+          [{ text: '🚀 Открыть в приложении', url: config.ai.appUrl }],
+        ],
+      }
+    : undefined;
+
+  return sendTelegramMessage({
+    chatId,
+    text,
+    parseMode: 'HTML',
+    disableNotification: false,
+    replyMarkup,
+  });
+}

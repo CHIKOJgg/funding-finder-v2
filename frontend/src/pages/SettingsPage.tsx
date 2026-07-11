@@ -8,6 +8,8 @@ interface UserSettings {
   emailAddress: string;
   dailySummary: boolean;
   alertSound: boolean;
+  spreadNotifications: boolean;
+  spreadMinThreshold: number;
   defaultExchanges: string[];
   theme: 'auto' | 'light' | 'dark';
   language: string;
@@ -23,6 +25,8 @@ const DEFAULT_SETTINGS: UserSettings = {
   emailAddress: '',
   dailySummary: true,
   alertSound: true,
+  spreadNotifications: false,
+  spreadMinThreshold: 0.002,
   defaultExchanges: ['gate', 'binance', 'bybit', 'mexc', 'okx'],
   theme: 'auto',
   language: 'ru',
@@ -165,6 +169,34 @@ export function SettingsPage() {
               className="w-5 h-5"
             />
           </label>
+
+          <label className="flex items-center justify-between">
+            <span className="text-sm">🔥 Пуш о новых спредах</span>
+            <input
+              type="checkbox"
+              checked={settings.spreadNotifications}
+              onChange={(e) => setSettings((prev) => ({ ...prev, spreadNotifications: e.target.checked }))}
+              className="w-5 h-5"
+            />
+          </label>
+
+          {settings.spreadNotifications && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="spread-threshold">
+                Мин. разница спреда (%/ч)
+              </label>
+              <input
+                id="spread-threshold"
+                type="number"
+                value={Number((settings.spreadMinThreshold * 100).toFixed(4))}
+                onChange={(e) => setSettings((prev) => ({ ...prev, spreadMinThreshold: (Number(e.target.value) || 0) / 100 }))}
+                step={0.01}
+                min={0}
+                className="input-field"
+              />
+              <p className="text-xs text-gray-500 mt-1">Уведомлять, когда разница ставок между биржами выше этого порога.</p>
+            </div>
+          )}
         </div>
       </div>
 

@@ -53,6 +53,8 @@ model UserSettings {
   emailAddress           String?
   dailySummary           Boolean  @default(true)
   alertSound             Boolean  @default(true)
+  spreadNotifications    Boolean  @default(false)
+  spreadMinThreshold     Float    @default(0.002)
   defaultExchanges       String[] @default(["gate", "binance", "bybit", "mexc", "okx"])
   theme                  String   @default("auto")
   language               String   @default("ru")
