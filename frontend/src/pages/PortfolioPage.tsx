@@ -270,6 +270,40 @@ const LiveTab = memo(function LiveTab({
   setShowKeyForm: (v: boolean) => void;
 }) {
   const { showToast } = useToast();
+  const [updatedAt, setUpdatedAt] = useState<number>(Date.now());
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res: any = await apiClient.exportLivePortfolio();
+      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `live-positions-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast('Не удалось экспортировать', 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // Keep real positions fresh: poll every 30s while the live tab is mounted.
+  useEffect(() => {
+    const id = setInterval(() => {
+      onRefresh();
+      setUpdatedAt(Date.now());
+    }, 30000);
+    return () => clearInterval(id);
+  }, [onRefresh]);
+
+  const refresh = () => {
+    onRefresh();
+    setUpdatedAt(Date.now());
+  };
   const [form, setForm] = useState({ exchange: 'binance', label: '', apiKey: '', secret: '', passphrase: '', permissions: 'read' as 'read' | 'trade' });
   const [saving, setSaving] = useState(false);
 
@@ -357,7 +391,15 @@ const LiveTab = memo(function LiveTab({
       <div className="card mb-4">
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-base font-semibold">Реальные позиции</h2>
-          <button onClick={onRefresh} disabled={loading} className="text-sm" style={{ color: 'var(--brand)' }}>🔄 Обновить</button>
+          <div className="text-right">
+            <div className="text-xs text-muted">
+              {loading ? 'Обновление…' : `Обновлено ${new Date(updatedAt).toLocaleTimeString('ru-RU')}`}
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button onClick={handleExport} disabled={exporting} className="text-sm" style={{ color: 'var(--brand)' }}>⬇ CSV</button>
+              <button onClick={refresh} disabled={loading} className="text-sm" style={{ color: 'var(--brand)' }}>🔄 Обновить</button>
+            </div>
+          </div>
         </div>
 
         {loading ? (

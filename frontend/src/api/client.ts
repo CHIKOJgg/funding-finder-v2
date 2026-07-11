@@ -310,6 +310,11 @@ export const apiClient = {
     return retryRequest(() => api.get('/portfolio/live'));
   },
 
+  async exportLivePortfolio() {
+    const res = await api.get('/portfolio/live/export', { responseType: 'blob' });
+    return res;
+  },
+
   async autoExecuteOrder(data: { exchange: string; symbol: string; side: 'long' | 'short'; notionalUsd: number; confirm: true }) {
     return retryRequest(() => api.post('/portfolio/auto-execute', data));
   },
