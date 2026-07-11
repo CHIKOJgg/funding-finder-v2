@@ -127,11 +127,11 @@ const executeSchema = z.object({
 // POST /api/portfolio/auto-execute — place a market order via the user's
 // trade-permission API key. Gated behind Pro + a 'trade' key + confirm:true.
 router.post('/portfolio/auto-execute', requireSubscription('pro'), validate(executeSchema), async (req: AuthenticatedRequest, res) => {
+  const userId = req.userId;
+  const { exchange, symbol, side, notionalUsd } = req.body;
   try {
-    const userId = req.userId;
     if (!userId) return res.status(401).json({ ok: false, error: 'Authentication required' });
 
-    const { exchange, symbol, side, notionalUsd } = req.body;
     const key = await prisma.apiKey.findFirst({
       where: { userId, exchange, permissions: 'trade' },
     });
@@ -149,10 +149,66 @@ router.post('/portfolio/auto-execute', requireSubscription('pro'), validate(exec
 
     await prisma.apiKey.update({ where: { id: key.id }, data: { lastUsedAt: new Date() } }).catch(() => {});
 
+    // Persist for the in-app order history (audit trail of copy-trades).
+    try {
+      await prisma.executedOrder.create({
+        data: {
+          userId,
+          exchange,
+          symbol,
+          side,
+          notionalUsd,
+          status: 'sent',
+          orderId: order?.orderId?.toString() || order?.id?.toString() || null,
+          raw: JSON.stringify(order ?? null),
+        },
+      });
+    } catch (persistErr) {
+      logger.warn({ err: (persistErr as Error).message }, 'Failed to persist executed order');
+    }
+
     res.json({ ok: true, order });
   } catch (err) {
+    // Record failed attempts too, so the user sees what didn't go through.
+    try {
+      const { exchange, symbol, side, notionalUsd } = req.body;
+      if (userId) {
+        await prisma.executedOrder.create({
+          data: { userId, exchange, symbol, side, notionalUsd, status: 'failed', raw: JSON.stringify({ error: (err as Error).message }) },
+        });
+      }
+    } catch { /* ignore persistence failure */ }
     logger.error({ err: (err as Error).message }, 'Auto-execute failed');
     res.status(502).json({ ok: false, error: (err as Error).message || 'Не удалось исполнить ордер' });
+  }
+});
+
+// GET /api/portfolio/orders — history of auto-executed (copy-trade) orders.
+router.get('/portfolio/orders', requireSubscription('pro'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.userId;
+    if (!userId) return res.status(401).json({ ok: false, error: 'Authentication required' });
+
+    const orders = await prisma.executedOrder.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: {
+        id: true,
+        exchange: true,
+        symbol: true,
+        side: true,
+        notionalUsd: true,
+        status: true,
+        orderId: true,
+        createdAt: true,
+      },
+    });
+
+    res.json({ ok: true, orders });
+  } catch (err) {
+    logger.error({ err: (err as Error).message }, 'Order history failed');
+    res.status(500).json({ ok: false, error: 'Не удалось загрузить историю сделок' });
   }
 });
 

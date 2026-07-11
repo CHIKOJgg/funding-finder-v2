@@ -238,8 +238,12 @@ export function PortfolioPage() {
               notionalUsd: notional,
               confirm: true,
             });
-            if (res?.ok) showToast('Ордер отправлен на биржу', 'success');
-            else showToast(res?.error || 'Не удалось исполнить', 'error');
+            if (res?.ok) {
+              showToast('Ордер отправлен на биржу', 'success');
+              loadLive();
+            } else {
+              showToast(res?.error || 'Не удалось исполнить', 'error');
+            }
             return res;
           }}
         />
@@ -272,6 +276,19 @@ const LiveTab = memo(function LiveTab({
   const { showToast } = useToast();
   const [updatedAt, setUpdatedAt] = useState<number>(Date.now());
   const [exporting, setExporting] = useState(false);
+  const [orders, setOrders] = useState<any[]>([]);
+
+  const loadOrders = useCallback(async () => {
+    try {
+      const res: any = await apiClient.getExecutedOrders();
+      if (res?.ok) setOrders(res.orders || []);
+    } catch { /* ignore */ }
+  }, []);
+
+  // Refresh order history when positions refresh (e.g. after an auto-execute).
+  useEffect(() => {
+    loadOrders();
+  }, [live, loadOrders]);
 
   const handleExport = async () => {
     setExporting(true);
@@ -466,6 +483,27 @@ const LiveTab = memo(function LiveTab({
                 )}
               </div>
             ))}
+          {orders.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold mb-2">История авто-сделок</h3>
+              <div className="space-y-1.5">
+                {orders.map((o: any) => (
+                  <div key={o.id} className="flex justify-between items-center text-sm rounded-lg p-2" style={{ background: 'var(--surface-2)' }}>
+                    <div>
+                      <span className="font-medium">{exchangeLabel(o.exchange)}: {o.symbol}</span>
+                      <span className="text-xs text-muted ml-1">{o.side === 'long' ? 'Long' : 'Short'} · {formatUsd(o.notionalUsd)}$</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted">{new Date(o.createdAt).toLocaleString('ru-RU')}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${o.status === 'sent' || o.status === 'filled' ? 'chip-success' : o.status === 'failed' ? 'chip-danger' : 'chip'}`}>
+                        {o.status === 'sent' || o.status === 'filled' ? '✓ исполнен' : o.status === 'failed' ? '✕ ошибка' : o.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           </>
         )}
       </div>

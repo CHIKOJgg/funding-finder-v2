@@ -36,6 +36,7 @@ model User {
   watchlist       WatchlistItem[]
   positions       PortfolioPosition[]
   apiKeys         ApiKey[]
+  executedOrders  ExecutedOrder[]
 
   @@index([role])
   @@index([subscription])
@@ -273,4 +274,23 @@ model ApiKey {
 
   @@unique([userId, exchange, label])
   @@index([userId])
+}
+
+// History of orders placed via auto-execute (copy-trade) using the user's
+// trade-permission exchange keys. Stored for transparency/audit in the app.
+model ExecutedOrder {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [telegramId], onDelete: Cascade)
+  exchange    String
+  symbol      String
+  side        String   @default("long") // 'long' | 'short'
+  notionalUsd Float
+  status      String   @default("sent") // 'sent' | 'filled' | 'failed'
+  orderId     String?
+  raw         String?  // JSON string of the exchange response
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }

@@ -318,4 +318,8 @@ export const apiClient = {
   async autoExecuteOrder(data: { exchange: string; symbol: string; side: 'long' | 'short'; notionalUsd: number; confirm: true }) {
     return retryRequest(() => api.post('/portfolio/auto-execute', data));
   },
+
+  async getExecutedOrders() {
+    return retryRequest(() => api.get('/portfolio/orders'));
+  },
 };
