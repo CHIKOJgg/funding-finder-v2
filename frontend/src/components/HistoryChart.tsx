@@ -29,6 +29,7 @@ interface HistoryChartProps {
 export function HistoryChart({ exchange, contract, onClose }: HistoryChartProps) {
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [apr, setApr] = useState<{ apr: number; avgRate: number; periodDays: number; dataPoints: number; series: any[] | null } | null>(null);
   const { showToast } = useToast();
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -54,6 +55,19 @@ export function HistoryChart({ exchange, contract, onClose }: HistoryChartProps)
     })();
     return () => { cancelled = true; };
   }, [exchange, contract, showToast]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res: any = await apiClient.getApr(exchange, contract, 30);
+        if (!cancelled && res?.ok) {
+          setApr({ apr: res.apr, avgRate: res.avgRate, periodDays: res.periodDays, dataPoints: res.dataPoints, series: res.series });
+        }
+      } catch { /* non-critical */ }
+    })();
+    return () => { cancelled = true; };
+  }, [exchange, contract]);
 
   const chartData = useMemo(() => ({
     labels: history.map((h) => new Date(h.timestamp).toLocaleString()),
@@ -130,6 +144,16 @@ export function HistoryChart({ exchange, contract, onClose }: HistoryChartProps)
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">Нет данных за период</div>
+          )}
+
+          {apr && (
+            <div className="mt-4 p-3 rounded-xl" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>
+              <div className="text-sm font-medium">Средний APR за {apr.periodDays} дн:</div>
+              <div className="text-2xl font-bold stat">{(apr.apr * 100).toFixed(2)}%</div>
+              <div className="text-xs mt-1">
+                Средняя ставка: {(apr.avgRate * 100).toFixed(6)}%/выплата · точек: {apr.dataPoints}
+              </div>
+            </div>
           )}
 
           <button ref={closeRef} onClick={onClose} className="btn btn-secondary mt-4 w-full">

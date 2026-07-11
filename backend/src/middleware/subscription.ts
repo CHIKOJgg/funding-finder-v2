@@ -13,15 +13,52 @@ const PLAN_HIERARCHY: Record<PlanTier, number> = {
   ultimate: 99, // Admin tier — highest privilege
 };
 
-const PLAN_LIMITS: Record<PlanTier, { maxExchanges: number; aiEnabled: boolean; recommendationsEnabled: boolean }> = {
-  free: { maxExchanges: 1, aiEnabled: false, recommendationsEnabled: false },
-  basic: { maxExchanges: 3, aiEnabled: false, recommendationsEnabled: false },
-  pro: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true },
-  promax: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true },
-  ultimate: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true },
+const PLAN_LIMITS: Record<PlanTier, {
+  maxExchanges: number;
+  aiEnabled: boolean;
+  recommendationsEnabled: boolean;
+  watchlistLimit: number; // -1 = unlimited
+  portfolioEnabled: boolean;
+}> = {
+  free: { maxExchanges: 1, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 3, portfolioEnabled: false },
+  basic: { maxExchanges: 3, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 3, portfolioEnabled: false },
+  pro: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
+  promax: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
+  ultimate: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
 };
 
-function getPlanTier(subscription: string): PlanTier {
+/** Trial duration in days. */
+export const TRIAL_DURATION_DAYS = 3;
+
+/**
+ * If the user is on a trial-derived "pro" plan whose trial window has elapsed,
+ * revert them to the free plan. Returns true when a reset happened.
+ */
+export async function enforceTrialExpiry(userId: string): Promise<boolean> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { telegramId: userId },
+      select: { subscription: true, trialEndsAt: true },
+    });
+    if (
+      user &&
+      user.subscription === 'pro' &&
+      user.trialEndsAt &&
+      user.trialEndsAt.getTime() <= Date.now()
+    ) {
+      await prisma.user.update({
+        where: { telegramId: userId },
+        data: { subscription: 'free', trialEndsAt: null },
+      });
+      return true;
+    }
+  } catch (err) {
+    logger.error({ err }, 'Trial expiry enforcement failed');
+  }
+  return false;
+}
+
+export function getPlanTier(subscription: string): PlanTier {
   if (subscription in PLAN_HIERARCHY) return subscription as PlanTier;
   return 'free';
 }
@@ -66,6 +103,11 @@ export async function getSubscriptionLimits(userId: string) {
   }
   const tier = getPlanTier(user.subscription);
   return { tier, ...PLAN_LIMITS[tier] };
+}
+
+export function getPlanLimitsForTier(tier: string) {
+  const planTier = getPlanTier(tier);
+  return PLAN_LIMITS[planTier];
 }
 
 /* validateExchangeCount is no longer exported — scan route uses getSubscriptionLimits inline */

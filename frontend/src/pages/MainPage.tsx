@@ -7,6 +7,7 @@ import { PaywallFeature } from '../utils/plans';
 import { apiClient } from '../api/client';
 import { formatNumber, getFundingColor } from '../utils/formatters';
 import { HistoryChart } from '../components/HistoryChart';
+import { FundingCalendar } from '../components/FundingCalendar';
 import { ResultSkeleton } from '../components/Skeleton';
 import { ExchangeResult } from '../types';
 
@@ -15,7 +16,8 @@ const EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'] as const;
 type SortKey = 'rate' | 'volume' | 'interval';
 
 export function MainPage() {
-  const { scanResults, scanLoading, scanStatus, runScan, selectedExchanges, setSelectedExchanges, planLimits } = useApp();
+  const { scanResults, scanLoading, scanStatus, runScan, selectedExchanges, setSelectedExchanges, planLimits, watchlist } = useApp();
+  const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
   const { showToast } = useToast();
   const [paywallFeature, setPaywallFeature] = useState<PaywallFeature | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -197,6 +199,8 @@ export function MainPage() {
         {scanStatus}
       </div>
 
+      <FundingCalendar exchanges={selectedExchanges} />
+
       {scanLoading && (
         <div className="card">
           <h2 className="text-lg font-semibold mb-3">Результаты сканирования</h2>
@@ -217,6 +221,14 @@ export function MainPage() {
               className="input-field flex-1 text-sm"
               aria-label="Search results"
             />
+            <button
+              onClick={() => setShowWatchlistOnly((v) => !v)}
+              className={clsx('btn text-sm py-2 w-auto px-3', showWatchlistOnly ? 'btn-primary' : 'btn-secondary')}
+              aria-pressed={showWatchlistOnly}
+              title="Только избранное"
+            >
+              ⭐ {watchlist.length}
+            </button>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortKey)}
@@ -228,6 +240,7 @@ export function MainPage() {
               <option value="interval">По интервалу</option>
             </select>
           </div>
+
 
           {scanResults.metrics?.intervalDistribution && (
             <div className="mb-4 p-3 rounded-xl" style={{ background: 'var(--brand-soft)' }}>
@@ -255,6 +268,7 @@ export function MainPage() {
               onAlert={setAlertModal}
               searchQuery={searchQuery}
               sortBy={sortBy}
+              showWatchlistOnly={showWatchlistOnly}
             />
           )}
 
@@ -268,6 +282,7 @@ export function MainPage() {
               onAlert={setAlertModal}
               searchQuery={searchQuery}
               sortBy={sortBy}
+              showWatchlistOnly={showWatchlistOnly}
             />
           )}
 
@@ -281,6 +296,7 @@ export function MainPage() {
               onAlert={setAlertModal}
               searchQuery={searchQuery}
               sortBy={sortBy}
+              showWatchlistOnly={showWatchlistOnly}
             />
           )}
 
@@ -413,6 +429,7 @@ const ResultSection = memo(function ResultSection({
   onAlert,
   searchQuery,
   sortBy,
+  showWatchlistOnly,
 }: {
   title: string;
   count: number;
@@ -422,8 +439,11 @@ const ResultSection = memo(function ResultSection({
   onAlert: (data: { exchange: string; contract: string }) => void;
   searchQuery: string;
   sortBy: SortKey;
+  showWatchlistOnly: boolean;
 }) {
+  const { isWatchlisted } = useApp();
   const filtered = items.filter((item) => {
+    if (showWatchlistOnly && !isWatchlisted(item.exchange, item.contract)) return false;
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return item.exchange.toLowerCase().includes(q) || item.contract.toLowerCase().includes(q);
@@ -467,6 +487,8 @@ const ResultItem = memo(function ResultItem({
   onHistory: (data: { exchange: string; contract: string }) => void;
   onAlert: (data: { exchange: string; contract: string }) => void;
 }) {
+  const { isWatchlisted, toggleWatchlist } = useApp();
+  const starred = isWatchlisted(item.exchange, item.contract);
   return (
     <div className="border-b border-gray-100 pb-2">
       <div className="flex justify-between items-start">
@@ -493,6 +515,14 @@ const ResultItem = memo(function ResultItem({
             ≈ {(item.annualized_rate * 100)?.toFixed(2)}%/год
           </div>
           <div className="flex gap-2 justify-end mt-1">
+            <button
+              onClick={() => toggleWatchlist(item.exchange, item.contract)}
+              className={clsx('text-xs hover:underline', starred ? 'text-yellow-500' : 'text-gray-400')}
+              aria-label={`${starred ? 'Remove from' : 'Add to'} watchlist ${item.exchange} ${item.contract}`}
+              aria-pressed={starred}
+            >
+              {starred ? '⭐' : '☆'}
+            </button>
             <button
               onClick={() => onAlert({ exchange: item.exchange, contract: item.contract })}
               className="text-xs text-orange-500 hover:underline"

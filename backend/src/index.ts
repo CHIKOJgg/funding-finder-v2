@@ -16,6 +16,7 @@ import { validateTelegramInitData, validateExchangeList, AuthenticatedRequest } 
 import { startAlertEvaluator, stopAlertEvaluator } from './services/alertEvaluator.js';
 import { startDailySummary, stopDailySummary } from './services/dailySummary.js';
 import { startDataArchival, stopDataArchival } from './services/dataArchival.js';
+import { startFundingWarmup, stopFundingWarmup } from './services/fundingWarmup.js';
 import { wsManager } from './services/websocket.js';
 import { cache, circuitBreaker } from './utils/exchangeClient.js';
 import { setupSwagger } from './utils/swagger.js';
@@ -36,6 +37,10 @@ import profileRoutes from './routes/profile.js';
 import exportRoutes from './routes/export.js';
 import settingsRoutes from './routes/settings.js';
 import analyticsRoutes from './routes/analytics.js';
+import trialRoutes from './routes/trial.js';
+import fundingRoutes from './routes/funding.js';
+import watchlistRoutes from './routes/watchlist.js';
+import portfolioRoutes from './routes/portfolio.js';
 import webhookRoutes from './routes/webhook.js';
 import adminRoutes from './routes/admin.js';
 
@@ -250,6 +255,12 @@ app.use('/api', authLimiter, validateTelegramInitData, profileRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, exportRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, settingsRoutes);
 
+// Trial + funding calendar + watchlist + portfolio (auth required)
+app.use('/api', authLimiter, validateTelegramInitData, trialRoutes);
+app.use('/api', authLimiter, validateTelegramInitData, fundingRoutes);
+app.use('/api', authLimiter, validateTelegramInitData, watchlistRoutes);
+app.use('/api', authLimiter, validateTelegramInitData, portfolioRoutes);
+
 // Serve frontend in production only if a built frontend exists.
 // On Render the frontend is deployed as a separate Static Site, so the
 // API service runs without a local frontend/dist — in that case we expose
@@ -309,6 +320,7 @@ async function start() {
       startAlertEvaluator();
       startDailySummary();
       startDataArchival();
+      startFundingWarmup();
     });
   } catch (err) {
     logger.error('Failed to start server:', err);
@@ -322,6 +334,7 @@ const gracefulShutdown = async (signal: string) => {
   stopAlertEvaluator();
   stopDailySummary();
   stopDataArchival();
+  stopFundingWarmup();
   wsManager.close();
   await shutdownJobQueues();
   await disconnectDatabase();

@@ -23,6 +23,8 @@ router.get('/profile', async (req: AuthenticatedRequest, res) => {
       balance: user.balance,
       referralCode: user.referralCode,
       trialScans: user.trialScans,
+      trialUsed: user.trialUsed,
+      trialEndsAt: user.trialEndsAt,
     });
   } catch (err) {
     logger.error({ err }, 'Profile fetch error');

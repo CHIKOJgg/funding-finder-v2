@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
+import { TrialCTA } from '../components/TrialCTA';
 import { apiClient } from '../api/client';
 
 export function ProfilePage() {
@@ -146,6 +147,12 @@ export function ProfilePage() {
             <div className="text-lg font-bold stat">{referralStats.referrals}</div>
           </div>
         </div>
+      </div>
+
+      <div className="card">
+        <h2 className="text-base font-semibold mb-1">🎁 Пробный Pro</h2>
+        <p className="text-sm text-muted mb-3">Попробуйте все фичи Pro бесплатно — без привязки карты.</p>
+        <TrialCTA />
       </div>
 
       <div className="card">

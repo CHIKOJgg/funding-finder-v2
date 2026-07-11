@@ -7,7 +7,7 @@ import { Onboarding } from './components/Onboarding';
 import { useTelegram } from './hooks/useTelegram';
 import { apiClient } from './api/client';
 import { getPlanLimits, PlanLimits } from './utils/plans';
-import type { ScanResult } from './types';
+import type { ScanResult, TrialStatus, WatchlistItem } from './types';
 
 const MainPage = React.lazy(() => import('./pages/MainPage').then(m => ({ default: m.MainPage })));
 const ArbitragePage = React.lazy(() => import('./pages/ArbitragePage').then(m => ({ default: m.ArbitragePage })));
@@ -16,6 +16,7 @@ const TermsPage = React.lazy(() => import('./pages/TermsPage').then(m => ({ defa
 const PrivacyPage = React.lazy(() => import('./pages/PrivacyPage').then(m => ({ default: m.PrivacyPage })));
 const AdminPage = React.lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const PortfolioPage = React.lazy(() => import('./pages/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
 
 interface AppContextType {
   user: { id: string; firstName?: string; username?: string; subscription?: string } | null;
@@ -33,6 +34,17 @@ interface AppContextType {
 
   selectedExchanges: string[];
   setSelectedExchanges: React.Dispatch<React.SetStateAction<string[]>>;
+
+  // ---- Trial ----
+  trialStatus: TrialStatus | null;
+  refreshTrial: () => Promise<void>;
+  activateTrial: () => Promise<void>;
+
+  // ---- Watchlist ----
+  watchlist: WatchlistItem[];
+  isWatchlisted: (exchange: string, pair: string) => boolean;
+  toggleWatchlist: (exchange: string, pair: string) => Promise<void>;
+  refreshWatchlist: () => Promise<void>;
 
   // ---- Arbitrage ----
   arbOpportunities: any[];
@@ -62,6 +74,13 @@ export const AppContext = createContext<AppContextType>({
   arbLoaded: false,
   loadArbitrage: async () => {},
   loadAlerts: async () => {},
+  trialStatus: null,
+  refreshTrial: async () => {},
+  activateTrial: async () => {},
+  watchlist: [],
+  isWatchlisted: () => false,
+  toggleWatchlist: async () => {},
+  refreshWatchlist: async () => {},
 });
 
 export function useApp() {
@@ -115,6 +134,70 @@ function DataProvider({ children }: { children: React.ReactNode }) {
   const [selectedExchanges, setSelectedExchanges] = useState<string[]>([
     'gate', 'binance', 'bybit', 'mexc', 'okx'
   ]);
+
+  // Trial state
+  const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
+
+  const refreshTrial = useCallback(async () => {
+    try {
+      const res: any = await apiClient.getTrialStatus();
+      if (res?.ok) setTrialStatus(res as TrialStatus);
+    } catch { /* ignore — trial status is non-critical */ }
+  }, []);
+
+  const activateTrial = useCallback(async () => {
+    try {
+      const res: any = await apiClient.activateTrial();
+      if (res?.ok) {
+        setTrialStatus({ active: true, used: true, endsAt: res.endsAt, daysLeft: res.daysLeft, hoursLeft: res.hoursLeft });
+        setSubscription('pro');
+      } else if (res?.error) {
+        showToast(res.error, 'error');
+      }
+    } catch (error) {
+      showToast('Ошибка сети: ' + (error as Error).message, 'error');
+    }
+  }, [showToast]);
+
+  // Watchlist state
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+
+  const refreshWatchlist = useCallback(async () => {
+    try {
+      const res: any = await apiClient.getWatchlist();
+      if (res?.ok) setWatchlist(res.items || []);
+    } catch { /* ignore */ }
+  }, []);
+
+  const isWatchlisted = useCallback((exchange: string, pair: string) => {
+    return watchlist.some((w) => w.exchange === exchange && w.pair === pair);
+  }, [watchlist]);
+
+  const toggleWatchlist = useCallback(async (exchange: string, pair: string) => {
+    const exists = watchlist.some((w) => w.exchange === exchange && w.pair === pair);
+    try {
+      if (exists) {
+        await apiClient.removeWatchlist(exchange, pair);
+        setWatchlist((prev) => prev.filter((w) => !(w.exchange === exchange && w.pair === pair)));
+      } else {
+        const res: any = await apiClient.addWatchlist(exchange, pair);
+        if (res?.ok) {
+          setWatchlist((prev) => [...prev, res.item]);
+        } else if (res?.error) {
+          showToast(res.error, 'error');
+        }
+      }
+    } catch (error) {
+      showToast('Ошибка сети: ' + (error as Error).message, 'error');
+    }
+  }, [watchlist, showToast]);
+
+  // Load trial + watchlist once the user is known
+  useEffect(() => {
+    if (!user?.id) return;
+    refreshTrial();
+    refreshWatchlist();
+  }, [user?.id, refreshTrial, refreshWatchlist]);
 
   // Arbitrage state
   const [arbOpportunities, setArbOpportunities] = useState<any[]>([]);
@@ -215,10 +298,18 @@ function DataProvider({ children }: { children: React.ReactNode }) {
     arbLoaded,
     loadArbitrage,
     loadAlerts,
+    trialStatus,
+    refreshTrial,
+    activateTrial,
+    watchlist,
+    isWatchlisted,
+    toggleWatchlist,
+    refreshWatchlist,
   }), [
     user, subscription, planLimits, scanResults, scanLoading, scanStatus, runScan,
     selectedExchanges, arbOpportunities, arbAlerts, arbLoading, arbLoaded,
-    loadArbitrage, loadAlerts,
+    loadArbitrage, loadAlerts, trialStatus, refreshTrial, activateTrial,
+    watchlist, isWatchlisted, toggleWatchlist, refreshWatchlist,
   ]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
@@ -302,6 +393,7 @@ export default function App() {
                   <Route path="/privacy" element={<ErrorBoundary><PrivacyPage /></ErrorBoundary>} />
                   <Route path="/admin" element={<ErrorBoundary><AdminPage /></ErrorBoundary>} />
                   <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
+                  <Route path="/portfolio" element={<ErrorBoundary><PortfolioPage /></ErrorBoundary>} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>

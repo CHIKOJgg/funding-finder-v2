@@ -245,4 +245,51 @@ export const apiClient = {
   async delete<T = any>(url: string) {
     return api.delete(url) as Promise<T>;
   },
+
+  // ---- Trial ----
+  async activateTrial() {
+    return retryRequest(() => api.post('/trial/activate'));
+  },
+
+  async getTrialStatus() {
+    return retryRequest(() => api.get('/trial/status'));
+  },
+
+  // ---- Funding calendar ----
+  async getFundingSchedule(exchanges?: string[], limit = 12) {
+    const params: any = { limit };
+    if (exchanges && exchanges.length) params.exchanges = exchanges.join(',');
+    return retryRequest(() => api.get('/funding/schedule', { params }));
+  },
+
+  // ---- APR analytics ----
+  async getApr(exchange: string, contract: string, days = 30) {
+    return retryRequest(() => api.get('/analytics/apr', { params: { exchange, contract, days } }));
+  },
+
+  // ---- Watchlist ----
+  async getWatchlist() {
+    return retryRequest(() => api.get('/watchlist'));
+  },
+
+  async addWatchlist(exchange: string, pair: string) {
+    return retryRequest(() => api.post('/watchlist', { exchange, pair }));
+  },
+
+  async removeWatchlist(exchange: string, pair: string) {
+    return api.delete('/watchlist', { data: { exchange, pair } });
+  },
+
+  // ---- Portfolio (Pro) ----
+  async getPortfolio() {
+    return retryRequest(() => api.get('/portfolio'));
+  },
+
+  async addPortfolio(data: { exchange: string; pair: string; side: 'long' | 'short'; sizeUsd: number; leverage?: number }) {
+    return retryRequest(() => api.post('/portfolio', data));
+  },
+
+  async removePortfolio(id: string) {
+    return api.delete('/portfolio', { data: { id } });
+  },
 };

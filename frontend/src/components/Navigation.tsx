@@ -5,6 +5,7 @@ import { clsx } from 'clsx';
 const tabs = [
   { path: '/', label: 'Главная', icon: '📊', ariaLabel: 'Main page - scan funding rates' },
   { path: '/arbitrage', label: 'Арбитраж', icon: '🔄', ariaLabel: 'Arbitrage opportunities' },
+  { path: '/portfolio', label: 'Портфель', icon: '💼', ariaLabel: 'Portfolio simulator (Pro)' },
   { path: '/profile', label: 'Профиль', icon: '👤', ariaLabel: 'User profile and subscriptions' },
 ];
 

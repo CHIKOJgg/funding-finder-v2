@@ -18,6 +18,7 @@ const VALID_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'];
 async function trackActivity(userId: string): Promise<void> {
   try {
     const { prisma } = await import('../services/prisma.js');
+    const { enforceTrialExpiry } = await import('./subscription.js');
     const tgId = userId.replace('tg_', '');
     const isAdmin = config.admin.telegramIds.includes(tgId);
     await prisma.user.upsert({
@@ -25,6 +26,8 @@ async function trackActivity(userId: string): Promise<void> {
       create: { telegramId: userId, lastActive: new Date(), role: isAdmin ? 'admin' : 'user' },
       update: { lastActive: new Date(), role: isAdmin ? 'admin' : undefined },
     });
+    // Revert trial-derived Pro once the window has elapsed.
+    await enforceTrialExpiry(userId);
   } catch (err) {
     logger.debug({ err: (err as Error).message }, 'Failed to track user activity');
   }

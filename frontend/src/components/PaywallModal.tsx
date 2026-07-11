@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { PaywallFeature } from '../utils/plans';
+import { TrialCTA } from './TrialCTA';
 
 const FEATURE_INFO: Record<PaywallFeature, {
   icon: string;
@@ -23,6 +24,18 @@ const FEATURE_INFO: Record<PaywallFeature, {
     icon: '🤖',
     title: 'Рекомендации',
     desc: 'Персональные рекомендации по вашему капиталу доступны на тарифе Pro. Точный расчёт позиций под ваш бюджет.',
+    plan: 'Pro',
+  },
+  portfolio: {
+    icon: '💼',
+    title: 'Симулятор портфеля',
+    desc: 'Симулятор дохода от фандинга (Paper PnL) с расчётом годовой доходности доступен на тарифе Pro. Оценивайте позиции без риска.',
+    plan: 'Pro',
+  },
+  watchlist: {
+    icon: '⭐',
+    title: 'Безлимитное избранное',
+    desc: 'На бесплатном тарифе можно сохранить до 3 пар. Подключите Pro, чтобы добавлять в избранное любое число пар.',
     plan: 'Pro',
   },
 };
@@ -75,6 +88,11 @@ export function PaywallModal({
         <button onClick={onClose} className="btn btn-secondary">
           Не сейчас
         </button>
+        {feature === 'portfolio' || feature === 'watchlist' ? (
+          <div className="mt-3">
+            <TrialCTA compact />
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ model User {
   role           String   @default("user")
   subscription   String   @default("free")
   trialUsed      Boolean  @default(false)
+  trialEndsAt    DateTime?
   trialScans     Int      @default(1)
   referralCode   String   @unique @default(cuid())
   referredBy     String?
@@ -32,6 +33,8 @@ model User {
   generalAlerts   GeneralAlert[]
   arbitrageAlerts ArbitrageAlert[]
   settings        UserSettings?
+  watchlist       WatchlistItem[]
+  positions       PortfolioPosition[]
 
   @@index([role])
   @@index([subscription])
@@ -221,4 +224,33 @@ model ContractMetadata {
 
   @@index([exchange])
   @@index([baseCurrency])
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [telegramId], onDelete: Cascade)
+  exchange  String
+  pair      String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, exchange, pair])
+  @@index([userId])
+  @@index([exchange, pair])
+}
+
+model PortfolioPosition {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [telegramId], onDelete: Cascade)
+  exchange  String
+  pair      String
+  side      String    @default("long") // 'long' | 'short'
+  sizeUsd   Float
+  leverage  Float     @default(1)
+  openedAt  DateTime  @default(now())
+  closedAt  DateTime?
+
+  @@index([userId])
+  @@index([exchange, pair])
 }

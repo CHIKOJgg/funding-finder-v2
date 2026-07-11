@@ -168,3 +168,60 @@ export interface Withdrawal {
 }
 
 export type PlanId = 'basic' | 'pro' | 'promax';
+
+export interface TrialStatus {
+  active: boolean;
+  used: boolean;
+  endsAt: string | null;
+  daysLeft: number;
+  hoursLeft: number;
+}
+
+export interface WatchlistItem {
+  id: string;
+  userId: string;
+  exchange: string;
+  pair: string;
+  createdAt: string;
+}
+
+export interface PortfolioPosition {
+  id: string;
+  userId: string;
+  exchange: string;
+  pair: string;
+  side: 'long' | 'short';
+  sizeUsd: number;
+  leverage: number;
+  openedAt: string;
+  closedAt: string | null;
+  ratePerHour?: number;
+  pnl?: {
+    hoursHeld: number;
+    fundingIncome: number;
+    annualizedPct: number;
+    projectedYearly: number;
+  };
+}
+
+export interface FundingEvent {
+  exchange: string;
+  pair: string;
+  ratePerHour: number;
+  ratePerDay: number;
+  annualized: number;
+  nextApply: number;
+  secondsUntil: number;
+}
+
+export interface AprResult {
+  exchange: string;
+  contract: string;
+  periodDays: number;
+  avgRate: number;
+  apr: number;
+  intervalHours: number;
+  settlementsPerYear: number;
+  dataPoints: number;
+  series: { timestamp: string; funding: number }[] | null;
+}
