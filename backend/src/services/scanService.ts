@@ -3,6 +3,25 @@ import { scanExchanges } from '../exchanges/index.js';
 import { prisma } from './prisma.js';
 import { logger } from '../utils/logger.js';
 import { normalizeFundingRate, getYieldCategory, detectFundingInterval } from '../utils/helpers.js';
+import { cache } from '../utils/exchangeClient.js';
+
+// How long a cached scan result is served before it is considered expired and
+// a fresh scan is required (NOT for SWR — background refresh happens sooner).
+const SCAN_CACHE_TTL_MS = 5 * 60 * 1000;
+
+export function scanCacheKey(exchanges: string[]): string {
+  return `scan:${[...exchanges].sort().join(',')}`;
+}
+
+/**
+ * Return a previously computed scan result if it is still fresh.
+ * SWR (stale-while-revalidate) is implemented by callers using `ageMs`.
+ */
+export function getCachedScan(exchanges: string[]): { result: ScanResult; ts: number; ageMs: number } | null {
+  const entry = cache.get<{ result: ScanResult; ts: number }>(scanCacheKey(exchanges));
+  if (!entry) return null;
+  return { result: entry.result, ts: entry.ts, ageMs: Date.now() - entry.ts };
+}
 
 async function saveToHistory(result: ScanResult): Promise<void> {
   try {
@@ -219,5 +238,11 @@ function normalizeExchangeResults(results: ExchangeResult[]): ExchangeResult[] {
 export async function runScan(exchanges: string[]): Promise<ScanResult> {
   const all = await scanExchanges(exchanges);
   const normalized = normalizeExchangeResults(all);
-  return processScanResults(normalized);
+  const result = processScanResults(normalized);
+
+  // Cache the result so subsequent scans (and the calendar) return instantly
+  // via stale-while-revalidate. The background warm-up keeps this fresh.
+  cache.set(scanCacheKey(exchanges), { result, ts: Date.now() }, SCAN_CACHE_TTL_MS);
+
+  return result;
 }

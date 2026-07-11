@@ -30,9 +30,9 @@ export async function scanOKX(): Promise<ExchangeResult[]> {
 
     logger.info(`OKX: Found ${instruments.length} SWAP instruments`);
 
-    const usdtInstruments = instruments.filter(
-      (i: any) => i.instId && i.instId.includes('-USDT-') && i.state === 'live'
-    );
+    const usdtInstruments = instruments
+      .filter((i: any) => i.instId && i.instId.includes('-USDT-') && i.state === 'live')
+      .slice(0, 200);
     logger.info(`OKX: Processing ${usdtInstruments.length} USDT instruments`);
 
     // Use cached tickers

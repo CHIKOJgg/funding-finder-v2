@@ -6,7 +6,7 @@ import { TrialCTA } from '../components/TrialCTA';
 import { apiClient } from '../api/client';
 
 export function ProfilePage() {
-  const { user } = useApp();
+  const { user, subscription: ctxSubscription } = useApp();
   const { showToast } = useToast();
   const [referralLink, setReferralLink] = useState('');
   const [referralStats, setReferralStats] = useState({ referrals: 0, bonusScans: 0 });
@@ -22,7 +22,7 @@ export function ProfilePage() {
     if (user?.id) {
       loadUserData();
     }
-  }, [user?.id]);
+  }, [user?.id, ctxSubscription]);
 
   // Scroll to the subscription section when arriving from a paywall link
   useEffect(() => {

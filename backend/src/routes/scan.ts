@@ -3,11 +3,14 @@ import { z } from 'zod';
 import { validate } from '../middleware/validation.js';
 import { validateExchangeList } from '../middleware/auth.js';
 import { requireSubscription, getSubscriptionLimits } from '../middleware/subscription.js';
-import { runScan } from '../services/scanService.js';
+import { runScan, getCachedScan } from '../services/scanService.js';
 import { wsManager } from '../services/websocket.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
+
+// Serve a cached scan instantly (stale-while-revalidate) if one exists.
+const SCAN_STALE_MS = 60_000;
 
 const VALID_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'];
 
@@ -30,7 +33,17 @@ router.post('/scan', requireSubscription('free'), validate(scanSchema), validate
         });
       }
     }
-    const result = await runScan(exchanges);
+    // Stale-while-revalidate: return a cached scan immediately, refresh in background.
+    const cached = getCachedScan(exchanges);
+    let result;
+    if (cached) {
+      result = cached.result;
+      if (cached.ageMs > SCAN_STALE_MS) {
+        runScan(exchanges).catch((err) => logger.warn({ err: (err as Error).message }, 'Background scan refresh failed'));
+      }
+    } else {
+      result = await runScan(exchanges);
+    }
 
     // Broadcast scan results to WebSocket subscribers
     wsManager.broadcast('scan', {
@@ -46,7 +59,7 @@ router.post('/scan', requireSubscription('free'), validate(scanSchema), validate
       })),
     });
 
-    res.json({ ok: true, result });
+    res.json({ ok: true, result, cached: Boolean(cached) });
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error, exchanges: req.body.exchanges }, 'Scan endpoint error');

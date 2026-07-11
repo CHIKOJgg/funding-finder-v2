@@ -32,9 +32,14 @@ export async function scanGate(): Promise<ExchangeResult[]> {
       .filter((t: any) => t && t.contract)
       .sort((a: any, b: any) => Number(b.volume_24h_settle) - Number(a.volume_24h_settle));
 
-    logger.info(`Gate: Processing ${candidates.length} contracts`);
+    // Only the most liquid contracts matter for funding arbitrage; scanning
+    // hundreds of illiquid pairs just adds latency. Cap to the top by volume.
+    const CANDIDATE_CAP = 250;
+    const capped = candidates.slice(0, CANDIDATE_CAP);
 
-    const results = await mapWithConcurrency(candidates, { concurrency: CONCURRENCY }, async (t: any) => {
+    logger.info(`Gate: Processing ${capped.length} of ${candidates.length} contracts`);
+
+    const results = await mapWithConcurrency(capped, { concurrency: CONCURRENCY }, async (t: any) => {
       const contract = t.contract;
 
       try {

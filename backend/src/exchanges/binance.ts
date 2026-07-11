@@ -19,6 +19,23 @@ async function fetchPremiumIndex(client: ReturnType<typeof getOrCreateClient>, s
   return res.data || null;
 }
 
+// Fetch premium index for ALL symbols in a single request (vs N per-symbol
+// calls). Returns a Map keyed by symbol with { rate, nextApply }.
+async function fetchAllPremiumIndices(client: ReturnType<typeof getOrCreateClient>): Promise<Map<string, { rate: number; nextApply: number }>> {
+  const res = await retry(() =>
+    client.get('/fapi/v1/premiumIndex', { timeout: 20000 })
+  );
+  const arr = res.data || [];
+  const map = new Map<string, { rate: number; nextApply: number }>();
+  for (const p of arr) {
+    map.set(p.symbol, {
+      rate: parseFloat(p.lastFundingRate) || 0,
+      nextApply: Number(p.nextFundingTime) || 0,
+    });
+  }
+  return map;
+}
+
 async function fetchFundingHistory(client: ReturnType<typeof getOrCreateClient>, symbol: string, limit: number = 5) {
   const res = await retry(() =>
     client.get('/fapi/v1/fundingRate', {
@@ -54,9 +71,10 @@ export async function scanBinance(): Promise<ExchangeResult[]> {
 
     logger.info(`Binance: Found ${tickersAll.length} tickers total`);
 
-    const usdtTickers = tickersAll.filter(
-      (t: any) => t && t.symbol && (t.symbol.endsWith('USDT') || t.symbol.endsWith('BUSD'))
-    );
+    const usdtTickers = tickersAll
+      .filter((t: any) => t && t.symbol && (t.symbol.endsWith('USDT') || t.symbol.endsWith('BUSD')))
+      .sort((a: any, b: any) => Number(b.quoteVolume || 0) - Number(a.quoteVolume || 0))
+      .slice(0, 200);
     logger.info(`Binance: Processing ${usdtTickers.length} USDT/BUSD pairs`);
 
     // Fetch exchange info once for metadata
@@ -69,6 +87,16 @@ export async function scanBinance(): Promise<ExchangeResult[]> {
       logger.debug(`Binance: Failed to fetch exchange info: ${(err as Error).message}`);
     }
 
+    // Fetch ALL premium indices in a single request, then use a local map.
+    let premiumMap: Map<string, { rate: number; nextApply: number }> | null = null;
+    try {
+      premiumMap = await cachedRequest('binance:premiumIndex:all', async () => {
+        return fetchAllPremiumIndices(client);
+      }, 60_000);
+    } catch (err) {
+      logger.debug(`Binance: Failed to fetch all premium indices: ${(err as Error).message}`);
+    }
+
     const processed = await mapWithConcurrency(usdtTickers, { concurrency: CONCURRENCY }, async (t: any) => {
       try {
         const symbol = t.symbol;
@@ -78,15 +106,13 @@ export async function scanBinance(): Promise<ExchangeResult[]> {
         let currentFunding = 0;
         let funding_next_apply = 0;
 
-        // Try premiumIndex first (faster)
-        try {
-          const prem = await fetchPremiumIndex(client, symbol);
-          if (prem && prem.lastFundingRate !== undefined && prem.lastFundingRate !== null) {
-            currentFunding = parseFloat(prem.lastFundingRate) || 0;
-            funding_next_apply = Number(prem.nextFundingTime) || 0;
-          }
-        } catch (err) {
-          // Fallback to funding history
+        // Prefer the batch-fetched premium index (no per-symbol HTTP call).
+        const prem = premiumMap?.get(symbol);
+        if (prem && isFinite(prem.rate)) {
+          currentFunding = prem.rate;
+          funding_next_apply = prem.nextApply;
+        } else {
+          // Fallback to funding history (one-off)
           try {
             const histRaw = await fetchFundingHistory(client, symbol, 5);
             if (Array.isArray(histRaw) && histRaw.length) {

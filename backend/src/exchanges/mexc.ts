@@ -26,13 +26,15 @@ export async function scanMEXC(): Promise<ExchangeResult[]> {
 
     logger.info(`MEXC: Found ${contracts.length} total contracts`);
 
-    const usdtContracts = contracts.filter(
-      (c: any) =>
-        c.symbol &&
-        c.symbol.includes('USDT') &&
-        !c.symbol.includes('1_USDT') &&
-        !c.symbol.includes('1000')
-    );
+    const usdtContracts = contracts
+      .filter(
+        (c: any) =>
+          c.symbol &&
+          c.symbol.includes('USDT') &&
+          !c.symbol.includes('1_USDT') &&
+          !c.symbol.includes('1000')
+      )
+      .slice(0, 200);
 
     logger.info(`MEXC: Processing ${usdtContracts.length} USDT contracts`);
 

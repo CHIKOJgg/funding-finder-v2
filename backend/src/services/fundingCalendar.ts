@@ -1,10 +1,8 @@
-import { cache } from '../utils/exchangeClient.js';
-import { runScan } from './scanService.js';
+import { runScan, getCachedScan } from './scanService.js';
 import { ScanResult, ExchangeResult } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 
 const VALID_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'];
-const CALENDAR_TTL_MS = 5 * 60 * 1000;
 
 export interface FundingEvent {
   exchange: string;
@@ -37,27 +35,26 @@ function extractEvents(result: ScanResult, limit: number): FundingEvent[] {
 
 /**
  * Build the upcoming funding-payout calendar for the requested exchanges.
- * Results are cached for 5 minutes to avoid re-running expensive scans.
+ * Reuses the shared scan cache (populated by runScan / the background warm-up),
+ * so it returns instantly when data is fresh. On a cache miss it triggers a
+ * background refresh and returns empty immediately instead of blocking.
  */
 export async function getFundingCalendar(
   exchanges: string[],
   limit = 12
 ): Promise<{ events: FundingEvent[]; scanned: number; stale: boolean }> {
   const clean = exchanges.filter((e) => VALID_EXCHANGES.includes(e)).slice(0, 5);
-  const key = `calendar:${clean.join(',')}`;
+  const target = clean.length ? clean : ['gate'];
 
-  let result = cache.get<ScanResult>(key);
-  let stale = false;
-  if (!result) {
-    try {
-      result = await runScan(clean.length ? clean : ['gate']);
-    } catch (err) {
-      logger.warn({ err: (err as Error).message }, 'Funding calendar scan failed');
-      return { events: [], scanned: 0, stale: true };
-    }
-    cache.set(key, result, CALENDAR_TTL_MS);
-    stale = true;
+  const cached = getCachedScan(target);
+  if (!cached) {
+    // Non-blocking: refresh in the background, return empty now. The client
+    // polls periodically and will pick up data once the warm-up populates it.
+    runScan(target).catch((err) =>
+      logger.warn({ err: (err as Error).message }, 'Funding calendar background scan failed')
+    );
+    return { events: [], scanned: 0, stale: true };
   }
 
-  return { events: extractEvents(result, limit), scanned: result.scanned, stale };
+  return { events: extractEvents(cached.result, limit), scanned: cached.result.scanned, stale: false };
 }
