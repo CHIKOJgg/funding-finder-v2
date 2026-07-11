@@ -12,6 +12,7 @@ import { FundingCalendar } from '../components/FundingCalendar';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { QuickStart } from '../components/QuickStart';
 import { PairMatrix } from '../components/PairMatrix';
+import { RiskProfileModal } from '../components/RiskProfileModal';
 import { ResultSkeleton } from '../components/Skeleton';
 import { ExchangeResult } from '../types';
 
@@ -33,6 +34,7 @@ export function MainPage() {
   const [historyModal, setHistoryModal] = useState<{ exchange: string; contract: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMatrix, setShowMatrix] = useState(false);
+  const [showRisk, setShowRisk] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>('rate');
   const [alertModal, setAlertModal] = useState<{ exchange: string; contract: string } | null>(null);
   const [alertCondition, setAlertCondition] = useState<'above' | 'below'>('above');
@@ -369,6 +371,12 @@ export function MainPage() {
               🤖 Рекомендации {!planLimits.recommendationsEnabled && <span className="ml-1" aria-hidden="true">🔒</span>}
             </button>
           </div>
+          <button
+            onClick={() => setShowRisk(true)}
+            className="btn btn-secondary text-sm py-2 w-full mt-2"
+          >
+            🎯 Риск-профиль (собрать корзину позиций)
+          </button>
           {!isPremium && (
             <p className="text-xs text-center mt-2" style={{ color: 'var(--text-muted)' }}>
               🔒 AI Анализ и Рекомендации — только для подписчиков Pro
@@ -481,6 +489,13 @@ export function MainPage() {
         open={paywallFeature !== null}
         feature={paywallFeature || 'exchanges'}
         onClose={() => setPaywallFeature(null)}
+      />
+
+      <RiskProfileModal
+        open={showRisk}
+        onClose={() => setShowRisk(false)}
+        scanResults={scanResults}
+        defaultCapital={capital}
       />
     </div>
   );

@@ -42,6 +42,7 @@ const devSchema = baseSchema.extend({
   TELEGRAM_BOT_TOKEN: z.string().optional().default(''),
   JWT_SECRET: z.string().optional().default('dev-secret-change-in-production'),
   WEBHOOK_SECRET: z.string().optional().default('changeme'),
+  ENCRYPTION_KEY: z.string().optional().default(''),
 });
 
 const prodSchema = baseSchema.extend({
@@ -113,6 +114,10 @@ export const config = {
 
   webhook: {
     secret: env.WEBHOOK_SECRET,
+  },
+
+  encryption: {
+    key: process.env.ENCRYPTION_KEY || '',
   },
 
   cors: {

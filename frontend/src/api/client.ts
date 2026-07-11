@@ -292,4 +292,25 @@ export const apiClient = {
   async removePortfolio(id: string) {
     return api.delete('/portfolio', { data: { id } });
   },
+
+  // ---- Exchange API keys + live PnL (Pro) ----
+  async getApiKeys() {
+    return retryRequest(() => api.get('/keys'));
+  },
+
+  async addApiKey(data: { exchange: string; label?: string; apiKey: string; secret: string; passphrase?: string; permissions: 'read' | 'trade' }) {
+    return retryRequest(() => api.post('/keys', data));
+  },
+
+  async deleteApiKey(id: string) {
+    return api.delete(`/keys/${id}`);
+  },
+
+  async getLivePortfolio() {
+    return retryRequest(() => api.get('/portfolio/live'));
+  },
+
+  async autoExecuteOrder(data: { exchange: string; symbol: string; side: 'long' | 'short'; notionalUsd: number; confirm: true }) {
+    return retryRequest(() => api.post('/portfolio/auto-execute', data));
+  },
 };

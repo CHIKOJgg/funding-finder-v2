@@ -41,6 +41,8 @@ import trialRoutes from './routes/trial.js';
 import fundingRoutes from './routes/funding.js';
 import watchlistRoutes from './routes/watchlist.js';
 import portfolioRoutes from './routes/portfolio.js';
+import portfolioLiveRoutes from './routes/portfolioLive.js';
+import keysRoutes from './routes/keys.js';
 import webhookRoutes from './routes/webhook.js';
 import adminRoutes from './routes/admin.js';
 
@@ -258,6 +260,8 @@ app.use('/api', authLimiter, validateTelegramInitData, settingsRoutes);
 // Trial + funding calendar + watchlist + portfolio (auth required)
 app.use('/api', authLimiter, validateTelegramInitData, trialRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, fundingRoutes);
+app.use('/api', authLimiter, validateTelegramInitData, keysRoutes);
+app.use('/api', authLimiter, validateTelegramInitData, portfolioLiveRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, watchlistRoutes);
 app.use('/api', authLimiter, validateTelegramInitData, portfolioRoutes);
 
