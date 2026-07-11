@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import axios from 'axios';
-import type { Credentials, ExchangeAdapter, NormalizedPosition, NormalizedFundingIncome } from './types.js';
+import type { Credentials, ExchangeAdapter, NormalizedPosition } from './types.js';
 
 const BASE = 'https://api.bybit.com';
 const RECV_WINDOW = '5000';

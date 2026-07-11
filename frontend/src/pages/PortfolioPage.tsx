@@ -7,7 +7,7 @@ import { apiClient } from '../api/client';
 import { PortfolioPosition } from '../types';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
 
-const EXCHANGES = ['binance', 'bybit', 'okx'] as const;
+const EXCHANGES = ['binance', 'bybit', 'okx', 'gate', 'mexc'] as const;
 const SIM_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'] as const;
 
 function formatUsd(n: number): string {

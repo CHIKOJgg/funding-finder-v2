@@ -4,8 +4,8 @@ import { prisma } from '../services/prisma.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { requireSubscription } from '../middleware/subscription.js';
 import { validate } from '../middleware/validation.js';
-import { encryptJson, decryptJson } from '../services/exchangeKeys.js';
-import { getAdapter, supportedExchanges } from '../services/exchangeClients/index.js';
+import { encryptJson } from '../services/exchangeKeys.js';
+import { supportedExchanges } from '../services/exchangeClients/index.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
@@ -14,7 +14,7 @@ const router = Router();
 // The secret is never returned to the client.
 
 const addSchema = z.object({
-  exchange: z.enum(['binance', 'bybit', 'okx']),
+  exchange: z.enum(['binance', 'bybit', 'okx', 'gate', 'mexc']),
   label: z.string().max(40).optional(),
   apiKey: z.string().min(1),
   secret: z.string().min(1),

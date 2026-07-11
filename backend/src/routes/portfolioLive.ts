@@ -80,7 +80,7 @@ router.get('/portfolio/live', requireSubscription('pro'), async (req: Authentica
 });
 
 const executeSchema = z.object({
-  exchange: z.enum(['binance', 'bybit', 'okx']),
+  exchange: z.enum(['binance', 'bybit', 'okx', 'gate', 'mexc']),
   symbol: z.string().min(2),
   side: z.enum(['long', 'short']),
   notionalUsd: z.number().positive().max(1_000_000),
