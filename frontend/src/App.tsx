@@ -6,6 +6,7 @@ import { ToastProvider, useToast } from './components/Toast';
 import { Onboarding } from './components/Onboarding';
 import { useTelegram } from './hooks/useTelegram';
 import { apiClient } from './api/client';
+import { getPlanLimits, PlanLimits } from './utils/plans';
 import type { ScanResult } from './types';
 
 const MainPage = React.lazy(() => import('./pages/MainPage').then(m => ({ default: m.MainPage })));
@@ -18,6 +19,10 @@ const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => (
 
 interface AppContextType {
   user: { id: string; firstName?: string; username?: string; subscription?: string } | null;
+
+  // ---- Subscription / plan ----
+  subscription: string;
+  planLimits: PlanLimits;
 
   // ---- Scan (Main page) ----
   scanResults: ScanResult | null;
@@ -41,6 +46,8 @@ interface AppContextType {
 
 export const AppContext = createContext<AppContextType>({
   user: null,
+  subscription: 'free',
+  planLimits: getPlanLimits('free'),
   scanResults: null,
   setScanResults: () => {},
   scanLoading: false,
@@ -85,7 +92,23 @@ function DataProvider({ children }: { children: React.ReactNode }) {
   const { user } = useTelegram();
   const { showToast } = useToast();
 
-  // Scan state
+  // Subscription state
+  const [subscription, setSubscription] = useState<string>('free');
+  const planLimits = useMemo<PlanLimits>(() => getPlanLimits(subscription), [subscription]);
+
+  // Load the user's current plan once so premium gating works on the client
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    apiClient.getProfile()
+      .then((r: any) => {
+        if (cancelled) return;
+        const sub = r?.user?.subscription || r?.subscription;
+        if (sub) setSubscription(sub);
+      })
+      .catch(() => { /* plan stays 'free' on failure */ });
+    return () => { cancelled = true; };
+  }, [user?.id]);
   const [scanResults, setScanResults] = useState<ScanResult | null>(null);
   const [scanLoading, setScanLoading] = useState(false);
   const [scanStatus, setScanStatus] = useState('Готов к сканированию');
@@ -176,6 +199,8 @@ function DataProvider({ children }: { children: React.ReactNode }) {
 
   const contextValue = useMemo<AppContextType>(() => ({
     user,
+    subscription,
+    planLimits,
     scanResults,
     setScanResults,
     scanLoading,
@@ -191,7 +216,7 @@ function DataProvider({ children }: { children: React.ReactNode }) {
     loadArbitrage,
     loadAlerts,
   }), [
-    user, scanResults, scanLoading, scanStatus, runScan,
+    user, subscription, planLimits, scanResults, scanLoading, scanStatus, runScan,
     selectedExchanges, arbOpportunities, arbAlerts, arbLoading, arbLoaded,
     loadArbitrage, loadAlerts,
   ]);

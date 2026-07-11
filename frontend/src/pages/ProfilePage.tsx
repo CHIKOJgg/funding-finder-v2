@@ -23,6 +23,14 @@ export function ProfilePage() {
     }
   }, [user?.id]);
 
+  // Scroll to the subscription section when arriving from a paywall link
+  useEffect(() => {
+    if (window.location.hash === '#subscription') {
+      const el = document.getElementById('subscription');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
+
   const loadUserData = useCallback(async () => {
     try {
       setLoading(true);
@@ -175,18 +183,19 @@ export function ProfilePage() {
         )}
       </div>
 
-      <div className="mb-4">
-        <div className="rounded-2xl p-5 text-white relative overflow-hidden"
-             style={{ background: 'linear-gradient(135deg, #3390ec 0%, #2b6fd6 60%, #1f4fb0 100%)' }}>
-          <div className="text-xs font-semibold uppercase tracking-wide opacity-80">Ваш тариф</div>
-          <div className="text-2xl font-bold mt-1 capitalize">{planLabel(subscription)}</div>
-          <p className="text-sm opacity-90 mt-2">
-            Откройте все биржи, AI-анализ и арбитражные сигналы — зарабатывайте на разнице ставок фандинга.
-          </p>
+      <div id="subscription" className="scroll-mt-4">
+        <div className="mb-4">
+          <div className="rounded-2xl p-5 text-white relative overflow-hidden"
+               style={{ background: 'linear-gradient(135deg, #3390ec 0%, #2b6fd6 60%, #1f4fb0 100%)' }}>
+            <div className="text-xs font-semibold uppercase tracking-wide opacity-80">Ваш тариф</div>
+            <div className="text-2xl font-bold mt-1 capitalize">{planLabel(subscription)}</div>
+            <p className="text-sm opacity-90 mt-2">
+              Откройте все биржи, AI-анализ и арбитражные сигналы — зарабатывайте на разнице ставок фандинга.
+            </p>
+          </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3">
         <PlanCard
           name="Basic"
           price={29}
@@ -215,6 +224,7 @@ export function ProfilePage() {
           currentPlan={subscription}
           onSelect={() => handleCreateOrder('promax')}
         />
+      </div>
       </div>
 
       <div className="card">

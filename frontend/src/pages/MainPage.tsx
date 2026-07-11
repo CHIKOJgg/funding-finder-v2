@@ -2,6 +2,8 @@ import { useState, useCallback, memo } from 'react';
 import { clsx } from 'clsx';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
+import { PaywallModal } from '../components/PaywallModal';
+import { PaywallFeature } from '../utils/plans';
 import { apiClient } from '../api/client';
 import { formatNumber, getFundingColor } from '../utils/formatters';
 import { HistoryChart } from '../components/HistoryChart';
@@ -13,8 +15,9 @@ const EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'] as const;
 type SortKey = 'rate' | 'volume' | 'interval';
 
 export function MainPage() {
-  const { scanResults, scanLoading, scanStatus, runScan, selectedExchanges, setSelectedExchanges, user } = useApp();
+  const { scanResults, scanLoading, scanStatus, runScan, selectedExchanges, setSelectedExchanges, planLimits } = useApp();
   const { showToast } = useToast();
+  const [paywallFeature, setPaywallFeature] = useState<PaywallFeature | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [capital, setCapital] = useState(1000);
   const [aiText, setAiText] = useState('');
@@ -30,12 +33,17 @@ export function MainPage() {
   const [alertCreating, setAlertCreating] = useState(false);
 
   const toggleExchange = useCallback((exchange: string) => {
-    setSelectedExchanges((prev: string[]) =>
-      prev.includes(exchange)
-        ? prev.filter((e: string) => e !== exchange)
-        : [...prev, exchange]
-    );
-  }, [setSelectedExchanges]);
+    setSelectedExchanges((prev: string[]) => {
+      if (prev.includes(exchange)) {
+        return prev.filter((e: string) => e !== exchange);
+      }
+      if (prev.length >= planLimits.maxExchanges) {
+        setPaywallFeature('exchanges');
+        return prev;
+      }
+      return [...prev, exchange];
+    });
+  }, [setSelectedExchanges, planLimits.maxExchanges]);
 
   const handleScan = useCallback(async () => {
     if (selectedExchanges.length === 0) {
@@ -119,7 +127,7 @@ export function MainPage() {
     }
   }, [alertModal, alertCondition, alertThreshold, showToast]);
 
-  const isPremium = user?.id && (user as any).subscription !== 'basic';
+  const isPremium = planLimits.aiEnabled;
 
   return (
     <div className="p-4">
@@ -137,7 +145,12 @@ export function MainPage() {
       </div>
 
       <div className="card">
-        <h2 className="text-lg font-semibold mb-3">Выберите биржи</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">Выберите биржи</h2>
+          <span className="chip" style={{ color: 'var(--text-muted)' }}>
+            {selectedExchanges.length}/{planLimits.maxExchanges}
+          </span>
+        </div>
         <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Exchange selection">
           {EXCHANGES.map((exchange) => (
             <button
@@ -273,27 +286,23 @@ export function MainPage() {
 
           <div className="flex gap-2 mt-4">
             <button
-              onClick={handleAiAnalysis}
-              disabled={actionLoading || scanLoading || !isPremium}
-              aria-disabled={!isPremium}
-              className={clsx('btn btn-secondary flex-1', !isPremium && 'opacity-50 cursor-not-allowed')}
-              title={!isPremium ? 'Требуется подписка Pro' : ''}
+              onClick={() => planLimits.aiEnabled ? handleAiAnalysis() : setPaywallFeature('ai')}
+              disabled={actionLoading || scanLoading}
+              className="btn btn-secondary flex-1"
             >
-              🧠 AI Анализ
+              🧠 AI Анализ {!planLimits.aiEnabled && <span className="ml-1" aria-hidden="true">🔒</span>}
             </button>
             <button
-              onClick={handleRecommendations}
-              disabled={actionLoading || scanLoading || !isPremium}
-              aria-disabled={!isPremium}
-              className={clsx('btn btn-success flex-1', !isPremium && 'opacity-50 cursor-not-allowed')}
-              title={!isPremium ? 'Требуется подписка Pro' : ''}
+              onClick={() => planLimits.recommendationsEnabled ? handleRecommendations() : setPaywallFeature('recommendations')}
+              disabled={actionLoading || scanLoading}
+              className="btn btn-success flex-1"
             >
-              🤖 Рекомендации
+              🤖 Рекомендации {!planLimits.recommendationsEnabled && <span className="ml-1" aria-hidden="true">🔒</span>}
             </button>
           </div>
           {!isPremium && (
-            <p className="text-xs text-gray-500 text-center mt-2">
-              AI Анализ и Рекомендации доступны для подписчиков Pro
+            <p className="text-xs text-center mt-2" style={{ color: 'var(--text-muted)' }}>
+              🔒 AI Анализ и Рекомендации — только для подписчиков Pro
             </p>
           )}
         </div>
@@ -385,6 +394,12 @@ export function MainPage() {
           </div>
         </div>
       )}
+
+      <PaywallModal
+        open={paywallFeature !== null}
+        feature={paywallFeature || 'exchanges'}
+        onClose={() => setPaywallFeature(null)}
+      />
     </div>
   );
 }
