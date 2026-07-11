@@ -49,7 +49,7 @@ export async function scanBybit(): Promise<ExchangeResult[]> {
         const rawFunding = safeParseFloat(fundingRateStr);
         if (!Number.isFinite(rawFunding)) continue;
 
-        let currentFunding = rawFunding;
+        const currentFunding = rawFunding;
 
         // Sanity check: skip extreme values
         if (Math.abs(currentFunding) > 1) {

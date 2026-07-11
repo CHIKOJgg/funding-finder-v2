@@ -1,11 +1,7 @@
 describe('Exchange Client Utilities', () => {
   describe('MemoryCache', () => {
-    let MemoryCache: any;
-
     beforeEach(() => {
       jest.resetModules();
-      const mod = require('../utils/exchangeClient.js');
-      MemoryCache = mod.cache.constructor;
     });
 
     it('should store and retrieve values', () => {

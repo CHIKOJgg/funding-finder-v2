@@ -12,13 +12,13 @@ import { connectDatabase, disconnectDatabase, checkDatabaseHealth } from './serv
 import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestId, requestLogger } from './middleware/requestLogger.js';
-import { validateTelegramInitData, validateExchangeList, AuthenticatedRequest } from './middleware/auth.js';
+import { validateTelegramInitData } from './middleware/auth.js';
 import { startAlertEvaluator, stopAlertEvaluator } from './services/alertEvaluator.js';
 import { startDailySummary, stopDailySummary } from './services/dailySummary.js';
 import { startDataArchival, stopDataArchival } from './services/dataArchival.js';
 import { startFundingWarmup, stopFundingWarmup } from './services/fundingWarmup.js';
 import { wsManager } from './services/websocket.js';
-import { cache, circuitBreaker } from './utils/exchangeClient.js';
+import { cache } from './utils/exchangeClient.js';
 import { setupSwagger } from './utils/swagger.js';
 import { featureFlags } from './utils/featureFlags.js';
 import { metricsMiddleware, getMetrics, metricsContentType } from './utils/metrics.js';
@@ -67,7 +67,7 @@ async function initSentry() {
 
 const app = express();
 const server = createServer(app);
-const sentryPromise = initSentry();
+void initSentry();
 
 // Trust the reverse proxy (Render/Nginx/etc.) so express-rate-limit and
 // req.ip work correctly with the X-Forwarded-For header.

@@ -9,16 +9,6 @@ const BINANCE_BASE = 'https://fapi.binance.com';
 const CONCURRENCY = 8;
 const BINANCE_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // Binance is always 8h
 
-async function fetchPremiumIndex(client: ReturnType<typeof getOrCreateClient>, symbol: string) {
-  const res = await retry(() =>
-    client.get('/fapi/v1/premiumIndex', {
-      params: { symbol },
-      timeout: 15000,
-    })
-  );
-  return res.data || null;
-}
-
 // Fetch premium index for ALL symbols in a single request (vs N per-symbol
 // calls). Returns a Map keyed by symbol with { rate, nextApply }.
 async function fetchAllPremiumIndices(client: ReturnType<typeof getOrCreateClient>): Promise<Map<string, { rate: number; nextApply: number }>> {
@@ -46,7 +36,7 @@ async function fetchFundingHistory(client: ReturnType<typeof getOrCreateClient>,
   return res.data || [];
 }
 
-async function fetchExchangeInfo(client: ReturnType<typeof getOrCreateClient>, symbol: string) {
+async function fetchExchangeInfo(client: ReturnType<typeof getOrCreateClient>, _symbol: string) {
   const res = await retry(() =>
     client.get('/fapi/v1/exchangeInfo', { timeout: 15000 })
   );

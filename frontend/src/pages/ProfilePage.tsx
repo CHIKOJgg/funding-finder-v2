@@ -112,7 +112,7 @@ export function ProfilePage() {
     } finally {
       setApplyingReferral(false);
     }
-  }, [referralCode, showToast]);
+  }, [referralCode, showToast, loadUserData]);
 
   if (loading) {
     return (
