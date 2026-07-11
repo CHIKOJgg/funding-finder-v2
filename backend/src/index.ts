@@ -8,7 +8,7 @@ import { execSync } from 'child_process';
 import { createServer } from 'http';
 import rateLimit from 'express-rate-limit';
 import { config } from './config/index.js';
-import { connectDatabase, disconnectDatabase, checkDatabaseHealth } from './services/prisma.js';
+import { connectDatabase, disconnectDatabase, checkDatabaseHealth, prisma } from './services/prisma.js';
 import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestId, requestLogger } from './middleware/requestLogger.js';
@@ -315,17 +315,28 @@ if (config.nodeEnv === 'production' && hasFrontend) {
 app.use(errorHandler);
 
 // Sync database schema at startup.
-// Prefer managed migrations (`migrate deploy`) for reproducibility and safe
-// rollbacks — but that requires a DIRECT (non-pooled) DB connection, since the
-// migration engine can't run over a connection pooler. On platforms like Render
-// the `DATABASE_URL` is pooled, so `migrate deploy` only works when `DIRECT_URL`
-// (the internal direct URL) is configured. When it isn't (or in dev), fall back
-// to `db push`, which works fine over pooled connections for an already-synced
-// database and keeps existing deployments working without manual intervention.
-function syncDatabaseSchema() {
+// `migrate deploy` (managed migrations) is preferred for reproducibility and
+// safe rollbacks, but it requires (a) a DIRECT (non-pooled) connection — the
+// migration engine can't run over a connection pooler — and (b) an existing
+// migration history in the DB. This project's databases are typically
+// initialized via `db push` (no `_prisma_migrations` table) and `DATABASE_URL`
+// on Render is pooled. So we only attempt `migrate deploy` when BOTH a direct
+// URL is configured AND a migration history already exists; otherwise we
+// `db push`, which works over pooled connections and on non-empty databases.
+async function syncDatabaseSchema() {
   const hasDirectUrl = Boolean(process.env.DIRECT_URL);
 
+  let managed = false;
   if (hasDirectUrl) {
+    try {
+      await prisma.$queryRawUnsafe(`SELECT 1 FROM "_prisma_migrations" LIMIT 1`);
+      managed = true;
+    } catch {
+      managed = false;
+    }
+  }
+
+  if (managed) {
     try {
       execSync('npx prisma migrate deploy --skip-generate', {
         cwd: path.resolve(__dirname, '..'),
@@ -337,27 +348,31 @@ function syncDatabaseSchema() {
     } catch (migrateErr) {
       const migrateStderr = (migrateErr as { stderr?: Buffer }).stderr?.toString() || '';
       logger.error('migrate deploy failed:', migrateStderr.slice(0, 200));
-      // With a direct URL configured, a migrate failure is a real problem
-      // (drift, failed migration) — fail loudly rather than risk corruption.
+      // With a managed DB, a migrate failure is a real problem (drift, failed
+      // migration) — fail loudly rather than risk corruption.
       if (config.isProduction) {
         process.exit(1);
       }
     }
+  } else if (hasDirectUrl) {
+    logger.warn(
+      'No migration history in DB — using `db push` for schema sync (run `prisma migrate dev` locally to adopt managed migrations).'
+    );
   } else {
     logger.warn(
-      'DIRECT_URL not set — skipping `migrate deploy` (set DIRECT_URL to a direct DB connection for managed migrations). Falling back to `db push`.'
+      'DIRECT_URL not set — using `db push` for schema sync (set DIRECT_URL to a direct DB connection for managed migrations).'
     );
   }
 
   // Fallback: db push. Safe for keeping an already-synced schema in step and
-  // works over pooled connections. Last resort in production.
+  // works over pooled connections and on non-empty databases.
   try {
     execSync('npx prisma db push --skip-generate', {
       cwd: path.resolve(__dirname, '..'),
       stdio: 'pipe',
       timeout: 30000,
     });
-    logger.info('Database schema synced (db push fallback)');
+    logger.info('Database schema synced (db push)');
   } catch (err) {
     const stderr = (err as { stderr?: Buffer }).stderr?.toString() || '';
     if (stderr.includes('P3009')) {
@@ -373,7 +388,7 @@ function syncDatabaseSchema() {
 async function start() {
   try {
     await connectDatabase();
-    syncDatabaseSchema();
+    await syncDatabaseSchema();
 
     server.listen(config.port, () => {
       logger.info(`Funding Finder v2 listening at http://localhost:${config.port}`);
