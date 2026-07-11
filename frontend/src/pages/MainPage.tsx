@@ -9,6 +9,9 @@ import { formatNumber, getFundingColor } from '../utils/formatters';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { HistoryChart } from '../components/HistoryChart';
 import { FundingCalendar } from '../components/FundingCalendar';
+import { CountdownTimer } from '../components/CountdownTimer';
+import { QuickStart } from '../components/QuickStart';
+import { PairMatrix } from '../components/PairMatrix';
 import { ResultSkeleton } from '../components/Skeleton';
 import { ExchangeResult } from '../types';
 
@@ -29,6 +32,7 @@ export function MainPage() {
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [historyModal, setHistoryModal] = useState<{ exchange: string; contract: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showMatrix, setShowMatrix] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>('rate');
   const [alertModal, setAlertModal] = useState<{ exchange: string; contract: string } | null>(null);
   const [alertCondition, setAlertCondition] = useState<'above' | 'below'>('above');
@@ -166,6 +170,8 @@ export function MainPage() {
           <p className="text-sm text-muted leading-tight">Арбитраж ставок фандинга в реальном времени</p>
         </div>
       </div>
+
+      <QuickStart hasScanResults={Boolean(scanResults)} selectedCount={selectedExchanges.length} />
 
       <div className="card">
         <div className="flex items-center justify-between mb-3">
@@ -368,6 +374,19 @@ export function MainPage() {
               🔒 AI Анализ и Рекомендации — только для подписчиков Pro
             </p>
           )}
+
+          <button
+            onClick={() => setShowMatrix((v) => !v)}
+            className="btn btn-secondary text-sm py-2 w-full mt-4"
+            aria-expanded={showMatrix}
+          >
+            {showMatrix ? '▾ Скрыть матрицу пар' : '▸ Матрица пар (спред по биржам)'}
+          </button>
+          {showMatrix && (
+            <div className="mt-3">
+              <PairMatrix scanResults={scanResults} exchanges={selectedExchanges} />
+            </div>
+          )}
         </div>
       )}
 
@@ -549,6 +568,10 @@ const ResultItem = memo(function ResultItem({
           </div>
           <div className="text-xs text-gray-500">
             Интервал: {item.funding_interval_hours}ч ({item.funding_interval_source})
+          </div>
+          <div className="text-xs text-gray-500">
+            <CountdownTimer intervalHours={item.funding_interval_hours} className="font-medium" />
+            <span className="ml-1">до фандинга</span>
           </div>
         </div>
         <div className="text-right">

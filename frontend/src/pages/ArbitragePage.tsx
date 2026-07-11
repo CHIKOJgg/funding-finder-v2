@@ -6,6 +6,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { apiClient } from '../api/client';
 import { getRiskColor } from '../utils/formatters';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
+import { CountdownTimer } from '../components/CountdownTimer';
 import { useWebSocket } from '../hooks/useWebSocket';
 
 export function ArbitragePage() {
@@ -213,6 +214,9 @@ const OpportunityCard = memo(function OpportunityCard({
           <span className={clsx('ml-2 text-xs px-2 py-0.5 rounded-full', getRiskColor(opp.risk?.level))}>
             {opp.risk?.level}
           </span>
+          <div className="text-xs text-gray-500 mt-0.5">
+            <CountdownTimer intervalHours={opp.intervalA_hours} className="font-medium" /> до фандинга ({opp.exchangeA})
+          </div>
         </div>
         <div className="text-right">
           <div className="text-green-500 font-bold">{(opp.difference_per_day * 100).toFixed(4)}%/день</div>
@@ -263,6 +267,17 @@ const OpportunityCard = memo(function OpportunityCard({
           ))}
         </div>
       )}
+
+      <button
+        onClick={() => {
+          openExchange(opp.exchangeA, opp.pair);
+          setTimeout(() => openExchange(opp.exchangeB, opp.pair), 400);
+        }}
+        className="btn btn-primary text-sm py-2 w-full mb-2"
+        title={`Открыть ${opp.pair} сразу на ${exchangeLabel(opp.exchangeA)} и ${exchangeLabel(opp.exchangeB)}`}
+      >
+        ↗↗ Открыть обе ноги ({exchangeLabel(opp.exchangeA)} + {exchangeLabel(opp.exchangeB)})
+      </button>
 
       <div className="flex gap-2">
         <button

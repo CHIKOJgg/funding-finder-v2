@@ -38,6 +38,11 @@ export function getExchangeTradeUrl(exchange: string, pair: string): string {
 // openLink so the link opens in an external browser instead of being blocked.
 export function openExchange(exchange: string, pair: string): void {
   const url = getExchangeTradeUrl(exchange, pair);
+  // Mark that the user took the "open a position" step (used by the
+  // first-profit onboarding checklist). No personal data is stored.
+  try {
+    localStorage.setItem('ff_opened_position', '1');
+  } catch { /* storage may be unavailable — non-critical */ }
   const tg = (window as any).Telegram?.WebApp;
   if (tg?.openLink) {
     tg.openLink(url);
