@@ -7,20 +7,20 @@ const WARMUP_INTERVAL_MS = 5 * 60 * 1000; // align with scan cache TTL
 let timer: NodeJS.Timeout | null = null;
 
 /**
- * Periodically runs scans so the funding calendar, the main scan endpoint and
- * historical APR always have fresh cached data. Results are stored in the
- * shared scan cache by runScan, so user-facing requests return instantly
+ * Periodically runs a full scan so the funding calendar, the main scan endpoint
+ * and historical APR always have fresh cached data. runScan stores the result
+ * in the shared scan cache, so user-facing requests return instantly
  * (stale-while-revalidate) instead of waiting on a live 5-exchange scan.
+ *
+ * Only the full set is warmed (this is the frontend default selection). Subset
+ * selections are served non-blocking and trigger their own background refresh.
  */
 export function startFundingWarmup(): void {
   if (timer) return;
 
   const run = async () => {
     try {
-      // Warm the full set (frontend default) and each single exchange so that
-      // arbitrary subset selections also hit cache instead of a fresh scan.
       await runScan(ALL_EXCHANGES);
-      await Promise.all(ALL_EXCHANGES.map((ex) => runScan([ex])));
       logger.debug('Funding scan warm-up completed');
     } catch (err) {
       logger.warn({ err: (err as Error).message }, 'Funding scan warm-up failed');
