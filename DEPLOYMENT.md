@@ -111,10 +111,11 @@ Render — лучший бесплатный вариант. База данны
      ```
      cd backend && npm install && npx prisma generate && npm run build
      ```
-   - **Start Command:**
-     ```
-     cd backend && npx prisma migrate deploy && node dist/index.js
-     ```
+    - **Start Command:**
+      ```
+      cd backend && node dist/index.js
+      ```
+      (Schema sync runs automatically at startup via `prisma db push`.)
    - **Plan:** Free
 
 > **Что делает Build Command:**
