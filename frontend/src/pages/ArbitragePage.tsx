@@ -7,7 +7,8 @@ import { apiClient } from '../api/client';
 import { getRiskColor } from '../utils/formatters';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { CountdownTimer } from '../components/CountdownTimer';
-import { ExchangeFilter } from '../components/ExchangeFilter';
+import { ExchangeSelect } from '../components/ExchangeSelect';
+import { FilterBar, FilterField, SegmentedControl } from '../components/FilterBar';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { getAuthToken } from '../api/client';
 
@@ -25,6 +26,8 @@ export function ArbitragePage() {
   const [arbSortBy, setArbSortBy] = useState<ArbSortKey>('apy');
   const [riskFilter, setRiskFilter] = useState<RiskFilter>('ALL');
   const [exchangeFilter, setExchangeFilter] = useState<string[]>([]);
+  const [minApy, setMinApy] = useState(0);
+  const [pairQuery, setPairQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(15);
 
   const initData = window.Telegram?.WebApp?.initData || null;
@@ -76,23 +79,15 @@ export function ArbitragePage() {
     }
   }, [deleteConfirm, handleDeleteAlert]);
 
-  // Exchanges that actually appear in the current opportunities — used to build
-  // the exchange filter chips.
-  const availableExchanges = useMemo(() => {
-    const set = new Set<string>();
-    arbOpportunities.forEach((o: any) => {
-      set.add(o.exchangeA);
-      set.add(o.exchangeB);
-    });
-    return [...set].sort();
-  }, [arbOpportunities]);
-
   const filteredOpportunities = useMemo(() => {
+    const q = pairQuery.trim().toLowerCase();
     const filtered = arbOpportunities.filter((o: any) => {
       if (riskFilter !== 'ALL' && (o.risk?.level || 'LOW') !== riskFilter) return false;
       if (exchangeFilter.length > 0 && !exchangeFilter.includes(o.exchangeA) && !exchangeFilter.includes(o.exchangeB)) {
         return false;
       }
+      if (minApy > 0 && (o.profit?.annualReturn ?? 0) < minApy) return false;
+      if (q && !o.pair.toLowerCase().includes(q)) return false;
       return true;
     });
 
@@ -117,12 +112,24 @@ export function ArbitragePage() {
     });
 
     return sorted;
-  }, [arbOpportunities, arbSortBy, riskFilter, exchangeFilter]);
+  }, [arbOpportunities, arbSortBy, riskFilter, exchangeFilter, minApy, pairQuery]);
+
+  const activeFilterCount = useMemo(() => {
+    let n = 0;
+    if (arbSortBy !== 'apy') n++;
+    if (riskFilter !== 'ALL') n++;
+    if (exchangeFilter.length > 0) n++;
+    if (minApy > 0) n++;
+    if (pairQuery.trim()) n++;
+    return n;
+  }, [arbSortBy, riskFilter, exchangeFilter, minApy, pairQuery]);
 
   const resetFilters = useCallback(() => {
     setArbSortBy('apy');
     setRiskFilter('ALL');
     setExchangeFilter([]);
+    setMinApy(0);
+    setPairQuery('');
     setVisibleCount(15);
   }, []);
 
@@ -175,52 +182,66 @@ export function ArbitragePage() {
             <div className="text-center py-8 text-gray-500">Арбитражные возможности не найдены</div>
           ) : (
             <>
-              <div className="mb-3 p-3 rounded-xl" style={{ background: 'var(--surface-2)' }}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700">Сортировка</span>
-                  {(arbSortBy !== 'apy' || riskFilter !== 'ALL' || exchangeFilter.length > 0) && (
-                    <button onClick={resetFilters} className="text-xs text-[var(--brand)] hover:underline">
-                      Сбросить всё
-                    </button>
-                  )}
-                </div>
-                <select
-                  value={arbSortBy}
-                  onChange={(e) => setArbSortBy(e.target.value as ArbSortKey)}
-                  className="input-field text-sm w-full mb-3"
-                  aria-label="Сортировка возможностей"
-                >
-                  <option value="apy">По прибыли (APY)</option>
-                  <option value="daily">По дневному спреду</option>
-                  <option value="hourly">По часовой разнице</option>
-                  <option value="risk">По риску (сначала низкий)</option>
-                </select>
+              <FilterBar activeCount={activeFilterCount} title="Фильтры и сортировка">
+                <FilterField label="Сортировка">
+                  <select
+                    value={arbSortBy}
+                    onChange={(e) => setArbSortBy(e.target.value as ArbSortKey)}
+                    className="input-field text-sm w-full"
+                    aria-label="Сортировка возможностей"
+                  >
+                    <option value="apy">По прибыли (APY)</option>
+                    <option value="daily">По дневному спреду</option>
+                    <option value="hourly">По часовой разнице</option>
+                    <option value="risk">По риску (сначала низкий)</option>
+                  </select>
+                </FilterField>
 
-                <div className="flex items-center gap-1.5 mb-3 flex-wrap">
-                  <span className="text-xs text-gray-500 mr-1">Риск:</span>
-                  {(['ALL', 'LOW', 'MEDIUM', 'HIGH'] as RiskFilter[]).map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => setRiskFilter(r)}
-                      className={clsx(
-                        'text-xs px-2.5 py-1 rounded-full border transition',
-                        riskFilter === r
-                          ? 'bg-[var(--brand)] text-white border-[var(--brand)]'
-                          : 'bg-transparent text-gray-600 border-gray-300'
-                      )}
-                      aria-pressed={riskFilter === r}
-                    >
-                      {r === 'ALL' ? 'Все' : r}
-                    </button>
-                  ))}
-                </div>
+                <FilterField label="Мин. доходность (APY, %)">
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={minApy}
+                    onChange={(e) => setMinApy(Math.max(0, Number(e.target.value) || 0))}
+                    placeholder="0 — без ограничения"
+                    className="input-field text-sm w-full"
+                    aria-label="Минимальная доходность APY в процентах"
+                  />
+                </FilterField>
 
-                <ExchangeFilter
-                  exchanges={availableExchanges}
-                  selected={exchangeFilter}
-                  onChange={setExchangeFilter}
-                />
-              </div>
+                <FilterField label="Риск">
+                  <SegmentedControl<RiskFilter>
+                    value={riskFilter}
+                    onChange={setRiskFilter}
+                    options={[
+                      { value: 'ALL', label: 'Все' },
+                      { value: 'LOW', label: 'LOW' },
+                      { value: 'MEDIUM', label: 'MEDIUM' },
+                      { value: 'HIGH', label: 'HIGH' },
+                    ]}
+                  />
+                </FilterField>
+
+                <ExchangeSelect selected={exchangeFilter} onChange={setExchangeFilter} />
+
+                <FilterField label="Пара (поиск)">
+                  <input
+                    type="text"
+                    value={pairQuery}
+                    onChange={(e) => setPairQuery(e.target.value)}
+                    placeholder="Напр. BTC"
+                    className="input-field text-sm w-full"
+                    aria-label="Поиск по паре"
+                  />
+                </FilterField>
+
+                {activeFilterCount > 0 && (
+                  <button onClick={resetFilters} className="btn btn-secondary text-sm py-2 w-full">
+                    Сбросить фильтры
+                  </button>
+                )}
+              </FilterBar>
 
               {filteredOpportunities.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">

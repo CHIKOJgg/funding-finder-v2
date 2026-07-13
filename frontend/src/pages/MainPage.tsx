@@ -9,7 +9,7 @@ import { apiClient } from '../api/client';
 import { formatNumber, getFundingColor } from '../utils/formatters';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { ExchangeSelector } from '../components/ExchangeSelector';
-import { ExchangeFilter } from '../components/ExchangeFilter';
+import { ExchangeSelect } from '../components/ExchangeSelect';
 import { HistoryChart } from '../components/HistoryChart';
 import { FundingCalendar } from '../components/FundingCalendar';
 import { CountdownTimer } from '../components/CountdownTimer';
@@ -152,15 +152,6 @@ export function MainPage() {
     );
   }, [scanResults]);
 
-  const availableExchanges = useMemo(() => {
-    if (!scanResults) return [];
-    const set = new Set<string>();
-    [...(scanResults.highYield || []), ...(scanResults.mediumYield || []), ...(scanResults.lowYield || [])].forEach(
-      (it: ExchangeResult) => set.add(it.exchange)
-    );
-    return [...set].sort();
-  }, [scanResults]);
-
   return (
     <div className="p-4">
       <div className="flex items-center gap-3 mb-4">
@@ -297,11 +288,7 @@ export function MainPage() {
             </select>
           </div>
 
-          <ExchangeFilter
-            exchanges={availableExchanges}
-            selected={exchangeFilter}
-            onChange={setExchangeFilter}
-          />
+          <ExchangeSelect selected={exchangeFilter} onChange={setExchangeFilter} />
 
 
           {scanResults.metrics?.intervalDistribution && (
