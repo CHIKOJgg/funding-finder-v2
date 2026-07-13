@@ -155,6 +155,14 @@ function DataProvider() {
   const [scanStatus, setScanStatus] = useState('Готов к сканированию');
   const [selectedExchanges, setSelectedExchanges] = useState<string[]>(ALL_EXCHANGES);
 
+  // The default selection is "all exchanges", but a plan may cap how many the
+  // user can actually scan (e.g. Free = 3). Trim the initial selection to the
+  // plan limit so the counter reads e.g. "3/3" instead of a confusing "23/3".
+  useEffect(() => {
+    const max = planLimits.maxExchanges;
+    setSelectedExchanges((prev) => (prev.length > max ? prev.slice(0, max) : prev));
+  }, [planLimits.maxExchanges]);
+
   // Trial state
   const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
 

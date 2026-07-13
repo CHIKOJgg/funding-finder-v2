@@ -172,28 +172,24 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
           </p>
         </div>
 
-        <button
-          onClick={handleWallet}
-          disabled={loading}
-          className="btn btn-primary w-full mb-3 text-base py-3"
-        >
-          {loading ? 'Подождите…' : '🔐 Войти через кошелёк'}
-        </button>
-
         {config.googleEnabled ? (
           <div className="mb-3">
             <div ref={googleBtnRef} className="flex justify-center" />
             {googleLoading && <div className="text-center text-sm mt-2" style={{ color: 'var(--text-muted)' }}>Проверка…</div>}
           </div>
         ) : (
-          <button
-            onClick={() => showToast('Google вход не настроен администратором', 'error')}
-            disabled
-            className="btn btn-secondary w-full mb-3 opacity-60"
-          >
-            🇬 Войти через Google (скоро)
-          </button>
+          <p className="text-center text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+            Вход через Google временно недоступен. Если нет кошелька — напиши администратору.
+          </p>
         )}
+
+        <button
+          onClick={handleWallet}
+          disabled={loading}
+          className="btn btn-secondary w-full mb-3 text-base py-3"
+        >
+          {loading ? 'Подождите…' : '🔐 Войти через кошелёк (MetaMask и др.)'}
+        </button>
 
         {config.simulation && (
           <p className="text-center text-xs mb-3" style={{ color: 'var(--brand)' }}>
@@ -208,7 +204,7 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
         )}
 
         <p className="text-center text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
-          Вход через кошелёк подписывает сообщение (SIWE) — средства не списываются.
+          Google — быстрый вход по аккаунту. Кошелёк — подпись сообщения (SIWE), средства не списываются.
         </p>
       </div>
     </div>

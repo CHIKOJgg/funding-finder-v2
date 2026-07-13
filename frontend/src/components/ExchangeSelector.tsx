@@ -28,11 +28,14 @@ export function ExchangeSelector({
 }: ExchangeSelectorProps) {
   const [specificOpen, setSpecificOpen] = useState(false);
 
+  const allowed = maxExchanges ?? ALL.length;
   const isAll =
-    ALL.length > 0 && value.length === ALL.length && ALL.every((e) => value.includes(e));
+    allowed > 0 && value.length >= allowed && ALL.slice(0, allowed).every((e) => value.includes(e));
 
   const selectAll = () => {
-    onChange([...ALL]);
+    // "All" means all the user is allowed to scan under their plan (capped).
+    const allowed = maxExchanges ?? ALL.length;
+    onChange(ALL.slice(0, allowed));
     setSpecificOpen(false);
   };
 
@@ -78,7 +81,7 @@ export function ExchangeSelector({
       </div>
 
       {isAll ? (
-        <p className="text-sm text-muted">Выбраны все биржи</p>
+        <p className="text-sm text-muted">Выбраны все доступные биржи</p>
       ) : (
         <div>
           {specificOpen && (

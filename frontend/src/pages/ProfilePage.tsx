@@ -210,7 +210,7 @@ export function ProfilePage() {
             <div className="text-xs font-semibold uppercase tracking-wide opacity-80">Ваш тариф</div>
             <div className="text-2xl font-bold mt-1 capitalize">{planLabel(subscription)}</div>
             <p className="text-sm opacity-90 mt-2">
-              Откройте все биржи, AI-анализ и арбитражные сигналы — зарабатывайте на разнице ставок фандинга.
+              Откройте до 12 бирж, AI-анализ и арбитражные сигналы — зарабатывайте на разнице ставок фандинга.
             </p>
           </div>
         </div>
@@ -221,7 +221,7 @@ export function ProfilePage() {
           price={29}
           period="мес"
           tagline="Для старта"
-          features={['3 биржи', 'Рекомендации', 'Email-уведомления']}
+          features={['5 бирж', 'Email-уведомления', 'Избранное (до 3)']}
           currentPlan={subscription}
           onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
         />
@@ -231,7 +231,7 @@ export function ProfilePage() {
           period="мес"
           tagline="Самый популярный"
           featured
-          features={['Все 5 бирж', 'AI-анализ рынка', 'Экспорт в CSV', 'Приоритетные сигналы']}
+          features={['До 12 бирж', 'AI-анализ рынка', 'Экспорт в CSV', 'Приоритетные сигналы']}
           currentPlan={subscription}
           onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
         />
@@ -240,11 +240,23 @@ export function ProfilePage() {
           price={499}
           period="мес"
           tagline="Для профи"
-          features={['Всё из Pro', 'Расширенная аналитика', 'Персональная поддержка', 'Ранний доступ к фичам']}
+          features={['До 20 бирж', 'Всё из Pro', 'Расширенная аналитика', 'Персональная поддержка', 'Ранний доступ к фичам']}
           currentPlan={subscription}
           onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
         />
       </div>
+      </div>
+
+      <div className="card">
+        <h2 className="text-base font-semibold mb-2">Что входит в тарифы</h2>
+        <p className="text-sm text-muted mb-2">
+          <span style={{ color: 'var(--brand)' }}>Free</span> — до 3 бирж, без AI-анализа и арбитражных сигналов.
+          Перейди на <span style={{ color: 'var(--brand)' }}>Pro</span>, чтобы открыть AI-анализ, экспорт в CSV,
+          симулятор портфеля и до 12 бирж.
+        </p>
+        <p className="text-xs text-muted">
+          Оплата принимается в криптовалюте (USDT и др.). Цены указаны в USDT.
+        </p>
       </div>
 
       <div className="card">
@@ -369,10 +381,10 @@ const PlanCard = memo(function PlanCard({
         )}
       </div>
 
-      <div className="my-3 flex items-end gap-1">
-        <span className="text-3xl font-extrabold stat text-[var(--text)]">${price}</span>
-        <span className="text-sm text-muted mb-1">/ {period}</span>
-      </div>
+        <div className="my-3 flex items-end gap-1">
+          <span className="text-3xl font-extrabold stat text-[var(--text)]">{price} <span className="text-base font-medium">USDT</span></span>
+          <span className="text-sm text-muted mb-1">/ {period}</span>
+        </div>
 
       <ul className="space-y-2 mb-4">
         {features.map((feature, idx) => (
