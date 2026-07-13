@@ -21,8 +21,10 @@ router.post('/ai', requireSubscription('pro'), validate(aiSchema), async (req, r
   try {
     const { listText } = req.body;
     const ai = await askAIForTop3(listText);
-    if (ai && ai.text) return res.json({ ok: true, ai });
-    return res.json({ ok: true, ai: { text: null, note: 'AI returned no text or not configured' } });
+    // `ai` always carries a `note` explaining empty results (missing key,
+    // all models unavailable, etc.) — surface it as-is so the client can tell
+    // the user *why* there's no analysis instead of a generic failure.
+    return res.json({ ok: true, ai });
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'AI analysis error');

@@ -5,6 +5,7 @@ import { logger } from '../utils/logger.js';
 interface AIResponse {
   text: string | null;
   model?: string;
+  note?: string;
 }
 
 interface ChatMessage {
@@ -123,7 +124,7 @@ export async function askAI(
   opts: { maxTokens?: number; temperature?: number } = {}
 ): Promise<AIResponse> {
   if (!config.ai.openrouterApiKey) {
-    return { text: null };
+    return { text: null, note: 'AI не настроен на сервере: не задан OPENROUTER_API_KEY' };
   }
 
   const models = await resolveModelsToTry();
@@ -149,7 +150,7 @@ export async function askAI(
   }
 
   logger.error('OpenRouter: all free model attempts failed');
-  return { text: null };
+  return { text: null, note: 'Все бесплатные AI-модели сейчас недоступны (лимит OpenRouter или ошибка шлюза). Попробуйте позже.' };
 }
 
 export async function askAIForTop3(rawListText: string): Promise<AIResponse> {

@@ -69,7 +69,7 @@ export function MainPage() {
       if (response.ok && response.ai?.text) {
         setAiText(response.ai.text);
       } else {
-        setAiText('AI не вернул результатов');
+        setAiText(response.ai?.note || 'AI не вернул результатов');
       }
     } catch (error) {
       setAiText('Ошибка при запросе AI: ' + (error as Error).message);
