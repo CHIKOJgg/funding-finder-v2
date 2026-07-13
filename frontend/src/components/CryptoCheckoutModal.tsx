@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { apiClient } from '../api/client';
 import { useToast } from './Toast';
+import { useT } from '../i18n';
 
 interface CryptoCheckoutModalProps {
   open: boolean;
@@ -22,17 +23,18 @@ const CURRENCIES = [
 ];
 
 const STATUS_LABEL: Record<string, string> = {
-  pending: 'Ожидает оплату',
-  waiting: 'Ожидает оплату',
-  confirming: 'Подтверждается в сети…',
-  paid: 'Оплачено ✓',
-  finished: 'Оплачено ✓',
-  failed: 'Платёж не прошёл',
-  expired: 'Истёк срок оплаты',
+  pending: 'crypto.statusPending',
+  waiting: 'crypto.statusPending',
+  confirming: 'crypto.statusConfirming',
+  paid: 'crypto.statusPaid',
+  finished: 'crypto.statusPaid',
+  failed: 'crypto.statusFailed',
+  expired: 'crypto.statusExpired',
 };
 
 export function CryptoCheckoutModal({ open, planId, planName, price, onClose, onPaid }: CryptoCheckoutModalProps) {
   const { showToast } = useToast();
+  const t = useT();
   const [currency, setCurrency] = useState('usdterc20');
   const [creating, setCreating] = useState(false);
   const [order, setOrder] = useState<any>(null);
@@ -71,13 +73,13 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
           stopPolling();
           if (!paidFiredRef.current) {
             paidFiredRef.current = true;
-            showToast('Подписка активирована!', 'success');
+            showToast(t('crypto.subscriptionActivated'), 'success');
             onPaid();
             setTimeout(close, 1200);
           }
         } else if (st === 'failed' || st === 'expired') {
           stopPolling();
-          showToast('Платёж не прошёл', 'error');
+          showToast(t('crypto.statusFailed'), 'error');
         }
       } catch {
         /* ignore transient errors */
@@ -102,15 +104,15 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
           window.open(res.invoiceUrl, '_blank');
         }
         if (res.simulated) {
-          showToast('Демо-режим: оплата имитируется', 'success');
+          showToast(t('crypto.demoModeToast'), 'success');
         } else {
-          showToast('Счёт создан — оплатите и дождитесь подтверждения', 'success');
+          showToast(t('crypto.invoiceCreated'), 'success');
         }
       } else {
-        throw new Error(res?.error || 'Не удалось создать счёт');
+        throw new Error(res?.error || t('crypto.invoiceCreateError'));
       }
     } catch (err) {
-      showToast('Ошибка: ' + (err as Error).message, 'error');
+      showToast(t('crypto.errorPrefix') + (err as Error).message, 'error');
     } finally {
       setCreating(false);
     }
@@ -124,7 +126,7 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
         setStatus('paid');
       }
     } catch (err) {
-      showToast('Ошибка симуляции', 'error');
+      showToast(t('crypto.simError'), 'error');
     }
   };
 
@@ -151,14 +153,14 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
         style={{ background: 'var(--surface)', color: 'var(--text)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold mb-1">Оплата криптовалютой</h2>
+        <h2 className="text-lg font-bold mb-1">{t('crypto.title')}</h2>
         <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-           Тариф <b>{planName}</b> — {price} USDT/мес
-        </p>
+           {t('crypto.planLine', { plan: planName, price })}
+         </p>
 
         {!order ? (
           <>
-            <label className="text-sm font-medium mb-1 block">Выберите монету / сеть</label>
+            <label className="text-sm font-medium mb-1 block">{t('crypto.selectCoin')}</label>
             <select
               className="input-field w-full mb-4"
               value={currency}
@@ -169,7 +171,7 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
               ))}
             </select>
             <button onClick={createPayment} disabled={creating} className="btn btn-primary w-full mb-2">
-              {creating ? 'Создание счёта…' : 'Создать счёт и оплатить'}
+              {creating ? t('crypto.creatingInvoice') : t('crypto.createInvoice')}
             </button>
           </>
         ) : (
@@ -181,27 +183,27 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
                 color: status === 'paid' ? 'var(--success)' : 'var(--text)',
               }}
             >
-              {STATUS_LABEL[status] || 'Обработка…'}
+              {t(STATUS_LABEL[status] || 'crypto.statusProcessing')}
             </div>
 
             {order.invoiceUrl && !order.simulated && (
               <a href={order.invoiceUrl} target="_blank" rel="noreferrer" className="btn btn-primary w-full block text-center">
-                Открыть платёжную страницу
+                {t('crypto.openPaymentPage')}
               </a>
             )}
 
             {order.payAddress && order.payAddress !== 'SIM_WALLET_ADDRESS' && (
               <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
                 <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  Адрес для пополнения ({order.payCurrency})
+                   {t('crypto.depositAddress', { currency: order.payCurrency })}
                 </div>
                 <div className="font-mono text-sm break-all select-all mt-1">{order.payAddress}</div>
                 <button onClick={copyAddress} className="btn btn-secondary text-xs mt-2 py-1.5">
-                  {copied ? 'Скопировано ✓' : 'Копировать адрес'}
+                  {copied ? t('crypto.copied') : t('crypto.copyAddress')}
                 </button>
                 {order.payAmount != null && (
                   <div className="text-sm mt-2">
-                    Сумма: <b className="stat">{order.payAmount} {order.payCurrency}</b>
+                    {t('crypto.amount', { amount: order.payAmount, currency: order.payCurrency })}
                   </div>
                 )}
               </div>
@@ -209,18 +211,18 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
 
             {order.simulated && (
               <button onClick={simulate} className="btn btn-primary w-full">
-                ✅ Симулировать оплату (demo)
+                 {t('crypto.simulatePayment')}
               </button>
             )}
 
             <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
-              Статус обновляется автоматически. Подписка откроется сразу после подтверждения.
+              {t('crypto.statusAutoNote')}
             </p>
           </div>
         )}
 
         <button onClick={close} className="btn btn-secondary w-full mt-3">
-          {order ? 'Закрыть' : 'Отмена'}
+          {order ? t('crypto.close') : t('common.cancel')}
         </button>
       </div>
     </div>

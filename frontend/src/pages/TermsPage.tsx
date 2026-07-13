@@ -1,39 +1,42 @@
+import { useT } from '../i18n';
+
 export function TermsPage() {
+  const t = useT();
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <div className="card">
-        <h1 className="text-xl font-bold mb-4">Пользовательское соглашение</h1>
+        <h1 className="text-xl font-bold mb-4">{t('terms.title')}</h1>
         <div className="text-sm text-gray-700 space-y-3">
-          <p>Настоящее Соглашение регулирует отношения между владельцем сервиса Funding Finder (далее — «Сервис») и лицом, использующим Сервис (далее — «Пользователь»).</p>
+          <p>{t('terms.intro')}</p>
 
-          <h2 className="font-semibold text-base mt-4">1. Общие положения</h2>
-          <p>1.1. Используя Сервис, Пользователь подтверждает, что ознакомился с условиями Соглашения и принимает их.</p>
-          <p>1.2. Сервис предоставляется «как есть» (as is) без каких-либо гарантий.</p>
+          <h2 className="font-semibold text-base mt-4">{t('terms.s1')}</h2>
+          <p>{t('terms.s1p1')}</p>
+          <p>{t('terms.s1p2')}</p>
 
-          <h2 className="font-semibold text-base mt-4">2. Описание Сервиса</h2>
-          <p>2.1. Сервис предоставляет информацию о ставках финансирования (funding rates) криптовалютных бирж.</p>
-          <p>2.2. Сервис не является финансовым советником. Все данные носят информационный характер.</p>
+          <h2 className="font-semibold text-base mt-4">{t('terms.s2')}</h2>
+          <p>{t('terms.s2p1')}</p>
+          <p>{t('terms.s2p2')}</p>
 
-          <h2 className="font-semibold text-base mt-4">3. Обязательства Пользователя</h2>
-          <p>3.1. Пользователь обязуется не использовать Сервис для любых незаконных целей.</p>
-          <p>3.2. Пользователь самостоятельно несёт ответственность за свои торговые решения.</p>
+          <h2 className="font-semibold text-base mt-4">{t('terms.s3')}</h2>
+          <p>{t('terms.s3p1')}</p>
+          <p>{t('terms.s3p2')}</p>
 
-          <h2 className="font-semibold text-base mt-4">4. Оплата и подписки</h2>
-          <p>4.1. Оплата подписки производится через Crypto Pay. Средства не возвращаются после активации плана.</p>
-          <p>4.2. Сервис оставляет за собой право менять стоимость подписок с предварительным уведомлением.</p>
+          <h2 className="font-semibold text-base mt-4">{t('terms.s4')}</h2>
+          <p>{t('terms.s4p1')}</p>
+          <p>{t('terms.s4p2')}</p>
 
-          <h2 className="font-semibold text-base mt-4">5. Ограничение ответственности</h2>
-          <p>5.1. Сервис не несёт ответственности за любые убытки, связанные с использованием предоставленной информации.</p>
-          <p>5.2. Максимальная ответственность Сервиса ограничивается суммой, уплаченной Пользователем за подписку.</p>
+          <h2 className="font-semibold text-base mt-4">{t('terms.s5')}</h2>
+          <p>{t('terms.s5p1')}</p>
+          <p>{t('terms.s5p2')}</p>
 
-          <h2 className="font-semibold text-base mt-4">6. Конфиденциальность</h2>
-          <p>6.1. Сервис собирает только данные, необходимые для функционирования (Telegram ID, настройки).</p>
-          <p>6.2. Сервис не передаёт персональные данные третьим лицам, за исключением случаев, предусмотренных законом.</p>
+          <h2 className="font-semibold text-base mt-4">{t('terms.s6')}</h2>
+          <p>{t('terms.s6p1')}</p>
+          <p>{t('terms.s6p2')}</p>
 
-          <h2 className="font-semibold text-base mt-4">7. Изменение условий</h2>
-          <p>7.1. Сервис оставляет за собой право вносить изменения в настоящее Соглашение. Продолжение использования Сервиса означает принятие новой версии.</p>
+          <h2 className="font-semibold text-base mt-4">{t('terms.s7')}</h2>
+          <p>{t('terms.s7p1')}</p>
 
-          <p className="mt-4 text-gray-500">Последнее обновление: июль 2026 г.</p>
+          <p className="mt-4 text-gray-500">{t('terms.updated')}</p>
         </div>
       </div>
     </div>

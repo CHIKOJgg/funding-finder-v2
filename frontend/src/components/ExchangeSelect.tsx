@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { ALL_EXCHANGES, exchangeLabel } from '../utils/exchanges';
+import { useT } from '../i18n';
 
 interface Props {
   selected: string[];          // selected ids (empty = all)
@@ -15,9 +16,11 @@ interface Props {
  * removable pills, and expanding it reveals a searchable, scrollable checklist.
  * Scales well to the full 25-exchange list.
  */
-export function ExchangeSelect({ selected, onChange, exchanges = ALL_EXCHANGES, label = 'Биржи' }: Props) {
+export function ExchangeSelect({ selected, onChange, exchanges = ALL_EXCHANGES, label }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const t = useT();
+  const resolvedLabel = label ?? t('exchangeSelect.label');
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,14 +42,14 @@ export function ExchangeSelect({ selected, onChange, exchanges = ALL_EXCHANGES, 
   return (
     <div className="relative" ref={ref}>
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-sm font-medium text-gray-700">{label}</span>
+        <span className="text-sm font-medium text-gray-700">{resolvedLabel}</span>
         {selected.length > 0 && (
           <button
             onClick={() => onChange([])}
             className="text-xs text-[var(--brand)] hover:underline"
-            aria-label="Сбросить выбор бирж"
+            aria-label={t('exchangeSelect.reset')}
           >
-            Сбросить
+            {t('exchangeSelect.reset')}
           </button>
         )}
       </div>
@@ -56,10 +59,10 @@ export function ExchangeSelect({ selected, onChange, exchanges = ALL_EXCHANGES, 
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between input-field text-sm"
         aria-expanded={open}
-        aria-label="Выбрать биржи"
+        aria-label={resolvedLabel}
       >
         <span className={clsx(selected.length === 0 && 'text-gray-400')}>
-          {selected.length === 0 ? 'Все биржи' : `Выбрано: ${selected.length}`}
+          {selected.length === 0 ? t('exchangeSelect.all') : t('exchangeSelect.selected', { count: selected.length })}
         </span>
         <span className="ml-2 text-gray-400">{open ? '▴' : '▾'}</span>
       </button>
@@ -76,7 +79,7 @@ export function ExchangeSelect({ selected, onChange, exchanges = ALL_EXCHANGES, 
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') toggle(id);
               }}
-              aria-label={`Убрать ${exchangeLabel(id)}`}
+              aria-label={`${t('exchangeSelect.remove')} ${exchangeLabel(id)}`}
             >
               {exchangeLabel(id)}
               <span className="chip-x" aria-hidden>
@@ -93,13 +96,13 @@ export function ExchangeSelect({ selected, onChange, exchanges = ALL_EXCHANGES, 
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск биржи…"
+            placeholder={t('exchangeSelect.search')}
             className="input-field text-sm mb-2"
-            aria-label="Поиск биржи"
+            aria-label={t('exchangeSelect.search')}
           />
           <div className="overflow-y-auto" style={{ maxHeight: 220 }}>
             {filtered.length === 0 && (
-              <div className="text-sm text-gray-400 p-2">Ничего не найдено</div>
+              <div className="text-sm text-gray-400 p-2">{t('exchangeSelect.none')}</div>
             )}
             {filtered.map((id) => {
               const active = selected.includes(id);

@@ -3,6 +3,8 @@ import { useToast } from '../components/Toast';
 import { apiClient } from '../api/client';
 import { ALL_EXCHANGES } from '../utils/exchanges';
 import { ExchangeSelector } from '../components/ExchangeSelector';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { useT } from '../i18n';
 
 interface UserSettings {
   telegramNotifications: boolean;
@@ -38,6 +40,7 @@ const DEFAULT_SETTINGS: UserSettings = {
 
 export function SettingsPage() {
   const { showToast } = useToast();
+  const t = useT();
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,7 +56,7 @@ export function SettingsPage() {
         setSettings({ ...DEFAULT_SETTINGS, ...res.settings });
       }
     } catch {
-      showToast('Не удалось загрузить настройки', 'error');
+      showToast(t('settings.loadError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -64,12 +67,12 @@ export function SettingsPage() {
     try {
       const res: any = await apiClient.updateSettings(settings);
       if (res.ok) {
-        showToast('Настройки сохранены', 'success');
+        showToast(t('settings.saved'), 'success');
       } else {
-        showToast('Ошибка сохранения', 'error');
+        showToast(t('settings.saveError'), 'error');
       }
     } catch {
-      showToast('Ошибка сети', 'error');
+      showToast(t('settings.networkError'), 'error');
     } finally {
       setSaving(false);
     }
@@ -80,17 +83,17 @@ export function SettingsPage() {
       const res: any = await apiClient.resetSettings();
       if (res.ok) {
         setSettings(DEFAULT_SETTINGS);
-        showToast('Настройки сброшены', 'success');
+        showToast(t('settings.resetDone'), 'success');
       }
     } catch {
-      showToast('Ошибка сброса', 'error');
+      showToast(t('settings.resetError'), 'error');
     }
   }, [showToast]);
 
   if (loading) {
     return (
       <div className="p-4">
-        <div className="card text-center py-8 text-gray-500" role="status">Загрузка...</div>
+        <div className="card text-center py-8 text-gray-500" role="status">{t('common.loading')}</div>
       </div>
     );
   }
@@ -98,16 +101,16 @@ export function SettingsPage() {
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <div className="card">
-        <h1 className="text-xl font-bold mb-2">Настройки</h1>
-        <p className="text-sm text-gray-600 mb-4">Управляйте уведомлениями и предпочтениями</p>
+          <h1 className="text-xl font-bold mb-2">{t('settings.title')}</h1>
+          <p className="text-sm text-gray-600 mb-4">{t('settings.subtitle')}</p>
       </div>
 
       <div className="card">
-        <h2 className="text-lg font-semibold mb-3">Уведомления</h2>
+          <h2 className="text-lg font-semibold mb-3">{t('settings.notifications')}</h2>
 
         <div className="space-y-3">
           <label className="flex items-center justify-between">
-            <span className="text-sm">Telegram уведомления</span>
+            <span className="text-sm">{t('settings.telegram')}</span>
             <input
               type="checkbox"
               checked={settings.telegramNotifications}
@@ -117,7 +120,7 @@ export function SettingsPage() {
           </label>
 
           <label className="flex items-center justify-between">
-            <span className="text-sm">Email уведомления</span>
+            <span className="text-sm">{t('settings.email')}</span>
             <input
               type="checkbox"
               checked={settings.emailNotifications}
@@ -129,7 +132,7 @@ export function SettingsPage() {
           {settings.emailNotifications && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="email-address">
-                Email адрес
+                {t('settings.emailAddress')}
               </label>
               <input
                 id="email-address"
@@ -143,7 +146,7 @@ export function SettingsPage() {
           )}
 
           <label className="flex items-center justify-between">
-            <span className="text-sm">Ежедневная сводка</span>
+            <span className="text-sm">{t('settings.dailySummary')}</span>
             <input
               type="checkbox"
               checked={settings.dailySummary}
@@ -153,7 +156,7 @@ export function SettingsPage() {
           </label>
 
           <label className="flex items-center justify-between">
-            <span className="text-sm">Звук оповещений</span>
+            <span className="text-sm">{t('settings.alertSound')}</span>
             <input
               type="checkbox"
               checked={settings.alertSound}
@@ -163,7 +166,7 @@ export function SettingsPage() {
           </label>
 
           <label className="flex items-center justify-between">
-            <span className="text-sm">🔥 Пуш о новых спредах</span>
+            <span className="text-sm">{t('settings.spreadPush')}</span>
             <input
               type="checkbox"
               checked={settings.spreadNotifications}
@@ -175,7 +178,7 @@ export function SettingsPage() {
           {settings.spreadNotifications && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="spread-threshold">
-                Мин. разница спреда (%/ч)
+                {t('settings.spreadThreshold')}
               </label>
               <input
                 id="spread-threshold"
@@ -186,7 +189,7 @@ export function SettingsPage() {
                 min={0}
                 className="input-field"
               />
-              <p className="text-xs text-gray-500 mt-1">Уведомлять, когда разница ставок между биржами выше этого порога.</p>
+              <p className="text-xs text-gray-500 mt-1">{t('settings.spreadThresholdHint')}</p>
             </div>
           )}
         </div>
@@ -196,17 +199,17 @@ export function SettingsPage() {
         <ExchangeSelector
           value={settings.defaultExchanges}
           onChange={(next) => setSettings((prev) => ({ ...prev, defaultExchanges: next }))}
-          title="Биржи по умолчанию"
+          title={t('settings.defaultExchanges')}
         />
       </div>
 
       <div className="card">
-        <h2 className="text-lg font-semibold mb-3">Фильтры</h2>
+          <h2 className="text-lg font-semibold mb-3">{t('settings.filters')}</h2>
 
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="min-volume">
-              Мин. объём 24ч (USDT)
+                {t('settings.minVolume')}
             </label>
             <input
               id="min-volume"
@@ -220,7 +223,7 @@ export function SettingsPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="min-rate">
-              Мин. ставка финансирования (%)
+                {t('settings.minRate')}
             </label>
             <input
               id="min-rate"
@@ -236,45 +239,52 @@ export function SettingsPage() {
       </div>
 
       <div className="card">
-        <h2 className="text-lg font-semibold mb-3">Внешний вид</h2>
+        <h2 className="text-lg font-semibold mb-3">{t('settings.language')}</h2>
+        <LanguageSwitcher
+          onChange={(l) => setSettings((prev) => ({ ...prev, language: l }))}
+        />
+      </div>
+
+      <div className="card">
+          <h2 className="text-lg font-semibold mb-3">{t('settings.appearance')}</h2>
 
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Тема</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.theme')}</label>
             <select
               value={settings.theme}
               onChange={(e) => setSettings((prev) => ({ ...prev, theme: e.target.value as 'auto' | 'light' | 'dark' }))}
               className="input-field"
             >
-              <option value="auto">Авто</option>
-              <option value="light">Светлая</option>
-              <option value="dark">Тёмная</option>
+              <option value="auto">{t('settings.themeAuto')}</option>
+              <option value="light">{t('settings.themeLight')}</option>
+              <option value="dark">{t('settings.themeDark')}</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Часовой пояс</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.timezone')}</label>
             <select
               value={settings.timezone}
               onChange={(e) => setSettings((prev) => ({ ...prev, timezone: e.target.value }))}
               className="input-field"
             >
-              <option value="Europe/Moscow">Москва (MSK)</option>
-              <option value="Europe/Kaliningrad">Калининград (UTC+2)</option>
-              <option value="Europe/Samara">Самара (UTC+4)</option>
-              <option value="Asia/Yekaterinburg">Екатеринбург (UTC+5)</option>
-              <option value="Asia/Omsk">Омск (UTC+6)</option>
-              <option value="Asia/Krasnoyarsk">Красноярск (UTC+7)</option>
-              <option value="Asia/Irkutsk">Иркутск (UTC+8)</option>
-              <option value="Asia/Vladivostok">Владивосток (UTC+10)</option>
-              <option value="Asia/Kamchatka">Камчатка (UTC+12)</option>
-              <option value="UTC">UTC</option>
-              <option value="Europe/London">Лондон (UTC+1)</option>
-              <option value="America/New_York">Нью-Йорк (UTC-5)</option>
-              <option value="America/Chicago">Чикаго (UTC-6)</option>
-              <option value="America/Los_Angeles">Лос-Анджелес (UTC-8)</option>
-              <option value="Asia/Shanghai">Шанхай (UTC+8)</option>
-              <option value="Asia/Tokyo">Токио (UTC+9)</option>
+              <option value="Europe/Moscow">{t('settings.tzMsk')}</option>
+              <option value="Europe/Kaliningrad">{t('settings.tzKaliningrad')}</option>
+              <option value="Europe/Samara">{t('settings.tzSamara')}</option>
+              <option value="Asia/Yekaterinburg">{t('settings.tzYekaterinburg')}</option>
+              <option value="Asia/Omsk">{t('settings.tzOmsk')}</option>
+              <option value="Asia/Krasnoyarsk">{t('settings.tzKrasnoyarsk')}</option>
+              <option value="Asia/Irkutsk">{t('settings.tzIrkutsk')}</option>
+              <option value="Asia/Vladivostok">{t('settings.tzVladivostok')}</option>
+              <option value="Asia/Kamchatka">{t('settings.tzKamchatka')}</option>
+              <option value="UTC">{t('settings.tzUtc')}</option>
+              <option value="Europe/London">{t('settings.tzLondon')}</option>
+              <option value="America/New_York">{t('settings.tzNewYork')}</option>
+              <option value="America/Chicago">{t('settings.tzChicago')}</option>
+              <option value="America/Los_Angeles">{t('settings.tzLa')}</option>
+              <option value="Asia/Shanghai">{t('settings.tzShanghai')}</option>
+              <option value="Asia/Tokyo">{t('settings.tzTokyo')}</option>
             </select>
           </div>
         </div>
@@ -282,11 +292,11 @@ export function SettingsPage() {
 
       <div className="flex gap-2">
         <button onClick={handleSave} disabled={saving} className="btn btn-primary flex-1">
-          {saving ? 'Сохранение...' : 'Сохранить настройки'}
+          {saving ? t('settings.saving') : t('settings.save')}
         </button>
-        <button onClick={handleReset} className="btn btn-secondary flex-1">
-          Сбросить
-        </button>
+          <button onClick={handleReset} className="btn btn-secondary flex-1">
+            {t('common.reset')}
+          </button>
       </div>
     </div>
   );

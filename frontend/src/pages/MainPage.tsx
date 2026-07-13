@@ -18,6 +18,7 @@ import { PairMatrix } from '../components/PairMatrix';
 import { RiskProfileModal } from '../components/RiskProfileModal';
 import { ResultSkeleton } from '../components/Skeleton';
 import { ExchangeResult } from '../types';
+import { useT } from '../i18n';
 
 type SortKey = 'rate' | 'volume' | 'interval';
 
@@ -46,10 +47,11 @@ export function MainPage() {
   // own timer) refreshes immediately instead of waiting up to 60s.
   const [calendarRefresh, setCalendarRefresh] = useState(0);
   const [exchangeFilter, setExchangeFilter] = useState<string[]>([]);
+  const t = useT();
 
   const handleScan = useCallback(async () => {
     if (selectedExchanges.length === 0) {
-      showToast('Выберите хотя бы одну биржу', 'error');
+      showToast(t('main.selectExchangeError'), 'error');
       return;
     }
     setShowAi(false);
@@ -65,18 +67,18 @@ export function MainPage() {
 
     setActionLoading(true);
     setShowAi(true);
-    setAiText('Анализируем данные...');
+    setAiText(t('main.analyzing'));
 
     try {
-      const listText = createListText(scanResults);
+      const listText = createListText(scanResults, t);
       const response: any = await apiClient.aiAnalyze(listText);
       if (response.ok && response.ai?.text) {
         setAiText(response.ai.text);
       } else {
-        setAiText(response.ai?.note || 'AI не вернул результатов');
+        setAiText(response.ai?.note || t('main.aiNoResults'));
       }
     } catch (error) {
-      setAiText('Ошибка при запросе AI: ' + (error as Error).message);
+      setAiText(t('main.aiRequestErrorPrefix') + (error as Error).message);
     } finally {
       setActionLoading(false);
     }
@@ -87,7 +89,7 @@ export function MainPage() {
 
     setActionLoading(true);
     setShowRecommendations(true);
-    setRecommendationsText('Генерируем рекомендации...');
+    setRecommendationsText(t('main.generatingRecs'));
 
     try {
       const allResults = [
@@ -98,10 +100,10 @@ export function MainPage() {
       if (response.ok && response.text) {
         setRecommendationsText(response.text);
       } else {
-        setRecommendationsText('Ошибка при генерации рекомендаций');
+        setRecommendationsText(t('main.recsError'));
       }
     } catch (error) {
-      setRecommendationsText('Ошибка при запросе рекомендаций: ' + (error as Error).message);
+      setRecommendationsText(t('main.recsRequestErrorPrefix') + (error as Error).message);
     } finally {
       setActionLoading(false);
     }
@@ -118,13 +120,13 @@ export function MainPage() {
         threshold: alertThreshold / 100, // convert from % to decimal
       });
       if (response.ok) {
-        showToast('Оповещение создано', 'success');
+        showToast(t('main.alertCreated'), 'success');
         setAlertModal(null);
       } else {
-        showToast('Ошибка: ' + (response.error || 'Неизвестная ошибка'), 'error');
+        showToast(t('main.alertCreateError', { error: response.error || t('main.unknownError') }), 'error');
       }
     } catch (error) {
-      showToast('Ошибка сети: ' + (error as Error).message, 'error');
+      showToast(t('app.networkError', { error: (error as Error).message }), 'error');
     } finally {
       setAlertCreating(false);
     }
@@ -163,7 +165,7 @@ export function MainPage() {
         </div>
         <div>
           <h1 className="text-xl font-bold leading-tight">Funding Finder</h1>
-          <p className="text-sm text-muted leading-tight">Арбитраж ставок фандинга в реальном времени</p>
+          <p className="text-sm text-muted leading-tight">{t('main.subtitle')}</p>
         </div>
       </div>
 
@@ -175,14 +177,14 @@ export function MainPage() {
           onChange={setSelectedExchanges}
           maxExchanges={planLimits.maxExchanges}
           onLimitReached={() => setPaywallFeature('exchanges')}
-          title="Выберите биржи"
+          title={t('main.selectExchanges')}
           showCount
         />
 
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="capital-input">
-            Капитал (USDT):
-          </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="capital-input">
+              {t('main.capital')}
+            </label>
           <input
             id="capital-input"
             type="number"
@@ -203,7 +205,7 @@ export function MainPage() {
           className="btn btn-primary w-full"
           aria-label="Scan exchanges for funding rates"
         >
-          {scanLoading ? 'Сканирование...' : '🔎 Сканировать'}
+            {scanLoading ? t('main.scanningBtn') : t('main.scanBtn')}
         </button>
       </div>
 
@@ -215,21 +217,21 @@ export function MainPage() {
 
       {scanLoading && (
         <div className="card">
-          <h2 className="text-lg font-semibold mb-3">Результаты сканирования</h2>
-          <ResultSkeleton />
+            <h2 className="text-lg font-semibold mb-3">{t('main.scanResults')}</h2>
+            <ResultSkeleton />
         </div>
       )}
 
       {!scanLoading && scanResults && (
         <div className="card">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold">Результаты сканирования</h2>
+            <h2 className="text-lg font-semibold">{t('main.scanResults')}</h2>
             <button
               onClick={() => navigate('/arbitrage')}
               className="btn btn-secondary text-sm py-1.5 px-3"
-              title="Смотреть арбитражные спреды между биржами — где реально заработать на разнице ставок"
+              title={t('main.arbSpreadsTitle')}
             >
-              ↔ Арбитраж
+              ↔ {t('main.arbitrage')}
             </button>
           </div>
 
@@ -238,12 +240,12 @@ export function MainPage() {
               className="rounded-xl p-4 mb-4 relative overflow-hidden"
               style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand-hover) 100%)' }}
             >
-              <div className="text-xs font-semibold uppercase tracking-wide text-white opacity-80" title="Пара с максимальной разницей ставок фандинга. Открой позицию и держи до фандинга, чтобы забрать разницу.">🔥 Лучшая возможность</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-white opacity-80" title={t('main.bestOpportunityTitle')}>{t('main.bestOpportunity')}</div>
               <div className="flex items-end justify-between mt-1">
                 <div>
                   <div className="text-xl font-bold text-white">{topPick.exchange.toUpperCase()}: {topPick.contract}</div>
                   <div className="text-white opacity-90 text-sm">
-                    {((topPick.funding_rate_per_hour ?? 0) * 100).toFixed(6)}%/ч · ≈ {((topPick.funding_rate_per_day ?? 0) * 100).toFixed(4)}%/день
+                    {t('main.topRateLine', { h: ((topPick.funding_rate_per_hour ?? 0) * 100).toFixed(6), d: ((topPick.funding_rate_per_day ?? 0) * 100).toFixed(4) })}
                   </div>
                 </div>
                 <button
@@ -251,7 +253,7 @@ export function MainPage() {
                   className="btn text-sm py-2 px-4 shrink-0"
                   style={{ background: '#ffffff', color: 'var(--brand)' }}
                 >
-                  ↗ Открыть позицию
+                  ↗ {t('main.openPositionBtn')}
                 </button>
               </div>
             </div>
@@ -262,7 +264,7 @@ export function MainPage() {
           <div className="flex gap-2 mb-4">
             <input
               type="text"
-              placeholder="Поиск по бирже или контракту..."
+              placeholder={t('main.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="input-field flex-1 text-sm"
@@ -272,7 +274,7 @@ export function MainPage() {
               onClick={() => setShowWatchlistOnly((v) => !v)}
               className={clsx('btn text-sm py-2 w-auto px-3', showWatchlistOnly ? 'btn-primary' : 'btn-secondary')}
               aria-pressed={showWatchlistOnly}
-              title="Только избранное"
+              title={t('main.watchlistOnlyTitle')}
             >
               ⭐ {watchlist.length}
             </button>
@@ -282,9 +284,9 @@ export function MainPage() {
               className="input-field w-auto text-sm"
               aria-label="Sort results"
             >
-              <option value="rate">По ставке</option>
-              <option value="volume">По объёму</option>
-              <option value="interval">По интервалу</option>
+              <option value="rate">{t('main.sortRate')}</option>
+              <option value="volume">{t('main.sortVolume')}</option>
+              <option value="interval">{t('main.sortInterval')}</option>
             </select>
           </div>
 
@@ -293,7 +295,7 @@ export function MainPage() {
 
           {scanResults.metrics?.intervalDistribution && (
             <div className="mb-4 p-3 rounded-xl" style={{ background: 'var(--brand-soft)' }}>
-              <p className="text-sm font-medium mb-1" style={{ color: 'var(--brand)' }} title="Интервал финансирования — как часто начисляется ставка (чаще всего 8ч).">Распределение интервалов:</p>
+                <p className="text-sm font-medium mb-1" style={{ color: 'var(--brand)' }} title={t('main.intervalDistTitle')}>{t('main.intervalDist')}</p>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(scanResults.metrics.intervalDistribution).map(([interval, count]) => (
                   <span key={interval} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--surface)', color: 'var(--text)' }}>
@@ -301,15 +303,15 @@ export function MainPage() {
                   </span>
                 ))}
               </div>
-              <p className="text-xs mt-1" style={{ color: 'var(--brand)' }}>
-                Средний интервал: {scanResults.metrics.averageIntervalHours?.toFixed(1) || '8'}ч
-              </p>
+                <p className="text-xs mt-1" style={{ color: 'var(--brand)' }}>
+                  {t('main.avgInterval', { x: scanResults.metrics.averageIntervalHours?.toFixed(1) || '8' })}
+                </p>
             </div>
           )}
 
           {scanResults.highYield?.length > 0 && (
             <ResultSection
-              title="Высокая доходность"
+              title={t('main.highYield')}
               count={scanResults.highYield.length}
               items={scanResults.highYield.slice(0, 10)}
               colorClass="text-green-700"
@@ -324,7 +326,7 @@ export function MainPage() {
 
           {scanResults.mediumYield?.length > 0 && (
             <ResultSection
-              title="Средняя доходность"
+              title={t('main.mediumYield')}
               count={scanResults.mediumYield.length}
               items={scanResults.mediumYield.slice(0, 10)}
               colorClass="text-yellow-700"
@@ -339,7 +341,7 @@ export function MainPage() {
 
           {scanResults.lowYield?.length > 0 && (
             <ResultSection
-              title="Низкая доходность"
+              title={t('main.lowYield')}
               count={scanResults.lowYield.length}
               items={scanResults.lowYield.slice(0, 5)}
               colorClass="text-gray-700"
@@ -358,25 +360,25 @@ export function MainPage() {
               disabled={actionLoading || scanLoading}
               className="btn btn-secondary flex-1"
             >
-              🧠 AI Анализ {!planLimits.aiEnabled && <span className="ml-1" aria-hidden="true">🔒</span>}
+               {t('main.aiAnalysis')} {!planLimits.aiEnabled && <span className="ml-1" aria-hidden="true">🔒</span>}
             </button>
             <button
               onClick={() => planLimits.recommendationsEnabled ? handleRecommendations() : setPaywallFeature('recommendations')}
               disabled={actionLoading || scanLoading}
               className="btn btn-success flex-1"
             >
-              🤖 Рекомендации {!planLimits.recommendationsEnabled && <span className="ml-1" aria-hidden="true">🔒</span>}
+               {t('main.recommendations')} {!planLimits.recommendationsEnabled && <span className="ml-1" aria-hidden="true">🔒</span>}
             </button>
           </div>
           <button
             onClick={() => setShowRisk(true)}
             className="btn btn-secondary text-sm py-2 w-full mt-2"
           >
-            🎯 Риск-профиль (собрать корзину позиций)
+            {t('main.riskProfile')}
           </button>
           {!isPremium && (
             <p className="text-xs text-center mt-2" style={{ color: 'var(--text-muted)' }}>
-              🔒 AI Анализ и Рекомендации — только для подписчиков Pro
+               {t('main.proOnly')}
             </p>
           )}
 
@@ -385,7 +387,7 @@ export function MainPage() {
             className="btn btn-secondary text-sm py-2 w-full mt-4"
             aria-expanded={showMatrix}
           >
-            {showMatrix ? '▾ Скрыть матрицу пар' : '▸ Матрица пар (спред по биржам)'}
+            {showMatrix ? t('main.hideMatrix') : t('main.showMatrix')}
           </button>
           {showMatrix && (
             <div className="mt-3">
@@ -397,7 +399,7 @@ export function MainPage() {
 
       {showAi && (
         <div className="card">
-          <h2 className="text-lg font-semibold mb-2">AI Анализ</h2>
+          <h2 className="text-lg font-semibold mb-2">{t('main.aiAnalysisTitle')}</h2>
           <pre className="bg-gray-50 p-3 rounded-lg text-sm whitespace-pre-wrap overflow-auto max-h-96">
             {aiText}
           </pre>
@@ -406,7 +408,7 @@ export function MainPage() {
 
       {showRecommendations && (
         <div className="card">
-          <h2 className="text-lg font-semibold mb-2">Рекомендации</h2>
+          <h2 className="text-lg font-semibold mb-2">{t('main.recommendationsTitle')}</h2>
           <pre className="bg-gray-50 p-3 rounded-lg text-sm whitespace-pre-wrap overflow-auto max-h-96">
             {recommendationsText}
           </pre>
@@ -430,27 +432,27 @@ export function MainPage() {
         >
           <div className="bg-white rounded-xl max-w-sm w-full">
             <div className="card">
-              <h2 id="alert-dialog-title" className="text-lg font-semibold mb-2">🔔 Создать оповещение</h2>
+              <h2 id="alert-dialog-title" className="text-lg font-semibold mb-2">{t('main.createAlert')}</h2>
               <p className="text-sm text-gray-600 mb-4">
                 {alertModal.exchange.toUpperCase()}: {alertModal.contract}
               </p>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Условие</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('main.condition')}</label>
                 <select
                   value={alertCondition}
                   onChange={(e) => setAlertCondition(e.target.value as 'above' | 'below')}
                   className="input-field"
                 >
-                  <option value="above">Выше</option>
-                  <option value="below">Ниже</option>
+                  <option value="above">{t('main.above')}</option>
+                  <option value="below">{t('main.below')}</option>
                 </select>
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="alert-threshold">
-                  Порог (% в час)
-                </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="alert-threshold">
+                    {t('main.threshold')}
+                  </label>
                 <input
                   id="alert-threshold"
                   type="number"
@@ -467,14 +469,14 @@ export function MainPage() {
                   onClick={() => setAlertModal(null)}
                   className="btn btn-secondary flex-1"
                 >
-                  Отмена
+                   {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleCreateAlert}
                   disabled={alertCreating || alertThreshold <= 0}
                   className="btn btn-primary flex-1"
                 >
-                  {alertCreating ? 'Создание...' : 'Создать'}
+                  {alertCreating ? t('main.creating') : t('common.create')}
                 </button>
               </div>
             </div>
@@ -522,6 +524,7 @@ const ResultSection = memo(function ResultSection({
   exchangeFilter?: string[];
 }) {
   const { isWatchlisted } = useApp();
+  const t = useT();
   const filtered = items.filter((item) => {
     if (exchangeFilter.length > 0 && !exchangeFilter.includes(item.exchange)) return false;
     if (showWatchlistOnly && !isWatchlisted(item.exchange, item.contract)) return false;
@@ -548,7 +551,7 @@ const ResultSection = memo(function ResultSection({
   return (
     <div className="mb-4">
       <h3 className={clsx('text-md font-medium mb-2', colorClass)}>
-        {title} ({sorted.length}{sorted.length < count ? ` из ${count}` : ''})
+        {title} ({sorted.length}{sorted.length < count ? t('main.outOf', { count }) : ''})
       </h3>
       <div className="space-y-2">
         {sorted.map((item) => (
@@ -569,6 +572,7 @@ const ResultItem = memo(function ResultItem({
   onAlert: (data: { exchange: string; contract: string }) => void;
 }) {
   const { isWatchlisted, toggleWatchlist } = useApp();
+  const t = useT();
   const starred = isWatchlisted(item.exchange, item.contract);
   return (
     <div className="border-b border-gray-100 pb-2">
@@ -576,28 +580,28 @@ const ResultItem = memo(function ResultItem({
         <div>
           <strong className="text-sm">{item.exchange.toUpperCase()}: {item.contract}</strong>
           <div className="text-xs text-gray-500">
-            Объем: {formatNumber(item.volume_24h_settle)} USD
+            {t('main.volume', { v: formatNumber(item.volume_24h_settle) })}
           </div>
           <div className="text-xs text-gray-500">
-            Цена: {formatNumber(item.mark_price)}
+            {t('main.price', { p: formatNumber(item.mark_price) })}
           </div>
           <div className="text-xs text-gray-500">
-            Интервал: {item.funding_interval_hours}ч ({item.funding_interval_source})
+            {t('main.interval', { h: item.funding_interval_hours, s: item.funding_interval_source })}
           </div>
           <div className="text-xs text-gray-500">
             <CountdownTimer intervalHours={item.funding_interval_hours} className="font-medium" />
-            <span className="ml-1">до фандинга</span>
+            <span className="ml-1">{t('main.untilFunding')}</span>
           </div>
         </div>
         <div className="text-right">
           <div className={clsx('font-bold', getFundingColor(item.funding_rate_per_hour))}>
-            {((item.funding_rate_per_hour ?? 0) * 100).toFixed(6)}%/ч
+            {t('main.ratePerHour', { value: ((item.funding_rate_per_hour ?? 0) * 100).toFixed(6) })}
           </div>
           <div className="text-xs text-gray-500">
-            ≈ {((item.funding_rate_per_day ?? 0) * 100).toFixed(4)}%/день
+            {t('main.ratePerDay', { value: ((item.funding_rate_per_day ?? 0) * 100).toFixed(4) })}
           </div>
           <div className="text-xs text-gray-500">
-            ≈ {(item.annualized_rate * 100)?.toFixed(2)}%/год
+            {t('main.ratePerYear', { value: (item.annualized_rate * 100)?.toFixed(2) })}
           </div>
           <div className="flex gap-2 justify-end mt-1">
             <button
@@ -626,9 +630,9 @@ const ResultItem = memo(function ResultItem({
                onClick={() => openExchange(item.exchange, item.contract)}
                className="text-xs text-green-600 hover:underline"
                aria-label={`Open ${item.exchange} ${item.contract} on exchange`}
-               title={`Открыть ${item.contract} на ${exchangeLabel(item.exchange)}`}
+                title={t('main.openOnExchange', { contract: item.contract, exchange: exchangeLabel(item.exchange) })}
              >
-               ↗ Открыть
+                ↗ {t('main.open')}
              </button>
           </div>
         </div>
@@ -637,16 +641,16 @@ const ResultItem = memo(function ResultItem({
   );
 });
 
-function createListText(results: any) {
+function createListText(results: any, t: (key: string) => string) {
   let text = '';
   if (results.highYield?.length > 0) {
-    text += 'Высокая доходность (>0.01%/час):\n';
+    text += t('main.listHighYield') + '\n';
     results.highYield.slice(0, 10).forEach((item: any) => {
       text += `${item.exchange.toUpperCase()}:${item.contract} | rate/h=${((item.funding_rate_per_hour ?? 0) * 100).toFixed(6)}% | interval=${item.funding_interval_hours}h | mark=${item.mark_price} | vol24=${item.volume_24h_settle}\n`;
     });
   }
   if (results.mediumYield?.length > 0) {
-    text += '\nСредняя доходность (0.001-0.01%/час):\n';
+    text += '\n' + t('main.listMediumYield') + '\n';
     results.mediumYield.slice(0, 10).forEach((item: any) => {
       text += `${item.exchange.toUpperCase()}:${item.contract} | rate/h=${((item.funding_rate_per_hour ?? 0) * 100).toFixed(6)}% | interval=${item.funding_interval_hours}h | mark=${item.mark_price} | vol24=${item.volume_24h_settle}\n`;
     });

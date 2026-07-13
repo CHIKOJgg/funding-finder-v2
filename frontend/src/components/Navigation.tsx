@@ -1,17 +1,19 @@
 import { memo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
+import { useT } from '../i18n';
 
 const tabs = [
-  { path: '/', label: 'Главная', icon: '📊', ariaLabel: 'Main page - scan funding rates' },
-  { path: '/arbitrage', label: 'Арбитраж', icon: '🔄', ariaLabel: 'Arbitrage opportunities' },
-  { path: '/portfolio', label: 'Портфель', icon: '💼', ariaLabel: 'Portfolio simulator (Pro)' },
-  { path: '/profile', label: 'Профиль', icon: '👤', ariaLabel: 'User profile and subscriptions' },
+  { path: '/', key: 'nav.main', icon: '📊', ariaLabel: 'Main page - scan funding rates' },
+  { path: '/arbitrage', key: 'nav.arbitrage', icon: '🔄', ariaLabel: 'Arbitrage opportunities' },
+  { path: '/portfolio', key: 'nav.portfolio', icon: '💼', ariaLabel: 'Portfolio simulator (Pro)' },
+  { path: '/profile', key: 'nav.profile', icon: '👤', ariaLabel: 'User profile and subscriptions' },
 ];
 
 export const Navigation = memo(function Navigation() {
   const navigate = useNavigate();
   const location = useLocation();
+  const t = useT();
 
   return (
       <nav
@@ -37,7 +39,7 @@ export const Navigation = memo(function Navigation() {
               aria-current={isActive ? 'page' : undefined}
             >
               <span className="text-xl" aria-hidden="true">{tab.icon}</span>
-              <span>{tab.label}</span>
+              <span>{t(tab.key)}</span>
             </button>
           );
         })}

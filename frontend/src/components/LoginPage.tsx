@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { apiClient } from '../api/client';
 import { useToast } from './Toast';
+import { useT } from '../i18n';
 
 interface LoginProps {
   onAuthenticated: (token: string, user: any) => void;
@@ -48,6 +49,7 @@ function loadGoogleScript(): Promise<void> {
 
 export function LoginPage({ onAuthenticated }: LoginProps) {
   const { showToast } = useToast();
+  const t = useT();
   const [config, setConfig] = useState<{ googleEnabled?: boolean; googleClientId?: string; siweDomain?: string; simulation?: boolean }>({});
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -77,7 +79,7 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
           width: googleBtnRef.current.clientWidth || 280,
         });
       })
-      .catch(() => showToast('Не удалось загрузить Google вход', 'error'));
+      .catch(() => showToast(t('login.googleLoadError'), 'error'));
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.googleEnabled, config.googleClientId]);
@@ -85,19 +87,19 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
   const handleWallet = async () => {
     try {
       if (!window.ethereum) {
-        showToast('Установите кошелёк (MetaMask) для входа', 'error');
+        showToast(t('login.installWallet'), 'error');
         return;
       }
       setLoading(true);
       const accounts: string[] = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const address = accounts[0];
-      if (!address) throw new Error('Кошелёк не предоставил адрес');
+      if (!address) throw new Error(t('login.walletNoAddress'));
 
       const cfg: any = await apiClient.getAuthConfig();
       const domain = cfg?.siweDomain || window.location.host;
 
       const nonceRes: any = await apiClient.walletNonce(address);
-      if (!nonceRes?.ok) throw new Error(nonceRes?.error || 'Не удалось получить nonce');
+      if (!nonceRes?.ok) throw new Error(t('login.nonceError'));
 
       let chainId = 1;
       try {
@@ -120,13 +122,13 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
 
       const verifyRes: any = await apiClient.walletVerify(message, signature);
       if (verifyRes?.ok) {
-        showToast('Вход выполнен', 'success');
+        showToast(t('login.success'), 'success');
         onAuthenticated(verifyRes.token, verifyRes.user);
       } else {
-        throw new Error(verifyRes?.error || 'Подпись не прошла проверку');
+        throw new Error(t('login.signatureFailed'));
       }
     } catch (err) {
-      showToast('Ошибка входа через кошелёк: ' + (err as Error).message, 'error');
+      showToast(t('login.walletError') + (err as Error).message, 'error');
     } finally {
       setLoading(false);
     }
@@ -137,13 +139,13 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
       setGoogleLoading(true);
       const res: any = await apiClient.googleLogin(idToken);
       if (res?.ok) {
-        showToast('Вход выполнен', 'success');
+        showToast(t('login.success'), 'success');
         onAuthenticated(res.token, res.user);
       } else {
-        throw new Error(res?.error || 'Google вход не удался');
+        throw new Error(res?.error || t('login.googleFailed'));
       }
     } catch (err) {
-      showToast('Ошибка входа через Google: ' + (err as Error).message, 'error');
+      showToast(t('login.googleError') + (err as Error).message, 'error');
     } finally {
       setGoogleLoading(false);
     }
@@ -155,7 +157,7 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
       const res: any = await apiClient.devGuest();
       if (res?.ok) onAuthenticated(res.token, res.user);
     } catch (err) {
-      showToast('Ошибка dev-входа', 'error');
+      showToast(t('login.devError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -168,18 +170,18 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
           <div className="text-4xl mb-2" aria-hidden="true">💰</div>
           <h1 className="text-xl font-bold">Funding Finder</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-            Арбитраж фандинга. Войдите, чтобы продолжить.
+            {t('login.subtitle')}
           </p>
         </div>
 
         {config.googleEnabled ? (
           <div className="mb-3">
             <div ref={googleBtnRef} className="flex justify-center" />
-            {googleLoading && <div className="text-center text-sm mt-2" style={{ color: 'var(--text-muted)' }}>Проверка…</div>}
+            {googleLoading && <div className="text-center text-sm mt-2" style={{ color: 'var(--text-muted)' }}>{t('login.checking')}</div>}
           </div>
         ) : (
           <p className="text-center text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-            Вход через Google временно недоступен. Если нет кошелька — напиши администратору.
+            {t('login.googleUnavailable')}
           </p>
         )}
 
@@ -188,23 +190,23 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
           disabled={loading}
           className="btn btn-secondary w-full mb-3 text-base py-3"
         >
-          {loading ? 'Подождите…' : '🔐 Войти через кошелёк (MetaMask и др.)'}
+            {loading ? t('login.walletBtnLoading') : t('login.walletBtn')}
         </button>
 
         {config.simulation && (
           <p className="text-center text-xs mb-3" style={{ color: 'var(--brand)' }}>
-            Демо-режим оплаты включён (шлюз не настроен)
+            {t('login.demoMode')}
           </p>
         )}
 
         {import.meta.env.DEV && (
           <button onClick={handleDevGuest} disabled={loading} className="btn btn-secondary w-full text-sm">
-            Продолжить как гость (dev)
+              {t('login.devGuest')}
           </button>
         )}
 
         <p className="text-center text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
-          Google — быстрый вход по аккаунту. Кошелёк — подпись сообщения (SIWE), средства не списываются.
+            {t('login.footerNote')}
         </p>
       </div>
     </div>

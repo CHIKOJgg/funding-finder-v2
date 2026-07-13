@@ -1,5 +1,6 @@
 import { ReactNode, useState } from 'react';
 import { clsx } from 'clsx';
+import { useT } from '../i18n';
 
 interface Props {
   activeCount: number;
@@ -13,8 +14,10 @@ interface Props {
  * a live count of active filters, so the controls don't eat screen space until
  * the user opens them. Stays open by default when any filter is already active.
  */
-export function FilterBar({ activeCount, children, defaultOpen, title = 'Фильтры' }: Props) {
+export function FilterBar({ activeCount, children, defaultOpen, title }: Props) {
   const [open, setOpen] = useState(defaultOpen ?? activeCount > 0);
+  const t = useT();
+  const label = title ?? t('filter.title');
 
   return (
     <div className="card p-3">
@@ -26,11 +29,11 @@ export function FilterBar({ activeCount, children, defaultOpen, title = 'Фил�
       >
         <span className="flex items-center gap-2 font-medium text-gray-700">
           <span aria-hidden>🔧</span>
-          {title}
+          {label}
           {activeCount > 0 && (
             <span
               className="text-xs px-2 py-0.5 rounded-full bg-[var(--brand)] text-white"
-              aria-label={`Активных фильтров: ${activeCount}`}
+              aria-label={`${t('filter.activeCount', { count: activeCount })}`}
             >
               {activeCount}
             </span>

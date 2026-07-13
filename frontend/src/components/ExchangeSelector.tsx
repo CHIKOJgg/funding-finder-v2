@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { clsx } from 'clsx';
 import { ALL_EXCHANGES, exchangeLabel } from '../utils/exchanges';
+import { useT } from '../i18n';
 
 interface ExchangeSelectorProps {
   value: string[];
@@ -27,6 +28,7 @@ export function ExchangeSelector({
   showCount = false,
 }: ExchangeSelectorProps) {
   const [specificOpen, setSpecificOpen] = useState(false);
+  const t = useT();
 
   const allowed = maxExchanges ?? ALL.length;
   const isAll =
@@ -69,19 +71,19 @@ export function ExchangeSelector({
           onClick={selectAll}
           className={clsx('exchange-btn', isAll && 'active')}
         >
-          Все биржи
+          {t('exchangeSelect.all')}
         </button>
         <button
           type="button"
           onClick={() => setSpecificOpen((o) => !o)}
           className={clsx('exchange-btn', specificOpen && 'active')}
         >
-          Выбрать конкретное
+          {t('exchangeSelect.specific')}
         </button>
       </div>
 
       {isAll ? (
-        <p className="text-sm text-muted">Выбраны все доступные биржи</p>
+        <p className="text-sm text-muted">{t('exchangeSelect.allSelected')}</p>
       ) : (
         <div>
           {specificOpen && (
@@ -91,7 +93,7 @@ export function ExchangeSelector({
               onChange={(e) => addExchange(e.target.value)}
             >
               <option value="" disabled>
-                Добавить биржу…
+                {t('exchangeSelect.addExchange')}
               </option>
               {ALL.map((exchange) => (
                 <option key={exchange} value={exchange} disabled={value.includes(exchange)}>
@@ -102,7 +104,7 @@ export function ExchangeSelector({
           )}
 
           <div className="flex flex-wrap gap-2">
-            {value.length === 0 && <span className="text-sm text-muted">Ничего не выбрано</span>}
+            {value.length === 0 && <span className="text-sm text-muted">{t('exchangeSelect.noneSelected')}</span>}
             {value.map((exchange) => (
               <span
                 key={exchange}
@@ -113,7 +115,7 @@ export function ExchangeSelector({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') removeExchange(exchange);
                 }}
-                aria-label={`Убрать ${exchangeLabel(exchange)}`}
+                aria-label={t('exchangeSelect.removeAria', { exchange: exchangeLabel(exchange) })}
               >
                 {exchangeLabel(exchange)}
                 <span className="chip-x" aria-hidden>

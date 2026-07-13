@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { clsx } from 'clsx';
+import { useT } from '../i18n';
 
 interface QuickStartProps {
   hasScanResults: boolean;
@@ -7,15 +8,16 @@ interface QuickStartProps {
 }
 
 const STEPS = [
-  { key: 'select', label: 'Выбери биржи вверху (уже отмечены доступные по твоему тарифу)' },
-  { key: 'scan', label: 'Нажми «Сканировать» и дождись результатов' },
-  { key: 'open', label: 'Открой лучшую пару на бирже кнопкой «↗ Открыть позицию»' },
-  { key: 'hold', label: 'Держи позицию до фандинга — получи ставку (см. ⏱ таймер)' },
+  { key: 'select', label: 'quickstart.select' },
+  { key: 'scan', label: 'quickstart.scan' },
+  { key: 'open', label: 'quickstart.open' },
+  { key: 'hold', label: 'quickstart.hold' },
 ] as const;
 
 // Persistent, dismissible checklist that turns the abstract app into a
 // concrete 4-step path to the user's first funding profit.
 export function QuickStart({ hasScanResults, selectedCount }: QuickStartProps) {
+  const t = useT();
   const [dismissed, setDismissed] = useState(() => {
     try {
       return localStorage.getItem('ff_quickstart_done') === '1';
@@ -63,15 +65,15 @@ export function QuickStart({ hasScanResults, selectedCount }: QuickStartProps) {
   return (
     <div className="rounded-xl p-4 mb-4" style={{ background: 'var(--brand-soft)', border: '1px solid var(--brand)' }}>
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-bold" style={{ color: 'var(--brand)' }}>
-          🎯 Первая прибыль за 5 минут
-        </h2>
-        <button
-          onClick={dismiss}
-          className="text-xs"
-          style={{ color: 'var(--text-muted)' }}
-          aria-label="Закрыть гайд"
-        >
+          <h2 className="text-sm font-bold" style={{ color: 'var(--brand)' }}>
+            {t('quickstart.title')}
+          </h2>
+          <button
+            onClick={dismiss}
+            className="text-xs"
+            style={{ color: 'var(--text-muted)' }}
+            aria-label={t('quickstart.closeAria')}
+          >
           ✕
         </button>
       </div>
@@ -88,14 +90,14 @@ export function QuickStart({ hasScanResults, selectedCount }: QuickStartProps) {
               {done[step.key] ? '✓' : idx + 1}
             </span>
             <span className={clsx(done[step.key] && 'line-through')} style={{ color: 'var(--text)' }}>
-              {step.label}
+              {t(step.label)}
             </span>
           </li>
         ))}
       </ol>
       {allDone && (
         <p className="text-xs mt-2" style={{ color: 'var(--success)' }}>
-          ✓ Готово! Теперь просто дождись фандинга.
+          ✓ {t('quickstart.done')}
         </p>
       )}
     </div>

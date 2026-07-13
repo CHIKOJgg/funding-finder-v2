@@ -7,6 +7,7 @@ import { apiClient } from '../api/client';
 import { PortfolioPosition } from '../types';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { CountdownTimer } from '../components/CountdownTimer';
+import { useT } from '../i18n';
 
 const EXCHANGES = ['binance', 'bybit', 'okx', 'gate', 'mexc'] as const;
 const SIM_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'] as const;
@@ -18,6 +19,7 @@ function formatUsd(n: number): string {
 export function PortfolioPage() {
   const { planLimits } = useApp();
   const { showToast } = useToast();
+  const t = useT();
   const [tab, setTab] = useState<'sim' | 'live'>('sim');
   const [paywall, setPaywall] = useState<PaywallFeature | null>(null);
 
@@ -62,7 +64,7 @@ export function PortfolioPage() {
       const res: any = await apiClient.getLivePortfolio();
       if (res?.ok) setLive(res);
     } catch (err: any) {
-      showToast(err?.error || 'Не удалось загрузить позиции', 'error');
+      showToast(err?.error || t('portfolio.loadError'), 'error');
     } finally {
       setLiveLoading(false);
     }
@@ -81,14 +83,14 @@ export function PortfolioPage() {
 
   const handleAdd = useCallback(async () => {
     if (!pair.trim()) {
-      showToast('Введите пару (например, BTCUSDT)', 'error');
+      showToast(t('portfolio.pairRequired'), 'error');
       return;
     }
     setSaving(true);
     try {
       const res: any = await apiClient.addPortfolio({ exchange, pair: pair.trim().toUpperCase(), side, sizeUsd, leverage });
       if (res?.ok) {
-        showToast('Позиция добавлена', 'success');
+        showToast(t('portfolio.positionAdded'), 'success');
         setPair('');
         loadSim();
       } else if (res?.error) {
@@ -111,12 +113,12 @@ export function PortfolioPage() {
   if (!planLimits.portfolioEnabled) {
     return (
       <div className="p-4">
-        <h1 className="text-xl font-bold mb-1">💼 Портфель</h1>
+        <h1 className="text-xl font-bold mb-1">{t('portfolio.title')}</h1>
         <div className="card text-center py-8 mt-4">
           <div className="text-4xl mb-3" aria-hidden="true">💼</div>
-          <p className="text-muted mb-3">Портфель (симуляция и реальные позиции) доступен на тарифе Pro.</p>
+          <p className="text-muted mb-3">{t('portfolio.lockedDesc')}</p>
           <button onClick={() => setPaywall('portfolio')} className="btn btn-primary">
-            🔒 Открыть в Pro
+            {t('portfolio.openPro')}
           </button>
         </div>
         <PaywallModal open={paywall !== null} feature={paywall || 'portfolio'} onClose={() => setPaywall(null)} />
@@ -126,7 +128,7 @@ export function PortfolioPage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-xl font-bold mb-1">💼 Портфель</h1>
+        <h1 className="text-xl font-bold mb-1">{t('portfolio.title')}</h1>
 
       <div className="flex gap-2 my-4" role="tablist">
         <button
@@ -135,7 +137,7 @@ export function PortfolioPage() {
           role="tab"
           aria-selected={tab === 'sim'}
         >
-          📊 Симуляция
+          📊 {t('portfolio.simTab')}
         </button>
         <button
           onClick={() => setTab('live')}
@@ -143,14 +145,14 @@ export function PortfolioPage() {
           role="tab"
           aria-selected={tab === 'live'}
         >
-          🔗 Реальные позиции
+          🔗 {t('portfolio.liveTab')}
         </button>
       </div>
 
       {tab === 'sim' ? (
         <>
           <div className="card mb-4">
-            <h2 className="text-base font-semibold mb-3">Добавить позицию</h2>
+            <h2 className="text-base font-semibold mb-3">{t('portfolio.addPosition')}</h2>
             <div className="grid grid-cols-2 gap-2 mb-2">
               <select value={exchange} onChange={(e) => setExchange(e.target.value)} className="input-field text-sm">
                 {SIM_EXCHANGES.map((ex) => <option key={ex} value={ex}>{ex}</option>)}
@@ -169,24 +171,24 @@ export function PortfolioPage() {
                 <option value="short">Short</option>
               </select>
               <label className="text-xs text-muted flex flex-col">
-                Размер, $
+                {t('portfolio.sizeLabel')}
                 <input type="number" min={1} value={sizeUsd} onChange={(e) => setSizeUsd(Math.max(1, Number(e.target.value) || 1))} className="input-field text-sm" />
               </label>
               <label className="text-xs text-muted flex flex-col">
-                Плечо
+                {t('portfolio.leverageLabel')}
                 <input type="number" min={1} value={leverage} onChange={(e) => setLeverage(Math.max(1, Number(e.target.value) || 1))} className="input-field text-sm" />
               </label>
             </div>
             <button onClick={handleAdd} disabled={saving} className="btn btn-primary w-full">
-              {saving ? 'Добавление...' : '➕ Добавить позицию'}
+              {saving ? t('portfolio.adding') : t('portfolio.addPositionBtn')}
             </button>
           </div>
 
           <div className="card mb-4">
             <div className="flex justify-between items-center mb-3">
-              <h2 className="text-base font-semibold">Позиции</h2>
+              <h2 className="text-base font-semibold">{t('portfolio.positions')}</h2>
               <div className="text-right">
-                <div className="text-xs text-muted">Симулировано дохода</div>
+                <div className="text-xs text-muted">{t('portfolio.simulatedIncome')}</div>
                 <div className={`font-bold stat ${totalIncome >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                   {totalIncome >= 0 ? '+' : ''}{formatUsd(totalIncome)} USDT
                 </div>
@@ -194,9 +196,9 @@ export function PortfolioPage() {
             </div>
 
             {loading ? (
-              <div className="text-center py-6 text-muted" role="status">Загрузка...</div>
+              <div className="text-center py-6 text-muted" role="status">{t('common.loading')}</div>
             ) : positions.length === 0 ? (
-              <div className="text-center py-6 text-muted">Позиций пока нет</div>
+              <div className="text-center py-6 text-muted">{t('portfolio.noPositions')}</div>
             ) : (
               <div className="space-y-2">
                 {positions.map((p) => (
@@ -239,10 +241,10 @@ export function PortfolioPage() {
               confirm: true,
             });
             if (res?.ok) {
-              showToast('Ордер отправлен на биржу', 'success');
+              showToast(t('portfolio.orderSent'), 'success');
               loadLive();
             } else {
-              showToast(res?.error || 'Не удалось исполнить', 'error');
+              showToast(res?.error || t('portfolio.execFailed'), 'error');
             }
             return res;
           }}
@@ -274,6 +276,7 @@ const LiveTab = memo(function LiveTab({
   setShowKeyForm: (v: boolean) => void;
 }) {
   const { showToast } = useToast();
+  const t = useT();
   const [updatedAt, setUpdatedAt] = useState<number>(Date.now());
   const [exporting, setExporting] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
@@ -302,7 +305,7 @@ const LiveTab = memo(function LiveTab({
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      showToast('Не удалось экспортировать', 'error');
+      showToast(t('portfolio.exportError'), 'error');
     } finally {
       setExporting(false);
     }
@@ -326,7 +329,7 @@ const LiveTab = memo(function LiveTab({
 
   const submitKey = async () => {
     if (!form.apiKey || !form.secret) {
-      showToast('Введите API key и secret', 'error');
+      showToast(t('portfolio.keyRequired'), 'error');
       return;
     }
     setSaving(true);
@@ -339,8 +342,9 @@ const LiveTab = memo(function LiveTab({
         passphrase: form.exchange === 'okx' ? form.passphrase : undefined,
         permissions: form.permissions,
       });
-      if (res?.ok) showToast('Ключ добавлен (зашифрован)', 'success');
-      else if (res?.error) showToast(res.error, 'error');
+      if (res?.ok) {
+        showToast(t('portfolio.keyAdded'), 'success');
+      } else if (res?.error) showToast(res.error, 'error');
     } finally {
       setSaving(false);
     }
@@ -350,14 +354,14 @@ const LiveTab = memo(function LiveTab({
     <>
       <div className="card mb-4">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-base font-semibold">🔗 Подключённые биржи</h2>
+          <h2 className="text-base font-semibold">🔗 {t('portfolio.liveExchanges')}</h2>
           <button onClick={() => setShowKeyForm(!showKeyForm)} className="text-sm" style={{ color: 'var(--brand)' }}>
-            {showKeyForm ? 'Отмена' : '+ Ключ'}
+              {showKeyForm ? t('common.cancel') : t('portfolio.addKey')}
           </button>
         </div>
-        <p className="text-xs text-muted mb-3">
-          Ключи хранятся зашифрованными (AES-256-GCM). Используйте <b>read-only</b> для просмотра позиций. Trade-права нужны только для авто-исполнения.
-        </p>
+          <p className="text-xs text-muted mb-3">
+            {t('portfolio.keysNote')}
+          </p>
 
         {showKeyForm && (
           <div className="rounded-xl p-3 mb-3" style={{ background: 'var(--surface-2)' }}>
@@ -365,7 +369,7 @@ const LiveTab = memo(function LiveTab({
               <select value={form.exchange} onChange={(e) => setForm({ ...form, exchange: e.target.value })} className="input-field text-sm">
                 {EXCHANGES.map((ex) => <option key={ex} value={ex}>{exchangeLabel(ex)}</option>)}
               </select>
-              <input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="Метка (необяз.)" className="input-field text-sm" />
+              <input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder={t('portfolio.labelPlaceholder')} className="input-field text-sm" />
             </div>
             <input value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} placeholder="API Key" className="input-field text-sm mb-2" />
             <input value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} placeholder="Secret" type="password" className="input-field text-sm mb-2" />
@@ -373,20 +377,20 @@ const LiveTab = memo(function LiveTab({
               <input value={form.passphrase} onChange={(e) => setForm({ ...form, passphrase: e.target.value })} placeholder="Passphrase (OKX)" className="input-field text-sm mb-2" />
             )}
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-muted">Права:</span>
+              <span className="text-xs text-muted">{t('portfolio.permissions')}</span>
               <select value={form.permissions} onChange={(e) => setForm({ ...form, permissions: e.target.value as 'read' | 'trade' })} className="input-field text-sm flex-1">
-                <option value="read">Только чтение</option>
-                <option value="trade">Торговля</option>
+                <option value="read">{t('portfolio.permRead')}</option>
+                <option value="trade">{t('portfolio.permTrade')}</option>
               </select>
             </div>
             <button onClick={submitKey} disabled={saving} className="btn btn-primary w-full text-sm py-2">
-              {saving ? 'Сохранение...' : '💾 Сохранить ключ'}
+              {saving ? t('portfolio.savingKey') : t('portfolio.saveKey')}
             </button>
           </div>
         )}
 
         {keys.length === 0 ? (
-          <div className="text-center py-4 text-muted text-sm">Ключи не добавлены</div>
+              <div className="text-center py-4 text-muted text-sm">{t('portfolio.noKeys')}</div>
         ) : (
           <div className="space-y-2">
             {keys.map((k) => (
@@ -395,10 +399,10 @@ const LiveTab = memo(function LiveTab({
                   <strong>{exchangeLabel(k.exchange)}</strong>
                   {k.label && <span className="text-muted"> · {k.label}</span>}
                   <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${k.permissions === 'trade' ? 'chip-brand' : 'chip'}`}>
-                    {k.permissions === 'trade' ? 'торговля' : 'чтение'}
+                    {k.permissions === 'trade' ? t('portfolio.permTradeLabel') : t('portfolio.permReadLabel')}
                   </span>
                 </div>
-                <button onClick={() => onDeleteKey(k.id)} className="text-xs text-red-500 hover:underline">Удалить</button>
+                <button onClick={() => onDeleteKey(k.id)} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>
               </div>
             ))}
           </div>
@@ -407,29 +411,29 @@ const LiveTab = memo(function LiveTab({
 
       <div className="card mb-4">
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-base font-semibold">Реальные позиции</h2>
+          <h2 className="text-base font-semibold">{t('portfolio.realPositions')}</h2>
           <div className="text-right">
             <div className="text-xs text-muted">
-              {loading ? 'Обновление…' : `Обновлено ${new Date(updatedAt).toLocaleTimeString('ru-RU')}`}
+              {loading ? t('portfolio.updating') : t('portfolio.updated', { time: new Date(updatedAt).toLocaleTimeString('ru-RU') })}
             </div>
             <div className="flex gap-3 justify-end">
               <button onClick={handleExport} disabled={exporting} className="text-sm" style={{ color: 'var(--brand)' }}>⬇ CSV</button>
-              <button onClick={refresh} disabled={loading} className="text-sm" style={{ color: 'var(--brand)' }}>🔄 Обновить</button>
+              <button onClick={refresh} disabled={loading} className="text-sm" style={{ color: 'var(--brand)' }}>              🔄 {t('portfolio.refresh')}</button>
             </div>
           </div>
         </div>
 
         {loading ? (
-          <div className="text-center py-6 text-muted" role="status">Загрузка...</div>
+              <div className="text-center py-6 text-muted" role="status">{t('common.loading')}</div>
         ) : !live || live.totals.positions === 0 ? (
           <div className="text-center py-6 text-muted">
-            {keys.length === 0 ? 'Добавьте read-only ключ биржи, чтобы увидеть позиции' : 'Открытых позиций нет'}
+            {keys.length === 0 ? t('portfolio.noKeysHint') : t('portfolio.noOpenPositions')}
           </div>
         ) : (
           <>
             <div className="grid grid-cols-3 gap-2 mb-4 text-center">
               <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
-                <div className="text-xs text-muted">Позиций</div>
+                <div className="text-xs text-muted">{t('portfolio.positionsCount')}</div>
                 <div className="text-lg font-bold stat">{live.totals.positions}</div>
               </div>
               <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
@@ -439,7 +443,7 @@ const LiveTab = memo(function LiveTab({
                 </div>
               </div>
               <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
-                <div className="text-xs text-muted">Фандинг</div>
+                <div className="text-xs text-muted">{t('portfolio.funding')}</div>
                 <div className="text-lg font-bold stat text-green-700">+{formatUsd(live.totals.funding)} USDT</div>
               </div>
             </div>
@@ -448,12 +452,12 @@ const LiveTab = memo(function LiveTab({
               <div key={ex.exchange} className="mb-3 rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
                 <div className="flex justify-between items-center mb-2">
                   <strong>{exchangeLabel(ex.exchange)}{ex.label ? ` · ${ex.label}` : ''}</strong>
-                  <button onClick={() => openExchange(ex.exchange, '')} className="text-xs" style={{ color: 'var(--brand)' }}>↗ Биржа</button>
+                  <button onClick={() => openExchange(ex.exchange, '')} className="text-xs" style={{ color: 'var(--brand)' }}              >↗ {t('portfolio.exchangeBtn')}</button>
                 </div>
                 {ex.error ? (
                   <div className="text-xs text-red-500">⚠️ {ex.error}</div>
                 ) : ex.positions.length === 0 ? (
-                  <div className="text-xs text-muted">Нет открытых позиций</div>
+                  <div className="text-xs text-muted">{t('portfolio.noOpenPositionsEx')}</div>
                 ) : (
                   <div className="space-y-1.5">
                     {ex.positions.map((p: any, i: number) => (
@@ -462,7 +466,7 @@ const LiveTab = memo(function LiveTab({
                           <span className="font-medium">{p.symbol}</span>
                           <span className="text-xs text-muted ml-1">{p.side === 'long' ? 'Long' : 'Short'} · {formatUsd(p.notional)} USDT · x{p.leverage}</span>
                           <div className="text-xs text-muted">
-                            <CountdownTimer intervalHours={p.fundingIntervalHours || 8} className="font-medium" /> до фандинга
+                            <CountdownTimer intervalHours={p.fundingIntervalHours || 8} className="font-medium" /> {t('main.untilFunding')}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -473,8 +477,8 @@ const LiveTab = memo(function LiveTab({
                             <button
                               onClick={() => onAuto({ exchange: ex.exchange, symbol: p.symbol, side: p.side, notional: p.notional })}
                               className="text-xs text-[var(--brand)] hover:underline"
-                              title="Открыть зеркальную позицию на этом же размере"
-                            >⧉ копия</button>
+                              title={t('portfolio.mirrorTitle')}
+                            >⧉ {t('portfolio.openCopy')}</button>
                           )}
                         </div>
                       </div>
@@ -485,7 +489,7 @@ const LiveTab = memo(function LiveTab({
             ))}
           {orders.length > 0 && (
             <div className="mt-4">
-              <h3 className="text-sm font-semibold mb-2">История авто-сделок</h3>
+              <h3 className="text-sm font-semibold mb-2">{t('portfolio.autoHistory')}</h3>
               <div className="space-y-1.5">
                 {orders.map((o: any) => (
                   <div key={o.id} className="flex justify-between items-center text-sm rounded-lg p-2" style={{ background: 'var(--surface-2)' }}>
@@ -496,7 +500,7 @@ const LiveTab = memo(function LiveTab({
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted">{new Date(o.createdAt).toLocaleString('ru-RU')}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${o.status === 'sent' || o.status === 'filled' ? 'chip-success' : o.status === 'failed' ? 'chip-danger' : 'chip'}`}>
-                        {o.status === 'sent' || o.status === 'filled' ? '✓ исполнен' : o.status === 'failed' ? '✕ ошибка' : o.status}
+                        {o.status === 'sent' || o.status === 'filled' ? t('profile.executed') : o.status === 'failed' ? t('profile.failed') : o.status}
                       </span>
                     </div>
                   </div>
@@ -522,6 +526,7 @@ const AutoExecuteDialog = memo(function AutoExecuteDialog({
 }) {
   const [notional, setNotional] = useState(Math.round(target.notional || 100));
   const [busy, setBusy] = useState(false);
+  const t = useT();
 
   const confirm = async () => {
     setBusy(true);
@@ -537,11 +542,11 @@ const AutoExecuteDialog = memo(function AutoExecuteDialog({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
       <div className="bg-white rounded-xl max-w-sm w-full">
         <div className="card">
-          <h2 className="text-lg font-semibold mb-1">⧉ Авто-исполнение</h2>
+          <h2 className="text-lg font-semibold mb-1">{t('portfolio.autoTitle')}</h2>
           <p className="text-sm text-gray-600 mb-3">
-            Открыть {target.side === 'long' ? 'лонг' : 'шорт'} {target.symbol} на {exchangeLabel(target.exchange)} через ваш trade-ключ.
+            {t('portfolio.autoDesc', { side: target.side === 'long' ? t('portfolio.long') : t('portfolio.short'), symbol: target.symbol, exchange: exchangeLabel(target.exchange) })}
           </p>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Размер (USDT)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('portfolio.sizeUsdt')}</label>
           <input
             type="number"
             min={1}
@@ -550,12 +555,12 @@ const AutoExecuteDialog = memo(function AutoExecuteDialog({
             className="input-field mb-3"
           />
           <div className="flex gap-2">
-            <button onClick={onClose} className="btn btn-secondary flex-1">Отмена</button>
+            <button onClick={onClose} className="btn btn-secondary flex-1">{t('common.cancel')}</button>
             <button onClick={confirm} disabled={busy} className="btn btn-primary flex-1">
-              {busy ? 'Отправка...' : 'Открыть ✓'}
+              {busy ? t('portfolio.opening') : t('portfolio.openConfirm')}
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-2">⚠️ Реальная рыночная сделка. Проверьте сумму и плечо на бирже.</p>
+          <p className="text-xs text-gray-500 mt-2">{t('portfolio.autoWarn')}</p>
         </div>
       </div>
     </div>
@@ -570,6 +575,7 @@ const PortfolioRow = memo(function PortfolioRow({
   onRemove: () => void;
 }) {
   const pnl = position.pnl;
+  const t = useT();
   const income = pnl?.fundingIncome || 0;
   return (
     <div className="border-b border-gray-100 pb-2">
@@ -581,7 +587,7 @@ const PortfolioRow = memo(function PortfolioRow({
           </div>
           {pnl && (
             <div className="text-xs text-gray-500">
-              ~{(pnl.hoursHeld).toFixed(1)} ч удержания
+              ~{(pnl.hoursHeld).toFixed(1)} {t('portfolio.holdHours')}
             </div>
           )}
         </div>
@@ -594,7 +600,7 @@ const PortfolioRow = memo(function PortfolioRow({
               ≈ {(pnl.annualizedPct).toFixed(2)}%/год
             </div>
           )}
-          <button onClick={onRemove} className="text-xs text-red-500 hover:underline mt-1">Удалить</button>
+            <button onClick={onRemove} className="text-xs text-red-500 hover:underline mt-1">{t('common.delete')}</button>
         </div>
       </div>
     </div>

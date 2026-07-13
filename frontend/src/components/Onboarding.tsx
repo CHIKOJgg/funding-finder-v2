@@ -1,30 +1,32 @@
 import { useState, useEffect } from 'react';
+import { useT } from '../i18n';
 
 const STEPS = [
   {
-    title: 'Добро пожаловать в Funding Finder!',
-    description: 'Сервис для мониторинга ставок финансирования (funding rates) криптовалютных бирж. Находите лучшие возможности для арбитража.',
+    title: 'onboarding.step1Title',
+    description: 'onboarding.step1Desc',
     emoji: '🚀',
   },
   {
-    title: 'Шаг 1: Выберите биржи',
-    description: 'Отметьте биржи, которые хотите просканировать. Всего доступно 23 биржи (Gate, Binance, Bybit, MEXC, OKX и др.). Бесплатно — до 3, Basic — 5, Pro — до 12, Pro Max — до 20.',
+    title: 'onboarding.step2Title',
+    description: 'onboarding.step2Desc',
     emoji: '🔎',
   },
   {
-    title: 'Шаг 2: Анализируйте результаты',
-    description: 'Результаты сортируются по доходности. Нажмите 📊 для просмотра истории ставок. Используйте 🔔 чтобы создать оповещение при достижении порога.',
+    title: 'onboarding.step3Title',
+    description: 'onboarding.step3Desc',
     emoji: '📊',
   },
   {
-    title: 'Шаг 3: Подписка и возможности',
-    description: 'С Pro подпиской доступны AI-анализ, рекомендации по капиталу, арбитражные возможности и CSV-экспорт.',
+    title: 'onboarding.step4Title',
+    description: 'onboarding.step4Desc',
     emoji: '💎',
   },
 ];
 
 export function Onboarding({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(0);
+  const t = useT();
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -45,8 +47,8 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
       <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden">
         <div className="text-center p-6">
           <div className="text-6xl mb-4">{current.emoji}</div>
-          <h2 className="text-xl font-bold mb-3">{current.title}</h2>
-          <p className="text-sm text-gray-600 mb-6">{current.description}</p>
+          <h2 className="text-xl font-bold mb-3">{t(current.title)}</h2>
+          <p className="text-sm text-gray-600 mb-6">{t(current.description)}</p>
 
           <div className="flex justify-center gap-2 mb-6">
             {STEPS.map((_, idx) => (
@@ -64,7 +66,7 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
             }}
             className="btn btn-primary"
           >
-            {step < STEPS.length - 1 ? 'Далее →' : 'Начать!'}
+            {step < STEPS.length - 1 ? t('onboarding.next') : t('onboarding.start')}
           </button>
         </div>
       </div>

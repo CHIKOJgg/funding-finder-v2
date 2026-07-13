@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getNextFundingTime, formatCountdown } from '../utils/funding';
+import { useT } from '../i18n';
 
 interface CountdownTimerProps {
   intervalHours: number;
@@ -11,6 +12,7 @@ interface CountdownTimerProps {
 // knows exactly when to close the position and collect the rate.
 export function CountdownTimer({ intervalHours, className, showLabel = true }: CountdownTimerProps) {
   const [now, setNow] = useState(() => Date.now());
+  const t = useT();
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -23,7 +25,7 @@ export function CountdownTimer({ intervalHours, className, showLabel = true }: C
   const remaining = Math.max(0, next - now);
 
   return (
-    <span className={className} title={`Следующий фандинг через ${formatCountdown(remaining)}`}>
+    <span className={className} title={t('main.fundingIn', { time: formatCountdown(remaining) })}>
       {showLabel && <span aria-hidden="true">⏱ </span>}
       {formatCountdown(remaining)}
     </span>

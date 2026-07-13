@@ -1,38 +1,41 @@
+import { useT } from '../i18n';
+
 export function PrivacyPage() {
+  const t = useT();
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <div className="card">
-        <h1 className="text-xl font-bold mb-4">Политика конфиденциальности</h1>
+        <h1 className="text-xl font-bold mb-4">{t('privacy.title')}</h1>
         <div className="text-sm text-gray-700 space-y-3">
-          <p>Настоящая Политика конфиденциальности описывает, как Funding Finder (далее — «Сервис») собирает, использует и защищает ваши данные.</p>
+          <p>{t('privacy.intro')}</p>
 
-          <h2 className="font-semibold text-base mt-4">1. Какие данные мы собираем</h2>
-          <p>1.1. Telegram ID и имя пользователя (для аутентификации).</p>
-          <p>1.2. Настройки уведомлений и предпочтения (биржи, фильтры).</p>
-          <p>1.3. История сканирований и созданные оповещения.</p>
-          <p>1.4. Данные о платежах (через Crypto Pay, мы не храним платёжные реквизиты).</p>
+          <h2 className="font-semibold text-base mt-4">{t('privacy.s1')}</h2>
+          <p>{t('privacy.s1p1')}</p>
+          <p>{t('privacy.s1p2')}</p>
+          <p>{t('privacy.s1p3')}</p>
+          <p>{t('privacy.s1p4')}</p>
 
-          <h2 className="font-semibold text-base mt-4">2. Как мы используем данные</h2>
-          <p>2.1. Для предоставления функциональности Сервиса (сканирование, оповещения, аналитика).</p>
-          <p>2.2. Для улучшения Сервиса и анализа использования.</p>
-          <p>2.3. Для отправки уведомлений (если Пользователь дал согласие).</p>
+          <h2 className="font-semibold text-base mt-4">{t('privacy.s2')}</h2>
+          <p>{t('privacy.s2p1')}</p>
+          <p>{t('privacy.s2p2')}</p>
+          <p>{t('privacy.s2p3')}</p>
 
-          <h2 className="font-semibold text-base mt-4">3. Хранение данных</h2>
-          <p>3.1. Данные хранятся на защищённых серверах. Принимаются разумные меры безопасности.</p>
-          <p>3.2. Данные сканов хранятся до 30 дней, история оповещений — до 90 дней.</p>
+          <h2 className="font-semibold text-base mt-4">{t('privacy.s3')}</h2>
+          <p>{t('privacy.s3p1')}</p>
+          <p>{t('privacy.s3p2')}</p>
 
-          <h2 className="font-semibold text-base mt-4">4. Передача данных третьим лицам</h2>
-          <p>4.1. Мы не продаём и не передаём персональные данные третьим лицам.</p>
-          <p>4.2. Исключение: запросы уполномоченных государственных органов.</p>
+          <h2 className="font-semibold text-base mt-4">{t('privacy.s4')}</h2>
+          <p>{t('privacy.s4p1')}</p>
+          <p>{t('privacy.s4p2')}</p>
 
-          <h2 className="font-semibold text-base mt-4">5. Права Пользователя</h2>
-          <p>5.1. Пользователь вправе запросить удаление своих данных, написав в поддержку.</p>
-          <p>5.2. Пользователь может отключить уведомления в настройках.</p>
+          <h2 className="font-semibold text-base mt-4">{t('privacy.s5')}</h2>
+          <p>{t('privacy.s5p1')}</p>
+          <p>{t('privacy.s5p2')}</p>
 
-          <h2 className="font-semibold text-base mt-4">6. Контакты</h2>
-          <p>6.1. По вопросам конфиденциальности обращайтесь через Telegram-бота.</p>
+          <h2 className="font-semibold text-base mt-4">{t('privacy.s6')}</h2>
+          <p>{t('privacy.s6p1')}</p>
 
-          <p className="mt-4 text-gray-500">Последнее обновление: июль 2026 г.</p>
+          <p className="mt-4 text-gray-500">{t('privacy.updated')}</p>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { clsx } from 'clsx';
 import { getFundingColor } from '../utils/formatters';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
+import { useT } from '../i18n';
 
 interface PairMatrixProps {
   scanResults: any;
@@ -16,6 +17,7 @@ function maxAbs(ex: Record<string, any>): number {
 // Shows the same pair side-by-side across all selected exchanges so the user
 // instantly spots the widest funding spread (best arbitrage pair).
 export function PairMatrix({ scanResults, exchanges, limit = 12 }: PairMatrixProps) {
+  const t = useT();
   const rows = useMemo(() => {
     if (!scanResults) return [];
     const items = [
@@ -42,7 +44,7 @@ export function PairMatrix({ scanResults, exchanges, limit = 12 }: PairMatrixPro
       <table className="w-full text-sm">
         <thead>
           <tr className="text-xs text-muted" style={{ color: 'var(--text-muted)' }}>
-            <th className="text-left font-medium py-1 pr-2">Пара</th>
+            <th className="text-left font-medium py-1 pr-2">{t('matrix.pair')}</th>
             {exchanges.map((ex) => (
               <th key={ex} className="text-right font-medium py-1 px-1 whitespace-nowrap">
                 {exchangeLabel(ex)}
@@ -70,7 +72,7 @@ export function PairMatrix({ scanResults, exchanges, limit = 12 }: PairMatrixPro
                       key={name}
                       className={clsx('text-right px-1 tabular-nums cursor-pointer hover:underline', getFundingColor(rate))}
                       onClick={() => ex[name] && openExchange(name, pair)}
-                      title={`Открыть ${pair} на ${exchangeLabel(name)}`}
+                      title={t('main.openOnExchange', { contract: pair, exchange: exchangeLabel(name) })}
                     >
                       {(rate * 100).toFixed(4)}%
                       {isBest && <span className="ml-0.5" aria-hidden="true">▲</span>}
@@ -84,7 +86,7 @@ export function PairMatrix({ scanResults, exchanges, limit = 12 }: PairMatrixPro
         </tbody>
       </table>
       <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-        ▲ выше ставка (короткая позиция получает) · ▼ ниже (длинная получает) · нажми на ячейку, чтобы открыть
+        {t('matrix.note')}
       </p>
     </div>
   );

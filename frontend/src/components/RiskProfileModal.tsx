@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { exchangeLabel, openExchange } from '../utils/exchanges';
+import { useT } from '../i18n';
 
 interface RiskProfileModalProps {
   open: boolean;
@@ -11,9 +12,9 @@ interface RiskProfileModalProps {
 type RiskLevel = 'low' | 'medium' | 'high';
 
 const RISK_PRESETS: Record<RiskLevel, { label: string; perPositionPct: number; leverage: number; count: number; color: string }> = {
-  low: { label: 'Консервативный', perPositionPct: 0.05, leverage: 2, count: 3, color: 'var(--success)' },
-  medium: { label: 'Сбалансированный', perPositionPct: 0.1, leverage: 3, count: 5, color: 'var(--warning)' },
-  high: { label: 'Агрессивный', perPositionPct: 0.2, leverage: 5, count: 8, color: 'var(--danger)' },
+  low: { label: 'risk.low', perPositionPct: 0.05, leverage: 2, count: 3, color: 'var(--success)' },
+  medium: { label: 'risk.medium', perPositionPct: 0.1, leverage: 3, count: 5, color: 'var(--warning)' },
+  high: { label: 'risk.high', perPositionPct: 0.2, leverage: 5, count: 8, color: 'var(--danger)' },
 };
 
 // Builds a ready-to-open basket of funding positions from the current scan,
@@ -21,6 +22,7 @@ const RISK_PRESETS: Record<RiskLevel, { label: string; perPositionPct: number; l
 export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }: RiskProfileModalProps) {
   const [capital, setCapital] = useState(defaultCapital);
   const [risk, setRisk] = useState<RiskLevel>('medium');
+  const t = useT();
 
   const basket = useMemo(() => {
     if (!scanResults) return [];
@@ -51,19 +53,19 @@ export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }:
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
       <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-auto">
         <div className="card">
-          <h2 className="text-lg font-semibold mb-1">🎯 Риск-профиль</h2>
+          <h2 className="text-lg font-semibold mb-1">{t('risk.title')}</h2>
           <p className="text-sm text-gray-600 mb-4">
-            Соберём корзину позиций под ваш капитал и допустимый риск. Показаны топ-пары по годовой доходности.
+            {t('risk.desc')}
           </p>
 
-          <label className="block text-sm font-medium text-gray-700 mb-1">Капитал (USDT)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t('risk.capital')}</label>
           <input
             type="number" min={100} value={capital}
             onChange={(e) => setCapital(Math.max(100, Number(e.target.value) || 100))}
             className="input-field mb-4"
           />
 
-          <div className="text-sm font-medium text-gray-700 mb-2">Допустимый риск</div>
+          <div className="text-sm font-medium text-gray-700 mb-2">{t('risk.acceptableRisk')}</div>
           <div className="flex gap-2 mb-4">
             {(Object.keys(RISK_PRESETS) as RiskLevel[]).map((lvl) => (
               <button
@@ -72,18 +74,18 @@ export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }:
                 className={`flex-1 py-2 rounded-xl text-sm font-medium border ${risk === lvl ? 'border-2' : 'border'}`}
                 style={risk === lvl ? { borderColor: RISK_PRESETS[lvl].color, color: RISK_PRESETS[lvl].color } : { color: 'var(--text-muted)' }}
               >
-                {RISK_PRESETS[lvl].label}
+                {t('risk.' + lvl)}
               </button>
             ))}
           </div>
 
           <div className="text-xs text-muted mb-3">
-            До {preset.count} позиций · до {Math.round(preset.perPositionPct * 100)}% капитала на позицию · плечо до x{preset.leverage}
+            {t('risk.basketInfo', { count: preset.count, pct: Math.round(preset.perPositionPct * 100), lev: preset.leverage })}
           </div>
 
           <div className="space-y-2 mb-4 max-h-64 overflow-auto">
             {basket.length === 0 ? (
-              <div className="text-center py-4 text-muted text-sm">Нет данных сканирования</div>
+              <div className="text-center py-4 text-muted text-sm">{t('risk.noData')}</div>
             ) : (
               basket.map((b, i) => (
                 <div key={i} className="flex justify-between items-center text-sm rounded-lg p-2" style={{ background: 'var(--surface-2)' }}>
@@ -98,7 +100,7 @@ export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }:
                     <button
                       onClick={() => openExchange(b.exchange, b.contract)}
                       className="text-xs text-[var(--brand)] hover:underline"
-                      title={`Открыть ${b.contract} на ${exchangeLabel(b.exchange)}`}
+                      title={t('main.openOnExchange', { contract: b.contract, exchange: exchangeLabel(b.exchange) })}
                     >↗</button>
                   </div>
                 </div>
@@ -108,7 +110,7 @@ export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }:
 
           <div className="rounded-xl p-3 mb-4" style={{ background: 'var(--brand-soft)' }}>
             <div className="flex justify-between text-sm">
-              <span style={{ color: 'var(--brand)' }}>Ожидаемый доход с фандинга:</span>
+              <span style={{ color: 'var(--brand)' }}>{t('risk.expectedIncome')}</span>
               <strong className="text-green-700">+{formatUsd(totalDaily)} USDT/день</strong>
             </div>
             <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -117,7 +119,7 @@ export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }:
             </div>
           </div>
 
-          <button onClick={onClose} className="btn btn-secondary w-full">Готово</button>
+          <button onClick={onClose} className="btn btn-secondary w-full">{t('risk.done')}</button>
         </div>
       </div>
     </div>

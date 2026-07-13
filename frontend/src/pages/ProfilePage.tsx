@@ -5,11 +5,13 @@ import { useToast } from '../components/Toast';
 import { TrialCTA } from '../components/TrialCTA';
 import { CryptoCheckoutModal } from '../components/CryptoCheckoutModal';
 import { apiClient } from '../api/client';
+import { useT } from '../i18n';
 
 export function ProfilePage() {
   const { user, subscription: ctxSubscription, isWeb, refreshSubscription } = useApp();
   const [checkout, setCheckout] = useState<{ planId: string; planName: string; price: number } | null>(null);
   const { showToast } = useToast();
+  const t = useT();
   const [referralLink, setReferralLink] = useState('');
   const [referralStats, setReferralStats] = useState({ referrals: 0, bonusScans: 0 });
   const [referralCode, setReferralCode] = useState('');
@@ -67,11 +69,11 @@ export function ProfilePage() {
       // Only show error if ALL requests failed
       const allFailed = results.every((r) => r.status === 'rejected');
       if (allFailed) {
-        showToast('Не удалось загрузить данные профиля', 'error');
+      showToast(t('profile.loadError'), 'error');
       }
     } catch (error) {
       console.error('Failed to load user data:', error);
-      showToast('Не удалось загрузить данные профиля', 'error');
+      showToast(t('profile.loadError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -85,12 +87,12 @@ export function ProfilePage() {
         if (invoiceUrl) {
           window.open(invoiceUrl, '_blank');
         }
-        showToast('Платеж создан', 'success');
+        showToast(t('profile.paymentCreated'), 'success');
       } else {
-        showToast('Ошибка при создании платежа: ' + response.error, 'error');
+        showToast(t('profile.paymentError') + response.error, 'error');
       }
     } catch (error) {
-      showToast('Ошибка сети: ' + (error as Error).message, 'error');
+      showToast(t('app.networkError', { error: (error as Error).message }), 'error');
     }
   }, [showToast]);
 
@@ -107,21 +109,21 @@ export function ProfilePage() {
 
   const handleApplyReferral = useCallback(async () => {
     if (!referralCode.trim()) {
-      showToast('Введите реферальный код', 'error');
+      showToast(t('profile.referralRequired'), 'error');
       return;
     }
     setApplyingReferral(true);
     try {
       const response: any = await apiClient.post('/referral/apply', { code: referralCode.trim() });
       if (response.ok) {
-        showToast('Реферальный код применён!', 'success');
+        showToast(t('profile.referralApplied'), 'success');
         setReferralCode('');
         loadUserData();
       } else {
-        showToast(response.error || 'Недействительный код', 'error');
+        showToast(response.error || t('profile.referralInvalid'), 'error');
       }
     } catch (error) {
-      showToast('Ошибка сети: ' + (error as Error).message, 'error');
+      showToast(t('app.networkError', { error: (error as Error).message }), 'error');
     } finally {
       setApplyingReferral(false);
     }
@@ -130,7 +132,7 @@ export function ProfilePage() {
   if (loading) {
     return (
       <div className="p-4">
-        <div className="card text-center py-8 text-gray-500" role="status">Загрузка...</div>
+        <div className="card text-center py-8 text-gray-500" role="status">{t('common.loading')}</div>
       </div>
     );
   }
@@ -146,36 +148,36 @@ export function ProfilePage() {
             {(user?.firstName || 'U').charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <div className="font-semibold truncate">{user?.firstName || 'Пользователь'}</div>
+            <div className="font-semibold truncate">{user?.firstName || t('header.user')}</div>
             <div className="text-sm text-muted truncate">{user?.username ? '@' + user.username : user?.id}</div>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
-            <div className="text-xs text-muted">Баланс</div>
+            <div className="text-xs text-muted">{t('profile.balance')}</div>
             <div className="text-lg font-bold stat">{balance} <span className="text-sm font-medium">USDT</span></div>
           </div>
           <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
-            <div className="text-xs text-muted">Рефералов</div>
+            <div className="text-xs text-muted">{t('profile.referrals')}</div>
             <div className="text-lg font-bold stat">{referralStats.referrals}</div>
           </div>
         </div>
       </div>
 
       <div className="card">
-        <h2 className="text-base font-semibold mb-1">🎁 Пробный Pro</h2>
-        <p className="text-sm text-muted mb-3">Попробуйте все фичи Pro бесплатно — без привязки карты.</p>
+          <h2 className="text-base font-semibold mb-1">🎁 {t('profile.trialTitle')}</h2>
+          <p className="text-sm text-muted mb-3">{t('profile.trialDesc')}</p>
         <TrialCTA />
       </div>
 
       <div className="card">
-        <h2 className="text-base font-semibold mb-1">🎁 Реферальная программа</h2>
-        <p className="text-sm text-muted mb-3">Приглашайте друзей — +1 пробный скан за каждого!</p>
+          <h2 className="text-base font-semibold mb-1">🎁 {t('profile.referralTitle')}</h2>
+          <p className="text-sm text-muted mb-3">{t('profile.referralDesc')}</p>
 
         <div className="flex gap-2 mb-3">
           <input
             type="text"
-            placeholder="Введите реферальный код..."
+              placeholder={t('profile.referralPlaceholder')}
             value={referralCode}
             onChange={(e) => setReferralCode(e.target.value)}
             className="input-field flex-1 text-sm"
@@ -185,18 +187,18 @@ export function ProfilePage() {
             disabled={applyingReferral || !referralCode.trim()}
             className="btn btn-primary text-sm py-2 w-auto px-4"
           >
-            {applyingReferral ? '...' : 'Применить'}
+            {applyingReferral ? '...' : t('profile.apply')}
           </button>
         </div>
 
         <button
           onClick={() => {
             navigator.clipboard.writeText(referralLink);
-            showToast('Ссылка скопирована', 'success');
+            showToast(t('profile.linkCopied'), 'success');
           }}
           className="btn btn-secondary text-sm py-2"
         >
-          🔗 Получить ссылку
+            🔗 {t('profile.copyLink')}
         </button>
         {referralLink && (
           <div className="mt-2 text-sm break-all" style={{ color: 'var(--brand)' }}>{referralLink}</div>
@@ -207,10 +209,10 @@ export function ProfilePage() {
         <div className="mb-4">
           <div className="rounded-2xl p-5 text-white relative overflow-hidden"
                 style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand-hover) 100%)' }}>
-            <div className="text-xs font-semibold uppercase tracking-wide opacity-80">Ваш тариф</div>
+            <div className="text-xs font-semibold uppercase tracking-wide opacity-80">{t('profile.yourPlan')}</div>
             <div className="text-2xl font-bold mt-1 capitalize">{planLabel(subscription)}</div>
             <p className="text-sm opacity-90 mt-2">
-              Откройте до 12 бирж, AI-анализ и арбитражные сигналы — зарабатывайте на разнице ставок фандинга.
+              {t('profile.planDesc')}
             </p>
           </div>
         </div>
@@ -219,28 +221,28 @@ export function ProfilePage() {
         <PlanCard
           name="Basic"
           price={29}
-          period="мес"
-          tagline="Для старта"
-          features={['5 бирж', 'Email-уведомления', 'Избранное (до 3)']}
+          
+          tagline={t('profile.planTaglineBasic')}
+          features={['profile.feat5ex', 'profile.featEmail', 'profile.featWatchlist']}
           currentPlan={subscription}
           onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
         />
         <PlanCard
           name="Pro"
           price={99}
-          period="мес"
-          tagline="Самый популярный"
+          
+          tagline={t('profile.planTaglinePro')}
           featured
-          features={['До 12 бирж', 'AI-анализ рынка', 'Экспорт в CSV', 'Приоритетные сигналы']}
+          features={['profile.feat12ex', 'profile.featAi', 'profile.featCsv', 'profile.featPriority']}
           currentPlan={subscription}
           onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
         />
         <PlanCard
           name="Pro Max"
           price={499}
-          period="мес"
-          tagline="Для профи"
-          features={['До 20 бирж', 'Всё из Pro', 'Расширенная аналитика', 'Персональная поддержка', 'Ранний доступ к фичам']}
+          
+          tagline={t('profile.planTaglineProMax')}
+          features={['profile.feat20ex', 'profile.featAllPro', 'profile.featAnalytics', 'profile.featSupport', 'profile.featEarly']}
           currentPlan={subscription}
           onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
         />
@@ -248,21 +250,19 @@ export function ProfilePage() {
       </div>
 
       <div className="card">
-        <h2 className="text-base font-semibold mb-2">Что входит в тарифы</h2>
+          <h2 className="text-base font-semibold mb-2">{t('profile.planHeader')}</h2>
         <p className="text-sm text-muted mb-2">
-          <span style={{ color: 'var(--brand)' }}>Free</span> — до 3 бирж, без AI-анализа и арбитражных сигналов.
-          Перейди на <span style={{ color: 'var(--brand)' }}>Pro</span>, чтобы открыть AI-анализ, экспорт в CSV,
-          симулятор портфеля и до 12 бирж.
+          {t('profile.freeDesc')}
         </p>
         <p className="text-xs text-muted">
-          Оплата принимается в криптовалюте (USDT и др.). Цены указаны в USDT.
+          {t('profile.cryptoNote')}
         </p>
       </div>
 
       <div className="card">
-        <h2 className="text-base font-semibold mb-3">История платежей</h2>
-        {paymentHistory.length === 0 ? (
-          <div className="text-center py-6 text-muted">Платежей пока нет</div>
+          <h2 className="text-base font-semibold mb-3">{t('profile.paymentHistory')}</h2>
+          {paymentHistory.length === 0 ? (
+            <div className="text-center py-6 text-muted">{t('profile.noPayments')}</div>
         ) : (
           <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {paymentHistory.map((payment) => (
@@ -279,9 +279,9 @@ export function ProfilePage() {
       </div>
 
       <div className="card">
-        <h2 className="text-base font-semibold mb-3">История выводов</h2>
-        {withdrawalHistory.length === 0 ? (
-          <div className="text-center py-6 text-muted">Выводов пока нет</div>
+          <h2 className="text-base font-semibold mb-3">{t('profile.withdrawalHistory')}</h2>
+          {withdrawalHistory.length === 0 ? (
+            <div className="text-center py-6 text-muted">{t('profile.noWithdrawals')}</div>
         ) : (
           <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {withdrawalHistory.map((withdrawal) => (
@@ -303,13 +303,13 @@ export function ProfilePage() {
       </div>
 
       <div className="card">
-        <Link to="/settings" className="btn btn-secondary text-sm py-2.5">⚙️ Настройки</Link>
+        <Link to="/settings" className="btn btn-secondary text-sm py-2.5">{t('profile.settingsLink')}</Link>
       </div>
 
       <div className="text-center py-2">
-        <Link to="/terms" className="text-sm hover:underline mx-2" style={{ color: 'var(--brand)' }}>Пользовательское соглашение</Link>
+        <Link to="/terms" className="text-sm hover:underline mx-2" style={{ color: 'var(--brand)' }}>{t('profile.termsLink')}</Link>
         <span className="text-muted">·</span>
-        <Link to="/privacy" className="text-sm hover:underline mx-2" style={{ color: 'var(--brand)' }}>Политика конфиденциальности</Link>
+        <Link to="/privacy" className="text-sm hover:underline mx-2" style={{ color: 'var(--brand)' }}>{t('profile.privacyLink')}</Link>
       </div>
 
       {checkout && (
@@ -339,7 +339,6 @@ function planLabel(plan: string): string {
 const PlanCard = memo(function PlanCard({
   name,
   price,
-  period = 'мес',
   tagline,
   features,
   featured = false,
@@ -348,13 +347,13 @@ const PlanCard = memo(function PlanCard({
 }: {
   name: string;
   price: number;
-  period?: string;
   tagline?: string;
   features: string[];
   featured?: boolean;
   currentPlan: string;
   onSelect: (planId: string, name: string, price: number) => void;
 }) {
+  const t = useT();
   const planId = name.toLowerCase().replace(' ', '');
   const isCurrent = currentPlan === planId;
 
@@ -370,7 +369,7 @@ const PlanCard = memo(function PlanCard({
       {featured && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold text-white"
              style={{ background: 'var(--brand)' }}>
-          ⭐ Популярный
+          ⭐ {t('profile.popular')}
         </div>
       )}
 
@@ -383,14 +382,14 @@ const PlanCard = memo(function PlanCard({
 
         <div className="my-3 flex items-end gap-1">
           <span className="text-3xl font-extrabold stat text-[var(--text)]">{price} <span className="text-base font-medium">USDT</span></span>
-          <span className="text-sm text-muted mb-1">/ {period}</span>
+          <span className="text-sm text-muted mb-1">/ {t('profile.period')}</span>
         </div>
 
       <ul className="space-y-2 mb-4">
         {features.map((feature, idx) => (
           <li key={idx} className="flex items-start gap-2 text-sm text-[var(--text)]">
             <span className="mt-0.5 text-[var(--success)] font-bold shrink-0" aria-hidden="true">✓</span>
-            <span>{feature}</span>
+              <span>{t(feature)}</span>
           </li>
         ))}
       </ul>
@@ -401,14 +400,14 @@ const PlanCard = memo(function PlanCard({
           className="btn text-sm py-2.5 w-full cursor-not-allowed"
           style={{ background: 'var(--surface-2)', color: 'var(--text)' }}
         >
-          ✓ Текущий план
+          ✓ {t('profile.currentPlan')}
         </button>
       ) : (
         <button
           onClick={() => onSelect(planId, name, price)}
           className="btn text-sm py-2.5 w-full btn-primary"
         >
-          {currentPlan === 'free' ? 'Подключить' : 'Перейти'}
+          {currentPlan === 'free' ? t('profile.connect') : t('profile.switch')}
         </button>
       )}
     </div>

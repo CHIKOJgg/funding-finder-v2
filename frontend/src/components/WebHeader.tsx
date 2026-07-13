@@ -1,4 +1,6 @@
 import { useToast } from './Toast';
+import { useT } from '../i18n';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface WebHeaderProps {
   user?: { firstName?: string; username?: string; walletAddress?: string | null; email?: string | null; provider?: string } | null;
@@ -7,17 +9,18 @@ interface WebHeaderProps {
 
 export function WebHeader({ user, onLogout }: WebHeaderProps) {
   const { showToast } = useToast();
+  const t = useT();
 
   const handleLogout = () => {
     onLogout();
-    showToast('Вы вышли из аккаунта', 'success');
+    showToast(t('header.loggedOut'), 'success');
   };
 
   const displayName =
     user?.firstName ||
     (user?.walletAddress ? `${user.walletAddress.slice(0, 6)}…${user.walletAddress.slice(-4)}` : '') ||
     user?.email ||
-    'Пользователь';
+    t('header.user');
 
   return (
     <header
@@ -33,8 +36,9 @@ export function WebHeader({ user, onLogout }: WebHeaderProps) {
           <span className="text-sm truncate max-w-[40vw]" style={{ color: 'var(--text-muted)' }}>
             {displayName}
           </span>
+          <LanguageSwitcher />
           <button onClick={handleLogout} className="btn btn-secondary text-sm py-1.5 px-3">
-            Выйти
+            {t('header.logout')}
           </button>
         </div>
       </div>

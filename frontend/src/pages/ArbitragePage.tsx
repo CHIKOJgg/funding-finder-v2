@@ -11,13 +11,14 @@ import { ExchangeSelect } from '../components/ExchangeSelect';
 import { FilterBar, FilterField, SegmentedControl } from '../components/FilterBar';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { getAuthToken } from '../api/client';
-
+import { useT } from '../i18n';
 type ArbSortKey = 'apy' | 'daily' | 'hourly' | 'risk';
 type RiskFilter = 'ALL' | 'LOW' | 'MEDIUM' | 'HIGH';
 
 export function ArbitragePage() {
   const { user, isWeb, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts } = useApp();
   const { showToast } = useToast();
+  const t = useT();
   const [activeTab, setActiveTab] = useState<'opportunities' | 'alerts'>('opportunities');
   const [showModal, setShowModal] = useState(false);
   const [selectedOpportunity, setSelectedOpportunity] = useState<any>(null);
@@ -35,7 +36,7 @@ export function ArbitragePage() {
   useWebSocket(wsAuth, {
     onAlertTriggered: useCallback(() => {
       loadAlerts(true);
-      showToast('Получено новое оповещение!', 'success');
+      showToast(t('arb.newAlert'), 'success');
     }, [loadAlerts, showToast]),
   });
 
@@ -53,10 +54,10 @@ export function ArbitragePage() {
         setArbAlerts((prev) =>
           prev.map((a) => (a.id === alertId ? { ...a, isActive: !a.isActive } : a))
         );
-        showToast('Оповещение обновлено', 'success');
+        showToast(t('arb.alertUpdated'), 'success');
       }
     } catch (error) {
-      showToast('Не удалось обновить оповещение', 'error');
+      showToast(t('arb.alertUpdateError'), 'error');
     }
   }, [setArbAlerts, showToast]);
 
@@ -65,10 +66,10 @@ export function ArbitragePage() {
       const response: any = await apiClient.deleteArbitrageAlert(alertId);
       if (response.ok) {
         setArbAlerts((prev) => prev.filter((a) => a.id !== alertId));
-        showToast('Оповещение удалено', 'success');
+        showToast(t('arb.alertDeleted'), 'success');
       }
     } catch (error) {
-      showToast('Не удалось удалить оповещение', 'error');
+      showToast(t('arb.alertDeleteError'), 'error');
     }
   }, [setArbAlerts, showToast]);
 
@@ -143,8 +144,8 @@ export function ArbitragePage() {
           FF
         </div>
         <div>
-          <h1 className="text-xl font-bold leading-tight">Арбитраж</h1>
-          <p className="text-sm text-muted leading-tight">Возможности и оповещения</p>
+          <h1 className="text-xl font-bold leading-tight">{t('arb.title')}</h1>
+          <p className="text-sm text-muted leading-tight">{t('arb.subtitle')}</p>
         </div>
       </div>
 
@@ -155,7 +156,7 @@ export function ArbitragePage() {
           role="tab"
           aria-selected={activeTab === 'opportunities'}
         >
-          Возможности
+          {t('arb.opportunities')}
         </button>
         <button
           onClick={() => setActiveTab('alerts')}
@@ -163,94 +164,94 @@ export function ArbitragePage() {
           role="tab"
           aria-selected={activeTab === 'alerts'}
         >
-          Оповещения
+          {t('arb.alerts')}
         </button>
       </div>
 
       {activeTab === 'opportunities' && (
         <div className="card">
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-semibold">Арбитражные возможности</h2>
+            <h2 className="text-lg font-semibold">{t('arb.arbOpportunities')}</h2>
             <button onClick={() => loadArbitrage(true)} disabled={arbLoading} className="text-sm text-[var(--brand)]">
-              🔄 Обновить
+              🔄 {t('arb.refreshBtn')}
             </button>
           </div>
 
           {arbLoading ? (
-            <div className="text-center py-8 text-gray-500" role="status">Загрузка...</div>
+            <div className="text-center py-8 text-gray-500" role="status">{t('common.loading')}</div>
           ) : arbOpportunities.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">Арбитражные возможности не найдены</div>
+            <div className="text-center py-8 text-gray-500">{t('arb.noOpportunities')}</div>
           ) : (
             <>
-              <FilterBar activeCount={activeFilterCount} title="Фильтры и сортировка">
-                <FilterField label="Сортировка">
+              <FilterBar activeCount={activeFilterCount} title={t('filter.title')}>
+                <FilterField label={t('filter.sort')}>
                   <select
                     value={arbSortBy}
                     onChange={(e) => setArbSortBy(e.target.value as ArbSortKey)}
                     className="input-field text-sm w-full"
-                    aria-label="Сортировка возможностей"
+                    aria-label={t('arb.sortAria')}
                   >
-                    <option value="apy">По прибыли (APY)</option>
-                    <option value="daily">По дневному спреду</option>
-                    <option value="hourly">По часовой разнице</option>
-                    <option value="risk">По риску (сначала низкий)</option>
+                    <option value="apy">{t('filter.sort.apy')}</option>
+                    <option value="daily">{t('filter.sort.daily')}</option>
+                    <option value="hourly">{t('filter.sort.hourly')}</option>
+                    <option value="risk">{t('filter.sort.risk')}</option>
                   </select>
                 </FilterField>
 
-                <FilterField label="Мин. доходность (APY, %)">
+                <FilterField label={t('filter.minApy')}>
                   <input
                     type="number"
                     min={0}
                     step={1}
                     value={minApy}
                     onChange={(e) => setMinApy(Math.max(0, Number(e.target.value) || 0))}
-                    placeholder="0 — без ограничения"
+                    placeholder={t('arb.minApyPlaceholder')}
                     className="input-field text-sm w-full"
-                    aria-label="Минимальная доходность APY в процентах"
+                    aria-label={t('arb.minApyAria')}
                   />
                 </FilterField>
 
-                <FilterField label="Риск">
+                <FilterField label={t('filter.risk')}>
                   <SegmentedControl<RiskFilter>
                     value={riskFilter}
                     onChange={setRiskFilter}
                     options={[
-                      { value: 'ALL', label: 'Все' },
-                      { value: 'LOW', label: 'LOW' },
-                      { value: 'MEDIUM', label: 'MEDIUM' },
-                      { value: 'HIGH', label: 'HIGH' },
+                       { value: 'ALL', label: t('filter.risk.all') },
+                      { value: 'LOW', label: t('filter.risk.low') },
+                      { value: 'MEDIUM', label: t('filter.risk.medium') },
+                      { value: 'HIGH', label: t('filter.risk.high') },
                     ]}
                   />
                 </FilterField>
 
                 <ExchangeSelect selected={exchangeFilter} onChange={setExchangeFilter} />
 
-                <FilterField label="Пара (поиск)">
+                <FilterField label={t('filter.pair')}>
                   <input
                     type="text"
                     value={pairQuery}
                     onChange={(e) => setPairQuery(e.target.value)}
-                    placeholder="Напр. BTC"
+                    placeholder={t('arb.pairPlaceholder')}
                     className="input-field text-sm w-full"
-                    aria-label="Поиск по паре"
+                    aria-label={t('arb.pairAria')}
                   />
                 </FilterField>
 
                 {activeFilterCount > 0 && (
                   <button onClick={resetFilters} className="btn btn-secondary text-sm py-2 w-full">
-                    Сбросить фильтры
+                    {t('common.resetFilters')}
                   </button>
                 )}
               </FilterBar>
 
               {filteredOpportunities.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  Нет возможностей под выбранные фильтры
-                </div>
+                  <div className="text-center py-8 text-gray-500">
+                    {t('arb.noFiltered')}
+                  </div>
               ) : (
                 <>
                   <div className="text-xs text-gray-500 mb-2">
-                    Показано {Math.min(visibleCount, filteredOpportunities.length)} из {filteredOpportunities.length}
+                    {t('arb.shown', { x: Math.min(visibleCount, filteredOpportunities.length), y: filteredOpportunities.length })}
                   </div>
                   <div className="space-y-3">
                     {filteredOpportunities.slice(0, visibleCount).map((opp, idx) => (
@@ -269,7 +270,7 @@ export function ArbitragePage() {
                       onClick={() => setVisibleCount((c) => c + 15)}
                       className="btn btn-secondary text-sm py-2 w-full mt-3"
                     >
-                      Показать ещё ({filteredOpportunities.length - visibleCount})
+                      {t('arb.showMore', { n: filteredOpportunities.length - visibleCount })}
                     </button>
                   )}
                 </>
@@ -281,12 +282,12 @@ export function ArbitragePage() {
 
       {activeTab === 'alerts' && (
         <div className="card">
-          <h2 className="text-lg font-semibold mb-3">Мои оповещения</h2>
+          <h2 className="text-lg font-semibold mb-3">{t('arb.myAlerts')}</h2>
 
           {!user?.id ? (
-            <div className="text-center py-8 text-gray-500">Войдите в систему для управления оповещениями</div>
+            <div className="text-center py-8 text-gray-500">{t('arb.loginToManage')}</div>
           ) : arbAlerts.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">У вас нет оповещений</div>
+            <div className="text-center py-8 text-gray-500">{t('arb.noAlerts')}</div>
           ) : (
             <div className="space-y-2">
               {arbAlerts.map((alert) => (
@@ -295,10 +296,10 @@ export function ArbitragePage() {
                     <div>
                       <strong>{alert.pair} ({alert.exchangeA} vs {alert.exchangeB})</strong>
                       <div className="text-sm text-gray-600">
-                        Условие: Разница {'>'} {alert.threshold}
+                        {t('arb.conditionDiff', { threshold: alert.threshold })}
                       </div>
                       <div className="text-sm text-gray-600">
-                        Направление: {alert.direction === 'both' ? 'Любое' : alert.direction}
+                          {t('arb.direction', { dir: alert.direction === 'both' ? t('arb.any') : alert.direction })}
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -336,10 +337,10 @@ export function ArbitragePage() {
 
       <ConfirmDialog
         open={deleteConfirm !== null}
-        title="Удалить оповещение?"
-        message="Вы уверены, что хотите удалить это оповещение? Это действие нельзя отменить."
-        confirmText="Удалить"
-        cancelText="Отмена"
+        title={t('arb.deleteAlertTitle')}
+        message={t('arb.deleteAlertMessage')}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
         variant="danger"
         onConfirm={confirmDelete}
         onCancel={() => setDeleteConfirm(null)}
@@ -355,21 +356,22 @@ const OpportunityCard = memo(function OpportunityCard({
   opportunity: any;
   onCalculate: () => void;
 }) {
+  const t = useT();
   return (
     <div className={clsx('p-3 rounded-lg border-l-4', getRiskColor(opp.risk?.level))}>
       <div className="flex justify-between items-start mb-2">
         <div>
           <strong>{opp.pair}</strong>
-          <span className={clsx('ml-2 text-xs px-2 py-0.5 rounded-full', getRiskColor(opp.risk?.level))} title="Уровень риска: насколько расходятся ставки и волатильна пара.">
+          <span className={clsx('ml-2 text-xs px-2 py-0.5 rounded-full', getRiskColor(opp.risk?.level))} title={t('arb.riskLevelTitle')}>
             {opp.risk?.level}
           </span>
-          <div className="text-xs text-gray-500 mt-0.5" title="Время до следующего начисления фандинга. Позиции держат именно до этого момента.">
-            <CountdownTimer intervalHours={opp.intervalA_hours} className="font-medium" /> до фандинга ({opp.exchangeA})
+           <div className="text-xs text-gray-500 mt-0.5" title={t('arb.untilFundingTitle')}>
+              <CountdownTimer intervalHours={opp.intervalA_hours} className="font-medium" /> {t('arb.untilFundingEx', { ex: opp.exchangeA })}
           </div>
         </div>
         <div className="text-right">
-          <div className="text-green-500 font-bold" title="Дневной спред — разница ставок фандинга между биржами. Ваш потенциальный доход при удержании позиций до фандинга.">{(opp.difference_per_day * 100).toFixed(4)}%/день</div>
-          <div className="text-xs text-blue-500" title="APY — годовая доходность с учётом реинвеста фандинга.">{opp.profit?.annualReturn?.toFixed(1)}% APY</div>
+          <div className="text-green-500 font-bold" title={t('arb.dailySpreadTitle')}>{(opp.difference_per_day * 100).toFixed(4)}%/день</div>
+          <div className="text-xs text-blue-500" title={t('arb.apyTitle')}>{opp.profit?.annualReturn?.toFixed(1)}% APY</div>
         </div>
       </div>
 
@@ -386,27 +388,27 @@ const OpportunityCard = memo(function OpportunityCard({
 
       {opp.intervalMismatch && (
         <div className="text-xs text-orange-600 mb-2 bg-orange-50 p-2 rounded">
-          ⚠️ Разные интервалы финансирования ({opp.intervalA_hours}ч vs {opp.intervalB_hours}ч)
+          {t('arb.intervalMismatch', { a: opp.intervalA_hours, b: opp.intervalB_hours })}
         </div>
       )}
 
       <div className="text-sm mb-2">
-        <div>Доход фандинга: +${opp.profit?.grossHourly?.toFixed(4)} USDT/ч · +${opp.profit?.grossDaily?.toFixed(2)} USDT/день</div>
-        <div>Разовые издержки (вход/выход): ${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)} USDT</div>
+          <div>{t('arb.fundingIncome')} +${opp.profit?.grossHourly?.toFixed(4)} USDT/ч · +${opp.profit?.grossDaily?.toFixed(2)} USDT/день</div>
+          <div>{t('arb.oneTimeCosts')} ${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)} USDT</div>
         <div>
-          Чистыми за день: <span className={clsx((opp.profit?.netDaily ?? 0) >= 0 ? 'text-green-600' : 'text-red-500')}>
+           {t('arb.netDaily')} <span className={clsx((opp.profit?.netDaily ?? 0) >= 0 ? 'text-green-600' : 'text-red-500')}>
             {(opp.profit?.netDaily ?? 0) >= 0 ? '+' : ''}${opp.profit?.netDaily?.toFixed(2)} USDT
           </span>
         </div>
-        <div>Год (APY): <strong>{opp.profit?.annualReturn?.toFixed(1)}%</strong></div>
+         <div>{t('arb.yearApy')} <strong>{opp.profit?.annualReturn?.toFixed(1)}%</strong></div>
       </div>
 
       <div className="text-xs text-gray-500 mb-2">
-         Комиссии: ${opp.profit?.fees?.toFixed(2)} USDT | Проскальзывание: ${opp.profit?.slippage?.toFixed(2)} USDT
+          {t('arb.fees')} ${opp.profit?.fees?.toFixed(2)} USDT | {t('arb.slippage')} ${opp.profit?.slippage?.toFixed(2)} USDT
       </div>
 
       <div className="text-sm bg-blue-50 p-2 rounded mb-2">
-        <strong>Стратегия:</strong> {opp.opportunity}
+         <strong>{t('arb.strategy')}</strong> {opp.opportunity}
       </div>
 
       {opp.risk?.reasons?.length > 0 && (
@@ -423,9 +425,9 @@ const OpportunityCard = memo(function OpportunityCard({
           setTimeout(() => openExchange(opp.exchangeB, opp.pair), 400);
         }}
         className="btn btn-primary text-sm py-2 w-full mb-2"
-        title={`Открыть ${opp.pair} сразу на ${exchangeLabel(opp.exchangeA)} и ${exchangeLabel(opp.exchangeB)}`}
+        title={t('arb.openBothTitle', { pair: opp.pair, a: exchangeLabel(opp.exchangeA), b: exchangeLabel(opp.exchangeB) })}
       >
-        ↗↗ Открыть обе ноги ({exchangeLabel(opp.exchangeA)} + {exchangeLabel(opp.exchangeB)})
+        {t('arb.openBoth', { a: exchangeLabel(opp.exchangeA), b: exchangeLabel(opp.exchangeB) })}
       </button>
 
       <div className="flex gap-2">
@@ -433,25 +435,25 @@ const OpportunityCard = memo(function OpportunityCard({
           onClick={onCalculate}
           className="btn btn-success text-sm py-2 flex-[1.4]"
         >
-          💰 Рассчитать
+          💰 {t('arb.calculate')}
         </button>
         <button
           onClick={() => openExchange(opp.exchangeA, opp.pair)}
           className="btn btn-secondary text-sm py-2 flex-1"
-          title={`Открыть ${opp.pair} на ${exchangeLabel(opp.exchangeA)}`}
-        >
-          ↗ {exchangeLabel(opp.exchangeA)}
+          title={t('arb.openOnExchange', { pair: opp.pair, ex: exchangeLabel(opp.exchangeA) })}
+      >
+          ↗ {t('arb.openEx', { ex: exchangeLabel(opp.exchangeA) })}
         </button>
         <button
           onClick={() => openExchange(opp.exchangeB, opp.pair)}
           className="btn btn-secondary text-sm py-2 flex-1"
-          title={`Открыть ${opp.pair} на ${exchangeLabel(opp.exchangeB)}`}
-        >
-          ↗ {exchangeLabel(opp.exchangeB)}
+          title={t('arb.openOnExchange', { pair: opp.pair, ex: exchangeLabel(opp.exchangeB) })}
+      >
+          ↗ {t('arb.openEx', { ex: exchangeLabel(opp.exchangeB) })}
         </button>
       </div>
       <p className="text-xs text-gray-500 mt-2 text-center">
-        💡 Рассчитайте размер позиции или сразу откройте {opp.pair} на бирже
+        💡 {t('arb.hint', { pair: opp.pair })}
       </p>
     </div>
   );
@@ -471,6 +473,7 @@ function ProfitCalculator({
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
+  const t = useT();
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -485,7 +488,7 @@ function ProfitCalculator({
         setResult(response);
       }
     } catch (error) {
-      showToast('Не удалось рассчитать прибыль', 'error');
+      showToast(t('arb.calcError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -500,19 +503,19 @@ function ProfitCalculator({
     >
       <div className="bg-white rounded-xl max-w-md w-full">
         <div className="card">
-          <h2 id="calculator-title" className="text-lg font-semibold mb-2">💰 Калькулятор прибыли</h2>
+          <h2 id="calculator-title" className="text-lg font-semibold mb-2">{t('arb.profitCalc')}</h2>
           <div className="text-center mb-4">
             <div className="font-bold">{opportunity.pair}</div>
             <div className="text-sm text-gray-600">{opportunity.exchangeA} vs {opportunity.exchangeB}</div>
             <div className="text-green-500 font-bold">{(opportunity.difference_per_day * 100).toFixed(4)}%/день</div>
             {opportunity.intervalMismatch && (
-              <div className="text-xs text-orange-600">⚠️ Разные интервалы</div>
+               <div className="text-xs text-orange-600">{t('arb.intervalMismatchShort')}</div>
             )}
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="calc-capital">
-              Ваш капитал (USDT):
+              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="calc-capital">
+              {t('arb.capital')}
             </label>
             <input
               id="calc-capital"
@@ -529,27 +532,27 @@ function ProfitCalculator({
           </div>
 
           <button onClick={handleCalculate} disabled={loading} className="btn btn-success mb-4 w-full">
-            {loading ? 'Расчет...' : 'Рассчитать прибыль'}
+            {loading ? t('arb.calculating') : t('arb.calculateProfit')}
           </button>
 
           {result && (
             <div className="bg-gray-50 p-3 rounded-lg">
               <div className="text-xs text-gray-500 mb-2">
-                Чистая прибыль при удержании период (разовый вход/выход)
+                {t('arb.netProfitNote')}
               </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>В час:</div>
+                <div>{t('arb.perHour')}</div>
                 <div className={clsx('font-bold', result.profit.netHourly >= 0 ? 'text-green-500' : 'text-red-500')}>{result.profit.netHourly.toFixed(4)} USDT</div>
-                <div>В день:</div>
+                <div>{t('arb.perDay')}</div>
                 <div className={clsx('font-bold', result.profit.netDaily >= 0 ? 'text-green-500' : 'text-red-500')}>{result.profit.netDaily.toFixed(2)} USDT</div>
-                <div>В неделю:</div>
+                <div>{t('arb.perWeek')}</div>
                 <div className={clsx('font-bold', result.profit.netWeekly >= 0 ? 'text-green-500' : 'text-red-500')}>{result.profit.netWeekly.toFixed(2)} USDT</div>
-                <div>В год:</div>
+                <div>{t('arb.perYear')}</div>
                 <div className={clsx('font-bold', result.profit.netAnnual >= 0 ? 'text-green-500' : 'text-red-500')}>{result.profit.netAnnual.toFixed(2)} USDT</div>
               </div>
               <div className="mt-2 pt-2 border-t border-gray-200">
                 <div className="flex justify-between">
-                  <span>Годовая доходность (APY):</span>
+                  <span>{t('arb.annualReturn')}</span>
                   <strong className={clsx(result.profit.annualReturn >= 0 ? 'text-green-500' : 'text-red-500')}>{result.profit.annualReturn.toFixed(2)}%</strong>
                 </div>
               </div>
@@ -557,7 +560,7 @@ function ProfitCalculator({
           )}
 
           <button ref={closeRef} onClick={onClose} className="btn btn-secondary mt-4 w-full">
-            Закрыть
+            {t('common.close')}
           </button>
         </div>
       </div>

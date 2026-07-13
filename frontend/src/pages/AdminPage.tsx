@@ -3,6 +3,7 @@ import { useApp } from '../App';
 import { useToast } from '../components/Toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { apiClient } from '../api/client';
+import { useT } from '../i18n';
 
 interface User {
   id: string;
@@ -51,6 +52,7 @@ interface Stats {
 export function AdminPage() {
   const { user } = useApp();
   const { showToast } = useToast();
+  const t = useT();
   const [tab, setTab] = useState<'users' | 'stats'>('stats');
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -92,11 +94,11 @@ export function AdminPage() {
     try {
       const res: any = await apiClient.patch(`/admin/users/${userId}/subscription`, { subscription });
       if (res.ok) {
-        showToast('Подписка обновлена', 'success');
+        showToast(t('admin.subscriptionUpdated'), 'success');
         fetchUsers(page, search);
       }
     } catch {
-      showToast('Ошибка обновления подписки', 'error');
+      showToast(t('admin.subscriptionUpdateError'), 'error');
     }
     setEditUser(null);
   }, [page, search, fetchUsers, showToast]);
@@ -104,17 +106,17 @@ export function AdminPage() {
   const handleUpdateBalance = useCallback(async (userId: string, balance: string) => {
     const num = parseFloat(balance);
     if (isNaN(num) || num < 0) {
-      showToast('Некорректный баланс', 'error');
+      showToast(t('admin.invalidBalance'), 'error');
       return;
     }
     try {
       const res: any = await apiClient.patch(`/admin/users/${userId}/balance`, { balance: num });
       if (res.ok) {
-        showToast('Баланс обновлён', 'success');
+        showToast(t('admin.balanceUpdated'), 'success');
         fetchUsers(page, search);
       }
     } catch {
-      showToast('Ошибка обновления баланса', 'error');
+      showToast(t('admin.balanceUpdateError'), 'error');
     }
     setEditUser(null);
   }, [page, search, fetchUsers, showToast]);
@@ -124,11 +126,11 @@ export function AdminPage() {
     try {
       const res: any = await apiClient.delete(`/admin/users/${deleteConfirm}`);
       if (res.ok) {
-        showToast('Пользователь удалён', 'success');
+        showToast(t('admin.userDeleted'), 'success');
         fetchUsers(page, search);
       }
     } catch {
-      showToast('Ошибка удаления пользователя', 'error');
+      showToast(t('admin.userDeleteError'), 'error');
     }
     setDeleteConfirm(null);
   }, [deleteConfirm, page, search, fetchUsers, showToast]);
@@ -137,30 +139,30 @@ export function AdminPage() {
     const d = Math.floor(seconds / 86400);
     const h = Math.floor((seconds % 86400) / 3600);
     const m = Math.floor((seconds % 3600) / 60);
-    return `${d}д ${h}ч ${m}м`;
+    return t('admin.uptimeFormat', { d, h, m });
   };
 
   if (!user) {
-    return <div className="p-4 text-center text-gray-500">Войдите в систему</div>;
+    return       <div className="p-4 text-center text-gray-500">{t('admin.loginRequired')}</div>;
   }
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
       <div className="card">
         <h1 className="text-xl font-bold mb-2">Admin Panel</h1>
-        <p className="text-sm text-gray-600 mb-4">Управление пользователями и мониторинг системы</p>
+          <p className="text-sm text-gray-600 mb-4">{t('admin.subtitle')}</p>
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setTab('stats')}
             className={`flex-1 py-2 rounded-lg font-medium ${tab === 'stats' ? 'bg-[var(--brand)] text-white' : 'bg-gray-200'}`}
           >
-            Статистика
+            {t('admin.stats')}
           </button>
           <button
             onClick={() => setTab('users')}
             className={`flex-1 py-2 rounded-lg font-medium ${tab === 'users' ? 'bg-[var(--brand)] text-white' : 'bg-gray-200'}`}
           >
-            Пользователи
+            {t('admin.users')}
           </button>
         </div>
       </div>
@@ -168,28 +170,28 @@ export function AdminPage() {
       {tab === 'stats' && stats && (
         <>
           <div className="card">
-            <h2 className="text-lg font-semibold mb-3">Пользователи</h2>
+            <h2 className="text-lg font-semibold mb-3">{t('admin.usersSection')}</h2>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="p-3 bg-blue-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-700">{stats.users.total}</div>
-                <div className="text-blue-600">Всего</div>
+                <div className="text-blue-600">{t('admin.total')}</div>
               </div>
               <div className="p-3 bg-green-50 rounded-lg">
                 <div className="text-2xl font-bold text-green-700">{stats.users.today}</div>
-                <div className="text-green-600">Сегодня</div>
+                <div className="text-green-600">{t('admin.today')}</div>
               </div>
               <div className="p-3 bg-yellow-50 rounded-lg">
                 <div className="text-2xl font-bold text-yellow-700">{stats.users.activeWeek}</div>
-                <div className="text-yellow-600">Активных (7д)</div>
+                <div className="text-yellow-600">{t('admin.active7')}</div>
               </div>
               <div className="p-3 bg-purple-50 rounded-lg">
                 <div className="text-2xl font-bold text-purple-700">{stats.users.activeMonth}</div>
-                <div className="text-purple-600">Активных (30д)</div>
+                <div className="text-purple-600">{t('admin.active30')}</div>
               </div>
             </div>
             {Object.keys(stats.users.bySubscription).length > 0 && (
               <div className="mt-3">
-                <p className="text-sm font-medium mb-1">По подпискам:</p>
+                <p className="text-sm font-medium mb-1">{t('admin.bySubscription')}</p>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(stats.users.bySubscription).map(([plan, count]) => (
                     <span key={plan} className="text-xs bg-gray-100 px-2 py-1 rounded">{plan}: {String(count)}</span>
@@ -200,33 +202,33 @@ export function AdminPage() {
           </div>
 
           <div className="card">
-            <h2 className="text-lg font-semibold mb-3">Финансы</h2>
+            <h2 className="text-lg font-semibold mb-3">{t('admin.finance')}</h2>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="p-3 bg-green-50 rounded-lg">
                 <div className="text-2xl font-bold text-green-700">{stats.orders.revenue.toFixed(2)} USDT</div>
-                <div className="text-green-600">Общий доход</div>
+                <div className="text-green-600">{t('admin.totalRevenue')}</div>
               </div>
               <div className="p-3 bg-blue-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-700">{stats.orders.revenueToday.toFixed(2)} USDT</div>
-                <div className="text-blue-600">За сегодня</div>
+                <div className="text-blue-600">{t('admin.revenueToday')}</div>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <div className="text-2xl font-bold">{stats.orders.total}</div>
-                <div className="text-gray-600">Всего заказов</div>
+                <div className="text-gray-600">{t('admin.totalOrders')}</div>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <div className="text-2xl font-bold">{stats.orders.today}</div>
-                <div className="text-gray-600">Заказов сегодня</div>
+                <div className="text-gray-600">{t('admin.ordersToday')}</div>
               </div>
             </div>
           </div>
 
           <div className="card">
-            <h2 className="text-lg font-semibold mb-3">Система</h2>
+            <h2 className="text-lg font-semibold mb-3">{t('admin.system')}</h2>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="p-3 bg-gray-50 rounded-lg">
                 <div className="font-bold">{formatUptime(stats.system.uptime)}</div>
-                <div className="text-gray-600">Аптайм</div>
+                <div className="text-gray-600">{t('admin.uptime')}</div>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <div className="font-bold">{stats.system.memory.heapUsed} MB</div>
@@ -242,15 +244,15 @@ export function AdminPage() {
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <div className="font-bold">{stats.system.cacheSize}</div>
-                <div className="text-gray-600">Кеш</div>
+                <div className="text-gray-600">{t('admin.cache')}</div>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <div className="font-bold">{stats.alerts.total}</div>
-                <div className="text-gray-600">Алертов</div>
+                <div className="text-gray-600">{t('admin.alerts')}</div>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <div className="font-bold">{stats.scans.totalRecords.toLocaleString()}</div>
-                <div className="text-gray-600">Записей сканов</div>
+                <div className="text-gray-600">{t('admin.scanRecords')}</div>
               </div>
             </div>
           </div>
@@ -262,7 +264,7 @@ export function AdminPage() {
           <div className="flex gap-2 mb-4">
             <input
               type="text"
-              placeholder="Поиск по ID, имени или username..."
+              placeholder={t('admin.searchPlaceholder')}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               className="input-field flex-1 text-sm"
@@ -270,9 +272,9 @@ export function AdminPage() {
           </div>
 
           {loading ? (
-            <div className="text-center py-8 text-gray-500">Загрузка...</div>
+            <div className="text-center py-8 text-gray-500">{t('common.loading')}</div>
           ) : users.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">Пользователи не найдены</div>
+            <div className="text-center py-8 text-gray-500">{t('admin.noUsers')}</div>
           ) : (
             <div className="space-y-2">
               {users.map((u) => (
@@ -287,10 +289,10 @@ export function AdminPage() {
                         ID: {u.telegramId} · {u.username ? `@${u.username}` : ''}
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
-                        Создан: {new Date(u.createdAt).toLocaleDateString()} · Активен: {new Date(u.lastActive).toLocaleDateString()}
+                        {t('admin.created', { created: new Date(u.createdAt).toLocaleDateString(), active: new Date(u.lastActive).toLocaleDateString() })}
                       </div>
                       <div className="text-xs text-gray-400">
-                        Заказов: {u._count.orders} · Алертов: {u._count.generalAlerts + u._count.arbitrageAlerts} · Рефералов: {u._count.referrals}
+                        {t('admin.counts', { orders: u._count.orders, alerts: u._count.generalAlerts + u._count.arbitrageAlerts, referrals: u._count.referrals })}
                       </div>
                     </div>
                     <div className="text-right ml-2 flex-shrink-0">
@@ -303,19 +305,19 @@ export function AdminPage() {
                       onClick={() => setEditUser({ id: u.telegramId, field: 'subscription', value: u.subscription })}
                       className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded hover:bg-blue-100"
                     >
-                      Изменить подписку
+                      {t('admin.changeSubscription')}
                     </button>
                     <button
                       onClick={() => setEditUser({ id: u.telegramId, field: 'balance', value: String(u.balance) })}
                       className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded hover:bg-green-100"
                     >
-                      Изменить баланс
+                      {t('admin.changeBalance')}
                     </button>
                     <button
                       onClick={() => setDeleteConfirm(u.telegramId)}
                       className="text-xs bg-red-50 text-red-700 px-2 py-1 rounded hover:bg-red-100 ml-auto"
                     >
-                      Удалить
+                      {t('common.delete')}
                     </button>
                   </div>
                 </div>
@@ -330,15 +332,15 @@ export function AdminPage() {
                 disabled={page <= 1}
                 className="btn text-sm py-1 px-3 w-auto"
               >
-                ← Назад
+                ← {t('admin.prev')}
               </button>
-              <span className="py-1 text-sm text-gray-600">{page} / {totalPages}</span>
+               <span className="py-1 text-sm text-gray-600">{t('admin.page', { page, total: totalPages })}</span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
                 className="btn text-sm py-1 px-3 w-auto"
               >
-                Вперед →
+                {t('admin.next')}
               </button>
             </div>
           )}
@@ -350,7 +352,7 @@ export function AdminPage() {
           <div className="bg-white rounded-xl max-w-sm w-full">
             <div className="card">
               <h2 className="text-lg font-semibold mb-4">
-                {editUser.field === 'subscription' ? 'Изменить подписку' : 'Изменить баланс'}
+                {editUser.field === 'subscription' ? t('admin.changeSubscription') : t('admin.editBalanceTitle')}
               </h2>
               {editUser.field === 'subscription' ? (
                 <select
@@ -374,7 +376,7 @@ export function AdminPage() {
                 />
               )}
               <div className="flex gap-2">
-                <button onClick={() => setEditUser(null)} className="btn btn-secondary flex-1">Отмена</button>
+                <button onClick={() => setEditUser(null)} className="btn btn-secondary flex-1">{t('common.cancel')}</button>
                 <button
                   onClick={() =>
                     editUser.field === 'subscription'
@@ -383,7 +385,7 @@ export function AdminPage() {
                   }
                   className="btn btn-primary flex-1"
                 >
-                  Сохранить
+                  {t('common.save')}
                 </button>
               </div>
             </div>
@@ -393,10 +395,10 @@ export function AdminPage() {
 
       <ConfirmDialog
         open={deleteConfirm !== null}
-        title="Удалить пользователя?"
-        message="Все данные пользователя будут безвозвратно удалены: алерты, заказы, платежи, настройки."
-        confirmText="Удалить"
-        cancelText="Отмена"
+        title={t('admin.deleteUserTitle')}
+        message={t('admin.deleteUserMessage')}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
         variant="danger"
         onConfirm={handleDeleteUser}
         onCancel={() => setDeleteConfirm(null)}

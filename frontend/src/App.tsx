@@ -11,6 +11,8 @@ import { useWebSocket } from './hooks/useWebSocket';
 import { apiClient, getAuthToken } from './api/client';
 import { ALL_EXCHANGES } from './utils/exchanges';
 import { getPlanLimits, PlanLimits } from './utils/plans';
+import { LanguageProvider } from './i18n';
+import { useT } from './i18n';
 import type { ScanResult, TrialStatus, WatchlistItem } from './types';
 
 const MainPage = React.lazy(() => import('./pages/MainPage').then(m => ({ default: m.MainPage })));
@@ -124,6 +126,7 @@ function isColorDark(hex: string): boolean {
 function DataProvider() {
   const { user, initData, isWeb, authenticated, authProvider, logout, login } = useTelegram();
   const { showToast } = useToast();
+  const t = useT();
 
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return localStorage.getItem('ff_onboarding_done') !== 'true';
@@ -152,7 +155,7 @@ function DataProvider() {
   }, [user?.id]);
   const [scanResults, setScanResults] = useState<ScanResult | null>(null);
   const [scanLoading, setScanLoading] = useState(false);
-  const [scanStatus, setScanStatus] = useState('Готов к сканированию');
+  const [scanStatus, setScanStatus] = useState(() => t('app.ready'));
   const [selectedExchanges, setSelectedExchanges] = useState<string[]>(ALL_EXCHANGES);
 
   // The default selection is "all exchanges", but a plan may cap how many the
@@ -216,9 +219,9 @@ function DataProvider() {
         }
       }
     } catch (error) {
-      showToast('Ошибка сети: ' + (error as Error).message, 'error');
+      showToast(t('app.networkError', { error: (error as Error).message }), 'error');
     }
-  }, [watchlist, showToast]);
+  }, [showToast, t]);
 
   // Load trial + watchlist once the user is known
   useEffect(() => {
@@ -242,21 +245,21 @@ function DataProvider() {
   const runScan = useCallback((exchanges: string[]) => {
     if (scanInFlight.current) return scanInFlight.current;
     setScanLoading(true);
-    setScanStatus('Сканирование... Это может занять несколько секунд');
+    setScanStatus(t('app.scanning'));
     const p = (async () => {
       try {
         const response: any = await apiClient.scan(exchanges);
         if (response.ok) {
           setScanResults(response.result);
-          setScanStatus(`Найдено ${response.result.scanned} инструментов`);
-          showToast('Сканирование завершено', 'success');
+          setScanStatus(t('app.found', { count: response.result.scanned }));
+          showToast(t('app.scanDone'), 'success');
         } else {
-          setScanStatus('Ошибка при сканировании: ' + response.error);
-          showToast('Ошибка сканирования', 'error');
+          setScanStatus(t('app.scanError', { error: response.error }));
+          showToast(t('app.scanFailed'), 'error');
         }
       } catch (error) {
-        setScanStatus('Ошибка сети: ' + (error as Error).message);
-        showToast('Ошибка сети', 'error');
+        setScanStatus(t('app.networkError', { error: (error as Error).message }));
+        showToast(t('app.scanNetworkError'), 'error');
       } finally {
         setScanLoading(false);
         scanInFlight.current = null;
@@ -277,9 +280,9 @@ function DataProvider() {
           setArbOpportunities(response.opportunities || []);
           setArbLoaded(true);
         }
-      } catch (error) {
-        showToast('Не удалось загрузить возможности', 'error');
-      } finally {
+    } catch (error) {
+      showToast(t('app.loadOppError'), 'error');
+    } finally {
         setArbLoading(false);
         arbInFlight.current = null;
       }
@@ -326,7 +329,7 @@ function DataProvider() {
     if (!data) return;
     const diffPct = ((data.difference || 0) * 100).toFixed(2);
     showToast(
-      `🔥 Новый спред: ${data.pair} — ${data.exchangeA} ↔ ${data.exchangeB} (${diffPct}%/ч)`,
+      t('app.newSpread', { pair: data.pair, a: data.exchangeA, b: data.exchangeB, diff: diffPct }),
       'spread'
     );
     if (user?.id) loadArbitrage(true);
@@ -467,7 +470,9 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ToastProvider>
-        <DataProvider />
+        <LanguageProvider>
+          <DataProvider />
+        </LanguageProvider>
       </ToastProvider>
     </ErrorBoundary>
   );
