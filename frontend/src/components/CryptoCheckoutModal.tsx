@@ -153,7 +153,7 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
       >
         <h2 className="text-lg font-bold mb-1">Оплата криптовалютой</h2>
         <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-          Тариф <b>{planName}</b> — ${price}/мес
+           Тариф <b>{planName}</b> — {price} USDT/мес
         </p>
 
         {!order ? (

@@ -8,7 +8,7 @@ const STEPS = [
   },
   {
     title: 'Шаг 1: Выберите биржи',
-    description: 'Отметьте биржи, которые хотите просканировать. Доступны: Gate, Binance, Bybit, MEXC, OKX. Бесплатный план — 1 биржа, Pro — все 5.',
+    description: 'Отметьте биржи, которые хотите просканировать. Всего доступно 23 биржи (Gate, Binance, Bybit, MEXC, OKX и др.). Бесплатно — до 3, Basic — 5, Pro — до 12, Pro Max — до 20.',
     emoji: '🔎',
   },
   {

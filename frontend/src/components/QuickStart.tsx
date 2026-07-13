@@ -31,6 +31,17 @@ export function QuickStart({ hasScanResults, selectedCount }: QuickStartProps) {
     }
   });
 
+  // Hide the quick-start checklist until the first-run onboarding is finished,
+  // so the two intro layers don't stack on top of each other.
+  const onboardingDone = (() => {
+    try {
+      return localStorage.getItem('ff_onboarding_done') === 'true';
+    } catch {
+      return false;
+    }
+  })();
+  if (!onboardingDone) return null;
+
   if (dismissed || (opened && hasScanResults)) return null;
 
   const done: Record<string, boolean> = {

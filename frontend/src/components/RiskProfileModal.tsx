@@ -90,11 +90,11 @@ export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }:
                   <div>
                     <span className="font-medium">{exchangeLabel(b.exchange)}: {b.contract}</span>
                     <div className="text-xs text-gray-500">
-                      {formatUsd(b.size)}$ · {(b.ratePerDay * 100).toFixed(4)}%/день
+                      {formatUsd(b.size)} USDT · {(b.ratePerDay * 100).toFixed(4)}%/день
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-green-700">+{formatUsd(b.daily)}$/день</span>
+                    <span className="font-bold text-green-700">+{formatUsd(b.daily)} USDT/день</span>
                     <button
                       onClick={() => openExchange(b.exchange, b.contract)}
                       className="text-xs text-[var(--brand)] hover:underline"
@@ -109,11 +109,11 @@ export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }:
           <div className="rounded-xl p-3 mb-4" style={{ background: 'var(--brand-soft)' }}>
             <div className="flex justify-between text-sm">
               <span style={{ color: 'var(--brand)' }}>Ожидаемый доход с фандинга:</span>
-              <strong className="text-green-700">+{formatUsd(totalDaily)}$/день</strong>
+              <strong className="text-green-700">+{formatUsd(totalDaily)} USDT/день</strong>
             </div>
             <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>≈ {formatUsd(totalDaily * 30)}$/мес</span>
-              <span>≈ {formatUsd(totalDaily * 365)}$/год</span>
+              <span>≈ {formatUsd(totalDaily * 30)} USDT/мес</span>
+              <span>≈ {formatUsd(totalDaily * 365)} USDT/год</span>
             </div>
           </div>
 

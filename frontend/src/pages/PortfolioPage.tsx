@@ -188,7 +188,7 @@ export function PortfolioPage() {
               <div className="text-right">
                 <div className="text-xs text-muted">Симулировано дохода</div>
                 <div className={`font-bold stat ${totalIncome >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                  {totalIncome >= 0 ? '+' : ''}{formatUsd(totalIncome)} $
+                  {totalIncome >= 0 ? '+' : ''}{formatUsd(totalIncome)} USDT
                 </div>
               </div>
             </div>
@@ -435,12 +435,12 @@ const LiveTab = memo(function LiveTab({
               <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
                 <div className="text-xs text-muted">PnL</div>
                 <div className={`text-lg font-bold stat ${live.totals.unrealized >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                  {live.totals.unrealized >= 0 ? '+' : ''}{formatUsd(live.totals.unrealized)}$
+                  {live.totals.unrealized >= 0 ? '+' : ''}{formatUsd(live.totals.unrealized)} USDT
                 </div>
               </div>
               <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
                 <div className="text-xs text-muted">Фандинг</div>
-                <div className="text-lg font-bold stat text-green-700">+{formatUsd(live.totals.funding)}$</div>
+                <div className="text-lg font-bold stat text-green-700">+{formatUsd(live.totals.funding)} USDT</div>
               </div>
             </div>
 
@@ -460,14 +460,14 @@ const LiveTab = memo(function LiveTab({
                       <div key={i} className="flex justify-between items-center text-sm">
                         <div>
                           <span className="font-medium">{p.symbol}</span>
-                          <span className="text-xs text-muted ml-1">{p.side === 'long' ? 'Long' : 'Short'} · {formatUsd(p.notional)}$ · x{p.leverage}</span>
+                          <span className="text-xs text-muted ml-1">{p.side === 'long' ? 'Long' : 'Short'} · {formatUsd(p.notional)} USDT · x{p.leverage}</span>
                           <div className="text-xs text-muted">
                             <CountdownTimer intervalHours={p.fundingIntervalHours || 8} className="font-medium" /> до фандинга
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`font-bold ${p.unrealizedPnl >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                            {p.unrealizedPnl >= 0 ? '+' : ''}{formatUsd(p.unrealizedPnl)}$
+                            {p.unrealizedPnl >= 0 ? '+' : ''}{formatUsd(p.unrealizedPnl)} USDT
                           </span>
                           {ex.permissions === 'trade' && ex.supportsTrading && (
                             <button
@@ -491,7 +491,7 @@ const LiveTab = memo(function LiveTab({
                   <div key={o.id} className="flex justify-between items-center text-sm rounded-lg p-2" style={{ background: 'var(--surface-2)' }}>
                     <div>
                       <span className="font-medium">{exchangeLabel(o.exchange)}: {o.symbol}</span>
-                      <span className="text-xs text-muted ml-1">{o.side === 'long' ? 'Long' : 'Short'} · {formatUsd(o.notionalUsd)}$</span>
+                      <span className="text-xs text-muted ml-1">{o.side === 'long' ? 'Long' : 'Short'} · {formatUsd(o.notionalUsd)} USDT</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted">{new Date(o.createdAt).toLocaleString('ru-RU')}</span>
@@ -577,7 +577,7 @@ const PortfolioRow = memo(function PortfolioRow({
         <div>
           <strong className="text-sm">{position.exchange.toUpperCase()}: {position.pair}</strong>
           <div className="text-xs text-gray-500">
-            {position.side === 'long' ? 'Long' : 'Short'} · {formatUsd(position.sizeUsd)}$ · x{position.leverage}
+            {position.side === 'long' ? 'Long' : 'Short'} · {formatUsd(position.sizeUsd)} USDT · x{position.leverage}
           </div>
           {pnl && (
             <div className="text-xs text-gray-500">
@@ -587,7 +587,7 @@ const PortfolioRow = memo(function PortfolioRow({
         </div>
         <div className="text-right">
           <div className={`font-bold ${(income >= 0 ? 'text-green-700' : 'text-red-700')}`}>
-            {income >= 0 ? '+' : ''}{formatUsd(income)}$
+            {income >= 0 ? '+' : ''}{formatUsd(income)} USDT
           </div>
           {pnl && (
             <div className="text-xs text-gray-500">

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
@@ -23,6 +24,7 @@ export function MainPage() {
   const { scanResults, scanLoading, scanStatus, runScan, selectedExchanges, setSelectedExchanges, planLimits, watchlist } = useApp();
   const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [paywallFeature, setPaywallFeature] = useState<PaywallFeature | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [capital, setCapital] = useState(1000);
@@ -218,14 +220,23 @@ export function MainPage() {
 
       {!scanLoading && scanResults && (
         <div className="card">
-          <h2 className="text-lg font-semibold mb-3">Результаты сканирования</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold">Результаты сканирования</h2>
+            <button
+              onClick={() => navigate('/arbitrage')}
+              className="btn btn-secondary text-sm py-1.5 px-3"
+              title="Смотреть арбитражные спреды между биржами — где реально заработать на разнице ставок"
+            >
+              ↔ Арбитраж
+            </button>
+          </div>
 
           {topPick && (
             <div
               className="rounded-xl p-4 mb-4 relative overflow-hidden"
               style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand-hover) 100%)' }}
             >
-              <div className="text-xs font-semibold uppercase tracking-wide text-white opacity-80">🔥 Лучшая возможность</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-white opacity-80" title="Пара с максимальной разницей ставок фандинга. Открой позицию и держи до фандинга, чтобы забрать разницу.">🔥 Лучшая возможность</div>
               <div className="flex items-end justify-between mt-1">
                 <div>
                   <div className="text-xl font-bold text-white">{topPick.exchange.toUpperCase()}: {topPick.contract}</div>
@@ -278,7 +289,7 @@ export function MainPage() {
 
           {scanResults.metrics?.intervalDistribution && (
             <div className="mb-4 p-3 rounded-xl" style={{ background: 'var(--brand-soft)' }}>
-              <p className="text-sm font-medium mb-1" style={{ color: 'var(--brand)' }}>Распределение интервалов:</p>
+              <p className="text-sm font-medium mb-1" style={{ color: 'var(--brand)' }} title="Интервал финансирования — как часто начисляется ставка (чаще всего 8ч).">Распределение интервалов:</p>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(scanResults.metrics.intervalDistribution).map(([interval, count]) => (
                   <span key={interval} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--surface)', color: 'var(--text)' }}>

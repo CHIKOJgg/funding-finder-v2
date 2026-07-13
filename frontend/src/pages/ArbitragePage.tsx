@@ -213,16 +213,16 @@ const OpportunityCard = memo(function OpportunityCard({
       <div className="flex justify-between items-start mb-2">
         <div>
           <strong>{opp.pair}</strong>
-          <span className={clsx('ml-2 text-xs px-2 py-0.5 rounded-full', getRiskColor(opp.risk?.level))}>
+          <span className={clsx('ml-2 text-xs px-2 py-0.5 rounded-full', getRiskColor(opp.risk?.level))} title="Уровень риска: насколько расходятся ставки и волатильна пара.">
             {opp.risk?.level}
           </span>
-          <div className="text-xs text-gray-500 mt-0.5">
+          <div className="text-xs text-gray-500 mt-0.5" title="Время до следующего начисления фандинга. Позиции держат именно до этого момента.">
             <CountdownTimer intervalHours={opp.intervalA_hours} className="font-medium" /> до фандинга ({opp.exchangeA})
           </div>
         </div>
         <div className="text-right">
-          <div className="text-green-500 font-bold">{(opp.difference_per_day * 100).toFixed(4)}%/день</div>
-          <div className="text-xs text-blue-500">{opp.profit?.annualReturn?.toFixed(1)}% APY</div>
+          <div className="text-green-500 font-bold" title="Дневной спред — разница ставок фандинга между биржами. Ваш потенциальный доход при удержании позиций до фандинга.">{(opp.difference_per_day * 100).toFixed(4)}%/день</div>
+          <div className="text-xs text-blue-500" title="APY — годовая доходность с учётом реинвеста фандинга.">{opp.profit?.annualReturn?.toFixed(1)}% APY</div>
         </div>
       </div>
 
@@ -244,18 +244,18 @@ const OpportunityCard = memo(function OpportunityCard({
       )}
 
       <div className="text-sm mb-2">
-        <div>Доход фандинга: +${opp.profit?.grossHourly?.toFixed(4)}/ч · +${opp.profit?.grossDaily?.toFixed(2)}/день</div>
-        <div>Разовые издержки (вход/выход): ${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)}</div>
+        <div>Доход фандинга: +${opp.profit?.grossHourly?.toFixed(4)} USDT/ч · +${opp.profit?.grossDaily?.toFixed(2)} USDT/день</div>
+        <div>Разовые издержки (вход/выход): ${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)} USDT</div>
         <div>
           Чистыми за день: <span className={clsx((opp.profit?.netDaily ?? 0) >= 0 ? 'text-green-600' : 'text-red-500')}>
-            {(opp.profit?.netDaily ?? 0) >= 0 ? '+' : ''}${opp.profit?.netDaily?.toFixed(2)}
+            {(opp.profit?.netDaily ?? 0) >= 0 ? '+' : ''}${opp.profit?.netDaily?.toFixed(2)} USDT
           </span>
         </div>
         <div>Год (APY): <strong>{opp.profit?.annualReturn?.toFixed(1)}%</strong></div>
       </div>
 
       <div className="text-xs text-gray-500 mb-2">
-        Комиссии: ${opp.profit?.fees?.toFixed(2)} | Проскальзывание: ${opp.profit?.slippage?.toFixed(2)}
+         Комиссии: ${opp.profit?.fees?.toFixed(2)} USDT | Проскальзывание: ${opp.profit?.slippage?.toFixed(2)} USDT
       </div>
 
       <div className="text-sm bg-blue-50 p-2 rounded mb-2">
@@ -392,13 +392,13 @@ function ProfitCalculator({
               </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>В час:</div>
-                <div className={clsx('font-bold', result.profit.netHourly >= 0 ? 'text-green-500' : 'text-red-500')}>${result.profit.netHourly.toFixed(4)}</div>
+                <div className={clsx('font-bold', result.profit.netHourly >= 0 ? 'text-green-500' : 'text-red-500')}>{result.profit.netHourly.toFixed(4)} USDT</div>
                 <div>В день:</div>
-                <div className={clsx('font-bold', result.profit.netDaily >= 0 ? 'text-green-500' : 'text-red-500')}>${result.profit.netDaily.toFixed(2)}</div>
+                <div className={clsx('font-bold', result.profit.netDaily >= 0 ? 'text-green-500' : 'text-red-500')}>{result.profit.netDaily.toFixed(2)} USDT</div>
                 <div>В неделю:</div>
-                <div className={clsx('font-bold', result.profit.netWeekly >= 0 ? 'text-green-500' : 'text-red-500')}>${result.profit.netWeekly.toFixed(2)}</div>
+                <div className={clsx('font-bold', result.profit.netWeekly >= 0 ? 'text-green-500' : 'text-red-500')}>{result.profit.netWeekly.toFixed(2)} USDT</div>
                 <div>В год:</div>
-                <div className={clsx('font-bold', result.profit.netAnnual >= 0 ? 'text-green-500' : 'text-red-500')}>${result.profit.netAnnual.toFixed(2)}</div>
+                <div className={clsx('font-bold', result.profit.netAnnual >= 0 ? 'text-green-500' : 'text-red-500')}>{result.profit.netAnnual.toFixed(2)} USDT</div>
               </div>
               <div className="mt-2 pt-2 border-t border-gray-200">
                 <div className="flex justify-between">
