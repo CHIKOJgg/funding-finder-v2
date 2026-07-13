@@ -14,6 +14,9 @@ interface UserSettings {
   alertSound: boolean;
   spreadNotifications: boolean;
   spreadMinThreshold: number;
+  pushoverNotifications: boolean;
+  pushoverKey: string;
+  pushoverDevice: string;
   defaultExchanges: string[];
   theme: 'auto' | 'light' | 'dark';
   language: string;
@@ -30,6 +33,9 @@ const DEFAULT_SETTINGS: UserSettings = {
   alertSound: true,
   spreadNotifications: false,
   spreadMinThreshold: 0.002,
+  pushoverNotifications: false,
+  pushoverKey: '',
+  pushoverDevice: '',
   defaultExchanges: ALL_EXCHANGES,
   theme: 'auto',
   language: 'ru',
@@ -192,6 +198,50 @@ export function SettingsPage() {
               <p className="text-xs text-gray-500 mt-1">{t('settings.spreadThresholdHint')}</p>
             </div>
           )}
+        </div>
+      </div>
+
+      <div className="card">
+        <h2 className="text-lg font-semibold mb-3">{t('settings.pushover')}</h2>
+        <p className="text-xs text-gray-500 mb-3">{t('settings.pushoverHint')}</p>
+        <div className="space-y-3">
+          <label className="flex items-center justify-between">
+            <span className="text-sm">{t('settings.pushoverEnable')}</span>
+            <input
+              type="checkbox"
+              checked={settings.pushoverNotifications}
+              onChange={(e) => setSettings((prev) => ({ ...prev, pushoverNotifications: e.target.checked }))}
+              className="w-5 h-5"
+            />
+          </label>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="pushover-key">
+              {t('settings.pushoverKey')}
+            </label>
+            <input
+              id="pushover-key"
+              type="text"
+              value={settings.pushoverKey}
+              onChange={(e) => setSettings((prev) => ({ ...prev, pushoverKey: e.target.value }))}
+              placeholder="uQiPBb1Rgc..."
+              className="input-field"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="pushover-device">
+              {t('settings.pushoverDevice')}
+            </label>
+            <input
+              id="pushover-device"
+              type="text"
+              value={settings.pushoverDevice}
+              onChange={(e) => setSettings((prev) => ({ ...prev, pushoverDevice: e.target.value }))}
+              placeholder={t('settings.pushoverDevicePlaceholder')}
+              className="input-field"
+            />
+          </div>
         </div>
       </div>
 

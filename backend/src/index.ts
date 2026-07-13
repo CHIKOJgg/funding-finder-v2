@@ -47,6 +47,7 @@ import portfolioLiveRoutes from './routes/portfolioLive.js';
 import keysRoutes from './routes/keys.js';
 import webhookRoutes from './routes/webhook.js';
 import adminRoutes from './routes/admin.js';
+import chartsRoutes from './routes/charts.js';
 
 async function initSentry() {
   if (config.sentry.dsn) {
@@ -130,23 +131,37 @@ app.use(requestId);
 app.use(requestLogger);
 app.use(metricsMiddleware);
 
+// Paths that must never consume rate-limit quota: automated uptime/health
+// checks and monitoring pings would otherwise burn through the budget and
+// trip the limiter for real users ("Too many requests").
+const UNMETERED_PATHS = new Set([
+  '/api/health',
+  '/api/ready',
+  '/api/metrics',
+  '/api/prometheus',
+]);
+
 // Rate limiting (generous global cap — the app is request-heavy: each page
-// load fires ~10-15 authenticated calls, plus scan polling).
+// load fires ~10-15 authenticated calls, plus live polling). Health/metrics
+// pings are excluded so they don't starve real-user quota.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 1500,
+  max: 3000,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => UNMETERED_PATHS.has(req.path),
   message: { ok: false, error: 'Too many requests, please try again later' },
 });
 app.use('/api/', limiter);
 
 // Rate limit for auth-protected app endpoints (scan, arbitrage, profile, etc.)
+// Headroom is sized for normal usage (page loads + ~1-2 live polls/min).
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 800,
+  max: 1500,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => UNMETERED_PATHS.has(req.path),
   message: { ok: false, error: 'Too many requests, please try again later' },
 });
 
@@ -264,6 +279,7 @@ app.use('/api', authLimiter, authenticate, perUserLimiter(60, 15 * 60 * 1000), s
 app.use('/api', authLimiter, authenticate, perUserLimiter(30, 15 * 60 * 1000), aiRoutes);
 app.use('/api', authLimiter, authenticate, historyRoutes);
 app.use('/api', authLimiter, authenticate, analyticsRoutes);
+app.use('/api', authLimiter, authenticate, chartsRoutes);
 
 // Admin routes (require admin role)
 app.use('/api', authenticate, adminRoutes);

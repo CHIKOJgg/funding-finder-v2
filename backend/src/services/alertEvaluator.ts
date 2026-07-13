@@ -4,6 +4,7 @@ import { runScan } from './scanService.js';
 import { detectArbitrageOpportunities } from './arbitrageService.js';
 import { sendAlertNotification } from './telegramNotify.js';
 import { sendAlertEmail } from './emailNotify.js';
+import { sendPushoverAlert } from './pushoverNotify.js';
 import { notifyNewSpreads } from './spreadNotifier.js';
 import { wsManager } from './websocket.js';
 import { logger } from '../utils/logger.js';
@@ -165,6 +166,24 @@ async function evaluateAllAlerts(): Promise<void> {
         }
       };
       notifications.push(sendEmailNotification());
+
+      // Send Pushover notification if the user enabled it and supplied a key.
+      const sendPushoverNotification = async () => {
+        try {
+          const settings = await prisma.userSettings.findUnique({ where: { userId: user.telegramId } });
+          if (settings?.pushoverNotifications && settings?.pushoverKey) {
+            await sendPushoverAlert(
+              settings.pushoverKey,
+              settings.pushoverDevice,
+              triggered.type,
+              triggered.data
+            );
+          }
+        } catch (err) {
+          logger.debug({ err, userId: user.telegramId }, 'Failed to send Pushover notification');
+        }
+      };
+      notifications.push(sendPushoverNotification());
     }
   }
 

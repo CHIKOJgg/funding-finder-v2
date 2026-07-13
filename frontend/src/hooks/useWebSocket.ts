@@ -29,6 +29,7 @@ export function useWebSocket(auth: { initData?: string | null; token?: string | 
   onScan?: MessageHandler;
   onAlertTriggered?: MessageHandler;
   onNewSpread?: MessageHandler;
+  onLiveFunding?: MessageHandler;
 }) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -72,6 +73,8 @@ export function useWebSocket(auth: { initData?: string | null; token?: string | 
           handlersRef.current?.onAlertTriggered?.(msg.data);
         } else if (msg.type === 'new_spread') {
           handlersRef.current?.onNewSpread?.(msg.data);
+        } else if (msg.type === 'broadcast' && msg.channel === 'funding') {
+          handlersRef.current?.onLiveFunding?.(msg.data);
         }
       } catch {
         // ignore parse errors

@@ -62,6 +62,9 @@ model UserSettings {
   alertSound             Boolean  @default(true)
   spreadNotifications    Boolean  @default(false)
   spreadMinThreshold     Float    @default(0.002)
+  pushoverNotifications  Boolean  @default(false)
+  pushoverKey            String?
+  pushoverDevice         String?
   defaultExchanges       String[] @default(["gate", "binance", "bybit", "mexc", "okx", "bitget", "bingx", "phemex", "woo", "hyperliquid", "dydx", "paradex", "htx", "coinex", "blofin", "bitmart", "weex", "coinw", "drift", "helix", "apex", "aster", "bluefin"])
   theme                  String   @default("auto")
   language               String   @default("ru")

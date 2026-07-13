@@ -10,6 +10,7 @@ import {
   detectArbitrageOpportunities,
   calculateProfit,
 } from '../services/arbitrageService.js';
+import { getSpotFutures, SF_SUPPORTED_EXCHANGES } from '../services/spotFuturesService.js';
 import { runScan } from '../services/scanService.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';

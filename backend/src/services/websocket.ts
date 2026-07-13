@@ -13,7 +13,7 @@ export interface WSClient {
   lastPong: number;
 }
 
-const VALID_CHANNELS = new Set(['scan', 'alerts']);
+const VALID_CHANNELS = new Set(['scan', 'alerts', 'funding']);
 
 class WebSocketManager {
   private wss: WebSocketServer | null = null;
@@ -70,7 +70,7 @@ class WebSocketManager {
       const client: WSClient = {
         ws,
         userId,
-        subscriptions: new Set(['scan', 'alerts']),
+        subscriptions: new Set(['scan', 'alerts', 'funding']),
         lastPong: Date.now(),
       };
 

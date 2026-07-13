@@ -1,6 +1,7 @@
 import { logger } from '../utils/logger.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { runScan } from './scanService.js';
+import { wsManager } from './websocket.js';
 
 const ALL_EXCHANGES = SUPPORTED_EXCHANGES;
 const WARMUP_INTERVAL_MS = 5 * 60 * 1000; // align with scan cache TTL
@@ -21,8 +22,22 @@ export function startFundingWarmup(): void {
 
   const run = async () => {
     try {
-      await runScan(ALL_EXCHANGES);
+      const scanResult = await runScan(ALL_EXCHANGES);
       logger.debug('Funding scan warm-up completed');
+
+      // Notify connected WebSocket clients subscribed to the `funding` channel
+      // that fresh data is available. We send only a freshness ping (not the
+      // full opportunity list) — the client already refreshes the complete list
+      // on its own polling cadence, so pushing the full set here would risk
+      // clobbering the user's filtered view and waste bandwidth.
+      try {
+        wsManager.broadcast('funding', {
+          generatedAt: Date.now(),
+          scanned: scanResult.scanned,
+        });
+      } catch (broadcastErr) {
+        logger.debug({ err: (broadcastErr as Error).message }, 'Live funding broadcast failed');
+      }
     } catch (err) {
       logger.warn({ err: (err as Error).message }, 'Funding scan warm-up failed');
     }

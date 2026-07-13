@@ -378,4 +378,14 @@ export const apiClient = {
   async getExecutedOrders() {
     return retryRequest(() => api.get('/portfolio/orders'));
   },
+
+  // ---- OI Tracker (live open interest) ----
+  async getOpenInterest(exchange: string, pair: string) {
+    return retryRequest(() => api.get('/charts/oi', { params: { exchange, pair } }));
+  },
+
+  // ---- Spot-Futures (cash-and-carry) ----
+  async getSpotFutures(exchange: string, pair: string) {
+    return retryRequest(() => api.get('/arbitrage/spot-futures', { params: { exchange, pair } }));
+  },
 };

@@ -12,14 +12,16 @@ import { FilterBar, FilterField, SegmentedControl } from '../components/FilterBa
 import { useWebSocket } from '../hooks/useWebSocket';
 import { getAuthToken } from '../api/client';
 import { useT } from '../i18n';
+import { SpotFuturesPanel } from '../components/SpotFuturesPanel';
 type ArbSortKey = 'apy' | 'daily' | 'hourly' | 'risk';
 type RiskFilter = 'ALL' | 'LOW' | 'MEDIUM' | 'HIGH';
 
 export function ArbitragePage() {
-  const { user, isWeb, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts } = useApp();
+  const { user, isWeb, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts, liveFundingAt } = useApp();
   const { showToast } = useToast();
   const t = useT();
-  const [activeTab, setActiveTab] = useState<'opportunities' | 'alerts'>('opportunities');
+  const [activeTab, setActiveTab] = useState<'opportunities' | 'alerts' | 'spotfutures'>('opportunities');
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedOpportunity, setSelectedOpportunity] = useState<any>(null);
   const [capital, setCapital] = useState(1000);
@@ -46,6 +48,26 @@ export function ArbitragePage() {
     loadArbitrage();
     if (user?.id) loadAlerts();
   }, [user?.id, loadArbitrage, loadAlerts]);
+
+  // Live refresh: keep funding-rate opportunities fresh by re-fetching on an
+  // interval (and whenever the server pushes fresh data over WebSocket).
+  useEffect(() => {
+    setLastUpdated(Date.now());
+  }, [arbOpportunities, liveFundingAt]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!document.hidden) loadArbitrage(true);
+    }, 90_000);
+    const onVisible = () => {
+      if (!document.hidden) loadArbitrage(true);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [loadArbitrage]);
 
   const handleToggleAlert = useCallback(async (alertId: string) => {
     try {
@@ -147,6 +169,10 @@ export function ArbitragePage() {
           <h1 className="text-xl font-bold leading-tight">{t('arb.title')}</h1>
           <p className="text-sm text-muted leading-tight">{t('arb.subtitle')}</p>
         </div>
+        <div className="flex items-center gap-1.5 text-xs shrink-0" title={lastUpdated ? t('arb.liveUpdated', { time: new Date(lastUpdated).toLocaleTimeString() }) : undefined}>
+          <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" aria-hidden="true" />
+          <span className="text-green-600 font-medium">{t('arb.live')}</span>
+        </div>
       </div>
 
       <div className="flex gap-2 mb-4" role="tablist">
@@ -165,6 +191,14 @@ export function ArbitragePage() {
           aria-selected={activeTab === 'alerts'}
         >
           {t('arb.alerts')}
+        </button>
+        <button
+          onClick={() => setActiveTab('spotfutures')}
+          className={clsx('flex-1 py-2.5 rounded-xl font-medium transition-all', activeTab === 'spotfutures' ? 'btn-primary' : 'btn-secondary')}
+          role="tab"
+          aria-selected={activeTab === 'spotfutures'}
+        >
+          {t('arb.spotFutures')}
         </button>
       </div>
 
@@ -278,6 +312,10 @@ export function ArbitragePage() {
             </>
           )}
         </div>
+      )}
+
+      {activeTab === 'spotfutures' && (
+        <SpotFuturesPanel />
       )}
 
       {activeTab === 'alerts' && (

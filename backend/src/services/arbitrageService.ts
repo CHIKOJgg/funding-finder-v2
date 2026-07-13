@@ -4,7 +4,7 @@ import { prisma } from './prisma.js';
 import { logger } from '../utils/logger.js';
 
 // Exchange fee structures (taker fees)
-const EXCHANGE_FEES: Record<string, { taker: number; maker: number }> = {
+export const EXCHANGE_FEES: Record<string, { taker: number; maker: number }> = {
   binance: { taker: 0.0004, maker: 0.0002 },   // 0.04%
   gate: { taker: 0.0005, maker: 0.00025 },      // 0.05%
   bybit: { taker: 0.00055, maker: 0.0002 },     // 0.055%

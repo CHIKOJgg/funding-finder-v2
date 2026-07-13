@@ -23,6 +23,7 @@ const PrivacyPage = React.lazy(() => import('./pages/PrivacyPage').then(m => ({ 
 const AdminPage = React.lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const PortfolioPage = React.lazy(() => import('./pages/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
+const OITrackerPage = React.lazy(() => import('./pages/OITrackerPage').then(m => ({ default: m.OITrackerPage })));
 
 interface AppContextType {
   user: { id: string; firstName?: string; username?: string; subscription?: string } | null;
@@ -60,6 +61,9 @@ interface AppContextType {
   arbLoaded: boolean;
   loadArbitrage: (force?: boolean) => Promise<void>;
   loadAlerts: (force?: boolean) => Promise<void>;
+  // Latest live opportunities pushed over WebSocket (server warm-up broadcast).
+  liveFundingAt: number | null;
+  applyLiveFunding: (data: { generatedAt?: number }) => void;
 
   // ---- Web (website) session ----
   isWeb: boolean;
@@ -86,6 +90,8 @@ export const AppContext = createContext<AppContextType>({
   arbLoaded: false,
   loadArbitrage: async () => {},
   loadAlerts: async () => {},
+  liveFundingAt: null,
+  applyLiveFunding: () => {},
   trialStatus: null,
   refreshTrial: async () => {},
   activateTrial: async () => {},
@@ -335,12 +341,20 @@ function DataProvider() {
     if (user?.id) loadArbitrage(true);
   }, [showToast, user?.id, loadArbitrage]);
 
+  // Live funding broadcast: the server sends a freshness ping on every warm-up
+  // cycle (~5 min). We only record the timestamp — the arbitrage list is kept
+  // fresh by its own polling, so we never clobber the user's filtered view.
+  const [liveFundingAt, setLiveFundingAt] = useState<number | null>(null);
+  const applyLiveFunding = useCallback((data: { generatedAt?: number }) => {
+    setLiveFundingAt(data?.generatedAt || Date.now());
+  }, []);
+
   // For the website we authenticate the WebSocket with the JWT; for the
   // Telegram mini-app we pass the init data.
   const wsAuth = isWeb
     ? { token: getAuthToken() }
     : { initData };
-  useWebSocket(wsAuth, { onNewSpread: handleNewSpread });
+  useWebSocket(wsAuth, { onNewSpread: handleNewSpread, onLiveFunding: applyLiveFunding });
 
   const contextValue = useMemo<AppContextType>(() => ({
     user,
@@ -360,6 +374,8 @@ function DataProvider() {
     arbLoaded,
     loadArbitrage,
     loadAlerts,
+    liveFundingAt,
+    applyLiveFunding,
     trialStatus,
     refreshTrial,
     activateTrial,
@@ -376,7 +392,7 @@ function DataProvider() {
     selectedExchanges, arbOpportunities, arbAlerts, arbLoading, arbLoaded,
     loadArbitrage, loadAlerts, trialStatus, refreshTrial, activateTrial,
     watchlist, isWatchlisted, toggleWatchlist, refreshWatchlist,
-    isWeb, authProvider, logout, refreshSubscription,
+    isWeb, authProvider, logout, refreshSubscription, liveFundingAt, applyLiveFunding,
   ]);
 
   return (
@@ -399,6 +415,7 @@ function DataProvider() {
                     <Route path="/admin" element={<ErrorBoundary><AdminPage /></ErrorBoundary>} />
                     <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
                     <Route path="/portfolio" element={<ErrorBoundary><PortfolioPage /></ErrorBoundary>} />
+                    <Route path="/oi-tracker" element={<ErrorBoundary><OITrackerPage /></ErrorBoundary>} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </Suspense>

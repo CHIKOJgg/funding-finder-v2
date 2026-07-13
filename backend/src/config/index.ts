@@ -55,6 +55,9 @@ const baseSchema = z.object({
   EMAIL_FROM: z.string().optional().default('Funding Finder <noreply@fundingfinder.app>'),
   ADMIN_TELEGRAM_IDS: z.string().optional().default(''),
   SENTRY_DSN: z.string().optional().default(''),
+
+  // Pushover — push notifications for arbitrage alerts (https://pushover.net).
+  PUSHOVER_TOKEN: z.string().optional().default(''),
 });
 
 const devSchema = baseSchema.extend({
@@ -194,6 +197,10 @@ export const config = {
 
   sentry: {
     dsn: env.SENTRY_DSN || undefined,
+  },
+
+  pushover: {
+    token: env.PUSHOVER_TOKEN || undefined,
   },
 } as const;
 

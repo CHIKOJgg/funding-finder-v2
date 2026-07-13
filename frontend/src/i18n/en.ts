@@ -583,4 +583,53 @@ export const en: Record<string, string> = {
   'crypto.simulatePayment': '✅ Simulate payment (demo)',
   'crypto.statusAutoNote': 'Status updates automatically. Subscription opens right after confirmation.',
   'crypto.close': 'Close',
+
+  // Pushover
+  'settings.pushover': 'Pushover push notifications',
+  'settings.pushoverHint': 'Get arbitrage alerts in the Pushover app. Create a key in the Pushover app (login → Your User Key) and paste it below. A Pushover app token must be configured on the server.',
+  'settings.pushoverEnable': 'Enable Pushover',
+  'settings.pushoverKey': 'Pushover User Key',
+  'settings.pushoverDevice': 'Device (optional)',
+  'settings.pushoverDevicePlaceholder': 'all devices',
+
+  // OI Tracker
+  'nav.oi': 'OI Tracker',
+  'oi.title': 'OI Tracker',
+  'oi.subtitle': 'Live open interest & funding rate charts',
+  'oi.exchange': 'Exchange',
+  'oi.pair': 'Pair',
+  'oi.live': 'LIVE',
+  'oi.pause': 'Pause',
+  'oi.resume': 'Resume',
+  'oi.current': 'Current open interest',
+  'oi.updated': 'Updated {time}',
+  'oi.openInterest': 'Open interest (contracts)',
+  'oi.notional': 'Notional (USD)',
+  'oi.markPrice': 'Mark price',
+  'oi.series': 'Open interest',
+  'oi.fundingRate': 'Funding rate (%)',
+  'oi.history': 'Funding rate history',
+  'oi.collecting': 'Collecting data…',
+  'oi.noHistory': 'No funding history for this pair yet',
+  'oi.notSupported': 'Open interest is not supported for {exchange}. Use Binance, Bybit or OKX.',
+
+  // Live (Arbitrage)
+  'arb.live': 'LIVE',
+  'arb.liveUpdated': 'Live · updated {time}',
+
+  // Spot-Futures (cash-and-carry)
+  'arb.spotFutures': 'Spot-Futures',
+  'sf.title': 'Spot-Futures arbitrage',
+  'sf.subtitle': 'Cash-and-carry: long spot + short perp to collect funding. Basis = perp price vs spot.',
+  'sf.exchange': 'Exchange',
+  'sf.pair': 'Pair',
+  'sf.spotPrice': 'Spot price',
+  'sf.perpMark': 'Perp mark',
+  'sf.basis': 'Basis',
+  'sf.fundingRate': 'Funding / interval',
+  'sf.fundingApy': 'Funding APY (collect)',
+  'sf.netApy': 'Net APY (after fees)',
+  'sf.history': 'Funding rate history',
+  'sf.open': '↗ Open {ex}',
+  'sf.notSupported': 'Spot-Futures is not supported for {exchange}. Use Binance, Bybit, OKX, Gate.io or MEXC.',
 };
