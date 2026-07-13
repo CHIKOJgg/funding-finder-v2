@@ -326,8 +326,23 @@ app.use(errorHandler);
 // and works whether or not a migration history table exists. This keeps
 // deploys reliable across environments. Run `prisma migrate dev` locally if you
 // later want managed migrations + rollback history.
+function resolvePrismaBin(): string {
+  // node_modules may live at the project root rather than inside `backend/`
+  // (depends on how the host installs deps). Walk up from this file to find
+  // the prisma CLI binary; fall back to `npx prisma` if it isn't found.
+  let dir = __dirname;
+  for (let i = 0; i < 6; i++) {
+    const candidate = path.join(dir, 'node_modules', '.bin', 'prisma');
+    if (fs.existsSync(candidate)) return candidate;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return 'npx prisma';
+}
+
 async function syncDatabaseSchema() {
-  const prismaBin = path.resolve(__dirname, '..', 'node_modules', '.bin', 'prisma');
+  const prismaCmd = resolvePrismaBin();
   const env = { ...process.env } as NodeJS.ProcessEnv;
   // `db push` needs a direct (non-pooled) connection to create its shadow
   // database. On Render DATABASE_URL is pooled, so reuse the direct URL as the
@@ -336,7 +351,7 @@ async function syncDatabaseSchema() {
     env.SHADOW_DATABASE_URL = env.DIRECT_URL;
   }
   try {
-    execSync(`"${prismaBin}" db push --skip-generate --accept-data-loss`, {
+    execSync(`${prismaCmd} db push --skip-generate --accept-data-loss`, {
       cwd: path.resolve(__dirname, '..'),
       stdio: 'pipe',
       timeout: 120000,
