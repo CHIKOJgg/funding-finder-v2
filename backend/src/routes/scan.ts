@@ -5,6 +5,7 @@ import { validateExchangeList } from '../middleware/auth.js';
 import { requireSubscription, getSubscriptionLimits } from '../middleware/subscription.js';
 import { runScan, getCachedScan } from '../services/scanService.js';
 import { wsManager } from '../services/websocket.js';
+import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
@@ -12,10 +13,10 @@ const router = Router();
 // Serve a cached scan instantly (stale-while-revalidate) if one exists.
 const SCAN_STALE_MS = 60_000;
 
-const VALID_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'];
+const VALID_EXCHANGES = SUPPORTED_EXCHANGES;
 
 const scanSchema = z.object({
-  exchanges: z.array(z.enum(['gate', 'binance', 'bybit', 'mexc', 'okx'])).min(1).max(5).default(['gate']),
+  exchanges: z.array(z.enum(SUPPORTED_EXCHANGES as [string, ...string[]])).min(1).max(25).default(['gate']),
 });
 
 router.post('/scan', requireSubscription('free'), validate(scanSchema), validateExchangeList, async (req, res) => {

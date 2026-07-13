@@ -4,9 +4,12 @@ import { Navigation } from './components/Navigation';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider, useToast } from './components/Toast';
 import { Onboarding } from './components/Onboarding';
+import { LoginPage } from './components/LoginPage';
+import { WebHeader } from './components/WebHeader';
 import { useTelegram } from './hooks/useTelegram';
 import { useWebSocket } from './hooks/useWebSocket';
-import { apiClient } from './api/client';
+import { apiClient, getAuthToken } from './api/client';
+import { ALL_EXCHANGES } from './utils/exchanges';
 import { getPlanLimits, PlanLimits } from './utils/plans';
 import type { ScanResult, TrialStatus, WatchlistItem } from './types';
 
@@ -55,6 +58,12 @@ interface AppContextType {
   arbLoaded: boolean;
   loadArbitrage: (force?: boolean) => Promise<void>;
   loadAlerts: (force?: boolean) => Promise<void>;
+
+  // ---- Web (website) session ----
+  isWeb: boolean;
+  authProvider?: string;
+  logout: () => void;
+  refreshSubscription: () => Promise<void>;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -82,6 +91,10 @@ export const AppContext = createContext<AppContextType>({
   isWatchlisted: () => false,
   toggleWatchlist: async () => {},
   refreshWatchlist: async () => {},
+  isWeb: false,
+  authProvider: undefined,
+  logout: () => {},
+  refreshSubscription: async () => {},
 });
 
 export function useApp() {
@@ -108,9 +121,17 @@ function isColorDark(hex: string): boolean {
  * what keeps data cached and lets an in-progress scan continue in the
  * background instead of restarting.
  */
-function DataProvider({ children }: { children: React.ReactNode }) {
-  const { user, initData } = useTelegram();
+function DataProvider() {
+  const { user, initData, isWeb, authenticated, authProvider, logout, login } = useTelegram();
   const { showToast } = useToast();
+
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return localStorage.getItem('ff_onboarding_done') !== 'true';
+  });
+  const completeOnboarding = useCallback(() => {
+    localStorage.setItem('ff_onboarding_done', 'true');
+    setShowOnboarding(false);
+  }, []);
 
   // Subscription state
   const [subscription, setSubscription] = useState<string>('free');
@@ -132,9 +153,7 @@ function DataProvider({ children }: { children: React.ReactNode }) {
   const [scanResults, setScanResults] = useState<ScanResult | null>(null);
   const [scanLoading, setScanLoading] = useState(false);
   const [scanStatus, setScanStatus] = useState('Готов к сканированию');
-  const [selectedExchanges, setSelectedExchanges] = useState<string[]>([
-    'gate', 'binance', 'bybit', 'mexc', 'okx'
-  ]);
+  const [selectedExchanges, setSelectedExchanges] = useState<string[]>(ALL_EXCHANGES);
 
   // Trial state
   const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
@@ -281,6 +300,17 @@ function DataProvider({ children }: { children: React.ReactNode }) {
     return p;
   }, [alertsLoaded]);
 
+  // Refresh the active subscription after a successful payment / trial.
+  const refreshSubscription = useCallback(async () => {
+    try {
+      const res: any = await apiClient.getProfile();
+      const sub = res?.user?.subscription || res?.subscription;
+      if (sub) setSubscription(sub);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   // Realtime "new spread" push: surface fresh arbitrage opportunities as a
   // toast no matter which tab the user is on, and refresh the arbitrage list
   // so the opportunity is already there when they open that tab.
@@ -294,7 +324,12 @@ function DataProvider({ children }: { children: React.ReactNode }) {
     if (user?.id) loadArbitrage(true);
   }, [showToast, user?.id, loadArbitrage]);
 
-  useWebSocket(initData, { onNewSpread: handleNewSpread });
+  // For the website we authenticate the WebSocket with the JWT; for the
+  // Telegram mini-app we pass the init data.
+  const wsAuth = isWeb
+    ? { token: getAuthToken() }
+    : { initData };
+  useWebSocket(wsAuth, { onNewSpread: handleNewSpread });
 
   const contextValue = useMemo<AppContextType>(() => ({
     user,
@@ -321,14 +356,50 @@ function DataProvider({ children }: { children: React.ReactNode }) {
     isWatchlisted,
     toggleWatchlist,
     refreshWatchlist,
+    isWeb,
+    authProvider,
+    logout,
+    refreshSubscription,
   }), [
     user, subscription, planLimits, scanResults, scanLoading, scanStatus, runScan,
     selectedExchanges, arbOpportunities, arbAlerts, arbLoading, arbLoaded,
     loadArbitrage, loadAlerts, trialStatus, refreshTrial, activateTrial,
     watchlist, isWatchlisted, toggleWatchlist, refreshWatchlist,
+    isWeb, authProvider, logout, refreshSubscription,
   ]);
 
-  return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={contextValue}>
+      {isWeb && !authenticated ? (
+        <LoginPage onAuthenticated={login} />
+      ) : (
+        <>
+          {isWeb && <WebHeader user={user} onLogout={logout} />}
+          <div className={isWeb ? 'web-shell' : ''}>
+            <BrowserRouter>
+              <div className="min-h-screen pb-20">
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/" element={<ErrorBoundary><MainPage /></ErrorBoundary>} />
+                    <Route path="/arbitrage" element={<ErrorBoundary><ArbitragePage /></ErrorBoundary>} />
+                    <Route path="/profile" element={<ErrorBoundary><ProfilePage /></ErrorBoundary>} />
+                    <Route path="/terms" element={<ErrorBoundary><TermsPage /></ErrorBoundary>} />
+                    <Route path="/privacy" element={<ErrorBoundary><PrivacyPage /></ErrorBoundary>} />
+                    <Route path="/admin" element={<ErrorBoundary><AdminPage /></ErrorBoundary>} />
+                    <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
+                    <Route path="/portfolio" element={<ErrorBoundary><PortfolioPage /></ErrorBoundary>} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </Suspense>
+                <Navigation />
+              </div>
+            </BrowserRouter>
+          </div>
+          {showOnboarding && <Onboarding onComplete={completeOnboarding} />}
+        </>
+      )}
+    </AppContext.Provider>
+  );
 }
 
 function PageLoader() {
@@ -340,15 +411,6 @@ function PageLoader() {
 }
 
 export default function App() {
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    return localStorage.getItem('ff_onboarding_done') !== 'true';
-  });
-
-  const completeOnboarding = useCallback(() => {
-    localStorage.setItem('ff_onboarding_done', 'true');
-    setShowOnboarding(false);
-  }, []);
-
   // Theme: pull native Telegram theme params (guarantees correct contrast)
   // and toggle the `dark` class based on the active color scheme.
   useEffect(() => {
@@ -397,27 +459,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ToastProvider>
-        <DataProvider>
-          <BrowserRouter>
-            <div className="min-h-screen pb-20">
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
-                  <Route path="/" element={<ErrorBoundary><MainPage /></ErrorBoundary>} />
-                  <Route path="/arbitrage" element={<ErrorBoundary><ArbitragePage /></ErrorBoundary>} />
-                  <Route path="/profile" element={<ErrorBoundary><ProfilePage /></ErrorBoundary>} />
-                  <Route path="/terms" element={<ErrorBoundary><TermsPage /></ErrorBoundary>} />
-                  <Route path="/privacy" element={<ErrorBoundary><PrivacyPage /></ErrorBoundary>} />
-                  <Route path="/admin" element={<ErrorBoundary><AdminPage /></ErrorBoundary>} />
-                  <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
-                  <Route path="/portfolio" element={<ErrorBoundary><PortfolioPage /></ErrorBoundary>} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </Suspense>
-              <Navigation />
-            </div>
-          </BrowserRouter>
-          {showOnboarding && <Onboarding onComplete={completeOnboarding} />}
-        </DataProvider>
+        <DataProvider />
       </ToastProvider>
     </ErrorBoundary>
   );

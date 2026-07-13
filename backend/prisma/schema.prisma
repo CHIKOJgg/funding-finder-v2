@@ -11,6 +11,13 @@ datasource db {
 model User {
   id             String   @id @default(cuid())
   telegramId     String   @unique
+  // Web-auth identity (set when the user logs in via wallet / Google / email
+  // instead of Telegram). `telegramId` still acts as the universal join key,
+  // with web users stored as e.g. `wallet_0x...` or `google_<sub>`.
+  authProvider   String   @default("telegram")
+  email          String?  @unique
+  walletAddress  String?  @unique
+  googleSub      String?  @unique
   username       String?
   firstName      String?
   role           String   @default("user")
@@ -55,7 +62,7 @@ model UserSettings {
   alertSound             Boolean  @default(true)
   spreadNotifications    Boolean  @default(false)
   spreadMinThreshold     Float    @default(0.002)
-  defaultExchanges       String[] @default(["gate", "binance", "bybit", "mexc", "okx"])
+  defaultExchanges       String[] @default(["gate", "binance", "bybit", "mexc", "okx", "bitget", "bingx", "phemex", "woo", "hyperliquid", "dydx", "paradex", "htx", "coinex", "blofin", "bitmart", "weex", "coinw", "drift", "helix", "apex", "aster", "bluefin"])
   theme                  String   @default("auto")
   language               String   @default("ru")
   timezone               String   @default("Europe/Moscow")
@@ -88,7 +95,16 @@ model Invoice {
   id              String   @id @default(cuid())
   orderId         String   @unique
   order           Order    @relation(fields: [orderId], references: [id])
+  // Payment provider that created this invoice: 'crypto_pay' (Telegram) or
+  // 'nowpayments' (web / non-Telegram crypto checkout).
+  provider        String   @default("crypto_pay")
   invoiceId       String?
+  // NOWPayments-specific identifiers
+  paymentId       String?
+  payAddress      String?
+  payCurrency     String?
+  payAmount       Float?
+  orderDescription String?
   hash            String?
   botInvoiceUrl   String?
   miniAppInvoiceUrl String?
@@ -98,6 +114,7 @@ model Invoice {
   updatedAt       DateTime @updatedAt
 
   @@index([invoiceId])
+  @@index([paymentId])
 }
 
 model Withdrawal {

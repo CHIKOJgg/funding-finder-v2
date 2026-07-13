@@ -7,6 +7,10 @@ import {
   verifyCryptoPaySignature,
   handleCryptoPayWebhook,
 } from '../services/paymentService.js';
+import {
+  verifyNowPaymentsSignature,
+  handleNowPaymentsWebhook,
+} from '../services/nowPaymentsService.js';
 import { config } from '../config/index.js';
 import { getRedis } from '../utils/redis.js';
 import { logger } from '../utils/logger.js';
@@ -217,6 +221,59 @@ webhookRouter.post('/crypto-pay', async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Crypto Pay webhook error');
+    res.status(500).json({ ok: false, error: error.message || String(error) });
+  }
+});
+
+webhookRouter.post('/nowpayments', async (req, res) => {
+  try {
+    const signature = req.headers['x-nowpayments-sig'] as string;
+    if (!verifyNowPaymentsSignature(getRawBody(req), signature)) {
+      logger.warn('Invalid NOWPayments webhook signature');
+      return res.status(401).json({ ok: false, error: 'Invalid signature' });
+    }
+
+    const update = req.body;
+    const paymentId = update?.payment_id ? String(update.payment_id) : 'unknown';
+    const status = (update?.payment_status || 'unknown').toString();
+    const webhookId = `np_${paymentId}_${status}`;
+
+    // Idempotency: ignore duplicate deliveries of the same status transition.
+    if (await isWebhookProcessed(webhookId)) {
+      logger.debug({ webhookId }, 'Duplicate NOWPayments webhook, skipping');
+      return res.json({ ok: true, message: 'Already processed' });
+    }
+
+    const locked = await acquireWebhookLock(webhookId);
+    if (!locked) {
+      return res.json({ ok: true, message: 'Already processed' });
+    }
+
+    const processPromise = (async () => {
+      try {
+        logger.info({ body: update }, 'NOWPayments webhook received');
+        const result = await handleNowPaymentsWebhook(update);
+        if (result.success) {
+          await markWebhookProcessed(webhookId);
+        }
+        return result;
+      } finally {
+        processingWebhooks.delete(webhookId);
+        await releaseWebhookLock(webhookId);
+      }
+    })();
+
+    processingWebhooks.set(webhookId, processPromise);
+
+    const result = await processPromise;
+    if (result.success) {
+      res.json({ ok: true, message: 'Webhook processed successfully' });
+    } else {
+      res.status(400).json({ ok: false, error: 'Not processed' });
+    }
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'NOWPayments webhook error');
     res.status(500).json({ ok: false, error: error.message || String(error) });
   }
 });

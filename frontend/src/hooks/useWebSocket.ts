@@ -25,7 +25,7 @@ function resolveWsBase(): string {
   return `${proto}//${window.location.host}`;
 }
 
-export function useWebSocket(initData: string | null, handlers?: {
+export function useWebSocket(auth: { initData?: string | null; token?: string | null } | null, handlers?: {
   onScan?: MessageHandler;
   onAlertTriggered?: MessageHandler;
   onNewSpread?: MessageHandler;
@@ -40,11 +40,16 @@ export function useWebSocket(initData: string | null, handlers?: {
   }, [handlers]);
 
   const connect = useCallback(() => {
-    if (!initData) return;
+    const initData = auth?.initData;
+    const token = auth?.token;
+    if (!initData && !token) return;
 
     let ws: WebSocket;
     try {
-      const wsUrl = `${resolveWsBase()}/ws?initData=${encodeURIComponent(initData)}`;
+      const wsBase = resolveWsBase();
+      const wsUrl = initData
+        ? `${wsBase}/ws?initData=${encodeURIComponent(initData)}`
+        : `${wsBase}/ws?token=${encodeURIComponent(token!)}`;
       ws = new WebSocket(wsUrl);
     } catch (err) {
       // Constructing a WebSocket can throw synchronously (e.g. insecure ws://
@@ -87,7 +92,7 @@ export function useWebSocket(initData: string | null, handlers?: {
     };
 
     wsRef.current = ws;
-  }, [initData]);
+  }, [auth]);
 
   useEffect(() => {
     connect();

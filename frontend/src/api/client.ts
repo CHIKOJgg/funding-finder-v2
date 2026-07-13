@@ -10,6 +10,7 @@ const api = axios.create({
 
 let telegramInitData: string | null = null;
 let currentUserId: string | null = null;
+let authToken: string | null = localStorage.getItem('ff_auth_token') || null;
 
 export function setTelegramInitData(data: string | null) {
   telegramInitData = data;
@@ -19,7 +20,26 @@ export function setCurrentUserId(id: string | null) {
   currentUserId = id;
 }
 
+export function setAuthToken(token: string | null) {
+  authToken = token;
+  if (token) localStorage.setItem('ff_auth_token', token);
+  else localStorage.removeItem('ff_auth_token');
+}
+
+export function getAuthToken(): string | null {
+  return authToken;
+}
+
+export function clearAuthToken() {
+  setAuthToken(null);
+}
+
 api.interceptors.request.use((config) => {
+  // Web session (wallet / Google) — preferred when present.
+  if (authToken) {
+    config.headers['Authorization'] = `Bearer ${authToken}`;
+  }
+  // Telegram Mini App init data (used by the mini-app build).
   if (telegramInitData) {
     config.headers['x-telegram-init-data'] = telegramInitData;
   }
@@ -105,8 +125,13 @@ export const apiClient = {
     return retryRequest(() => api.get(`/history/${exchange}/${contract}`, { params: { limit, offset } }));
   },
 
-  async createOrder(planId: string) {
-    return api.post('/createOrder', { planId, currency: 'USDT' });
+  async createOrder(planId: string, options?: { provider?: 'crypto_pay' | 'nowpayments'; payCurrency?: string; currency?: string }) {
+    return api.post('/createOrder', {
+      planId,
+      provider: options?.provider || 'crypto_pay',
+      payCurrency: options?.payCurrency,
+      currency: options?.currency || 'USDT',
+    });
   },
 
   async getOrderStatus(orderId: string) {
@@ -253,6 +278,37 @@ export const apiClient = {
 
   async getTrialStatus() {
     return retryRequest(() => api.get('/trial/status'));
+  },
+
+  // ---- Web auth (wallet SIWE + Google) ----
+  async getAuthConfig() {
+    return api.get('/auth/config');
+  },
+
+  async walletNonce(address: string) {
+    return api.get(`/auth/wallet/nonce`, { params: { address } });
+  },
+
+  async walletVerify(message: string, signature: string) {
+    return api.post('/auth/wallet/verify', { message, signature });
+  },
+
+  async googleLogin(idToken: string) {
+    return api.post('/auth/google', { idToken });
+  },
+
+  async getMe() {
+    return api.get('/auth/me');
+  },
+
+  // Dev-only: mint a guest session (no real auth) for local development.
+  async devGuest() {
+    return api.post('/auth/dev-guest');
+  },
+
+  // Dev-only: simulate a successful crypto payment (no real gateway).
+  async simulatePayment(orderId: string) {
+    return api.post(`/payments/simulate/${orderId}`);
   },
 
   // ---- Funding calendar ----

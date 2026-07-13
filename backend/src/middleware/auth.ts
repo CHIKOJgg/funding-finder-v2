@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { config } from '../config/index.js';
+import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';
+import { verifyAuthToken, AuthProvider } from '../services/authService.js';
 
 export interface AuthenticatedRequest extends Request {
   telegramUser?: {
@@ -10,12 +12,13 @@ export interface AuthenticatedRequest extends Request {
     username?: string;
   };
   userId?: string;
+  authProvider?: AuthProvider;
 }
 
-const VALID_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'];
+const VALID_EXCHANGES = SUPPORTED_EXCHANGES;
 
 // Track user activity (blocking — ensures user exists before any route handler)
-async function trackActivity(userId: string): Promise<void> {
+async function trackActivity(userId: string, authProvider: AuthProvider = 'telegram'): Promise<void> {
   try {
     const { prisma } = await import('../services/prisma.js');
     const { enforceTrialExpiry } = await import('./subscription.js');
@@ -23,7 +26,12 @@ async function trackActivity(userId: string): Promise<void> {
     const isAdmin = config.admin.telegramIds.includes(tgId);
     await prisma.user.upsert({
       where: { telegramId: userId },
-      create: { telegramId: userId, lastActive: new Date(), role: isAdmin ? 'admin' : 'user' },
+      create: {
+        telegramId: userId,
+        lastActive: new Date(),
+        role: isAdmin ? 'admin' : 'user',
+        authProvider,
+      },
       update: { lastActive: new Date(), role: isAdmin ? 'admin' : undefined },
     });
     // Revert trial-derived Pro once the window has elapsed.
@@ -41,6 +49,7 @@ export async function validateTelegramInitData(req: Request, res: Response, next
       const devUser = { id: 1, first_name: 'Dev', username: 'dev' };
       (req as AuthenticatedRequest).telegramUser = devUser;
       (req as AuthenticatedRequest).userId = `dev_${devUser.id}`;
+      (req as AuthenticatedRequest).authProvider = 'telegram';
       return next();
     }
     logger.warn('Missing Telegram init data');
@@ -190,4 +199,34 @@ export function validateTelegramInitDataSync(initData: string): { userId: string
   } catch {
     return null;
   }
+}
+
+/**
+ * Unified authentication middleware.
+ *
+ * Accepts EITHER a web JWT (`Authorization: Bearer <token>`, issued by the
+ * wallet / Google login flows) OR Telegram Mini App init data. This lets the
+ * exact same REST API serve both the Telegram mini-app and the public website
+ * without duplicating routes.
+ */
+export async function authenticate(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice('Bearer '.length).trim();
+    const payload = verifyAuthToken(token);
+    if (!payload) {
+      return res.status(401).json({ ok: false, error: 'Invalid or expired session' });
+    }
+    (req as AuthenticatedRequest).userId = payload.sub;
+    (req as AuthenticatedRequest).authProvider = payload.provider;
+    if (payload.provider === 'telegram') {
+      const tgId = payload.sub.replace('tg_', '');
+      (req as AuthenticatedRequest).telegramUser = { id: Number(tgId) || 0 };
+    }
+    await trackActivity(payload.sub, payload.provider);
+    return next();
+  }
+
+  // Fall back to Telegram init data (existing behaviour).
+  return validateTelegramInitData(req, res, next);
 }

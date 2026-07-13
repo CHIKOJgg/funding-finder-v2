@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '../components/Toast';
 import { apiClient } from '../api/client';
+import { ALL_EXCHANGES } from '../utils/exchanges';
 
 interface UserSettings {
   telegramNotifications: boolean;
@@ -18,7 +19,7 @@ interface UserSettings {
   minRateFilter: number;
 }
 
-const EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'];
+const EXCHANGES = ALL_EXCHANGES;
 const DEFAULT_SETTINGS: UserSettings = {
   telegramNotifications: true,
   emailNotifications: false,
@@ -27,7 +28,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   alertSound: true,
   spreadNotifications: false,
   spreadMinThreshold: 0.002,
-  defaultExchanges: ['gate', 'binance', 'bybit', 'mexc', 'okx'],
+  defaultExchanges: ALL_EXCHANGES,
   theme: 'auto',
   language: 'ru',
   timezone: 'Europe/Moscow',

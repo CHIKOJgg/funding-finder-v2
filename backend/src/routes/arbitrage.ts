@@ -11,6 +11,7 @@ import {
   calculateProfit,
 } from '../services/arbitrageService.js';
 import { runScan } from '../services/scanService.js';
+import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
@@ -112,7 +113,7 @@ router.get('/arbitrage/opportunities', async (req, res) => {
   try {
     const exchangesParam = req.query.exchanges as string;
     const exchanges = exchangesParam
-      ? exchangesParam.split(',').filter((e) => ['gate', 'binance', 'bybit', 'mexc', 'okx'].includes(e))
+      ? exchangesParam.split(',').filter((e) => SUPPORTED_EXCHANGES.includes(e))
       : ['gate', 'binance', 'bybit', 'mexc', 'okx'];
 
     const scanResults = await runScan(exchanges);

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { validate } from '../middleware/validation.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { prisma } from '../services/prisma.js';
+import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
@@ -91,7 +92,7 @@ router.post('/settings/reset', async (req: AuthenticatedRequest, res) => {
         alertSound: true,
         spreadNotifications: false,
         spreadMinThreshold: 0.002,
-        defaultExchanges: ['gate', 'binance', 'bybit', 'mexc', 'okx'],
+        defaultExchanges: SUPPORTED_EXCHANGES,
         theme: 'auto',
         language: 'ru',
         timezone: 'Europe/Moscow',

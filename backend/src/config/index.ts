@@ -25,7 +25,27 @@ const baseSchema = z.object({
   CRYPTO_PAY_API_TOKEN: z.string().optional().default(''),
   CRYPTO_BOT_USERNAME: z.string().optional().default('CryptoBot'),
   CRYPTO_PAY_NETWORK: z.enum(['mainnet', 'testnet']).optional().default('testnet'),
+
+  // NOWPayments — crypto gateway for the public website (no Telegram required).
+  NOWPAYMENTS_API_KEY: z.string().optional().default(''),
+  NOWPAYMENTS_IPN_SECRET: z.string().optional().default(''),
+  NOWPAYMENTS_NETWORK: z.enum(['sandbox', 'live']).optional().default('sandbox'),
+
+  // Google OAuth (id_token login for the website).
+  GOOGLE_CLIENT_ID: z.string().optional().default(''),
+
+  // Public website / SIWE (Sign-In with Ethereum) settings.
+  // The canonical site domain used in SIWE messages and as the Google token
+  // audience origin. No scheme — e.g. "fundingfinder.app".
+  WEB_AUTH_DOMAIN: z.string().optional().default('localhost'),
+  SIWE_EXPIRATION_MINUTES: z.string().optional().default('5'),
+  JWT_WEB_TTL: z.string().optional().default('7d'),
+
   CORS_ORIGINS: z.string().optional().default('https://t.me'),
+
+  // Public base URL of THIS API service, used to build webhook (IPN) callback
+  // URLs for crypto gateways. Leave empty to rely on status polling only.
+  API_BASE_URL: z.string().optional().default(''),
   REDIS_URL: z.string().optional().default(''),
   SMTP_HOST: z.string().optional().default(''),
   SMTP_PORT: z.string().regex(/^\d*$/, 'SMTP_PORT must be a number').optional().default('587'),
@@ -113,6 +133,26 @@ export const config = {
     network: env.CRYPTO_PAY_NETWORK,
   },
 
+  nowPayments: {
+    apiKey: env.NOWPAYMENTS_API_KEY,
+    ipnSecret: env.NOWPAYMENTS_IPN_SECRET,
+    network: env.NOWPAYMENTS_NETWORK,
+    get baseUrl() {
+      return env.NOWPAYMENTS_NETWORK === 'live'
+        ? 'https://api.nowpayments.io/v1'
+        : 'https://api-sandbox.nowpayments.io/v1';
+    },
+  },
+
+  google: {
+    clientId: env.GOOGLE_CLIENT_ID,
+  },
+
+  webAuth: {
+    domain: env.WEB_AUTH_DOMAIN,
+    siweExpirationMinutes: parseInt(env.SIWE_EXPIRATION_MINUTES || '5', 10),
+  },
+
   webhook: {
     secret: env.WEBHOOK_SECRET,
   },
@@ -125,9 +165,12 @@ export const config = {
     origins: env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean),
   },
 
+  apiBaseUrl: env.API_BASE_URL,
+
   jwt: {
     secret: env.JWT_SECRET,
     expiresIn: '24h',
+    webTtl: env.JWT_WEB_TTL,
   },
 
   redis: {

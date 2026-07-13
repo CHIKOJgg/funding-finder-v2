@@ -8,9 +8,10 @@ import { getRiskColor } from '../utils/formatters';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { getAuthToken } from '../api/client';
 
 export function ArbitragePage() {
-  const { user, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts } = useApp();
+  const { user, isWeb, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts } = useApp();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'opportunities' | 'alerts'>('opportunities');
   const [showModal, setShowModal] = useState(false);
@@ -19,7 +20,8 @@ export function ArbitragePage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const initData = window.Telegram?.WebApp?.initData || null;
-  useWebSocket(initData, {
+  const wsAuth = isWeb ? { token: getAuthToken() } : { initData };
+  useWebSocket(wsAuth, {
     onAlertTriggered: useCallback(() => {
       loadAlerts(true);
       showToast('Получено новое оповещение!', 'success');

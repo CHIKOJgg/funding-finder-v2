@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
 import { TrialCTA } from '../components/TrialCTA';
+import { CryptoCheckoutModal } from '../components/CryptoCheckoutModal';
 import { apiClient } from '../api/client';
 
 export function ProfilePage() {
-  const { user, subscription: ctxSubscription } = useApp();
+  const { user, subscription: ctxSubscription, isWeb, refreshSubscription } = useApp();
+  const [checkout, setCheckout] = useState<{ planId: string; planName: string; price: number } | null>(null);
   const { showToast } = useToast();
   const [referralLink, setReferralLink] = useState('');
   const [referralStats, setReferralStats] = useState({ referrals: 0, bonusScans: 0 });
@@ -91,6 +93,17 @@ export function ProfilePage() {
       showToast('Ошибка сети: ' + (error as Error).message, 'error');
     }
   }, [showToast]);
+
+  // Website: open the crypto checkout modal instead of the Telegram invoice.
+  const openCheckout = useCallback((planId: string, planName: string, price: number) => {
+    setCheckout({ planId, planName, price });
+  }, []);
+
+  const handleCheckoutPaid = useCallback(() => {
+    setCheckout(null);
+    refreshSubscription();
+    loadUserData();
+  }, [refreshSubscription, loadUserData]);
 
   const handleApplyReferral = useCallback(async () => {
     if (!referralCode.trim()) {
@@ -210,7 +223,7 @@ export function ProfilePage() {
           tagline="Для старта"
           features={['3 биржи', 'Рекомендации', 'Email-уведомления']}
           currentPlan={subscription}
-          onSelect={() => handleCreateOrder('basic')}
+          onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
         />
         <PlanCard
           name="Pro"
@@ -220,7 +233,7 @@ export function ProfilePage() {
           featured
           features={['Все 5 бирж', 'AI-анализ рынка', 'Экспорт в CSV', 'Приоритетные сигналы']}
           currentPlan={subscription}
-          onSelect={() => handleCreateOrder('pro')}
+          onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
         />
         <PlanCard
           name="Pro Max"
@@ -229,7 +242,7 @@ export function ProfilePage() {
           tagline="Для профи"
           features={['Всё из Pro', 'Расширенная аналитика', 'Персональная поддержка', 'Ранний доступ к фичам']}
           currentPlan={subscription}
-          onSelect={() => handleCreateOrder('promax')}
+          onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
         />
       </div>
       </div>
@@ -286,6 +299,17 @@ export function ProfilePage() {
         <span className="text-muted">·</span>
         <Link to="/privacy" className="text-sm hover:underline mx-2" style={{ color: 'var(--brand)' }}>Политика конфиденциальности</Link>
       </div>
+
+      {checkout && (
+        <CryptoCheckoutModal
+          open={!!checkout}
+          planId={checkout.planId}
+          planName={checkout.planName}
+          price={checkout.price}
+          onClose={() => setCheckout(null)}
+          onPaid={handleCheckoutPaid}
+        />
+      )}
     </div>
   );
 }
@@ -317,7 +341,7 @@ const PlanCard = memo(function PlanCard({
   features: string[];
   featured?: boolean;
   currentPlan: string;
-  onSelect: () => void;
+  onSelect: (planId: string, name: string, price: number) => void;
 }) {
   const planId = name.toLowerCase().replace(' ', '');
   const isCurrent = currentPlan === planId;
@@ -369,7 +393,7 @@ const PlanCard = memo(function PlanCard({
         </button>
       ) : (
         <button
-          onClick={onSelect}
+          onClick={() => onSelect(planId, name, price)}
           className="btn text-sm py-2.5 w-full btn-primary"
         >
           {currentPlan === 'free' ? 'Подключить' : 'Перейти'}

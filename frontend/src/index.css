@@ -285,3 +285,40 @@
     transform: translateX(0);
   }
 }
+
+/* ============================================================
+   Website (non-Telegram) layout
+   - Centers the mobile-first app in a phone-like column on
+     desktop so the same codebase works as a public site.
+   ============================================================ */
+.web-shell {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--bg);
+  box-shadow: 0 0 40px rgba(16, 24, 40, 0.08);
+}
+
+@media (min-width: 640px) {
+  .web-shell {
+    margin-top: 0;
+  }
+}
+
+.web-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(6px);
+}
+
+.web-header-inner {
+  max-width: 480px;
+  margin: 0 auto;
+  height: 56px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

@@ -6,7 +6,7 @@ import { PaywallModal } from '../components/PaywallModal';
 import { PaywallFeature } from '../utils/plans';
 import { apiClient } from '../api/client';
 import { formatNumber, getFundingColor } from '../utils/formatters';
-import { openExchange, exchangeLabel } from '../utils/exchanges';
+import { openExchange, exchangeLabel, ALL_EXCHANGES } from '../utils/exchanges';
 import { HistoryChart } from '../components/HistoryChart';
 import { FundingCalendar } from '../components/FundingCalendar';
 import { CountdownTimer } from '../components/CountdownTimer';
@@ -16,7 +16,7 @@ import { RiskProfileModal } from '../components/RiskProfileModal';
 import { ResultSkeleton } from '../components/Skeleton';
 import { ExchangeResult } from '../types';
 
-const EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'] as const;
+const EXCHANGES = ALL_EXCHANGES as unknown as readonly string[];
 
 type SortKey = 'rate' | 'volume' | 'interval';
 

@@ -14,11 +14,11 @@ export interface PlanLimits {
 
 // Зеркало PLAN_LIMITS из backend/src/middleware/subscription.ts
 export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
-  free: { maxExchanges: 1, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 3, portfolioEnabled: false, label: 'Free' },
-  basic: { maxExchanges: 3, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 3, portfolioEnabled: false, label: 'Basic' },
-  pro: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true, label: 'Pro' },
-  promax: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true, label: 'Pro Max' },
-  ultimate: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true, label: 'Ultimate' },
+  free: { maxExchanges: 3, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 3, portfolioEnabled: false, label: 'Free' },
+  basic: { maxExchanges: 5, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 3, portfolioEnabled: false, label: 'Basic' },
+  pro: { maxExchanges: 12, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true, label: 'Pro' },
+  promax: { maxExchanges: 20, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true, label: 'Pro Max' },
+  ultimate: { maxExchanges: 25, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true, label: 'Ultimate' },
 };
 
 const PLAN_ORDER: PlanTier[] = ['free', 'basic', 'pro', 'promax', 'ultimate'];

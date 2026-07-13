@@ -1,4 +1,5 @@
 import { prisma } from './prisma.js';
+import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { runScan } from './scanService.js';
 import { detectArbitrageOpportunities } from './arbitrageService.js';
 import { sendAlertNotification } from './telegramNotify.js';
@@ -80,7 +81,7 @@ async function evaluateAllAlerts(): Promise<void> {
   const allExchanges = [
     ...new Set([
       ...generalAlerts.map((a) => a.exchange),
-      'gate', 'binance', 'bybit', 'mexc', 'okx',
+      ...SUPPORTED_EXCHANGES,
     ]),
   ];
 

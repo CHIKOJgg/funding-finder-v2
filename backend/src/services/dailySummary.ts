@@ -1,5 +1,6 @@
 import { prisma } from './prisma.js';
 import { runScan } from './scanService.js';
+import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { sendDailySummary } from './telegramNotify.js';
 import { getIntervalLabel } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
@@ -39,7 +40,7 @@ export async function sendDailySummaries(): Promise<void> {
     logger.info('Sending daily summaries...');
 
     // Run scan on all exchanges
-    const exchanges = ['gate', 'binance', 'bybit', 'mexc', 'okx'];
+    const exchanges = SUPPORTED_EXCHANGES;
     const scanResult = await runScan(exchanges);
     const allResults = [...scanResult.highYield, ...scanResult.mediumYield, ...scanResult.lowYield];
 

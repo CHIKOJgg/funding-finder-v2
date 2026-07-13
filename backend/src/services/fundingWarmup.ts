@@ -1,7 +1,8 @@
 import { logger } from '../utils/logger.js';
+import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { runScan } from './scanService.js';
 
-const ALL_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'];
+const ALL_EXCHANGES = SUPPORTED_EXCHANGES;
 const WARMUP_INTERVAL_MS = 5 * 60 * 1000; // align with scan cache TTL
 
 let timer: NodeJS.Timeout | null = null;

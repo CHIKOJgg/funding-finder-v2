@@ -20,11 +20,11 @@ const PLAN_LIMITS: Record<PlanTier, {
   watchlistLimit: number; // -1 = unlimited
   portfolioEnabled: boolean;
 }> = {
-  free: { maxExchanges: 1, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 3, portfolioEnabled: false },
-  basic: { maxExchanges: 3, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 3, portfolioEnabled: false },
-  pro: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
-  promax: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
-  ultimate: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
+  free: { maxExchanges: 3, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 3, portfolioEnabled: false },
+  basic: { maxExchanges: 5, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 3, portfolioEnabled: false },
+  pro: { maxExchanges: 12, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
+  promax: { maxExchanges: 20, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
+  ultimate: { maxExchanges: 25, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
 };
 
 /** Trial duration in days. */

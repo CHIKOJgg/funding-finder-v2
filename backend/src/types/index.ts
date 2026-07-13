@@ -4,8 +4,30 @@ export const EXCHANGE_FUNDING_INTERVALS: Record<string, number> = {
   binance: 28800,   // 8 hours fixed
   okx: 28800,       // 8 hours fixed
   mexc: 28800,      // 8 hours fixed
-  bybit: 28800,     // 8 hours default (but can be 4h, 1h, 2h, 4h, 8h)
+  bybit: 28800,     // 8 hours default (but can be 1h, 4h, 8h)
   gate: 14400,      // varies: 1h, 4h, 8h, 24h per contract
+  // New CEX additions
+  bitget: 28800,    // 8 hours fixed
+  bingx: 28800,     // 8 hours fixed
+  phemex: 28800,    // 8 hours default (per-contract via fundingInterval)
+  woo: 28800,       // 8 hours default (per-contract)
+  // DEX additions
+  hyperliquid: 3600, // 1 hour fixed
+  dydx: 3600,        // 1 hour fixed
+  paradex: 3600,     // 1 hour default (per-market via funding_interval)
+  // Phase-2 CEX additions
+  htx: 28800,        // 8h default (per-contract via settlement_period)
+  coinex: 28800,     // 8h default (dynamic, not an API field)
+  blofin: 28800,     // 8h default (interval not exposed)
+  bitmart: 28800,    // 8h default
+  weex: 28800,       // 8h default
+  coinw: 28800,      // 8h default
+  // Phase-2 DEX additions
+  drift: 3600,       // ~1h per-market
+  helix: 3600,       // 1h fixed
+  apex: 3600,        // 1h fixed
+  aster: 28800,      // 8h default (per-market)
+  bluefin: 28800,    // 8h fixed
 };
 
 // Funding intervals commonly seen

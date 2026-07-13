@@ -109,16 +109,74 @@ export async function createCryptoPayInvoice(planId: PlanId, currency: string, o
   throw new Error(res.data.error?.message || 'Crypto Pay error');
 }
 
-export async function createOrder(planId: PlanId, currency: string = 'USDT', telegramId: string) {
+export async function createOrder(
+  planId: PlanId,
+  currency: string = 'USDT',
+  telegramId: string,
+  options?: { provider?: 'crypto_pay' | 'nowpayments'; payCurrency?: string }
+) {
   const plan = PLANS[planId];
   if (!plan) throw new Error('Invalid plan');
 
+  const provider = options?.provider || 'crypto_pay';
   const orderId = `order_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
 
   try {
     // Ensure the user row exists (Order.userId is an FK to User.telegramId)
     await getUser(telegramId);
 
+    // ---- NOWPayments (website / non-Telegram crypto checkout) ----
+    if (provider === 'nowpayments') {
+      const { createNowPaymentsPayment } = await import('./nowPaymentsService.js');
+      const payCurrency = (options?.payCurrency || 'usdt').toLowerCase();
+      const np = await createNowPaymentsPayment(plan, planId, payCurrency, orderId);
+
+      await prisma.$transaction(async (tx) => {
+        await tx.order.create({
+          data: {
+            id: orderId,
+            planId,
+            userId: telegramId,
+            amount: plan.price,
+            currency: payCurrency,
+            invoiceId: np.paymentId,
+            status: 'waiting',
+          },
+        });
+
+        await tx.invoice.create({
+          data: {
+            orderId,
+            provider: 'nowpayments',
+            invoiceId: np.paymentId,
+            paymentId: np.paymentId,
+            payAddress: np.payAddress,
+            payCurrency: np.payCurrency,
+            payAmount: np.payAmount,
+            orderDescription: `Funding Finder — ${plan.name}`,
+            status: np.status,
+          },
+        });
+      });
+
+      return {
+        ok: true,
+        orderId,
+        provider: 'nowpayments',
+        invoiceId: np.paymentId,
+        paymentId: np.paymentId,
+        amount: plan.price,
+        currency: payCurrency,
+        payAddress: np.payAddress,
+        payAmount: np.payAmount,
+        payCurrency: np.payCurrency,
+        invoiceUrl: np.invoiceUrl,
+        status: np.status,
+        simulated: np.simulated,
+      };
+    }
+
+    // ---- Crypto Pay (Telegram mini-app) ----
     const invoiceData = await createCryptoPayInvoice(planId, currency, orderId, telegramId);
 
     await prisma.$transaction(async (tx) => {
@@ -136,6 +194,7 @@ export async function createOrder(planId: PlanId, currency: string = 'USDT', tel
       await tx.invoice.create({
         data: {
           orderId,
+          provider: 'crypto_pay',
           invoiceId: invoiceData.invoice_id,
           hash: invoiceData.hash,
           botInvoiceUrl: invoiceData.bot_invoice_url,
@@ -149,6 +208,7 @@ export async function createOrder(planId: PlanId, currency: string = 'USDT', tel
     return {
       ok: true,
       orderId,
+      provider: 'crypto_pay',
       invoiceId: invoiceData.invoice_id,
       amount: plan.price,
       currency,
@@ -170,8 +230,15 @@ export async function getInvoice(orderId: string) {
   return prisma.invoice.findUnique({ where: { orderId } });
 }
 
-export async function updateOrderFromWebhook(invoiceId: string, status: string = 'paid') {
-  const order = await prisma.order.findFirst({ where: { invoiceId } });
+export async function updateOrderFromWebhook(
+  lookup: string,
+  status: string = 'paid',
+  provider?: string
+) {
+  // `lookup` may be the order id (NOWPayments / generic webhook) or the
+  // Crypto Pay invoice id — resolve either way.
+  let order = await prisma.order.findUnique({ where: { id: lookup } });
+  if (!order) order = await prisma.order.findFirst({ where: { invoiceId: lookup } });
   if (!order) return null;
 
   if (status === 'paid') {
@@ -205,8 +272,18 @@ export async function updateOrderFromWebhook(invoiceId: string, status: string =
       },
     });
 
+    await prisma.invoice.updateMany({
+      where: { orderId: order.id },
+      data: { status: 'paid' },
+    });
+
     return updated;
   }
+
+  await prisma.invoice.updateMany({
+    where: { orderId: order.id },
+    data: { status },
+  });
 
   return prisma.order.update({
     where: { id: order.id },

@@ -13,7 +13,8 @@ import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestId, requestLogger } from './middleware/requestLogger.js';
 import { perUserLimiter } from './middleware/rateLimit.js';
-import { validateTelegramInitData } from './middleware/auth.js';
+import { authenticate } from './middleware/auth.js';
+import authRoutes from './routes/auth.js';
 import { startAlertEvaluator, stopAlertEvaluator } from './services/alertEvaluator.js';
 import { startDailySummary, stopDailySummary } from './services/dailySummary.js';
 import { startDataArchival, stopDataArchival } from './services/dataArchival.js';
@@ -199,7 +200,7 @@ app.get('/api/ready', async (req, res) => {
 });
 
 // Metrics endpoint (detailed system info)
-app.get('/api/metrics', validateTelegramInitData, async (req, res) => {
+app.get('/api/metrics', authenticate, async (req, res) => {
   try {
     const dbHealth = await checkDatabaseHealth();
     const mem = process.memoryUsage();
@@ -259,34 +260,38 @@ app.get('/api/feature-flags', (req, res) => {
 // Routes with auth
 // Scan hits many exchange APIs and AI calls cost money, so add a strict
 // per-user cap on top of the global limiter.
-app.use('/api', authLimiter, validateTelegramInitData, perUserLimiter(60, 15 * 60 * 1000), scanRoutes);
-app.use('/api', authLimiter, validateTelegramInitData, perUserLimiter(30, 15 * 60 * 1000), aiRoutes);
-app.use('/api', authLimiter, validateTelegramInitData, historyRoutes);
-app.use('/api', authLimiter, validateTelegramInitData, analyticsRoutes);
+app.use('/api', authLimiter, authenticate, perUserLimiter(60, 15 * 60 * 1000), scanRoutes);
+app.use('/api', authLimiter, authenticate, perUserLimiter(30, 15 * 60 * 1000), aiRoutes);
+app.use('/api', authLimiter, authenticate, historyRoutes);
+app.use('/api', authLimiter, authenticate, analyticsRoutes);
 
 // Admin routes (require admin role)
-app.use('/api', validateTelegramInitData, adminRoutes);
+app.use('/api', authenticate, adminRoutes);
 
 // Webhook routes (no user auth, webhook token/signature verified inside)
 app.use('/api/webhook', webhookRoutes);
 
+// Public web-auth routes (wallet SIWE + Google). These ESTABLISH a session, so
+// they must not sit behind the global `authenticate` middleware.
+app.use('/api/auth', authLimiter, authRoutes);
+
 // Protected routes (auth required)
-app.use('/api/alerts', authLimiter, validateTelegramInitData, alertsRoutes);
-app.use('/api', authLimiter, validateTelegramInitData, arbitrageRoutes);
-app.use('/api', authLimiter, validateTelegramInitData, paymentsRoutes);
-app.use('/api', authLimiter, validateTelegramInitData, referralsRoutes);
-app.use('/api', authLimiter, validateTelegramInitData, profileRoutes);
-app.use('/api', authLimiter, validateTelegramInitData, exportRoutes);
-app.use('/api', authLimiter, validateTelegramInitData, settingsRoutes);
+app.use('/api/alerts', authLimiter, authenticate, alertsRoutes);
+app.use('/api', authLimiter, authenticate, arbitrageRoutes);
+app.use('/api', authLimiter, authenticate, paymentsRoutes);
+app.use('/api', authLimiter, authenticate, referralsRoutes);
+app.use('/api', authLimiter, authenticate, profileRoutes);
+app.use('/api', authLimiter, authenticate, exportRoutes);
+app.use('/api', authLimiter, authenticate, settingsRoutes);
 
 // Trial + funding calendar + watchlist + portfolio (auth required)
-app.use('/api', authLimiter, validateTelegramInitData, trialRoutes);
-app.use('/api', authLimiter, validateTelegramInitData, fundingRoutes);
-app.use('/api', authLimiter, validateTelegramInitData, keysRoutes);
+app.use('/api', authLimiter, authenticate, trialRoutes);
+app.use('/api', authLimiter, authenticate, fundingRoutes);
+app.use('/api', authLimiter, authenticate, keysRoutes);
 // Live portfolio + auto-execute places real orders on user exchanges — keep it tightly throttled per user.
-app.use('/api', authLimiter, validateTelegramInitData, perUserLimiter(20, 15 * 60 * 1000), portfolioLiveRoutes);
-app.use('/api', authLimiter, validateTelegramInitData, watchlistRoutes);
-app.use('/api', authLimiter, validateTelegramInitData, portfolioRoutes);
+app.use('/api', authLimiter, authenticate, perUserLimiter(20, 15 * 60 * 1000), portfolioLiveRoutes);
+app.use('/api', authLimiter, authenticate, watchlistRoutes);
+app.use('/api', authLimiter, authenticate, portfolioRoutes);
 
 // Serve frontend in production only if a built frontend exists.
 // On Render the frontend is deployed as a separate Static Site, so the
@@ -340,6 +345,35 @@ async function syncDatabaseSchema() {
   }
 }
 
+// NOWPayments reconciliation loop — the safety net behind the IPN webhook.
+// Polls still-open orders every 20s so payments confirm quickly even if a
+// webhook is delayed or dropped. Only runs when an API key is configured.
+let nowPaymentsPoller: ReturnType<typeof setInterval> | null = null;
+
+async function startNowPaymentsPolling() {
+  const { reconcileNowPaymentsOrders } = await import('./services/nowPaymentsService.js');
+  if (!config.nowPayments.apiKey) {
+    logger.info('NOWPayments polling skipped (no API key configured)');
+    return;
+  }
+  logger.info('NOWPayments reconciliation poller started');
+  nowPaymentsPoller = setInterval(async () => {
+    try {
+      const updated = await reconcileNowPaymentsOrders();
+      if (updated > 0) logger.info(`NOWPayments: confirmed ${updated} order(s)`);
+    } catch (err) {
+      logger.warn({ err: (err as Error).message }, 'NOWPayments polling error');
+    }
+  }, 20_000);
+}
+
+function stopNowPaymentsPolling() {
+  if (nowPaymentsPoller) {
+    clearInterval(nowPaymentsPoller);
+    nowPaymentsPoller = null;
+  }
+}
+
 // Start server
 async function start() {
   try {
@@ -349,13 +383,14 @@ async function start() {
     server.listen(config.port, () => {
       logger.info(`Funding Finder v2 listening at http://localhost:${config.port}`);
       logger.info(`Environment: ${config.nodeEnv}`);
-      wsManager.init(server);
-      initJobQueues();
-      startAlertEvaluator();
-      startDailySummary();
-      startDataArchival();
-      startFundingWarmup();
-    });
+       wsManager.init(server);
+       initJobQueues();
+       startAlertEvaluator();
+       startDailySummary();
+       startDataArchival();
+       startFundingWarmup();
+       startNowPaymentsPolling();
+     });
   } catch (err) {
     logger.error('Failed to start server:', err);
     process.exit(1);
@@ -369,6 +404,7 @@ const gracefulShutdown = async (signal: string) => {
   stopDailySummary();
   stopDataArchival();
   stopFundingWarmup();
+  stopNowPaymentsPolling();
   wsManager.close();
   await shutdownJobQueues();
   await disconnectDatabase();

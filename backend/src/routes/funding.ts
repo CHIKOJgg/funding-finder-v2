@@ -2,12 +2,13 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validation.js';
 import { getFundingCalendar } from '../services/fundingCalendar.js';
+import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
 
 const scheduleSchema = z.object({
-  exchanges: z.array(z.enum(['gate', 'binance', 'bybit', 'mexc', 'okx'])).max(5).optional(),
+  exchanges: z.array(z.enum(SUPPORTED_EXCHANGES as [string, ...string[]])).max(25).optional(),
   limit: z.coerce.number().int().min(1).max(50).optional(),
 });
 
@@ -16,7 +17,7 @@ router.get('/funding/schedule', validate(scheduleSchema), async (req, res) => {
     const exchanges = (req.query.exchanges as string | undefined)
       ?.split(',')
       .map((e) => e.trim())
-      .filter(Boolean) || ['gate', 'binance', 'bybit', 'mexc', 'okx'];
+      .filter(Boolean) || SUPPORTED_EXCHANGES;
     const limit = parseInt(req.query.limit as string) || 12;
 
     const { events, scanned, stale } = await getFundingCalendar(exchanges, limit);

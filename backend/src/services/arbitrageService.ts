@@ -10,6 +10,28 @@ const EXCHANGE_FEES: Record<string, { taker: number; maker: number }> = {
   bybit: { taker: 0.00055, maker: 0.0002 },     // 0.055%
   okx: { taker: 0.0006, maker: 0.0003 },        // 0.06%
   mexc: { taker: 0.0006, maker: 0.0002 },       // 0.06%
+  // New CEX additions (standard public taker/maker tiers)
+  bitget: { taker: 0.0004, maker: 0.0002 },      // 0.04%
+  bingx: { taker: 0.00045, maker: 0.0002 },      // 0.045%
+  phemex: { taker: 0.0001, maker: 0.00006 },     // 0.01%
+  woo: { taker: 0.0005, maker: 0.0002 },         // 0.05%
+  // DEX additions (perp taker/maker tiers)
+  hyperliquid: { taker: 0.00055, maker: 0.0001 },  // 0.055% / 0.01%
+  dydx: { taker: 0.0005, maker: 0.0002 },          // 0.05%
+  paradex: { taker: 0.00045, maker: 0.00015 },     // 0.045%
+  // Phase-2 CEX additions
+  htx: { taker: 0.00045, maker: 0.0002 },
+  coinex: { taker: 0.0005, maker: 0.0002 },
+  blofin: { taker: 0.0006, maker: 0.0002 },
+  bitmart: { taker: 0.0004, maker: 0.0002 },
+  weex: { taker: 0.0006, maker: 0.0002 },
+  coinw: { taker: 0.0005, maker: 0.0002 },
+  // Phase-2 DEX additions
+  drift: { taker: 0.0005, maker: 0.0001 },
+  helix: { taker: 0.0004, maker: 0.0002 },
+  apex: { taker: 0.0004, maker: 0.0001 },
+  aster: { taker: 0.0004, maker: 0.0002 },
+  bluefin: { taker: 0.0004, maker: 0.0001 },
 };
 
 function calculateSlippage(volumeA: number, volumeB: number): number {
@@ -178,12 +200,16 @@ const QUOTE_CURRENCIES = ['USDT', 'USDC', 'USD', 'BTC', 'ETH', 'DAI'];
  *   mexc  BTC_USDT       -> BTCUSDT
  */
 function canonicalPairKey(contract: string): string {
-  return (contract || '')
+  let key = (contract || '')
     .toUpperCase()
     .replace(/[-_/]/g, ' ')          // separators -> space
     .replace(/\bSWAP\b/g, ' ')       // OKX suffix
     .replace(/\bPERP\b/g, ' ')       // perp suffix
     .replace(/[^A-Z0-9]/g, '');      // strip everything else
+  // Treat USD-quoted perps (dYdX, Paradex) as matching USDT perps so cross-exchange
+  // funding-rate comparison includes DEX pairs.
+  if (key.endsWith('USD')) key += 'T';
+  return key;
 }
 
 /**

@@ -1,5 +1,50 @@
 import { KNOWN_INTERVALS, EXCHANGE_FUNDING_INTERVALS, ExchangeResult } from '../types/index.js';
 
+// ==================== Unified ExchangeResult builder ====================
+
+/**
+ * Build a fully-populated ExchangeResult from the minimal fields a scanner
+ * extracts from an exchange. Centralizes normalization (hourly/day/annualized)
+ * and next-funding timing so every scanner produces an identical shape.
+ */
+export interface ExchangeResultInput {
+  exchange: string;
+  contract: string;
+  currentFunding: number;
+  fundingIntervalSeconds: number;
+  fundingIntervalSource?: 'api' | 'detected' | 'default';
+  fundingNextApply: number; // ms timestamp (0 if unknown)
+  markPrice: number;
+  volume24hSettle: number;
+}
+
+export function toExchangeResult(input: ExchangeResultInput): ExchangeResult {
+  const intervalSeconds = input.fundingIntervalSeconds > 0 ? input.fundingIntervalSeconds : KNOWN_INTERVALS.EIGHT_HOUR;
+  const normalized = normalizeFundingRate(input.currentFunding, intervalSeconds);
+  const now = Date.now();
+  const timeUntilNext =
+    input.fundingNextApply > now ? Math.floor((input.fundingNextApply - now) / 1000) : null;
+
+  return {
+    exchange: input.exchange,
+    contract: input.contract,
+    currentFunding: input.currentFunding,
+    funding_interval_seconds: intervalSeconds,
+    funding_interval_hours: intervalSeconds / 3600,
+    funding_interval_source: input.fundingIntervalSource ?? 'default',
+    funding_rate_per_hour: normalized.perHour,
+    funding_rate_per_day: normalized.perDay,
+    annualized_rate: normalized.annualized,
+    funding_next_apply: input.fundingNextApply,
+    time_until_next_funding_seconds: timeUntilNext ?? 0,
+    mark_price: input.markPrice,
+    volume_24h_settle: input.volume24hSettle,
+    // Legacy fields
+    med_seconds: intervalSeconds,
+    med_hours: intervalSeconds / 3600,
+  };
+}
+
 // ==================== Math Utilities ====================
 
 export function median(arr: number[]): number | null {

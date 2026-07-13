@@ -141,9 +141,15 @@ Render — лучший бесплатный вариант. База данны
    | `CRYPTO_PAY_API_TOKEN` | `123456:ABC...` | Из шага 1 |
    | `CRYPTO_BOT_USERNAME` | `CryptoBot` | Имя твоего крипто-бота |
    | `CRYPTO_PAY_NETWORK` | `testnet` или `mainnet` | Сначала testnet! |
-   | `WEBHOOK_SECRET` | `случайная_строка` | Из шага 1 |
-   | `JWT_SECRET` | `случайная_строка` | Из шага 1 |
-   | `CORS_ORIGINS` | `https://t.me` | Разрешённые домены |
+    | `WEBHOOK_SECRET` | `случайная_строка` | Из шага 1 |
+    | `JWT_SECRET` | `случайная_строка` | Из шага 1 |
+    | `CORS_ORIGINS` | `https://t.me,https://funding-finder.onrender.com` | Домены фронтенда (и TG) |
+    | `NOWPAYMENTS_API_KEY` | `NP03...` | [nowpayments.io](https://nowpayments.io/dashboard) — для крипто-оплаты на сайте |
+    | `NOWPAYMENTS_IPN_SECRET` | `случайная_строка` | NOWPayments → Settings → IPN secret (подпись webhook) |
+    | `NOWPAYMENTS_NETWORK` | `bgcryptonote` | Сеть вывода средств |
+    | `API_BASE_URL` | `https://funding-finder-api.onrender.com` | Публичный URL API (нужен для IPN callback) |
+    | `GOOGLE_CLIENT_ID` | `....apps.googleusercontent.com` | Google Console → OAuth Client ID (вход через Google) |
+    | `WEB_AUTH_DOMAIN` | `funding-finder.onrender.com` | Домен сайта (для SIWE / входа через кошелёк) |
 
 5. Нажми **Create Web Service**
 6. Дождись статусус **Live** (~2-3 минуты)
@@ -462,6 +468,52 @@ wss://funding-finder-api.onrender.com/ws?initData=...
 повторно сериализованному JSON, и сверяет оплаченную сумму с ценой плана.
 Убедись, что заголовок `Crypto-Pay-API-Signature` приходит неизменённым
 (не переупаковывай body прокси/ингрессом).
+
+## 10. Веб-сайт (отдельно от Telegram MiniApp)
+
+Тот же фронтенд (`frontend/dist`) обслуживает и Telegram MiniApp, и обычный
+сайт. Для сайта добавлена авторизация **без Telegram**:
+
+- **Кошелёк (SIWE)** — подпись сообщения через MetaMask / Rabby и т.п.
+- **Google** — вход через Google OAuth (id_token верифицируется по JWKS).
+- Dev-режим: кнопка «Guest» (`/api/auth/dev-guest`), чтобы проверить сайт без
+  кошелька/Google (только если `NODE_ENV !== 'production'`).
+
+Сайт использует **тот же REST API и WebSocket**, что и MiniApp, — роуты
+защищены единым мидлваром `authenticate` (Bearer JWT ИЛИ Telegram init-data).
+
+### 10.1 Настройка NOWPayments (крипто-оплата на сайте)
+1. Зайди на [nowpayments.io](https://nowpayments.io/dashboard) → создай
+   проект, получи `API Key` (→ `NOWPAYMENTS_API_KEY`).
+2. Settings → **IPN (Instant Payment Notification)** → включи, задай секрет
+   (→ `NOWPAYMENTS_IPN_SECRET`).
+3. Укажи **IPN callback URL**:
+   ```
+   https://funding-finder-api.onrender.com/api/webhook/nowpayments
+   ```
+4. Выбери сеть вывода (`NOWPAYMENTS_NETWORK`, напр. `bgcryptonote`).
+5. Подпись webhook проверяется как **HMAC-SHA512** по сырым байтам тела
+   (заголовок `x-nowpayments-sig`). Прокси/ингресс не должен менять body.
+6. Платёж подтверждается по webhook, плюс фоновый **polling** каждые 20 c
+   (last 2 ч) — safety-net, если webhook не дошёл.
+7. Локально без ключей работает **симуляция**: в ProfilePage → крипто-чекаут →
+   кнопка «Simulate» (или `POST /api/payments/simulate/:orderId`).
+
+### 10.2 Настройка Google OAuth
+1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+   → создать **OAuth 2.0 Client ID** (тип Web application).
+2. В **Authorized JavaScript origins** добавь домен сайта
+   (`https://funding-finder.onrender.com`).
+3. Client ID → `GOOGLE_CLIENT_ID`. Редирект не нужен (используем
+   `token` flow через Google Identity Services).
+
+### 10.3 Что проверить на сайте
+- [ ] Открывается `https://funding-finder.onrender.com` (SPA логин-гейт)
+- [ ] Вход через кошелёк (SIWE) подписывает и открывает сессию
+- [ ] Вход через Google открывает сессию
+- [ ] ProfilePage → крипто-чекаут → выбор монеты → оплата подтверждается
+- [ ] WebSocket подключается (`/ws?token=...`)
+- [ ] `CORS_ORIGINS` содержит домен сайта
 
 ## Ссылки
 - [Render Docs](https://render.com/docs)

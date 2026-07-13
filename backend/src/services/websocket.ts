@@ -3,6 +3,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
 import { URL } from 'url';
 import { validateTelegramInitDataSync } from '../middleware/auth.js';
+import { verifyAuthToken } from '../services/authService.js';
 import { logger } from '../utils/logger.js';
 
 export interface WSClient {
@@ -44,6 +45,7 @@ class WebSocketManager {
     try {
       const url = new URL(req.url || '/', `http://${req.headers.host}`);
       const initData = url.searchParams.get('initData');
+      const token = url.searchParams.get('token');
 
       let userId: string;
       if (initData) {
@@ -53,6 +55,13 @@ class WebSocketManager {
           return;
         }
         userId = validated.userId;
+      } else if (token) {
+        const payload = verifyAuthToken(token);
+        if (!payload) {
+          ws.close(4001, 'Invalid authentication');
+          return;
+        }
+        userId = payload.sub;
       } else {
         // Dev mode fallback
         userId = `dev_ws_${Date.now()}`;

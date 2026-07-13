@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { setTelegramInitData, setCurrentUserId } from '../api/client';
+import { setTelegramInitData, setCurrentUserId, setAuthToken, getAuthToken, clearAuthToken, apiClient } from '../api/client';
 
 interface TelegramWebApp {
   initData?: string;
@@ -49,19 +49,50 @@ declare global {
     Telegram?: {
       WebApp?: TelegramWebApp;
     };
+    ethereum?: any;
+    google?: any;
   }
 }
 
-interface User {
+export interface WebUser {
   id: string;
   firstName?: string;
   username?: string;
+  provider?: string;
+  walletAddress?: string | null;
+  email?: string | null;
 }
 
 export function useTelegram() {
   const [tg, setTg] = useState<TelegramWebApp | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<WebUser | null>(null);
   const [initData, setInitData] = useState<string | null>(null);
+  const [isWeb, setIsWeb] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authProvider, setAuthProvider] = useState<string | undefined>();
+
+  const applyUser = useCallback((u: WebUser) => {
+    setUser(u);
+    setCurrentUserId(u.id);
+    setAuthProvider(u.provider);
+    setAuthenticated(true);
+  }, []);
+
+  const login = useCallback((token: string, u: WebUser) => {
+    setAuthToken(token);
+    setTg(null);
+    setIsWeb(true);
+    applyUser(u);
+  }, [applyUser]);
+
+  const logout = useCallback(() => {
+    clearAuthToken();
+    setUser(null);
+    setAuthProvider(undefined);
+    setAuthenticated(false);
+    setInitData(null);
+    setCurrentUserId(null);
+  }, []);
 
   useEffect(() => {
     if (window.Telegram?.WebApp) {
@@ -82,30 +113,30 @@ export function useTelegram() {
         const telegramUser = webApp.initDataUnsafe?.user;
         if (telegramUser) {
           const id = `tg_${telegramUser.id}`;
-          setUser({ id, firstName: telegramUser.first_name, username: telegramUser.username });
-          setCurrentUserId(id);
+          applyUser({ id, firstName: telegramUser.first_name, username: telegramUser.username, provider: 'telegram' });
         }
-      } else {
-        const storageKey = 'ff_user_id';
-        let devId = localStorage.getItem(storageKey);
-        if (!devId) {
-          devId = 'dev_' + Date.now();
-          localStorage.setItem(storageKey, devId);
-        }
-        setUser({ id: devId, firstName: 'Developer', username: 'dev' });
-        setCurrentUserId(devId);
       }
     } else {
-      const storageKey = 'ff_user_id';
-      let webId = localStorage.getItem(storageKey);
-      if (!webId) {
-        webId = 'web_' + Date.now();
-        localStorage.setItem(storageKey, webId);
+      // Public website mode — require a web session (wallet / Google).
+      setIsWeb(true);
+      const stored = getAuthToken();
+      if (stored) {
+        setAuthToken(stored);
+        apiClient.getMe()
+          .then((r: any) => {
+            if (r?.ok && r.user) {
+              applyUser(r.user);
+            } else {
+              logout();
+            }
+          })
+          .catch(() => {
+            // Keep the user on the login screen; their token was invalid.
+            logout();
+          });
       }
-      setUser({ id: webId, firstName: 'Web User', username: 'web' });
-      setCurrentUserId(webId);
     }
-  }, []);
+  }, [applyUser, logout]);
 
   const openLink = useCallback((url: string) => {
     if (tg?.openLink) {
@@ -160,6 +191,11 @@ export function useTelegram() {
     tg,
     user,
     initData,
+    isWeb,
+    authenticated,
+    authProvider,
+    login,
+    logout,
     openLink,
     goBack,
     close,

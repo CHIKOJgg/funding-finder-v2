@@ -1,8 +1,9 @@
 import { runScan, getCachedScan } from './scanService.js';
+import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { ScanResult, ExchangeResult } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 
-const VALID_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'];
+const VALID_EXCHANGES = SUPPORTED_EXCHANGES;
 
 export interface FundingEvent {
   exchange: string;
@@ -69,7 +70,7 @@ export async function getFundingCalendar(
   exchanges: string[],
   limit = 12
 ): Promise<{ events: FundingEvent[]; scanned: number; stale: boolean }> {
-  const clean = exchanges.filter((e) => VALID_EXCHANGES.includes(e)).slice(0, 5);
+  const clean = exchanges.filter((e) => VALID_EXCHANGES.includes(e)).slice(0, 12);
   const target = clean.length ? clean : ['gate'];
 
   const cached = getCachedScan(target);
