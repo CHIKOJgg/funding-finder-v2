@@ -114,7 +114,7 @@ router.get('/arbitrage/opportunities', async (req, res) => {
     const exchangesParam = req.query.exchanges as string;
     const exchanges = exchangesParam
       ? exchangesParam.split(',').filter((e) => SUPPORTED_EXCHANGES.includes(e))
-      : ['gate', 'binance', 'bybit', 'mexc', 'okx'];
+      : SUPPORTED_EXCHANGES;
 
     const scanResults = await runScan(exchanges);
 
