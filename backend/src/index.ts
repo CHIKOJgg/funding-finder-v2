@@ -327,20 +327,32 @@ app.use(errorHandler);
 // deploys reliable across environments. Run `prisma migrate dev` locally if you
 // later want managed migrations + rollback history.
 async function syncDatabaseSchema() {
+  const prismaBin = path.resolve(__dirname, '..', 'node_modules', '.bin', 'prisma');
+  const env = { ...process.env } as NodeJS.ProcessEnv;
+  // `db push` needs a direct (non-pooled) connection to create its shadow
+  // database. On Render DATABASE_URL is pooled, so reuse the direct URL as the
+  // shadow DB connection when available.
+  if (env.DIRECT_URL && !env.SHADOW_DATABASE_URL) {
+    env.SHADOW_DATABASE_URL = env.DIRECT_URL;
+  }
   try {
-    execSync('npx prisma db push --skip-generate', {
+    execSync(`"${prismaBin}" db push --skip-generate --accept-data-loss`, {
       cwd: path.resolve(__dirname, '..'),
       stdio: 'pipe',
-      timeout: 60000,
+      timeout: 120000,
+      env,
     });
     logger.info('Database schema synced (db push)');
   } catch (err) {
-    const stderr = (err as { stderr?: Buffer }).stderr?.toString() || '';
-    if (stderr.includes('P3009')) {
+    const e = err as { stderr?: Buffer; stdout?: Buffer; message?: string; status?: number };
+    const stderr = e.stderr?.toString() || '';
+    const stdout = e.stdout?.toString() || '';
+    const detail = (stderr || stdout || e.message || 'unknown error').slice(0, 2000);
+    if (stderr.includes('P3009') || stdout.includes('P3009')) {
       logger.warn('prisma db push lock timeout — migration likely already in progress');
       return;
     }
-    logger.error('Database schema sync failed:', stderr.slice(0, 500));
+    logger.error({ status: e.status, detail }, 'Database schema sync failed');
     process.exit(1);
   }
 }
