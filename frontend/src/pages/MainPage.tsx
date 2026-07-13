@@ -9,6 +9,7 @@ import { apiClient } from '../api/client';
 import { formatNumber, getFundingColor } from '../utils/formatters';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { ExchangeSelector } from '../components/ExchangeSelector';
+import { ExchangeFilter } from '../components/ExchangeFilter';
 import { HistoryChart } from '../components/HistoryChart';
 import { FundingCalendar } from '../components/FundingCalendar';
 import { CountdownTimer } from '../components/CountdownTimer';
@@ -44,6 +45,7 @@ export function MainPage() {
   // Bumped after each manual scan so the funding calendar (which polls on its
   // own timer) refreshes immediately instead of waiting up to 60s.
   const [calendarRefresh, setCalendarRefresh] = useState(0);
+  const [exchangeFilter, setExchangeFilter] = useState<string[]>([]);
 
   const handleScan = useCallback(async () => {
     if (selectedExchanges.length === 0) {
@@ -148,6 +150,15 @@ export function MainPage() {
     return all.reduce((best, it) =>
       Math.abs(it.funding_rate_per_hour) > Math.abs(best.funding_rate_per_hour) ? it : best
     );
+  }, [scanResults]);
+
+  const availableExchanges = useMemo(() => {
+    if (!scanResults) return [];
+    const set = new Set<string>();
+    [...(scanResults.highYield || []), ...(scanResults.mediumYield || []), ...(scanResults.lowYield || [])].forEach(
+      (it: ExchangeResult) => set.add(it.exchange)
+    );
+    return [...set].sort();
   }, [scanResults]);
 
   return (
@@ -286,6 +297,12 @@ export function MainPage() {
             </select>
           </div>
 
+          <ExchangeFilter
+            exchanges={availableExchanges}
+            selected={exchangeFilter}
+            onChange={setExchangeFilter}
+          />
+
 
           {scanResults.metrics?.intervalDistribution && (
             <div className="mb-4 p-3 rounded-xl" style={{ background: 'var(--brand-soft)' }}>
@@ -314,6 +331,7 @@ export function MainPage() {
               searchQuery={searchQuery}
               sortBy={sortBy}
               showWatchlistOnly={showWatchlistOnly}
+              exchangeFilter={exchangeFilter}
             />
           )}
 
@@ -328,6 +346,7 @@ export function MainPage() {
               searchQuery={searchQuery}
               sortBy={sortBy}
               showWatchlistOnly={showWatchlistOnly}
+              exchangeFilter={exchangeFilter}
             />
           )}
 
@@ -342,6 +361,7 @@ export function MainPage() {
               searchQuery={searchQuery}
               sortBy={sortBy}
               showWatchlistOnly={showWatchlistOnly}
+              exchangeFilter={exchangeFilter}
             />
           )}
 
@@ -501,6 +521,7 @@ const ResultSection = memo(function ResultSection({
   searchQuery,
   sortBy,
   showWatchlistOnly,
+  exchangeFilter = [],
 }: {
   title: string;
   count: number;
@@ -511,9 +532,11 @@ const ResultSection = memo(function ResultSection({
   searchQuery: string;
   sortBy: SortKey;
   showWatchlistOnly: boolean;
+  exchangeFilter?: string[];
 }) {
   const { isWatchlisted } = useApp();
   const filtered = items.filter((item) => {
+    if (exchangeFilter.length > 0 && !exchangeFilter.includes(item.exchange)) return false;
     if (showWatchlistOnly && !isWatchlisted(item.exchange, item.contract)) return false;
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();

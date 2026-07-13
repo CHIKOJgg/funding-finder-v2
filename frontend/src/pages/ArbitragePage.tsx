@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import { useState, useEffect, useCallback, useRef, memo, useMemo } from 'react';
 import { clsx } from 'clsx';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
@@ -7,8 +7,12 @@ import { apiClient } from '../api/client';
 import { getRiskColor } from '../utils/formatters';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { CountdownTimer } from '../components/CountdownTimer';
+import { ExchangeFilter } from '../components/ExchangeFilter';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { getAuthToken } from '../api/client';
+
+type ArbSortKey = 'apy' | 'daily' | 'hourly' | 'risk';
+type RiskFilter = 'ALL' | 'LOW' | 'MEDIUM' | 'HIGH';
 
 export function ArbitragePage() {
   const { user, isWeb, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts } = useApp();
@@ -18,6 +22,10 @@ export function ArbitragePage() {
   const [selectedOpportunity, setSelectedOpportunity] = useState<any>(null);
   const [capital, setCapital] = useState(1000);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [arbSortBy, setArbSortBy] = useState<ArbSortKey>('apy');
+  const [riskFilter, setRiskFilter] = useState<RiskFilter>('ALL');
+  const [exchangeFilter, setExchangeFilter] = useState<string[]>([]);
+  const [visibleCount, setVisibleCount] = useState(15);
 
   const initData = window.Telegram?.WebApp?.initData || null;
   const wsAuth = isWeb ? { token: getAuthToken() } : { initData };
@@ -68,6 +76,56 @@ export function ArbitragePage() {
     }
   }, [deleteConfirm, handleDeleteAlert]);
 
+  // Exchanges that actually appear in the current opportunities — used to build
+  // the exchange filter chips.
+  const availableExchanges = useMemo(() => {
+    const set = new Set<string>();
+    arbOpportunities.forEach((o: any) => {
+      set.add(o.exchangeA);
+      set.add(o.exchangeB);
+    });
+    return [...set].sort();
+  }, [arbOpportunities]);
+
+  const filteredOpportunities = useMemo(() => {
+    const filtered = arbOpportunities.filter((o: any) => {
+      if (riskFilter !== 'ALL' && (o.risk?.level || 'LOW') !== riskFilter) return false;
+      if (exchangeFilter.length > 0 && !exchangeFilter.includes(o.exchangeA) && !exchangeFilter.includes(o.exchangeB)) {
+        return false;
+      }
+      return true;
+    });
+
+    const sorted = [...filtered].sort((a: any, b: any) => {
+      switch (arbSortBy) {
+        case 'apy':
+          return (b.profit?.annualReturn ?? 0) - (a.profit?.annualReturn ?? 0);
+        case 'daily':
+          return (b.difference_per_day ?? 0) - (a.difference_per_day ?? 0);
+        case 'hourly':
+          return (b.difference ?? 0) - (a.difference ?? 0);
+        case 'risk': {
+          const order: Record<string, number> = { LOW: 0, MEDIUM: 1, HIGH: 2 };
+          const ra = order[a.risk?.level || 'LOW'] ?? 0;
+          const rb = order[b.risk?.level || 'LOW'] ?? 0;
+          if (ra !== rb) return ra - rb;
+          return (b.profit?.annualReturn ?? 0) - (a.profit?.annualReturn ?? 0);
+        }
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  }, [arbOpportunities, arbSortBy, riskFilter, exchangeFilter]);
+
+  const resetFilters = useCallback(() => {
+    setArbSortBy('apy');
+    setRiskFilter('ALL');
+    setExchangeFilter([]);
+    setVisibleCount(15);
+  }, []);
+
   return (
     <div className="p-4">
       <div className="flex items-center gap-3 mb-4">
@@ -116,18 +174,86 @@ export function ArbitragePage() {
           ) : arbOpportunities.length === 0 ? (
             <div className="text-center py-8 text-gray-500">Арбитражные возможности не найдены</div>
           ) : (
-            <div className="space-y-3">
-              {arbOpportunities.slice(0, 15).map((opp, idx) => (
-                <OpportunityCard
-                  key={`${opp.pair}-${opp.exchangeA}-${opp.exchangeB}-${idx}`}
-                  opportunity={opp}
-                  onCalculate={() => {
-                    setSelectedOpportunity(opp);
-                    setShowModal(true);
-                  }}
+            <>
+              <div className="mb-3 p-3 rounded-xl" style={{ background: 'var(--surface-2)' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">Сортировка</span>
+                  {(arbSortBy !== 'apy' || riskFilter !== 'ALL' || exchangeFilter.length > 0) && (
+                    <button onClick={resetFilters} className="text-xs text-[var(--brand)] hover:underline">
+                      Сбросить всё
+                    </button>
+                  )}
+                </div>
+                <select
+                  value={arbSortBy}
+                  onChange={(e) => setArbSortBy(e.target.value as ArbSortKey)}
+                  className="input-field text-sm w-full mb-3"
+                  aria-label="Сортировка возможностей"
+                >
+                  <option value="apy">По прибыли (APY)</option>
+                  <option value="daily">По дневному спреду</option>
+                  <option value="hourly">По часовой разнице</option>
+                  <option value="risk">По риску (сначала низкий)</option>
+                </select>
+
+                <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                  <span className="text-xs text-gray-500 mr-1">Риск:</span>
+                  {(['ALL', 'LOW', 'MEDIUM', 'HIGH'] as RiskFilter[]).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setRiskFilter(r)}
+                      className={clsx(
+                        'text-xs px-2.5 py-1 rounded-full border transition',
+                        riskFilter === r
+                          ? 'bg-[var(--brand)] text-white border-[var(--brand)]'
+                          : 'bg-transparent text-gray-600 border-gray-300'
+                      )}
+                      aria-pressed={riskFilter === r}
+                    >
+                      {r === 'ALL' ? 'Все' : r}
+                    </button>
+                  ))}
+                </div>
+
+                <ExchangeFilter
+                  exchanges={availableExchanges}
+                  selected={exchangeFilter}
+                  onChange={setExchangeFilter}
                 />
-              ))}
-            </div>
+              </div>
+
+              {filteredOpportunities.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  Нет возможностей под выбранные фильтры
+                </div>
+              ) : (
+                <>
+                  <div className="text-xs text-gray-500 mb-2">
+                    Показано {Math.min(visibleCount, filteredOpportunities.length)} из {filteredOpportunities.length}
+                  </div>
+                  <div className="space-y-3">
+                    {filteredOpportunities.slice(0, visibleCount).map((opp, idx) => (
+                      <OpportunityCard
+                        key={`${opp.pair}-${opp.exchangeA}-${opp.exchangeB}-${idx}`}
+                        opportunity={opp}
+                        onCalculate={() => {
+                          setSelectedOpportunity(opp);
+                          setShowModal(true);
+                        }}
+                      />
+                    ))}
+                  </div>
+                  {visibleCount < filteredOpportunities.length && (
+                    <button
+                      onClick={() => setVisibleCount((c) => c + 15)}
+                      className="btn btn-secondary text-sm py-2 w-full mt-3"
+                    >
+                      Показать ещё ({filteredOpportunities.length - visibleCount})
+                    </button>
+                  )}
+                </>
+              )}
+            </>
           )}
         </div>
       )}
