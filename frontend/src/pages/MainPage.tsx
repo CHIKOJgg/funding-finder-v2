@@ -6,7 +6,8 @@ import { PaywallModal } from '../components/PaywallModal';
 import { PaywallFeature } from '../utils/plans';
 import { apiClient } from '../api/client';
 import { formatNumber, getFundingColor } from '../utils/formatters';
-import { openExchange, exchangeLabel, ALL_EXCHANGES } from '../utils/exchanges';
+import { openExchange, exchangeLabel } from '../utils/exchanges';
+import { ExchangeSelector } from '../components/ExchangeSelector';
 import { HistoryChart } from '../components/HistoryChart';
 import { FundingCalendar } from '../components/FundingCalendar';
 import { CountdownTimer } from '../components/CountdownTimer';
@@ -15,8 +16,6 @@ import { PairMatrix } from '../components/PairMatrix';
 import { RiskProfileModal } from '../components/RiskProfileModal';
 import { ResultSkeleton } from '../components/Skeleton';
 import { ExchangeResult } from '../types';
-
-const EXCHANGES = ALL_EXCHANGES as unknown as readonly string[];
 
 type SortKey = 'rate' | 'volume' | 'interval';
 
@@ -43,19 +42,6 @@ export function MainPage() {
   // Bumped after each manual scan so the funding calendar (which polls on its
   // own timer) refreshes immediately instead of waiting up to 60s.
   const [calendarRefresh, setCalendarRefresh] = useState(0);
-
-  const toggleExchange = useCallback((exchange: string) => {
-    setSelectedExchanges((prev: string[]) => {
-      if (prev.includes(exchange)) {
-        return prev.filter((e: string) => e !== exchange);
-      }
-      if (prev.length >= planLimits.maxExchanges) {
-        setPaywallFeature('exchanges');
-        return prev;
-      }
-      return [...prev, exchange];
-    });
-  }, [setSelectedExchanges, planLimits.maxExchanges]);
 
   const handleScan = useCallback(async () => {
     if (selectedExchanges.length === 0) {
@@ -180,25 +166,14 @@ export function MainPage() {
       <QuickStart hasScanResults={Boolean(scanResults)} selectedCount={selectedExchanges.length} />
 
       <div className="card">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">Выберите биржи</h2>
-          <span className="chip" style={{ color: 'var(--text-muted)' }}>
-            {selectedExchanges.length}/{planLimits.maxExchanges}
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Exchange selection">
-          {EXCHANGES.map((exchange) => (
-            <button
-              key={exchange}
-              onClick={() => toggleExchange(exchange)}
-              className={clsx('exchange-btn', selectedExchanges.includes(exchange) && 'active')}
-              aria-pressed={selectedExchanges.includes(exchange)}
-              aria-label={`${exchange} exchange`}
-            >
-              {exchange.charAt(0).toUpperCase() + exchange.slice(1)}
-            </button>
-          ))}
-        </div>
+        <ExchangeSelector
+          value={selectedExchanges}
+          onChange={setSelectedExchanges}
+          maxExchanges={planLimits.maxExchanges}
+          onLimitReached={() => setPaywallFeature('exchanges')}
+          title="Выберите биржи"
+          showCount
+        />
 
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="capital-input">

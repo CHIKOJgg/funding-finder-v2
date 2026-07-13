@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '../components/Toast';
 import { apiClient } from '../api/client';
 import { ALL_EXCHANGES } from '../utils/exchanges';
+import { ExchangeSelector } from '../components/ExchangeSelector';
 
 interface UserSettings {
   telegramNotifications: boolean;
@@ -19,7 +20,6 @@ interface UserSettings {
   minRateFilter: number;
 }
 
-const EXCHANGES = ALL_EXCHANGES;
 const DEFAULT_SETTINGS: UserSettings = {
   telegramNotifications: true,
   emailNotifications: false,
@@ -86,15 +86,6 @@ export function SettingsPage() {
       showToast('Ошибка сброса', 'error');
     }
   }, [showToast]);
-
-  const toggleExchange = (exchange: string) => {
-    setSettings((prev) => ({
-      ...prev,
-      defaultExchanges: prev.defaultExchanges.includes(exchange)
-        ? prev.defaultExchanges.filter((e) => e !== exchange)
-        : [...prev.defaultExchanges, exchange],
-    }));
-  };
 
   if (loading) {
     return (
@@ -202,18 +193,11 @@ export function SettingsPage() {
       </div>
 
       <div className="card">
-        <h2 className="text-lg font-semibold mb-3">Биржи по умолчанию</h2>
-        <div className="flex flex-wrap gap-2">
-          {EXCHANGES.map((exchange) => (
-            <button
-              key={exchange}
-              onClick={() => toggleExchange(exchange)}
-              className={`exchange-btn ${settings.defaultExchanges.includes(exchange) ? 'active' : ''}`}
-            >
-              {exchange.charAt(0).toUpperCase() + exchange.slice(1)}
-            </button>
-          ))}
-        </div>
+        <ExchangeSelector
+          value={settings.defaultExchanges}
+          onChange={(next) => setSettings((prev) => ({ ...prev, defaultExchanges: next }))}
+          title="Биржи по умолчанию"
+        />
       </div>
 
       <div className="card">
