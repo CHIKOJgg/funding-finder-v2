@@ -320,8 +320,9 @@ async function fetchBulkTickers(exchange: string): Promise<Map<string, number> |
     }
   }
 
-  // Cache for 15 seconds
+  // Cache for 10 seconds — matches the live funding-rate cadence so prices and
+  // funding stay in sync on the 10s UI poll instead of prices lagging 15s.
   const { cache } = await import('../utils/exchangeClient.js');
-  cache.set(cacheKey, map, 15_000);
+  cache.set(cacheKey, map, 10_000);
   return map;
 }

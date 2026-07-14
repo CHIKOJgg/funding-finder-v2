@@ -25,6 +25,17 @@ const router = Router();
 // Arbitrage tab never blocks on a cold 25-exchange live scan.
 const SCAN_STALE_MS = 60_000;
 
+// Cache the LAST computed opportunities per exchange-set. The UI polls this
+// endpoint on an interval; returning a cached (or last-good) result means the
+// poll is always instant and never surfaces as "can't load opportunities" just
+// because a fresh live scan is temporarily slow or unavailable.
+const arbOppCache = new Map<string, { opportunities: any[]; metadata: any; ts: number }>();
+const ARB_OPP_CACHE_TTL_MS = 60_000;
+
+function arbOppKey(exchanges: string[]): string {
+  return [...new Set(exchanges)].sort().join(',');
+}
+
 const createAlertSchema = z.object({
   pair: z.string().min(1),
   exchangeA: z.string().min(1),
@@ -119,22 +130,34 @@ router.post('/alerts/arbitrage/:alertId/toggle', async (req, res) => {
 });
 
 router.get('/arbitrage/opportunities', async (req, res) => {
-  try {
-    const exchangesParam = req.query.exchanges as string;
-    let exchanges = exchangesParam
-      ? exchangesParam.split(',').filter((e) => SUPPORTED_EXCHANGES.includes(e))
-      : SUPPORTED_EXCHANGES;
-    if (exchanges.length === 0) exchanges = SUPPORTED_EXCHANGES;
+  const exchangesParam = req.query.exchanges as string;
+  let exchanges = exchangesParam
+    ? exchangesParam.split(',').filter((e) => SUPPORTED_EXCHANGES.includes(e))
+    : SUPPORTED_EXCHANGES;
+  if (exchanges.length === 0) exchanges = SUPPORTED_EXCHANGES;
 
-    // Cap to the user's plan so a free user can never trigger a full 25-exchange
-    // live scan (that's what was timing out and surfacing as a network error).
+  // Cap to the user's plan so a free user can never trigger a full 25-exchange
+  // live scan (that's what was timing out and surfacing as a network error).
+  try {
     const userId = (req as AuthenticatedRequest).userId!;
     const limits = await getSubscriptionLimits(userId);
     if (exchanges.length > limits.maxExchanges) {
-      // Request only what the plan allows instead of hard-failing.
       exchanges = exchanges.slice(0, limits.maxExchanges);
     }
+  } catch {
+    // If we can't read plan limits, proceed with the requested set.
+  }
 
+  const key = arbOppKey(exchanges);
+
+  // Fast path: return the recently computed opportunities instantly. The UI
+  // polls this, so this is what keeps the tab responsive and API-light.
+  const cachedOpp = arbOppCache.get(key);
+  if (cachedOpp && Date.now() - cachedOpp.ts < ARB_OPP_CACHE_TTL_MS) {
+    return res.json({ ok: true, opportunities: cachedOpp.opportunities, metadata: cachedOpp.metadata, cached: true });
+  }
+
+  try {
     // SWR: return a cached scan immediately if one covers these exchanges
     // (the warm full-set cache counts as a superset), refresh in the background.
     const cached = getCachedScan(exchanges);
@@ -157,20 +180,25 @@ router.get('/arbitrage/opportunities', async (req, res) => {
     ];
 
     const opportunities = await detectArbitrageOpportunities(allResults);
+    const metadata = {
+      scanned: scanResults.scanned,
+      intervalDistribution: scanResults.metrics.intervalDistribution,
+      averageIntervalHours: scanResults.metrics.averageIntervalHours,
+    };
+    arbOppCache.set(key, { opportunities, metadata, ts: Date.now() });
 
-    res.json({
-      ok: true,
-      opportunities,
-      metadata: {
-        scanned: scanResults.scanned,
-        intervalDistribution: scanResults.metrics.intervalDistribution,
-        averageIntervalHours: scanResults.metrics.averageIntervalHours,
-      },
-    });
+    return res.json({ ok: true, opportunities, metadata });
   } catch (e) {
     const error = e as Error;
+    // Serve the last good opportunities so a transient scan failure never
+    // surfaces as "can't load new opportunities" on a routine poll.
+    const stale = arbOppCache.get(key);
+    if (stale) {
+      logger.warn({ err: error.message }, 'Arbitrage opportunities served stale after scan error');
+      return res.json({ ok: true, opportunities: stale.opportunities, metadata: stale.metadata, stale: true });
+    }
     logger.error({ err: error }, 'Arbitrage opportunities error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    return res.status(500).json({ ok: false, error: error.message || String(error) });
   }
 });
 

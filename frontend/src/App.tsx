@@ -58,7 +58,7 @@ interface AppContextType {
   setArbAlerts: React.Dispatch<React.SetStateAction<any[]>>;
   arbLoading: boolean;
   arbLoaded: boolean;
-  loadArbitrage: (force?: boolean) => Promise<void>;
+  loadArbitrage: (force?: boolean, opts?: { silent?: boolean }) => Promise<void>;
   loadAlerts: (force?: boolean) => Promise<void>;
   // Latest live opportunities pushed over WebSocket (server warm-up broadcast).
   liveFundingAt: number | null;
@@ -274,7 +274,7 @@ function DataProvider() {
     return p;
   }, [showToast, t]);
 
-  const loadArbitrage = useCallback((force = false) => {
+  const loadArbitrage = useCallback((force = false, opts?: { silent?: boolean }) => {
     if (arbInFlight.current) return arbInFlight.current;
     if (!force && arbLoaded) return Promise.resolve();
     setArbLoading(true);
@@ -288,12 +288,14 @@ function DataProvider() {
         if (response.ok) {
           setArbOpportunities(response.opportunities || []);
           setArbLoaded(true);
-        } else {
+        } else if (!opts?.silent) {
           showToast(t('app.loadOppError') + ': ' + (response.error || ''), 'error');
         }
-    } catch (error) {
-      showToast(t('app.loadOppError'), 'error');
-    } finally {
+      } catch (error) {
+        // Background/auto refreshes fail silently: keep the last good data on
+        // screen instead of spamming "can't load opportunities" every poll.
+        if (!opts?.silent) showToast(t('app.loadOppError'), 'error');
+      } finally {
         setArbLoading(false);
         arbInFlight.current = null;
       }
@@ -343,7 +345,7 @@ function DataProvider() {
       t('app.newSpread', { pair: data.pair, a: data.exchangeA, b: data.exchangeB, diff: diffPct }),
       'spread'
     );
-    if (user?.id) loadArbitrage(true);
+    if (user?.id) loadArbitrage(true, { silent: true });
   }, [showToast, user?.id, loadArbitrage]);
 
   // Live funding broadcast: the server sends a freshness ping on every warm-up

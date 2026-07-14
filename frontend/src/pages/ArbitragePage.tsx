@@ -143,11 +143,14 @@ export function ArbitragePage() {
   }, [arbOpportunities, liveFundingAt]);
 
   useEffect(() => {
+    // Background refreshes are silent: any transient miss keeps the last good
+    // list on screen instead of spamming "can't load opportunities". Only the
+    // first load and the manual 🔄 button surface errors.
     const id = setInterval(() => {
-      if (!document.hidden) loadArbitrage(true);
+      if (!document.hidden) loadArbitrage(true, { silent: true });
     }, 90_000);
     const onVisible = () => {
-      if (!document.hidden) loadArbitrage(true);
+      if (!document.hidden) loadArbitrage(true, { silent: true });
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
