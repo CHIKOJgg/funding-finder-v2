@@ -3,11 +3,15 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { PaywallModal } from '../components/PaywallModal';
 
+import { LanguageProvider } from '../i18n';
+
 describe('PaywallModal', () => {
   it('renders nothing when closed', () => {
     const { container } = render(
       <MemoryRouter>
-        <PaywallModal open={false} feature="ai" onClose={() => {}} />
+        <LanguageProvider>
+          <PaywallModal open={false} feature="ai" onClose={() => {}} />
+        </LanguageProvider>
       </MemoryRouter>
     );
     expect(container.innerHTML).toBe('');
@@ -16,7 +20,9 @@ describe('PaywallModal', () => {
   it('renders feature title and upgrade CTA when open', () => {
     render(
       <MemoryRouter>
-        <PaywallModal open={true} feature="exchanges" onClose={() => {}} />
+        <LanguageProvider>
+          <PaywallModal open={true} feature="exchanges" onClose={() => {}} />
+        </LanguageProvider>
       </MemoryRouter>
     );
     expect(screen.getByText('Больше бирж')).toBeInTheDocument();
@@ -28,7 +34,9 @@ describe('PaywallModal', () => {
     const onClose = vi.fn();
     render(
       <MemoryRouter>
-        <PaywallModal open={true} feature="ai" onClose={onClose} />
+        <LanguageProvider>
+          <PaywallModal open={true} feature="ai" onClose={onClose} />
+        </LanguageProvider>
       </MemoryRouter>
     );
     fireEvent.click(screen.getByText('Не сейчас'));

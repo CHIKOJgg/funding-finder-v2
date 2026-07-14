@@ -3,11 +3,15 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { PaywallModal } from '../components/PaywallModal';
 
+import { LanguageProvider } from '../i18n';
+
 describe('PaywallModal portfolio feature', () => {
   it('renders portfolio feature details and trial CTA', () => {
     render(
       <MemoryRouter>
-        <PaywallModal open={true} feature="portfolio" onClose={() => {}} />
+        <LanguageProvider>
+          <PaywallModal open={true} feature="portfolio" onClose={() => {}} />
+        </LanguageProvider>
       </MemoryRouter>
     );
     expect(screen.getByText('Симулятор портфеля')).toBeInTheDocument();

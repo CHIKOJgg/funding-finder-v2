@@ -3,11 +3,15 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Navigation } from '../components/Navigation';
 
+import { LanguageProvider } from '../i18n';
+
 describe('Navigation', () => {
   it('renders three tabs', () => {
     render(
       <MemoryRouter>
-        <Navigation />
+        <LanguageProvider>
+          <Navigation />
+        </LanguageProvider>
       </MemoryRouter>
     );
     expect(screen.getByText('Главная')).toBeInTheDocument();
@@ -18,7 +22,9 @@ describe('Navigation', () => {
   it('marks active tab based on current route', () => {
     render(
       <MemoryRouter initialEntries={['/arbitrage']}>
-        <Navigation />
+        <LanguageProvider>
+          <Navigation />
+        </LanguageProvider>
       </MemoryRouter>
     );
     const arbitrageTab = screen.getByText('Арбитраж');
