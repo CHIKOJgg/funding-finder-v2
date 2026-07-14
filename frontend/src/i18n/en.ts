@@ -112,6 +112,7 @@ export const en: Record<string, string> = {
   'main.outOf': ' of {count}',
   'main.volume': 'Volume: {v} USD',
   'main.price': 'Price: {p}',
+  'main.realRate': 'Funding rate: {r}%',
   'main.interval': 'Interval: {h}h ({s})',
   'main.untilFunding': 'until funding',
   'main.openOnExchange': 'Open {contract} on {exchange}',

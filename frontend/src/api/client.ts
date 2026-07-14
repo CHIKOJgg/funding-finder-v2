@@ -379,13 +379,13 @@ export const apiClient = {
     return retryRequest(() => api.get('/portfolio/orders'));
   },
 
-  // ---- OI Tracker (live open interest) ----
-  async getOpenInterest(exchange: string, pair: string) {
-    return retryRequest(() => api.get('/charts/oi', { params: { exchange, pair } }));
-  },
-
   // ---- Spot-Futures (cash-and-carry) ----
   async getSpotFutures(exchange: string, pair: string) {
     return retryRequest(() => api.get('/arbitrage/spot-futures', { params: { exchange, pair } }));
+  },
+
+  // ---- Live perp prices for visible Funding rows (batched, per exchange) ----
+  async getPriceBatch(exchange: string, symbols: string[]) {
+    return retryRequest(() => api.get('/price/batch', { params: { exchange, symbols: symbols.join(',') } }));
   },
 };

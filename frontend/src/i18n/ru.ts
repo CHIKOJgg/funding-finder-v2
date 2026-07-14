@@ -112,6 +112,7 @@ export const ru: Record<string, string> = {
   'main.outOf': ' из {count}',
   'main.volume': 'Объем: {v} USD',
   'main.price': 'Цена: {p}',
+  'main.realRate': 'Ставка фандинга: {r}%',
   'main.interval': 'Интервал: {h}ч ({s})',
   'main.untilFunding': 'до фандинга',
   'main.openOnExchange': 'Открыть {contract} на {exchange}',

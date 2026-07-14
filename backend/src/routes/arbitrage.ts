@@ -11,6 +11,7 @@ import {
   calculateProfit,
 } from '../services/arbitrageService.js';
 import { getSpotFutures, SF_SUPPORTED_EXCHANGES } from '../services/spotFuturesService.js';
+import { getLivePriceBatch } from '../services/priceService.js';
 import { runScan } from '../services/scanService.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';
@@ -163,6 +164,44 @@ router.post('/arbitrage/calculate-profit', validate(calculateProfitSchema), asyn
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Profit calculation error');
+    res.status(500).json({ ok: false, error: error.message || String(error) });
+  }
+});
+
+// Spot-Futures (cash-and-carry) snapshot for a single pair: spot price, perp
+// mark, basis %, funding rate and the annualized yield of longing spot +
+// shorting the perp to collect funding.
+router.get('/arbitrage/spot-futures', async (req, res) => {
+  try {
+    const exchange = (req.query.exchange as string) || 'binance';
+    const pair = (req.query.pair as string) || 'BTCUSDT';
+    const data = await getSpotFutures(exchange, pair);
+    res.json({ ok: true, ...data, supportedExchanges: SF_SUPPORTED_EXCHANGES });
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Spot-futures error');
+    res.status(500).json({ ok: false, error: error.message || String(error) });
+  }
+});
+
+// Batch live perp prices for the symbols the user is currently viewing on the
+// Funding list. Keys are the (uppercased) symbols passed in; only visible rows
+// are ever requested, so this stays cheap.
+router.get('/price/batch', async (req, res) => {
+  try {
+    const exchange = (req.query.exchange as string) || 'binance';
+    const symbolsParam = req.query.symbols as string;
+    const symbols = symbolsParam
+      ? symbolsParam.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 50)
+      : [];
+    if (symbols.length === 0) {
+      return res.json({ ok: true, prices: {} });
+    }
+    const prices = await getLivePriceBatch(exchange, symbols);
+    res.json({ ok: true, prices });
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Price batch error');
     res.status(500).json({ ok: false, error: error.message || String(error) });
   }
 });

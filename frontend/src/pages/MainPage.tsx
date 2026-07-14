@@ -314,6 +314,7 @@ export function MainPage() {
               title={t('main.highYield')}
               count={scanResults.highYield.length}
               items={scanResults.highYield.slice(0, 10)}
+              limit={10}
               colorClass="text-green-700"
               onHistory={setHistoryModal}
               onAlert={setAlertModal}
@@ -329,6 +330,7 @@ export function MainPage() {
               title={t('main.mediumYield')}
               count={scanResults.mediumYield.length}
               items={scanResults.mediumYield.slice(0, 10)}
+              limit={10}
               colorClass="text-yellow-700"
               onHistory={setHistoryModal}
               onAlert={setAlertModal}
@@ -344,6 +346,7 @@ export function MainPage() {
               title={t('main.lowYield')}
               count={scanResults.lowYield.length}
               items={scanResults.lowYield.slice(0, 5)}
+              limit={5}
               colorClass="text-gray-700"
               onHistory={setHistoryModal}
               onAlert={setAlertModal}
@@ -500,10 +503,57 @@ export function MainPage() {
   );
 }
 
+// Fetches live perp prices for the symbols the user is actually viewing.
+// Prices are requested per exchange in one batched call and re-fetched every
+// 15s only while the rows are on screen — we never parse the whole market.
+function useLivePrices(items: ExchangeResult[]): Record<string, number> {
+  const [prices, setPrices] = useState<Record<string, number>>({});
+
+  const byExchange = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const it of items) {
+      (map[it.exchange] ||= []).push(it.contract);
+    }
+    return map;
+  }, [items]);
+
+  const depKey = useMemo(
+    () => Object.entries(byExchange).map(([ex, syms]) => `${ex}:${[...syms].sort().join(',')}`).sort().join('|'),
+    [byExchange]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const next: Record<string, number> = {};
+        await Promise.all(
+          Object.entries(byExchange).map(async ([ex, syms]) => {
+            const res: any = await apiClient.getPriceBatch(ex, syms);
+            if (res?.ok && res.prices) Object.assign(next, res.prices);
+          })
+        );
+        if (!cancelled) setPrices(next);
+      } catch {
+        /* keep previous prices on transient error */
+      }
+    };
+    load();
+    const id = setInterval(load, 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [depKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return prices;
+}
+
 const ResultSection = memo(function ResultSection({
   title,
   count,
   items,
+  limit,
   colorClass,
   onHistory,
   onAlert,
@@ -515,6 +565,7 @@ const ResultSection = memo(function ResultSection({
   title: string;
   count: number;
   items: ExchangeResult[];
+  limit: number;
   colorClass: string;
   onHistory: (data: { exchange: string; contract: string }) => void;
   onAlert: (data: { exchange: string; contract: string }) => void;
@@ -546,6 +597,11 @@ const ResultSection = memo(function ResultSection({
     }
   });
 
+  // Only the visible rows are ever shown / fetched — this is the optimization
+  // that keeps price parsing cheap (no whole-market scan on every refresh).
+  const visible = sorted.slice(0, limit);
+  const priceMap = useLivePrices(visible);
+
   if (sorted.length === 0 && searchQuery) return null;
 
   return (
@@ -554,8 +610,8 @@ const ResultSection = memo(function ResultSection({
         {title} ({sorted.length}{sorted.length < count ? t('main.outOf', { count }) : ''})
       </h3>
       <div className="space-y-2">
-        {sorted.map((item) => (
-          <ResultItem key={`${item.exchange}:${item.contract}`} item={item} onHistory={onHistory} onAlert={onAlert} />
+        {visible.map((item) => (
+          <ResultItem key={`${item.exchange}:${item.contract}`} item={item} livePrice={priceMap[item.contract.toUpperCase()]} onHistory={onHistory} onAlert={onAlert} />
         ))}
       </div>
     </div>
@@ -564,16 +620,19 @@ const ResultSection = memo(function ResultSection({
 
 const ResultItem = memo(function ResultItem({
   item,
+  livePrice,
   onHistory,
   onAlert,
 }: {
   item: ExchangeResult;
+  livePrice?: number;
   onHistory: (data: { exchange: string; contract: string }) => void;
   onAlert: (data: { exchange: string; contract: string }) => void;
 }) {
   const { isWatchlisted, toggleWatchlist } = useApp();
   const t = useT();
   const starred = isWatchlisted(item.exchange, item.contract);
+  const price = livePrice != null && !isNaN(livePrice) ? livePrice : item.mark_price;
   return (
     <div className="border-b border-gray-100 pb-2">
       <div className="flex justify-between items-start">
@@ -582,8 +641,13 @@ const ResultItem = memo(function ResultItem({
           <div className="text-xs text-gray-500">
             {t('main.volume', { v: formatNumber(item.volume_24h_settle) })}
           </div>
+          <div className="text-xs flex items-center gap-1">
+            <span className={clsx('inline-block w-1.5 h-1.5 rounded-full', livePrice != null ? 'bg-green-500 animate-pulse' : 'bg-gray-300')} aria-hidden="true" />
+            <span className="text-gray-800 font-medium">${formatNumber(price)}</span>
+            <span className="text-gray-400">{t('arb.live')}</span>
+          </div>
           <div className="text-xs text-gray-500">
-            {t('main.price', { p: formatNumber(item.mark_price) })}
+            {t('main.realRate', { r: ((item.currentFunding ?? 0) * 100).toFixed(4) })}
           </div>
           <div className="text-xs text-gray-500">
             {t('main.interval', { h: item.funding_interval_hours, s: item.funding_interval_source })}

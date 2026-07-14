@@ -47,7 +47,6 @@ import portfolioLiveRoutes from './routes/portfolioLive.js';
 import keysRoutes from './routes/keys.js';
 import webhookRoutes from './routes/webhook.js';
 import adminRoutes from './routes/admin.js';
-import chartsRoutes from './routes/charts.js';
 
 async function initSentry() {
   if (config.sentry.dsn) {
@@ -279,7 +278,6 @@ app.use('/api', authLimiter, authenticate, perUserLimiter(60, 15 * 60 * 1000), s
 app.use('/api', authLimiter, authenticate, perUserLimiter(30, 15 * 60 * 1000), aiRoutes);
 app.use('/api', authLimiter, authenticate, historyRoutes);
 app.use('/api', authLimiter, authenticate, analyticsRoutes);
-app.use('/api', authLimiter, authenticate, chartsRoutes);
 
 // Admin routes (require admin role)
 app.use('/api', authenticate, adminRoutes);

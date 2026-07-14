@@ -6,7 +6,6 @@ import { useT } from '../i18n';
 const tabs = [
   { path: '/', key: 'nav.main', icon: '📊', ariaLabel: 'Main page - scan funding rates' },
   { path: '/arbitrage', key: 'nav.arbitrage', icon: '🔄', ariaLabel: 'Arbitrage opportunities' },
-  { path: '/oi-tracker', key: 'nav.oi', icon: '📈', ariaLabel: 'Open interest tracker' },
   { path: '/portfolio', key: 'nav.portfolio', icon: '💼', ariaLabel: 'Portfolio simulator (Pro)' },
   { path: '/profile', key: 'nav.profile', icon: '👤', ariaLabel: 'User profile and subscriptions' },
 ];

@@ -23,7 +23,6 @@ const PrivacyPage = React.lazy(() => import('./pages/PrivacyPage').then(m => ({ 
 const AdminPage = React.lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const PortfolioPage = React.lazy(() => import('./pages/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
-const OITrackerPage = React.lazy(() => import('./pages/OITrackerPage').then(m => ({ default: m.OITrackerPage })));
 
 interface AppContextType {
   user: { id: string; firstName?: string; username?: string; subscription?: string } | null;
@@ -415,7 +414,6 @@ function DataProvider() {
                     <Route path="/admin" element={<ErrorBoundary><AdminPage /></ErrorBoundary>} />
                     <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
                     <Route path="/portfolio" element={<ErrorBoundary><PortfolioPage /></ErrorBoundary>} />
-                    <Route path="/oi-tracker" element={<ErrorBoundary><OITrackerPage /></ErrorBoundary>} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </Suspense>
