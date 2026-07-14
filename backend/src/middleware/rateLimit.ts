@@ -18,8 +18,8 @@ export function perUserLimiter(max: number, windowMs: number) {
     limit: max,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req: Request, res: Response) =>
-      (req as any).user?.id || (req as any).userId || ipKeyGenerator(req, res),
+    keyGenerator: (req: Request, _res: Response) =>
+      (req as any).user?.id || (req as any).userId || ipKeyGenerator(req.ip as string),
     message: { ok: false, error: 'Too many requests, please slow down' },
   });
 }
