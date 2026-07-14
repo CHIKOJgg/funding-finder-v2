@@ -76,7 +76,7 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
         const d = r.data;
         const rate = num(d?.funding_rate);
         if (rate == null) return null;
-        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: Number(d?.funding_next_apply) || 0 };
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: (Number(d?.funding_next_apply) || 0) * 1000 };
       }
       case 'mexc': {
         const r = await cachedRequest(`funding:mexc:${symbol}`, () =>

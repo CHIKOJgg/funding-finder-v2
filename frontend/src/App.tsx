@@ -191,9 +191,9 @@ function DataProvider() {
         showToast(res.error, 'error');
       }
     } catch (error) {
-      showToast('Ошибка сети: ' + (error as Error).message, 'error');
+      showToast(t('networkError', { message: (error as Error).message }), 'error');
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   // Watchlist state
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
@@ -272,7 +272,7 @@ function DataProvider() {
     })();
     scanInFlight.current = p;
     return p;
-  }, [showToast]);
+  }, [showToast, t]);
 
   const loadArbitrage = useCallback((force = false) => {
     if (arbInFlight.current) return arbInFlight.current;
@@ -294,7 +294,7 @@ function DataProvider() {
     })();
     arbInFlight.current = p;
     return p;
-  }, [arbLoaded, showToast]);
+  }, [arbLoaded, showToast, t]);
 
   const loadAlerts = useCallback((force = false) => {
     if (alertsInFlight.current) return alertsInFlight.current;
@@ -350,10 +350,16 @@ function DataProvider() {
 
   // For the website we authenticate the WebSocket with the JWT; for the
   // Telegram mini-app we pass the init data.
-  const wsAuth = isWeb
+  const wsAuth = useMemo(() => isWeb
     ? { token: getAuthToken() }
-    : { initData };
-  useWebSocket(wsAuth, { onNewSpread: handleNewSpread, onLiveFunding: applyLiveFunding });
+    : { initData }, [isWeb, initData]);
+  useWebSocket(wsAuth, {
+    onNewSpread: handleNewSpread,
+    onLiveFunding: applyLiveFunding,
+    onAlertTriggered: useCallback(() => {
+      loadAlerts(true);
+    }, [loadAlerts]),
+  });
 
   const contextValue = useMemo<AppContextType>(() => ({
     user,

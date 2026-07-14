@@ -172,7 +172,7 @@ async function fetchPrice(exchange: string, symbol: string): Promise<number | nu
         return num(f?.mark_price);
       }
       case 'apex': {
-        const r = await axios.get('https://omni.apex.exchange/api/v3/v3/ticker', { params: { symbol }, timeout: 10000 });
+        const r = await axios.get('https://omni.apex.exchange/api/v3/ticker', { params: { symbol }, timeout: 10000 });
         const d = Array.isArray(r.data?.data) ? r.data.data[0] : r.data?.data;
         return num(d?.markPrice) || num(d?.lastPrice);
       }
@@ -206,13 +206,37 @@ async function fetchPrice(exchange: string, symbol: string): Promise<number | nu
  * list and the Arbitrage cards, which only ever pass the symbols the user can
  * currently see. Symbols may arrive as "BTC/USDT" (arbitrage) or as the native
  * per-exchange contract (Funding list); both are normalized via `toNative`.
+ *
+ * For exchanges with bulk ticker endpoints (Binance, Bybit, OKX, etc.), we
+ * fetch all tickers once and look up individual symbols from the map, avoiding
+ * N separate HTTP requests.
  */
 export async function getLivePriceBatch(exchange: string, symbols: string[]): Promise<Record<string, number>> {
   const unique = [...new Set(symbols.map((s) => s.toUpperCase()))].slice(0, 50);
+  const lower = exchange.toLowerCase();
+
+  // Use bulk ticker endpoints for exchanges that support them
+  if (lower === 'binance' || lower === 'bybit' || lower === 'okx' || lower === 'bitget' || lower === 'mexc') {
+    try {
+      const bulkMap = await fetchBulkTickers(lower);
+      if (bulkMap) {
+        const map: Record<string, number> = {};
+        for (const s of unique) {
+          const native = toNative(lower, s);
+          const price = bulkMap.get(native);
+          if (price != null) map[s] = price;
+        }
+        return map;
+      }
+    } catch {
+      // Fall through to individual fetching
+    }
+  }
+
   const entries = await Promise.all(
     unique.map(async (s) => {
-      const native = toNative(exchange, s);
-      const price = await cachedRequest(`price:${exchange}:${native}`, () => fetchPrice(exchange, native), PRICE_CACHE_TTL_MS);
+      const native = toNative(lower, s);
+      const price = await cachedRequest(`price:${lower}:${native}`, () => fetchPrice(lower, native), PRICE_CACHE_TTL_MS);
       return [s, price] as const;
     })
   );
@@ -220,5 +244,84 @@ export async function getLivePriceBatch(exchange: string, symbols: string[]): Pr
   for (const [s, p] of entries) {
     if (p != null) map[s] = p;
   }
+  return map;
+}
+
+async function fetchBulkTickers(exchange: string): Promise<Map<string, number> | null> {
+  const cacheKey = `bulkTickers:${exchange}`;
+  const cached = (await import('../utils/exchangeClient.js')).cache.get<Map<string, number>>(cacheKey);
+  if (cached) return cached;
+
+  let data: any[] | null = null;
+  try {
+    switch (exchange) {
+      case 'binance': {
+        const r = await axios.get('https://fapi.binance.com/fapi/v1/ticker/24hr', { timeout: 15000 });
+        data = r.data;
+        break;
+      }
+      case 'bybit': {
+        const r = await axios.get('https://api.bybit.com/v5/market/tickers', { params: { category: 'linear' }, timeout: 15000 });
+        data = r.data?.result?.list;
+        break;
+      }
+      case 'okx': {
+        const r = await axios.get('https://www.okx.com/api/v5/market/tickers', { params: { instType: 'SWAP' }, timeout: 15000 });
+        data = r.data?.data;
+        break;
+      }
+      case 'bitget': {
+        const r = await axios.get('https://api.bitget.com/api/v2/mix/market/tickers', { params: { productType: 'usdt-futures' }, timeout: 15000 });
+        data = r.data?.data;
+        break;
+      }
+      case 'mexc': {
+        const r = await axios.get('https://contract.mexc.com/api/v1/contract/ticker', { timeout: 15000 });
+        data = r.data?.data;
+        break;
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  if (!data || !Array.isArray(data)) return null;
+
+  const map = new Map<string, number>();
+  for (const t of data) {
+    let symbol: string | undefined;
+    let price: number | null = null;
+
+    switch (exchange) {
+      case 'binance':
+        symbol = t.symbol;
+        price = parseFloat(t.lastPrice);
+        break;
+      case 'bybit':
+        symbol = t.symbol;
+        price = parseFloat(t.lastPrice);
+        break;
+      case 'okx':
+        symbol = t.instId;
+        price = parseFloat(t.last) || parseFloat(t.markPx);
+        break;
+      case 'bitget':
+        symbol = t.symbol;
+        price = parseFloat(t.markPrice) || parseFloat(t.lastPr);
+        break;
+      case 'mexc':
+        symbol = t.symbol;
+        price = parseFloat(t.lastPrice) || parseFloat(t.fairPrice);
+        break;
+    }
+
+    if (symbol && price != null && isFinite(price) && price > 0) {
+      map.set(symbol, price);
+    }
+  }
+
+  // Cache for 15 seconds
+  const { cache } = await import('../utils/exchangeClient.js');
+  cache.set(cacheKey, map, 15_000);
   return map;
 }

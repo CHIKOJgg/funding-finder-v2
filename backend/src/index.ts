@@ -459,9 +459,8 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled rejection:', reason);
-  if (config.isProduction) {
-    process.exit(1);
-  }
+  // Do NOT exit in production — a single unhandled rejection from a background
+  // task (alert evaluator, warm-up scan, etc.) should not kill the entire server.
 });
 
 process.on('uncaughtException', (err) => {

@@ -6,7 +6,7 @@ import { logger } from '../utils/logger.js';
 import { KNOWN_INTERVALS } from '../types/index.js';
 
 const BINANCE_BASE = 'https://fapi.binance.com';
-const CONCURRENCY = 8;
+const CONCURRENCY = 4;
 const BINANCE_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // Binance is always 8h
 
 // Fetch premium index for ALL symbols in a single request (vs N per-symbol
@@ -53,10 +53,10 @@ export async function scanBinance(): Promise<ExchangeResult[]> {
     const tickersAll = await cachedRequest(
       'binance:tickers:24hr',
       async () => {
-        const res = await retry(() => client.get('/fapi/v1/ticker/24hr'));
+        const res = await retry(() => client.get('/fapi/v1/ticker/24hr'), 4, 500);
         return res.data || [];
       },
-      60_000
+      120_000
     );
 
     logger.info(`Binance: Found ${tickersAll.length} tickers total`);
@@ -82,7 +82,7 @@ export async function scanBinance(): Promise<ExchangeResult[]> {
     try {
       premiumMap = await cachedRequest('binance:premiumIndex:all', async () => {
         return fetchAllPremiumIndices(client);
-      }, 60_000);
+      }, 120_000);
     } catch (err) {
       logger.debug(`Binance: Failed to fetch all premium indices: ${(err as Error).message}`);
     }

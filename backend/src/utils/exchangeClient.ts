@@ -45,6 +45,10 @@ class MemoryCache {
     return this.store.size;
   }
 
+  keys(): IterableIterator<string> {
+    return this.store.keys();
+  }
+
   private evictOldest(): void {
     let oldestKey: string | null = null;
     let oldestExpiry = Infinity;
@@ -210,14 +214,14 @@ export async function retry<T>(
       return await fn();
     } catch (err) {
       lastError = err as Error;
-      // Don't retry on 4xx errors (except 429)
+      // Don't retry on 4xx errors (except 429 and 418 — Binance anti-bot)
       if (axios.isAxiosError(err) && err.response?.status) {
         const status = err.response.status;
-        if (status >= 400 && status < 500 && status !== 429) {
+        if (status >= 400 && status < 500 && status !== 429 && status !== 418) {
           throw lastError;
         }
       }
-      const delay = baseDelay * Math.pow(2, i);
+      const delay = baseDelay * Math.pow(2, i) * (lastError.message.includes('418') ? 2 : 1);
       logger.debug(`Retry attempt ${i + 1}/${attempts} failed, waiting ${delay}ms: ${lastError.message}`);
       await sleep(delay);
     }

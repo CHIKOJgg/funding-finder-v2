@@ -16,11 +16,26 @@ export function scanCacheKey(exchanges: string[]): string {
 /**
  * Return a previously computed scan result if it is still fresh.
  * SWR (stale-while-revalidate) is implemented by callers using `ageMs`.
+ * Also supports superset matching: if a cached scan includes all requested
+ * exchanges (plus more), it can be reused to avoid duplicate scans.
  */
 export function getCachedScan(exchanges: string[]): { result: ScanResult; ts: number; ageMs: number } | null {
-  const entry = cache.get<{ result: ScanResult; ts: number }>(scanCacheKey(exchanges));
-  if (!entry) return null;
-  return { result: entry.result, ts: entry.ts, ageMs: Date.now() - entry.ts };
+  const key = scanCacheKey(exchanges);
+  const entry = cache.get<{ result: ScanResult; ts: number }>(key);
+  if (entry) return { result: entry.result, ts: entry.ts, ageMs: Date.now() - entry.ts };
+
+  // Superset matching: find a cached scan that includes all requested exchanges
+  const sorted = [...exchanges].sort().join(',');
+  for (const cacheKey of cache.keys()) {
+    if (!cacheKey.startsWith('scan:')) continue;
+    const cachedExchanges = cacheKey.replace('scan:', '');
+    // If the cached scan covers all requested exchanges, reuse it
+    if (sorted.split(',').every((e) => cachedExchanges.includes(e))) {
+      const entry2 = cache.get<{ result: ScanResult; ts: number }>(cacheKey);
+      if (entry2) return { result: entry2.result, ts: entry2.ts, ageMs: Date.now() - entry2.ts };
+    }
+  }
+  return null;
 }
 
 async function saveToHistory(result: ScanResult): Promise<void> {

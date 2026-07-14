@@ -53,6 +53,7 @@ export async function scanDrift(): Promise<ExchangeResult[]> {
           const pm = (await retry(() => client.get(`/perp-market/${symbol}`))).data;
           data = pm && pm.fundingRate !== undefined ? pm : pm?.data;
         }
+        if (!data || data.fundingRate === undefined) return null;
         const currentFunding = safeParseFloat(data.fundingRate);
         const mark = safeParseFloat(data.markPrice) || safeParseFloat(data.oraclePrice);
         const vol24 = safeParseFloat(data.volume24h);

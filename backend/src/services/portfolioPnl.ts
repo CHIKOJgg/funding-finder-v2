@@ -17,14 +17,16 @@ export interface PnlResult {
 }
 
 export function sideSign(side: PositionSide): number {
-  return side === 'long' ? 1 : -1;
+  // Crypto perpetual convention: positive funding rate means longs PAY shorts.
+  // So longs have negative income when rate > 0, shorts have positive income.
+  return side === 'long' ? -1 : 1;
 }
 
 /**
  * Simulate accumulated funding income for a paper position.
  *
- * Longs receive funding when the rate is positive; shorts pay it. Using a
- * representative (latest known) hourly rate, the accumulated income is:
+ * Positive funding rate: longs PAY shorts (long income negative, short positive).
+ * Negative funding rate: shorts PAY longs (long income positive, short negative).
  *   ratePerHour * sizeUsd * hoursHeld * sideSign
  *
  * This is purely a calculation — no exchange keys, no real positions.

@@ -209,6 +209,9 @@ function canonicalPairKey(contract: string): string {
   // Treat USD-quoted perps (dYdX, Paradex) as matching USDT perps so cross-exchange
   // funding-rate comparison includes DEX pairs.
   if (key.endsWith('USD')) key += 'T';
+  // Hyperliquid and Drift return bare coin names (e.g. "BTC", "SOL").
+  // Append USDT so they match CEX pairs like "BTCUSDT".
+  if (key.length <= 5 && !key.endsWith('USDT') && !key.endsWith('USDC')) key += 'USDT';
   return key;
 }
 

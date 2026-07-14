@@ -9,8 +9,6 @@ import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { ExchangeSelect } from '../components/ExchangeSelect';
 import { FilterBar, FilterField, SegmentedControl } from '../components/FilterBar';
-import { useWebSocket } from '../hooks/useWebSocket';
-import { getAuthToken } from '../api/client';
 import { useT } from '../i18n';
 import { SpotFuturesPanel } from '../components/SpotFuturesPanel';
 type ArbSortKey = 'apy' | 'daily' | 'hourly' | 'risk';
@@ -115,7 +113,7 @@ function useArbLivePrices(opps: any[]): {
 }
 
 export function ArbitragePage() {
-  const { user, isWeb, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts, liveFundingAt } = useApp();
+  const { user, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts, liveFundingAt } = useApp();
   const { showToast } = useToast();
   const t = useT();
   const [activeTab, setActiveTab] = useState<'opportunities' | 'alerts' | 'spotfutures'>('opportunities');
@@ -130,15 +128,6 @@ export function ArbitragePage() {
   const [minApy, setMinApy] = useState(0);
   const [pairQuery, setPairQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(15);
-
-  const initData = window.Telegram?.WebApp?.initData || null;
-  const wsAuth = isWeb ? { token: getAuthToken() } : { initData };
-  useWebSocket(wsAuth, {
-    onAlertTriggered: useCallback(() => {
-      loadAlerts(true);
-      showToast(t('arb.newAlert'), 'success');
-    }, [loadAlerts, showToast]),
-  });
 
   useEffect(() => {
     // Cache-first: these only fetch if data isn't already loaded (or in-flight),

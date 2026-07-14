@@ -297,7 +297,7 @@ const LiveTab = memo(function LiveTab({
     setExporting(true);
     try {
       const res: any = await apiClient.exportLivePortfolio();
-      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8' });
+      const blob = res instanceof Blob ? res : new Blob([res.data], { type: 'text/csv;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

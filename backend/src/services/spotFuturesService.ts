@@ -85,7 +85,7 @@ async function gateSF(pair: string): Promise<RawSF> {
     return m ? `${m[1]}_${m[2]}` : pair.toUpperCase();
   })();
   const [perp, spot] = await Promise.all([
-    axios.get(`https://api.gateio.ws/api/v4/futures/usdt/contracts/${cp}`, { timeout: 10000 }),
+    axios.get(`https://fx-api.gateio.ws/api/v4/futures/usdt/contracts/${cp}`, { timeout: 10000 }),
     axios.get('https://api.gateio.ws/api/v4/spot/tickers', { params: { currency_pair: cp }, timeout: 10000 }),
   ]);
   const s = spot.data?.[0];
@@ -100,15 +100,15 @@ async function gateSF(pair: string): Promise<RawSF> {
 async function mexcSF(pair: string): Promise<RawSF> {
   const symbol = pair.toUpperCase();
   const [perp, spot, funding] = await Promise.all([
-    axios.get('https://api.mexc.com/api/v3/contract/ticker/price', { params: { symbol }, timeout: 10000 }),
+    axios.get('https://contract.mexc.com/api/v1/contract/ticker', { params: { symbol }, timeout: 10000 }),
     axios.get('https://api.mexc.com/api/v3/ticker/price', { params: { symbol }, timeout: 10000 }),
-    axios.get('https://api.mexc.com/api/v3/contract/funding_rate', { params: { symbol }, timeout: 10000 }),
+    axios.get('https://contract.mexc.com/api/v1/contract/funding_rate', { params: { symbol }, timeout: 10000 }),
   ]);
   return {
     symbol,
     spotPrice: parseFloat(spot.data?.price) || 0,
-    perpMark: parseFloat(perp.data?.price) || 0,
-    fundingRate: parseFloat(funding.data?.fundingRate) || 0,
+    perpMark: parseFloat(perp.data?.data?.fairPrice) || parseFloat(perp.data?.data?.lastPrice) || 0,
+    fundingRate: parseFloat(funding.data?.data?.fundingRate) || 0,
   };
 }
 

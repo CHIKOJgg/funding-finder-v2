@@ -136,10 +136,18 @@ async function evaluateAllAlerts(): Promise<void> {
 
   // Batch user lookups (instead of N+1)
   const uniqueUserIds = [...new Set(triggeredAlerts.map((t) => t.userId))];
-  const users = await prisma.user.findMany({
-    where: { telegramId: { in: uniqueUserIds } },
-  });
-  const userMap = new Map(users.map((u) => [u.telegramId, u]));
+  // Support both Telegram users (id = tg_XXXX) and web users (id = wallet_0x.../google_...)
+  const tgIds = uniqueUserIds.filter((id) => id.startsWith('tg_'));
+  const otherIds = uniqueUserIds.filter((id) => !id.startsWith('tg_'));
+
+  const [tgUsers, webUsers] = await Promise.all([
+    tgIds.length ? prisma.user.findMany({ where: { telegramId: { in: tgIds } } }) : [],
+    otherIds.length ? prisma.user.findMany({ where: { id: { in: otherIds } } }) : [],
+  ]);
+
+  const userMap = new Map<string, any>();
+  for (const u of tgUsers) userMap.set(u.telegramId, u);
+  for (const u of webUsers) userMap.set(u.id, u);
 
   // Send notifications (Telegram + Email)
   const notifications: Promise<any>[] = [];

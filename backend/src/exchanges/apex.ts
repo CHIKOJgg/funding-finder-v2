@@ -23,7 +23,7 @@ export async function scanApex(): Promise<ExchangeResult[]> {
     const symbols = await cachedRequest(
       'apex:symbols',
       async () => {
-        const res = await retry(() => client.get('/v3/symbols'));
+        const res = await retry(() => client.get('/symbols'));
         return res.data?.data || [];
       },
       6 * 60 * 60 * 1000
@@ -37,7 +37,7 @@ export async function scanApex(): Promise<ExchangeResult[]> {
     const results = await mapWithConcurrency(candidates, { concurrency: CONCURRENCY }, async (s: any) => {
       const symbol = s.symbol; // BTCUSDT
       try {
-        const tk = await retry(() => client.get('/v3/ticker', { params: { symbol }, timeout: 10000 }));
+        const tk = await retry(() => client.get('/ticker', { params: { symbol }, timeout: 10000 }));
         const t = Array.isArray(tk.data?.data) ? tk.data.data[0] : tk.data?.data;
         if (!t) return null;
 

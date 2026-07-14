@@ -48,7 +48,7 @@ export async function scanGate(): Promise<ExchangeResult[]> {
 
         // Get funding rate from ticker (fast path)
         let fundingRate = parseFloat(t.funding_rate) || 0;
-        let nextFunding = Number(t.funding_next_apply) || 0;
+        let nextFunding = (Number(t.funding_next_apply) || 0) * 1000;
 
         // If values are missing, try contract info
         if (!fundingRate || !nextFunding) {
@@ -60,7 +60,7 @@ export async function scanGate(): Promise<ExchangeResult[]> {
             );
             const d = info.data || {};
             fundingRate = parseFloat(fundingRate || d.funding_rate || 0);
-            nextFunding = Number(nextFunding || d.funding_next_apply || 0);
+            nextFunding = nextFunding || ((Number(d.funding_next_apply) || 0) * 1000);
           } catch (err) {
             logger.debug(`Gate: Info fallback failed for ${contract}: ${(err as Error).message}`);
           }
