@@ -64,11 +64,11 @@ export function PortfolioPage() {
       const res: any = await apiClient.getLivePortfolio();
       if (res?.ok) setLive(res);
     } catch (err: any) {
-      showToast(err?.error || t('portfolio.loadError'), 'error');
+      showToast(err?.message || t('portfolio.loadError'), 'error');
     } finally {
       setLiveLoading(false);
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   useEffect(() => {
     if (!planLimits.portfolioEnabled) {
@@ -96,7 +96,9 @@ export function PortfolioPage() {
       } else if (res?.error) {
         showToast(res.error, 'error');
       }
-    } catch { /* ignore */ } finally {
+    } catch (err: any) {
+      showToast(err?.message || t('portfolio.addError'), 'error');
+    } finally {
       setSaving(false);
     }
   }, [exchange, pair, side, sizeUsd, leverage, showToast, loadSim]);
@@ -105,8 +107,10 @@ export function PortfolioPage() {
     try {
       await apiClient.removePortfolio(id);
       setPositions((prev) => prev.filter((p) => p.id !== id));
-    } catch { /* ignore */ }
-  }, []);
+    } catch (err: any) {
+      showToast(err?.message || t('portfolio.removeError'), 'error');
+    }
+  }, [showToast, t]);
 
   const totalIncome = positions.reduce((sum, p) => sum + (p.pnl?.fundingIncome || 0), 0);
 
@@ -233,20 +237,25 @@ export function PortfolioPage() {
           target={autoTarget}
           onClose={() => setAutoTarget(null)}
           onConfirm={async (notional) => {
-            const res: any = await apiClient.autoExecuteOrder({
-              exchange: autoTarget.exchange,
-              symbol: autoTarget.symbol,
-              side: autoTarget.side,
-              notionalUsd: notional,
-              confirm: true,
-            });
-            if (res?.ok) {
-              showToast(t('portfolio.orderSent'), 'success');
-              loadLive();
-            } else {
-              showToast(res?.error || t('portfolio.execFailed'), 'error');
+            try {
+              const res: any = await apiClient.autoExecuteOrder({
+                exchange: autoTarget.exchange,
+                symbol: autoTarget.symbol,
+                side: autoTarget.side,
+                notionalUsd: notional,
+                confirm: true,
+              });
+              if (res?.ok) {
+                showToast(t('portfolio.orderSent'), 'success');
+                loadLive();
+              } else {
+                showToast(res?.error || t('portfolio.execFailed'), 'error');
+              }
+              return res;
+            } catch (err: any) {
+              showToast(err?.message || t('portfolio.execFailed'), 'error');
+              throw err;
             }
-            return res;
           }}
         />
       )}

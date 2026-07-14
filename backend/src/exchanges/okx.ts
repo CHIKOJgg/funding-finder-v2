@@ -1,5 +1,5 @@
 import { ExchangeResult, KNOWN_INTERVALS } from '../types/index.js';
-import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest, sleep } from '../utils/exchangeClient.js';
+import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest } from '../utils/exchangeClient.js';
 import { normalizeFundingRate } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
@@ -75,17 +75,11 @@ export async function scanOKX(): Promise<ExchangeResult[]> {
             maxLeverage: instr.lever ? parseInt(instr.lever) : undefined,
           }).catch(() => {});
 
-          const fundingRes = await retry(() =>
-            client.get('/api/v5/public/funding-rate', {
-              params: { instId: symbol },
-              timeout: 15000,
-            })
-          );
-
-          const fr = fundingRes.data.data?.[0];
-          const currentFunding = parseFloat(fr?.fundingRate) || 0;
-          const nextFundingTime = fr?.fundingTime
-            ? new Date(fr.fundingTime).getTime()
+          // Use funding data from the ticker batch response instead of N+1 API calls.
+          // OKX tickers endpoint includes fundingRate and nextFundingTime fields.
+          const currentFunding = parseFloat(ticker.fundingRate) || 0;
+          const nextFundingTime = ticker.nextFundingTime
+            ? new Date(ticker.nextFundingTime).getTime()
             : 0;
 
           const mark = parseFloat(ticker.last) || 0;
@@ -119,8 +113,6 @@ export async function scanOKX(): Promise<ExchangeResult[]> {
         } catch (err) {
           logger.debug(`OKX: Error processing ${symbol} — ${(err as Error).message}`);
           return null;
-        } finally {
-          await sleep(40);
         }
       }
     );

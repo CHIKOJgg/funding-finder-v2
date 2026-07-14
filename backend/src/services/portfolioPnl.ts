@@ -27,7 +27,7 @@ export function sideSign(side: PositionSide): number {
  *
  * Positive funding rate: longs PAY shorts (long income negative, short positive).
  * Negative funding rate: shorts PAY longs (long income positive, short negative).
- *   ratePerHour * sizeUsd * hoursHeld * sideSign
+ * Funding is charged on the notional value (sizeUsd * leverage).
  *
  * This is purely a calculation — no exchange keys, no real positions.
  */
@@ -35,10 +35,11 @@ export function calcFundingIncome(input: PnlInput): PnlResult {
   const now = input.nowMs ?? Date.now();
   const hoursHeld = Math.max(0, (now - input.openedAtMs) / (1000 * 60 * 60));
   const sign = sideSign(input.side);
+  const notional = input.sizeUsd * (input.leverage || 1);
 
-  const fundingIncome = input.ratePerHour * input.sizeUsd * hoursHeld * sign;
+  const fundingIncome = input.ratePerHour * notional * hoursHeld * sign;
   const annualizedPct = input.ratePerHour * 24 * 365 * 100 * sign;
-  const projectedYearly = input.ratePerHour * input.sizeUsd * 24 * 365 * sign;
+  const projectedYearly = input.ratePerHour * notional * 24 * 365 * sign;
 
   return {
     hoursHeld,

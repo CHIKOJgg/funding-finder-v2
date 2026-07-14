@@ -393,6 +393,8 @@ export const en: Record<string, string> = {
   'portfolio.exportError': 'Failed to export',
   'portfolio.keyRequired': 'Enter API key and secret',
   'portfolio.keyAdded': 'Key added (encrypted)',
+  'portfolio.addError': 'Failed to add position',
+  'portfolio.removeError': 'Failed to remove position',
 
   // Terms
   'terms.title': 'Terms of Service',

@@ -50,8 +50,9 @@ export async function scanGate(): Promise<ExchangeResult[]> {
         let fundingRate = parseFloat(t.funding_rate) || 0;
         let nextFunding = (Number(t.funding_next_apply) || 0) * 1000;
 
-        // If values are missing, try contract info
-        if (!fundingRate || !nextFunding) {
+        // If values are missing, try contract info. Use nullish coalescing (??)
+        // instead of || to preserve legitimate 0.0 funding rates.
+        if (!nextFunding) {
           try {
             const info = await retry(() =>
               client.get(`/futures/${config.exchange.settle}/contracts/${contract}`, {
@@ -59,7 +60,7 @@ export async function scanGate(): Promise<ExchangeResult[]> {
               })
             );
             const d = info.data || {};
-            fundingRate = parseFloat(fundingRate || d.funding_rate || 0);
+            fundingRate = fundingRate ?? (parseFloat(d.funding_rate) || 0);
             nextFunding = nextFunding || ((Number(d.funding_next_apply) || 0) * 1000);
           } catch (err) {
             logger.debug(`Gate: Info fallback failed for ${contract}: ${(err as Error).message}`);

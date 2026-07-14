@@ -393,6 +393,8 @@ export const ru: Record<string, string> = {
   'portfolio.exportError': 'Не удалось экспортировать',
   'portfolio.keyRequired': 'Введите API key и secret',
   'portfolio.keyAdded': 'Ключ добавлен (зашифрован)',
+  'portfolio.addError': 'Не удалось добавить позицию',
+  'portfolio.removeError': 'Не удалось удалить позицию',
 
   // Terms
   'terms.title': 'Пользовательское соглашение',

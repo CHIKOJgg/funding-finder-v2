@@ -26,11 +26,17 @@ export function getCachedScan(exchanges: string[]): { result: ScanResult; ts: nu
 
   // Superset matching: find a cached scan that includes all requested exchanges
   const sorted = [...exchanges].sort().join(',');
+  const sortedSet = new Set(exchanges);
   for (const cacheKey of cache.keys()) {
     if (!cacheKey.startsWith('scan:')) continue;
     const cachedExchanges = cacheKey.replace('scan:', '');
+    const cachedSet = new Set(cachedExchanges.split(','));
     // If the cached scan covers all requested exchanges, reuse it
-    if (sorted.split(',').every((e) => cachedExchanges.includes(e))) {
+    let isSuperset = true;
+    for (const e of sortedSet) {
+      if (!cachedSet.has(e)) { isSuperset = false; break; }
+    }
+    if (isSuperset) {
       const entry2 = cache.get<{ result: ScanResult; ts: number }>(cacheKey);
       if (entry2) return { result: entry2.result, ts: entry2.ts, ageMs: Date.now() - entry2.ts };
     }

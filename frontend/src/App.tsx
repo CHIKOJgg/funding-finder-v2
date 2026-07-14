@@ -284,6 +284,8 @@ function DataProvider() {
         if (response.ok) {
           setArbOpportunities(response.opportunities || []);
           setArbLoaded(true);
+        } else {
+          showToast(t('app.loadOppError') + ': ' + (response.error || ''), 'error');
         }
     } catch (error) {
       showToast(t('app.loadOppError'), 'error');
