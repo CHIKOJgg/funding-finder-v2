@@ -82,7 +82,7 @@ export function ExchangeSelector({
         </button>
       </div>
 
-      {isAll ? (
+      {isAll && !specificOpen ? (
         <p className="text-sm text-muted">{t('exchangeSelect.allSelected')}</p>
       ) : (
         <div>
