@@ -388,4 +388,9 @@ export const apiClient = {
   async getPriceBatch(exchange: string, symbols: string[]) {
     return retryRequest(() => api.get('/price/batch', { params: { exchange, symbols: symbols.join(',') } }));
   },
+
+  // ---- Live funding rates for visible Arbitrage rows (batched, per exchange) ----
+  async getFundingBatch(exchange: string, symbols: string[]) {
+    return retryRequest(() => api.get('/funding/batch', { params: { exchange, symbols: symbols.join(',') } }));
+  },
 };

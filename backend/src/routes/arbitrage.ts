@@ -12,6 +12,7 @@ import {
 } from '../services/arbitrageService.js';
 import { getSpotFutures, SF_SUPPORTED_EXCHANGES } from '../services/spotFuturesService.js';
 import { getLivePriceBatch } from '../services/priceService.js';
+import { getLiveFundingBatch } from '../services/fundingService.js';
 import { runScan } from '../services/scanService.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';
@@ -126,7 +127,7 @@ router.get('/arbitrage/opportunities', async (req, res) => {
       ...scanResults.lowYield,
     ];
 
-    const opportunities = detectArbitrageOpportunities(allResults);
+    const opportunities = await detectArbitrageOpportunities(allResults);
 
     res.json({
       ok: true,
@@ -202,6 +203,29 @@ router.get('/price/batch', async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Price batch error');
+    res.status(500).json({ ok: false, error: error.message || String(error) });
+  }
+});
+
+// Batch live funding rates for the symbols the user is currently viewing on the
+// Arbitrage cards. Returns { symbol: { ratePerHour, intervalHours, rawRate,
+// nextApply } } for every symbol that resolved. Keys are the (uppercased)
+// symbols passed in; only visible rows are ever requested, so this stays cheap.
+router.get('/funding/batch', async (req, res) => {
+  try {
+    const exchange = (req.query.exchange as string) || 'binance';
+    const symbolsParam = req.query.symbols as string;
+    const symbols = symbolsParam
+      ? symbolsParam.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 50)
+      : [];
+    if (symbols.length === 0) {
+      return res.json({ ok: true, funding: {} });
+    }
+    const funding = await getLiveFundingBatch(exchange, symbols);
+    res.json({ ok: true, funding });
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Funding batch error');
     res.status(500).json({ ok: false, error: error.message || String(error) });
   }
 });

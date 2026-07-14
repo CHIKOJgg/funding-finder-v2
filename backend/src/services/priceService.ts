@@ -20,7 +20,7 @@ function num(v: any): number | null {
 }
 
 // Convert a human/arbitrary pair into the exchange's native perp symbol.
-function toNative(exchange: string, pair: string): string {
+export function toNative(exchange: string, pair: string): string {
   const clean = (pair || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
   const m = clean.match(/^(.*?)(USDT|USD)$/);
   const base = m ? m[1] : clean || 'BTC';

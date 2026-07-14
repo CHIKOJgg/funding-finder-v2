@@ -4,7 +4,7 @@ import { useApp } from '../App';
 import { useToast } from '../components/Toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { apiClient } from '../api/client';
-import { getRiskColor, formatNumber } from '../utils/formatters';
+import { getRiskColor, formatPrice } from '../utils/formatters';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { ExchangeSelect } from '../components/ExchangeSelect';
@@ -36,12 +36,23 @@ function resolvePrice(
   return { value: NaN, live: false };
 }
 
-// Batches live perp prices for every symbol the user is currently viewing,
-// grouped by exchange, and re-fetches every 10s. Prices are merged (not
-// replaced) so a transient error never wipes already-valid values — the card
-// always shows something sane.
-function useArbLivePrices(opps: any[]): Record<string, number> {
+// Batches live perp prices AND funding rates for every symbol the user is
+// currently viewing, grouped by exchange, and re-fetches every 10s. Values are
+// merged (not replaced) so a transient error never wipes already-valid data —
+// the card always shows something sane (and falls back to the scan's values).
+interface LiveFunding {
+  ratePerHour: number;
+  intervalHours: number;
+  rawRate: number;
+  nextApply: number;
+}
+
+function useArbLivePrices(opps: any[]): {
+  prices: Record<string, number>;
+  funding: Record<string, LiveFunding>;
+} {
   const [prices, setPrices] = useState<Record<string, number>>({});
+  const [funding, setFunding] = useState<Record<string, LiveFunding>>({});
 
   const byExchange = useMemo(() => {
     const map: Record<string, string[]> = {};
@@ -62,20 +73,34 @@ function useArbLivePrices(opps: any[]): Record<string, number> {
     let cancelled = false;
     const load = async () => {
       try {
-        const next: Record<string, number> = {};
+        const nextPrices: Record<string, number> = {};
+        const nextFunding: Record<string, LiveFunding> = {};
         await Promise.all(
           Object.entries(byExchange).map(async ([ex, syms]) => {
-            const res: any = await apiClient.getPriceBatch(ex, syms);
-            if (res?.ok && res.prices) {
-              for (const [s, p] of Object.entries(res.prices as Record<string, number>)) {
-                if (typeof p === 'number' && isFinite(p) && p > 0) next[livePriceKey(ex, s)] = p;
+            const [priceRes, fundingRes] = (await Promise.allSettled([
+              apiClient.getPriceBatch(ex, syms),
+              apiClient.getFundingBatch(ex, syms),
+            ])) as any;
+            if (priceRes.status === 'fulfilled' && priceRes.value?.ok && priceRes.value.prices) {
+              for (const [s, p] of Object.entries(priceRes.value.prices as Record<string, number>)) {
+                if (typeof p === 'number' && isFinite(p) && p > 0) nextPrices[livePriceKey(ex, s)] = p;
+              }
+            }
+            if (fundingRes.status === 'fulfilled' && fundingRes.value?.ok && fundingRes.value.funding) {
+              for (const [s, f] of Object.entries(fundingRes.value.funding as Record<string, LiveFunding>)) {
+                if (f && typeof f.ratePerHour === 'number' && isFinite(f.ratePerHour)) {
+                  nextFunding[livePriceKey(ex, s)] = f;
+                }
               }
             }
           })
         );
-        if (!cancelled) setPrices((prev) => ({ ...prev, ...next }));
+        if (!cancelled) {
+          setPrices((prev) => ({ ...prev, ...nextPrices }));
+          setFunding((prev) => ({ ...prev, ...nextFunding }));
+        }
       } catch {
-        /* keep previous prices on transient error */
+        /* keep previous data on transient error */
       }
     };
     load();
@@ -86,7 +111,7 @@ function useArbLivePrices(opps: any[]): Record<string, number> {
     };
   }, [depKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return prices;
+  return { prices, funding };
 }
 
 export function ArbitragePage() {
@@ -235,7 +260,7 @@ export function ArbitragePage() {
     () => filteredOpportunities.slice(0, visibleCount),
     [filteredOpportunities, visibleCount]
   );
-  const priceMap = useArbLivePrices(visibleOpportunities);
+  const { prices: priceMap, funding: fundingMap } = useArbLivePrices(visibleOpportunities);
 
   return (
     <div className="p-4">
@@ -374,6 +399,7 @@ export function ArbitragePage() {
                         key={`${opp.pair}-${opp.exchangeA}-${opp.exchangeB}-${idx}`}
                         opportunity={opp}
                         priceMap={priceMap}
+                        fundingMap={fundingMap}
                         onCalculate={() => {
                           setSelectedOpportunity(opp);
                           setShowModal(true);
@@ -472,15 +498,24 @@ export function ArbitragePage() {
 const OpportunityCard = memo(function OpportunityCard({
   opportunity: opp,
   priceMap,
+  fundingMap,
   onCalculate,
 }: {
   opportunity: any;
   priceMap?: Record<string, number>;
+  fundingMap?: Record<string, { ratePerHour: number; intervalHours: number; rawRate: number; nextApply: number }>;
   onCalculate: () => void;
 }) {
   const t = useT();
   const priceA = resolvePrice(priceMap, opp.exchangeA, opp.pair, opp.markPriceA);
   const priceB = resolvePrice(priceMap, opp.exchangeB, opp.pair, opp.markPriceB);
+  // Live funding (falling back to the scan's values so the card is never blank).
+  const fundA = fundingMap?.[livePriceKey(opp.exchangeA, opp.pair)];
+  const fundB = fundingMap?.[livePriceKey(opp.exchangeB, opp.pair)];
+  const fundingA = fundA ? fundA.ratePerHour : opp.fundingA_per_hour;
+  const fundingB = fundB ? fundB.ratePerHour : opp.fundingB_per_hour;
+  const intervalA = fundA ? fundA.intervalHours : opp.intervalA_hours;
+  const intervalB = fundB ? fundB.intervalHours : opp.intervalB_hours;
   return (
     <div className={clsx('p-3 rounded-lg border-l-4', getRiskColor(opp.risk?.level))}>
       <div className="flex justify-between items-start mb-2">
@@ -504,19 +539,20 @@ const OpportunityCard = memo(function OpportunityCard({
         <span className="text-[10px] text-gray-400">{t('arb.live')}</span>
       </div>
       <div className="grid grid-cols-2 gap-2 mb-2">
-        <PriceCell exchange={opp.exchangeA} price={priceA} />
-        <PriceCell exchange={opp.exchangeB} price={priceB} />
-      </div>
-
-      <div className="text-sm text-gray-600 mb-2">
-        <div className="flex justify-between">
-          <span>{opp.exchangeA}:</span>
-          <span>{(opp.fundingA_per_hour * 100).toFixed(6)}%/ч ({opp.intervalA_hours}ч)</span>
-        </div>
-        <div className="flex justify-between">
-          <span>{opp.exchangeB}:</span>
-          <span>{(opp.fundingB_per_hour * 100).toFixed(6)}%/ч ({opp.intervalB_hours}ч)</span>
-        </div>
+        <ExchangePriceCell
+          exchange={opp.exchangeA}
+          price={priceA}
+          funding={fundingA}
+          interval={intervalA}
+          live={!!fundA}
+        />
+        <ExchangePriceCell
+          exchange={opp.exchangeB}
+          price={priceB}
+          funding={fundingB}
+          interval={intervalB}
+          live={!!fundB}
+        />
       </div>
 
       {opp.intervalMismatch && (
@@ -592,18 +628,44 @@ const OpportunityCard = memo(function OpportunityCard({
   );
 });
 
-// One exchange's live price inside an arbitrage card. A green pulsing dot means
-// the value is a fresh fetch; gray means we're showing the last scan's mark
-// price as a fallback (still a valid number, never blank/NaN).
-function PriceCell({ exchange, price }: { exchange: string; price: { value: number; live: boolean } }) {
+// One exchange's live price + funding rate inside an arbitrage card. A green
+// pulsing dot on the price means it's a fresh live fetch; gray means we're
+// showing the last scan's mark price as a fallback (never blank/NaN). The price
+// uses a precision-aware formatter so even very cheap coins show their real value.
+function ExchangePriceCell({
+  exchange,
+  price,
+  funding,
+  interval,
+  live,
+}: {
+  exchange: string;
+  price: { value: number; live: boolean };
+  funding: number;
+  interval: number;
+  live: boolean;
+}) {
+  const t = useT();
   const valid = isFinite(price.value) && price.value > 0;
+  const fundingColor = funding > 0 ? 'text-green-500' : funding < 0 ? 'text-red-500' : 'text-gray-500';
   return (
-    <div className="flex items-center justify-between gap-1 rounded bg-gray-50 px-2 py-1">
-      <span className="text-xs text-gray-500 truncate" title={exchangeLabel(exchange)}>{exchangeLabel(exchange)}</span>
-      <span className="flex items-center gap-1 shrink-0">
-        <span className={clsx('inline-block w-1.5 h-1.5 rounded-full', price.live ? 'bg-green-500 animate-pulse' : 'bg-gray-300')} aria-hidden="true" />
-        <span className="text-sm font-medium text-gray-800">${valid ? formatNumber(price.value) : '—'}</span>
-      </span>
+    <div className="rounded bg-gray-50 px-2 py-1.5">
+      <div className="flex items-center justify-between gap-1">
+        <span className="text-xs text-gray-500 truncate" title={exchangeLabel(exchange)}>{exchangeLabel(exchange)}</span>
+        <span className="flex items-center gap-1 shrink-0">
+          <span className={clsx('inline-block w-1.5 h-1.5 rounded-full', price.live ? 'bg-green-500 animate-pulse' : 'bg-gray-300')} aria-hidden="true" />
+          <span className="text-sm font-medium text-gray-800">${valid ? formatPrice(price.value) : '—'}</span>
+        </span>
+      </div>
+      <div className="flex items-center justify-between mt-1 gap-1">
+        <span className="text-[10px] text-gray-400">{t('arb.fundingRate')}</span>
+        <span className="flex items-center gap-1 shrink-0">
+          <span className={clsx('inline-block w-1.5 h-1.5 rounded-full', live ? 'bg-green-500 animate-pulse' : 'bg-gray-300')} aria-hidden="true" />
+          <span className={clsx('text-xs font-medium', fundingColor)}>
+            {(funding * 100).toFixed(6)}%/ч ({interval}ч)
+          </span>
+        </span>
+      </div>
     </div>
   );
 }

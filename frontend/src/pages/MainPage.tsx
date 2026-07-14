@@ -6,7 +6,7 @@ import { useToast } from '../components/Toast';
 import { PaywallModal } from '../components/PaywallModal';
 import { PaywallFeature } from '../utils/plans';
 import { apiClient } from '../api/client';
-import { formatNumber, getFundingColor } from '../utils/formatters';
+import { formatNumber, formatPrice, getFundingColor } from '../utils/formatters';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { ExchangeSelector } from '../components/ExchangeSelector';
 import { ExchangeSelect } from '../components/ExchangeSelect';
@@ -240,11 +240,11 @@ export function MainPage() {
               className="rounded-xl p-4 mb-4 relative overflow-hidden"
               style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand-hover) 100%)' }}
             >
-              <div className="text-xs font-semibold uppercase tracking-wide text-white opacity-80" title={t('main.bestOpportunityTitle')}>{t('main.bestOpportunity')}</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-white opacity-90" title={t('main.bestOpportunityTitle')}>{t('main.bestOpportunity')}</div>
               <div className="flex items-end justify-between mt-1">
                 <div>
                   <div className="text-xl font-bold text-white">{topPick.exchange.toUpperCase()}: {topPick.contract}</div>
-                  <div className="text-white opacity-90 text-sm">
+                  <div className="text-white text-sm">
                     {t('main.topRateLine', { h: ((topPick.funding_rate_per_hour ?? 0) * 100).toFixed(6), d: ((topPick.funding_rate_per_day ?? 0) * 100).toFixed(4) })}
                   </div>
                 </div>
@@ -643,7 +643,7 @@ const ResultItem = memo(function ResultItem({
           </div>
           <div className="text-xs flex items-center gap-1">
             <span className={clsx('inline-block w-1.5 h-1.5 rounded-full', livePrice != null ? 'bg-green-500 animate-pulse' : 'bg-gray-300')} aria-hidden="true" />
-            <span className="text-gray-800 font-medium">${formatNumber(price)}</span>
+            <span className="text-gray-800 font-medium">${formatPrice(price)}</span>
             <span className="text-gray-400">{t('arb.live')}</span>
           </div>
           <div className="text-xs text-gray-500">

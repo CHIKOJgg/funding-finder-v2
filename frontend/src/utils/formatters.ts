@@ -5,6 +5,19 @@ export function formatNumber(num: number | null | undefined): string {
   return num.toFixed(2);
 }
 
+// Exact price formatting: preserves full precision even for very cheap coins
+// (e.g. 0.00001234 instead of "0.00"). Large prices get thousands separators;
+// small prices get as many decimals as needed to show real significant digits.
+export function formatPrice(num: number | null | undefined): string {
+  if (num === null || num === undefined) return '—';
+  if (!isFinite(num) || num <= 0) return '—';
+  if (num >= 1) {
+    return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+  const decimals = Math.min(12, Math.max(2, Math.ceil(-Math.log10(num)) + 3));
+  return num.toFixed(decimals).replace(/0+$/, '').replace(/\.$/, '');
+}
+
 export function formatFunding(funding: number | null | undefined): string {
   if (funding === null || funding === undefined) return 'N/A';
   return (funding * 100).toFixed(4) + '%';

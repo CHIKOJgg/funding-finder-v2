@@ -122,6 +122,7 @@ export const en: Record<string, string> = {
   'arb.title': 'Arbitrage',
   'arb.subtitle': 'Opportunities and alerts',
   'arb.prices': 'Prices (live)',
+  'arb.fundingRate': 'Funding',
   'arb.opportunities': 'Opportunities',
   'arb.alerts': 'Alerts',
   'arb.arbOpportunities': 'Arbitrage opportunities',

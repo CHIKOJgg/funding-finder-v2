@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatNumber, formatFunding, formatDate, getRiskColor, getFundingColor } from '../utils/formatters';
+import { formatNumber, formatPrice, formatFunding, formatDate, getRiskColor, getFundingColor } from '../utils/formatters';
 
 describe('formatNumber', () => {
   it('formats millions', () => {
@@ -20,6 +20,37 @@ describe('formatNumber', () => {
 
   it('returns N/A for undefined', () => {
     expect(formatNumber(undefined)).toBe('N/A');
+  });
+});
+
+describe('formatPrice', () => {
+  it('keeps full precision for very cheap coins', () => {
+    expect(formatPrice(0.00001234)).toBe('0.00001234');
+  });
+
+  it('shows enough decimals for small sub-cent prices', () => {
+    expect(formatPrice(0.00123)).toBe('0.00123');
+  });
+
+  it('trims trailing zeros on small prices', () => {
+    expect(formatPrice(0.5)).toBe('0.5');
+  });
+
+  it('formats large prices with thousands separators', () => {
+    expect(formatPrice(65000.5)).toBe('65,000.5');
+  });
+
+  it('does not abbreviate large prices', () => {
+    expect(formatPrice(1_234_567)).toBe('1,234,567');
+  });
+
+  it('returns dash for null', () => {
+    expect(formatPrice(null)).toBe('—');
+  });
+
+  it('returns dash for zero/negative', () => {
+    expect(formatPrice(0)).toBe('—');
+    expect(formatPrice(-1)).toBe('—');
   });
 });
 

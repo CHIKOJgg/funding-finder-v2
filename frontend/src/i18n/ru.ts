@@ -122,6 +122,7 @@ export const ru: Record<string, string> = {
   'arb.title': 'Арбитраж',
   'arb.subtitle': 'Возможности и оповещения',
   'arb.prices': 'Цены (live)',
+  'arb.fundingRate': 'Фандинг',
   'arb.opportunities': 'Возможности',
   'arb.alerts': 'Оповещения',
   'arb.arbOpportunities': 'Арбитражные возможности',
