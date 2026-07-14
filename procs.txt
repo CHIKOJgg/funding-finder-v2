@@ -1,0 +1,27 @@
+﻿
+ProcessId CommandLine                                                                                                                                                                                   
+--------- -----------                                                                                                                                                                                   
+    34244 "C:\nvm4w\nodejs\\node.exe"  "C:\nvm4w\nodejs\node_modules\npm\bin\npx-cli.js" jest src/__tests__/routes/ai.test.ts src/__tests__/routes/alerts.test.ts src/__tests__/routes/keys.test.ts src/
+          __tests__/routes/funding.test.ts src/__tests__/routes/arbitrage.test.ts                                                                                                                       
+    46312 "node"   "C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\.bin\\..\jest\bin\jest.js" src/__tests__/routes/ai.test.ts src/__tests__/routes/alerts.test.ts src/__tests__/route
+          s/keys.test.ts src/__tests__/routes/funding.test.ts src/__tests__/routes/arbitrage.test.ts                                                                                                    
+    13712 C:\nvm4w\nodejs\node.exe C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\jest-worker\build\workers\processChild.js                                                          
+    22348 C:\nvm4w\nodejs\node.exe C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\jest-worker\build\workers\processChild.js                                                          
+    40780 C:\nvm4w\nodejs\node.exe C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\jest-worker\build\workers\processChild.js                                                          
+    25392 C:\nvm4w\nodejs\node.exe C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\jest-worker\build\workers\processChild.js                                                          
+    20152 C:\nvm4w\nodejs\node.exe C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\jest-worker\build\workers\processChild.js                                                          
+    14196 C:\nvm4w\nodejs\node.exe C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\jest-worker\build\workers\processChild.js                                                          
+    40348 C:\nvm4w\nodejs\node.exe C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\jest-worker\build\workers\processChild.js                                                          
+     4832 C:\nvm4w\nodejs\node.exe C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\jest-worker\build\workers\processChild.js                                                          
+    31340 C:\nvm4w\nodejs\node.exe C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\jest-worker\build\workers\processChild.js                                                          
+    44640 C:\nvm4w\nodejs\node.exe C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\jest-worker\build\workers\processChild.js                                                          
+     3804 C:\nvm4w\nodejs\node.exe C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\jest-worker\build\workers\processChild.js                                                          
+    34488 C:\nvm4w\nodejs\node.exe C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\jest-worker\build\workers\processChild.js                                                          
+    48288 C:\nvm4w\nodejs\node.exe C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\jest-worker\build\workers\processChild.js                                                          
+    40692 C:\nvm4w\nodejs\node.exe C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\jest-worker\build\workers\processChild.js                                                          
+    31168 C:\nvm4w\nodejs\node.exe C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\jest-worker\build\workers\processChild.js                                                          
+    43900 "C:\nvm4w\nodejs\\node.exe"  "C:\nvm4w\nodejs\node_modules\npm\bin\npx-cli.js" jest src/__tests__/arbitrageService.extra.test.ts src/__tests__/paymentService.test.ts                         
+     1904 "node"   "C:\Users\Honor\Desktop\funding-finder-miniapp-backup\node_modules\.bin\\..\jest\bin\jest.js" src/__tests__/arbitrageService.extra.test.ts src/__tests__/paymentService.test.ts      
+
+
+

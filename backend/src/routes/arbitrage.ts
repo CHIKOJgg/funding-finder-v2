@@ -13,11 +13,17 @@ import {
 import { getSpotFutures, SF_SUPPORTED_EXCHANGES } from '../services/spotFuturesService.js';
 import { getLivePriceBatch } from '../services/priceService.js';
 import { getLiveFundingBatch } from '../services/fundingService.js';
-import { runScan } from '../services/scanService.js';
+import { runScan, getCachedScan } from '../services/scanService.js';
+import { getSubscriptionLimits } from '../middleware/subscription.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
+
+// Serve a cached scan instantly (stale-while-revalidate) if one covers the
+// requested exchanges. Mirrors the resilient behaviour of POST /scan so the
+// Arbitrage tab never blocks on a cold 25-exchange live scan.
+const SCAN_STALE_MS = 60_000;
 
 const createAlertSchema = z.object({
   pair: z.string().min(1),
@@ -115,11 +121,34 @@ router.post('/alerts/arbitrage/:alertId/toggle', async (req, res) => {
 router.get('/arbitrage/opportunities', async (req, res) => {
   try {
     const exchangesParam = req.query.exchanges as string;
-    const exchanges = exchangesParam
+    let exchanges = exchangesParam
       ? exchangesParam.split(',').filter((e) => SUPPORTED_EXCHANGES.includes(e))
       : SUPPORTED_EXCHANGES;
+    if (exchanges.length === 0) exchanges = SUPPORTED_EXCHANGES;
 
-    const scanResults = await runScan(exchanges);
+    // Cap to the user's plan so a free user can never trigger a full 25-exchange
+    // live scan (that's what was timing out and surfacing as a network error).
+    const userId = (req as AuthenticatedRequest).userId!;
+    const limits = await getSubscriptionLimits(userId);
+    if (exchanges.length > limits.maxExchanges) {
+      // Request only what the plan allows instead of hard-failing.
+      exchanges = exchanges.slice(0, limits.maxExchanges);
+    }
+
+    // SWR: return a cached scan immediately if one covers these exchanges
+    // (the warm full-set cache counts as a superset), refresh in the background.
+    const cached = getCachedScan(exchanges);
+    let scanResults;
+    if (cached) {
+      scanResults = cached.result;
+      if (cached.ageMs > SCAN_STALE_MS) {
+        runScan(exchanges).catch((err) =>
+          logger.warn({ err: (err as Error).message }, 'Background arbitrage scan refresh failed')
+        );
+      }
+    } else {
+      scanResults = await runScan(exchanges);
+    }
 
     const allResults = [
       ...scanResults.highYield,

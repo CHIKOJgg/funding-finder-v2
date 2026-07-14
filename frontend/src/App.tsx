@@ -280,7 +280,11 @@ function DataProvider() {
     setArbLoading(true);
     const p = (async () => {
       try {
-        const response: any = await apiClient.getArbitrageOpportunities();
+        // Request only the user's selected (plan-capped) exchanges. The backend
+        // serves the warm full-set cache via superset matching, so we still get
+        // every opportunity — but we never trigger a cold 25-exchange live scan.
+        const exchanges = selectedExchanges.slice(0, planLimits.maxExchanges);
+        const response: any = await apiClient.getArbitrageOpportunities(exchanges);
         if (response.ok) {
           setArbOpportunities(response.opportunities || []);
           setArbLoaded(true);
@@ -296,7 +300,7 @@ function DataProvider() {
     })();
     arbInFlight.current = p;
     return p;
-  }, [arbLoaded, showToast, t]);
+  }, [arbLoaded, showToast, t, selectedExchanges, planLimits.maxExchanges]);
 
   const loadAlerts = useCallback((force = false) => {
     if (alertsInFlight.current) return alertsInFlight.current;

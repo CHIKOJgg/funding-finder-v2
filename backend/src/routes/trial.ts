@@ -20,6 +20,20 @@ router.post('/trial/activate', async (req: AuthenticatedRequest, res) => {
     }
 
     if (user.trialUsed) {
+      // Idempotent: if the trial is already active (a prior press succeeded
+      // server-side but the client saw a timeout/error), treat the re-press as
+      // a success instead of rejecting it with 409.
+      if (user.subscription === 'pro') {
+        const endsAt = user.trialEndsAt ? user.trialEndsAt.getTime() : null;
+        const msLeft = endsAt ? Math.max(0, endsAt - Date.now()) : 0;
+        return res.json({
+          ok: true,
+          active: true,
+          endsAt: user.trialEndsAt,
+          daysLeft: endsAt ? Math.ceil(msLeft / (24 * 60 * 60 * 1000)) : 0,
+          hoursLeft: Math.floor(msLeft / (60 * 60 * 1000)),
+        });
+      }
       return res.status(409).json({ ok: false, error: 'Trial already used' });
     }
 
