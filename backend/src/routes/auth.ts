@@ -66,7 +66,7 @@ router.get('/wallet/nonce', validate(nonceSchema, 'query'), async (req: Request,
   try {
     const address = (req.query as any).address as string;
     const nonce = await issueSiweNonce(address);
-    res.json({ ok: true, nonce, domain: (await import('../config/index.js')).config.webAuth.domain });
+    res.json({ ok: true, nonce, domain: config.webAuth.domain });
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'SIWE nonce error');

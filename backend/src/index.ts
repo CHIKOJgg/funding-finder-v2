@@ -146,6 +146,7 @@ const UNMETERED_PATHS = new Set([
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 3000,
+  limit: 3000,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => UNMETERED_PATHS.has(req.path),
@@ -158,6 +159,7 @@ app.use('/api/', limiter);
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 1500,
+  limit: 1500,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => UNMETERED_PATHS.has(req.path),

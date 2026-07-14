@@ -13,6 +13,8 @@
     "prisma:push": "prisma db push",
     "test": "jest",
     "test:watch": "jest --watch",
+    "load": "node load/loadtest.mjs",
+    "load:artillery": "artillery run load/artillery.yml",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\""
   },
@@ -29,14 +31,12 @@
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
     "@types/ws": "^8.18.1",
-    "axios": "^1.18.1",
     "bullmq": "^5.78.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "ethers": "^6.17.0",
     "express": "^4.18.2",
-    "express-rate-limit": "^7.1.5",
     "helmet": "^8.2.0",
     "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.3",
@@ -56,10 +56,13 @@
     "@types/jest": "^29.5.14",
     "@typescript-eslint/eslint-plugin": "^8.63.0",
     "@typescript-eslint/parser": "^8.63.0",
+    "axios": "^1.18.1",
     "eslint": "^8.56.0",
+    "express-rate-limit": "^8.5.2",
     "jest": "^29.7.0",
     "prettier": "^3.1.1",
-    "supertest": "^6.3.3",
+    "supertest": "^6.3.4",
+    "tinybench": "^6.0.2",
     "ts-jest": "^29.4.11"
   }
 }

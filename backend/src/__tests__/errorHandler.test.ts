@@ -116,4 +116,20 @@ describe('Error Handler', () => {
 
     expect(mockRes.status).toHaveBeenCalledWith(500);
   });
+
+  describe('createError helper', () => {
+    it('creates an AppError with statusCode and code', () => {
+      const { createError } = require('../middleware/errorHandler.js');
+      const err = createError('boom', 400, 'BOOM_CODE');
+      expect(err.message).toBe('boom');
+      expect(err.statusCode).toBe(400);
+      expect(err.code).toBe('BOOM_CODE');
+    });
+
+    it('defaults to statusCode 500', () => {
+      const { createError } = require('../middleware/errorHandler.js');
+      const err = createError('default');
+      expect(err.statusCode).toBe(500);
+    });
+  });
 });

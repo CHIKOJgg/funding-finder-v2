@@ -1,0 +1,74 @@
+# Artillery v2 load-test scenario for the funding-finder backend.
+#
+# This is a SELF-CONTAINED scenario: it does not require a live server to be
+# valid YAML, but to actually generate traffic you need the API running:
+#
+#     # terminal 1 - start the backend
+#     npm run dev
+#     # (or) node dist/index.js
+#
+#     # terminal 2 - run the load test
+#     npx artillery run load/artillery.yml
+#
+# Override the target host without editing this file:
+#     npx artillery run --target http://localhost:8080 load/artillery.yml
+#
+# Or via environment variable (Artillery v2 expands $processEnvironment):
+#     TARGET=http://staging.example.com npx artillery run load/artillery.yml
+#
+# What it does:
+#   - Hits a couple of cheap, representative read endpoints (health + feature
+#     flags) to measure baseline throughput and error rate under a small,
+#     steady arrival rate for ~30s.
+#   - The POST flow exercises a representative authenticated-ish endpoint body
+#     shape; adjust the URL/body to match your real routes.
+
+config:
+  # Default target. Override with `npx artillery run --target <url>` or the
+  # TARGET env var below.
+  target: "{{ $processEnvironment.TARGET || 'http://localhost:3000' }}"
+  # Spew a bit of detail so you can see latency percentiles.
+  ensure:
+    maxErrorRate: 100      # do not abort the run on errors (we just measure)
+  phases:
+    - duration: 30         # seconds
+      arrivalRate: 5       # new virtual users per second
+      name: "Steady warm load"
+    # Uncomment for a short stress spike after the warm-up phase:
+    # - duration: 15
+    #   arrivalRate: 5
+    #   rampTo: 50
+    #   name: "Ramp to stress"
+  defaults:
+    headers:
+      accept: "application/json"
+      content-type: "application/json"
+
+scenarios:
+  - name: "Health + feature flags probe"
+    weight: 1
+    flow:
+      - get:
+          url: "/api/health"
+          name: "GET /api/health"
+      - get:
+          url: "/api/feature-flags"
+          name: "GET /api/feature-flags"
+
+  - name: "Scan request shape (POST)"
+    weight: 1
+    flow:
+      - post:
+          url: "/api/scan"
+          name: "POST /api/scan"
+          # Adjust the body to a real payload your /scan route accepts.
+          json:
+            exchanges:
+              - binance
+              - bybit
+              - okx
+            minSpread: 0.01
+          # A 401/400 here is expected without auth; we only measure load.
+          capture:
+            - json: "$.ok"
+              as: "ok"

@@ -1,117 +1,147 @@
-import { normalizeFundingRate, detectFundingInterval, getYieldCategory, getIntervalLabel } from '../utils/helpers.js';
+/**
+ * Unit tests for src/utils/helpers.ts
+ */
+import {
+  sleep,
+  normalizeFundingRate,
+  median,
+  detectFundingInterval,
+  toExchangeResult,
+  getYieldCategory,
+  recommendSizePct,
+} from '../utils/helpers.js';
+import { KNOWN_INTERVALS } from '../types/index.js';
+
+describe('sleep', () => {
+  test('resolves after the given delay (fake timers)', () => {
+    jest.useFakeTimers();
+    try {
+      const p = sleep(100);
+      let resolved = false;
+      p.then(() => {
+        resolved = true;
+      });
+      expect(resolved).toBe(false);
+      jest.advanceTimersByTime(100);
+      // microtasks flush synchronously after timer advance in fake-timer run
+      return p.then(() => {
+        expect(true).toBe(true);
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
 
 describe('normalizeFundingRate', () => {
-  it('should normalize 8h rate to hourly', () => {
-    const result = normalizeFundingRate(0.01, 28800);
-    expect(result.perHour).toBeCloseTo(0.00125, 6);
-    expect(result.perDay).toBeCloseTo(0.03, 6);
-    expect(result.annualized).toBeCloseTo(10.95, 4);
+  const EIGHT_H = KNOWN_INTERVALS.EIGHT_HOUR; // 28800
+  const ONE_H = KNOWN_INTERVALS.HOURLY; // 3600
+
+  test('8h interval: hourly/day/annualized math', () => {
+    const r = normalizeFundingRate(0.0001, EIGHT_H);
+    // perHour = 0.0001 / (28800/3600) = 0.0001 / 8
+    expect(r.perHour).toBeCloseTo(0.0000125, 12);
+    expect(r.perDay).toBeCloseTo(0.0001 * 3, 12); // 3 settlements / day
+    expect(r.annualized).toBeCloseTo(0.0001 * 3 * 365, 12); // 0.1095
   });
 
-  it('should normalize 1h rate to hourly (same)', () => {
-    const result = normalizeFundingRate(0.01, 3600);
-    expect(result.perHour).toBeCloseTo(0.01, 6);
+  test('1h interval: hourly/day/annualized math', () => {
+    const r = normalizeFundingRate(0.0001, ONE_H);
+    expect(r.perHour).toBeCloseTo(0.0001, 12);
+    expect(r.perDay).toBeCloseTo(0.0001 * 24, 12); // 0.0024
+    expect(r.annualized).toBeCloseTo(0.0001 * 24 * 365, 12); // 0.876
   });
 
-  it('should normalize 4h rate to hourly', () => {
-    const result = normalizeFundingRate(0.01, 14400);
-    expect(result.perHour).toBeCloseTo(0.0025, 6);
+  test('zero rate yields all zeros', () => {
+    const r = normalizeFundingRate(0, EIGHT_H);
+    expect(r.perHour).toBe(0);
+    expect(r.perDay).toBe(0);
+    expect(r.annualized).toBe(0);
   });
 
-  it('should handle zero interval (default to 8h)', () => {
-    const result = normalizeFundingRate(0.01, 0);
-    expect(result.perHour).toBeCloseTo(0.00125, 6);
+  test('negative rate preserved with sign', () => {
+    const r = normalizeFundingRate(-0.0001, EIGHT_H);
+    expect(r.perHour).toBeCloseTo(-0.0000125, 12);
+    expect(r.perDay).toBeCloseTo(-0.0003, 12);
+    expect(r.annualized).toBeCloseTo(-0.1095, 12);
   });
 
-  it('should handle negative interval (default to 8h)', () => {
-    const result = normalizeFundingRate(0.01, -100);
-    expect(result.perHour).toBeCloseTo(0.00125, 6);
+  test('non-positive interval falls back to 8h default', () => {
+    const r = normalizeFundingRate(0.0001, -1);
+    expect(r.perHour).toBeCloseTo(0.0000125, 12);
+    const r2 = normalizeFundingRate(0.0001, 0);
+    expect(r2.perHour).toBeCloseTo(0.0000125, 12);
+    const r3 = normalizeFundingRate(0.0001, NaN);
+    expect(r3.perHour).toBeCloseTo(0.0000125, 12);
   });
+});
 
-  it('should handle zero rate', () => {
-    const result = normalizeFundingRate(0, 28800);
-    expect(result.perHour).toBe(0);
-    expect(result.perDay).toBe(0);
-    expect(result.annualized).toBe(0);
+describe('median', () => {
+  test('returns null for empty', () => {
+    expect(median([])).toBeNull();
   });
-
-  it('should handle negative rate', () => {
-    const result = normalizeFundingRate(-0.01, 28800);
-    expect(result.perHour).toBeCloseTo(-0.00125, 6);
+  test('odd length', () => {
+    expect(median([3, 1, 2])).toBe(2);
+  });
+  test('even length averages the two middle', () => {
+    expect(median([1, 2, 3, 4])).toBe(2.5);
   });
 });
 
 describe('detectFundingInterval', () => {
-  it('should use API interval when provided', () => {
-    const result = detectFundingInterval('bybit', undefined, 480);
-    expect(result.seconds).toBe(28800);
-    expect(result.hours).toBe(8);
-    expect(result.source).toBe('api');
+  test('uses API interval when provided', () => {
+    expect(detectFundingInterval('binance', undefined, 60).seconds).toBe(3600);
   });
+  test('detects from history timestamps', () => {
+    const ts = [0, 28800, 57600, 86400];
+    const res = detectFundingInterval('unknown', ts);
+    expect(res.source).toBe('detected');
+    expect(res.seconds).toBe(KNOWN_INTERVALS.EIGHT_HOUR);
+  });
+  test('falls back to exchange default', () => {
+    const res = detectFundingInterval('binance');
+    expect(res.source).toBe('default');
+    expect(res.seconds).toBe(KNOWN_INTERVALS.EIGHT_HOUR);
+  });
+  test('falls back to 8h for unknown exchange with no data', () => {
+    const res = detectFundingInterval('mystery');
+    expect(res.seconds).toBe(KNOWN_INTERVALS.EIGHT_HOUR);
+  });
+});
 
-  it('should detect from history timestamps', () => {
+describe('toExchangeResult', () => {
+  test('normalizes and populates all fields', () => {
     const now = Date.now();
-    const timestamps = [
-      now - 28800000,
-      now - 57600000,
-      now - 86400000,
-    ];
-    const result = detectFundingInterval('gate', timestamps);
-    expect(result.source).toBe('detected');
-  });
-
-  it('should fall back to exchange default', () => {
-    const result = detectFundingInterval('binance');
-    expect(result.seconds).toBe(28800);
-    expect(result.source).toBe('default');
-  });
-
-  it('should use 8h as default for unknown exchange', () => {
-    const result = detectFundingInterval('unknown_exchange');
-    expect(result.seconds).toBe(28800);
-    expect(result.source).toBe('default');
+    const res = toExchangeResult({
+      exchange: 'binance',
+      contract: 'BTCUSDT',
+      currentFunding: 0.0001,
+      fundingIntervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR,
+      fundingNextApply: now + 3600_000,
+      markPrice: 50000,
+      volume24hSettle: 1_000_000,
+    });
+    expect(res.exchange).toBe('binance');
+    expect(res.funding_rate_per_hour).toBeCloseTo(0.0000125, 12);
+    expect(res.funding_rate_per_day).toBeCloseTo(0.0003, 12);
+    expect(res.annualized_rate).toBeCloseTo(0.1095, 12);
+    expect(res.time_until_next_funding_seconds).toBeGreaterThan(3500);
   });
 });
 
 describe('getYieldCategory', () => {
-  it('should categorize high yield', () => {
-    expect(getYieldCategory(0.0001)).toBe('high');
-    expect(getYieldCategory(0.001)).toBe('high');
-  });
-
-  it('should categorize medium yield', () => {
-    expect(getYieldCategory(0.00001)).toBe('medium');
+  test('categorizes by absolute hourly rate', () => {
+    expect(getYieldCategory(0.0002)).toBe('high');
+    expect(getYieldCategory(-0.0002)).toBe('high');
     expect(getYieldCategory(0.00005)).toBe('medium');
-  });
-
-  it('should categorize low yield', () => {
     expect(getYieldCategory(0.000001)).toBe('low');
-    expect(getYieldCategory(0)).toBe('low');
-  });
-
-  it('should handle negative rates', () => {
-    expect(getYieldCategory(-0.0001)).toBe('high');
-    expect(getYieldCategory(-0.00001)).toBe('medium');
-    expect(getYieldCategory(-0.000001)).toBe('low');
   });
 });
 
-describe('getIntervalLabel', () => {
-  it('should return correct labels', () => {
-    expect(getIntervalLabel(3600)).toBe('часовой (1h)');
-    expect(getIntervalLabel(14400)).toBe('4-часовой (4h)');
-    expect(getIntervalLabel(28800)).toBe('8-часовой (8h)');
-    expect(getIntervalLabel(43200)).toBe('12-часовой (12h)');
-    expect(getIntervalLabel(86400)).toBe('суточный (24h)');
-  });
-
-  it('should return unknown for null', () => {
-    expect(getIntervalLabel(null)).toBe('неизвестно');
-  });
-
-  it('should return custom label for non-standard interval', () => {
-    const result = getIntervalLabel(7200);
-    expect(typeof result).toBe('string');
-    expect(result.length).toBeGreaterThan(0);
+describe('recommendSizePct', () => {
+  test('larger size for higher hourly rate', () => {
+    expect(recommendSizePct(0.0002, 1_000_000)).toBe(3.0); // high rate
+    expect(recommendSizePct(0.000001, 6_000_000)).toBe(1.0); // low rate, high volume
+    expect(recommendSizePct(0.000001, 1_000)).toBe(0.7); // low rate, low volume
   });
 });

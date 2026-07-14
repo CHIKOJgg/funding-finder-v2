@@ -63,39 +63,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.delete('/:alertId', async (req, res) => {
-  try {
-    const userId = (req as AuthenticatedRequest).userId!;
-    const { alertId } = req.params;
-    const success = await deleteGeneralAlert(userId, alertId);
-    if (success) {
-      res.json({ ok: true, message: 'Оповещение удалено' });
-    } else {
-      res.status(404).json({ ok: false, error: 'Оповещение не найдено' });
-    }
-  } catch (e) {
-    const error = e as Error;
-    res.status(500).json({ ok: false, error: error.message || String(error) });
-  }
-});
-
-router.post('/:alertId/toggle', async (req, res) => {
-  try {
-    const userId = (req as AuthenticatedRequest).userId!;
-    const { alertId } = req.params;
-    const alert = await toggleGeneralAlert(userId, alertId);
-    if (alert) {
-      res.json({ ok: true, alert, message: `Оповещение ${alert.isActive ? 'включено' : 'выключено'}` });
-    } else {
-      res.status(404).json({ ok: false, error: 'Оповещение не найдено' });
-    }
-  } catch (e) {
-    const error = e as Error;
-    res.status(500).json({ ok: false, error: error.message || String(error) });
-  }
-});
-
-// Batch toggle alerts
+// Batch toggle alerts — registered before the `/:alertId` param routes so they
+// are not shadowed by `POST /:alertId/toggle`.
 router.post('/batch/toggle', validate(batchToggleSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.userId!;
@@ -142,6 +111,38 @@ router.post('/batch/delete', validate(batchDeleteSchema), async (req: Authentica
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Batch delete error');
+    res.status(500).json({ ok: false, error: error.message || String(error) });
+  }
+});
+
+router.delete('/:alertId', async (req, res) => {
+  try {
+    const userId = (req as AuthenticatedRequest).userId!;
+    const { alertId } = req.params;
+    const success = await deleteGeneralAlert(userId, alertId);
+    if (success) {
+      res.json({ ok: true, message: 'Оповещение удалено' });
+    } else {
+      res.status(404).json({ ok: false, error: 'Оповещение не найдено' });
+    }
+  } catch (e) {
+    const error = e as Error;
+    res.status(500).json({ ok: false, error: error.message || String(error) });
+  }
+});
+
+router.post('/:alertId/toggle', async (req, res) => {
+  try {
+    const userId = (req as AuthenticatedRequest).userId!;
+    const { alertId } = req.params;
+    const alert = await toggleGeneralAlert(userId, alertId);
+    if (alert) {
+      res.json({ ok: true, alert, message: `Оповещение ${alert.isActive ? 'включено' : 'выключено'}` });
+    } else {
+      res.status(404).json({ ok: false, error: 'Оповещение не найдено' });
+    }
+  } catch (e) {
+    const error = e as Error;
     res.status(500).json({ ok: false, error: error.message || String(error) });
   }
 });

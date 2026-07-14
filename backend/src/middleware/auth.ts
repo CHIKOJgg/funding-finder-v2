@@ -4,6 +4,8 @@ import { config } from '../config/index.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';
 import { verifyAuthToken, AuthProvider } from '../services/authService.js';
+import { prisma } from '../services/prisma.js';
+import { enforceTrialExpiry } from './subscription.js';
 
 export interface AuthenticatedRequest extends Request {
   telegramUser?: {
@@ -20,8 +22,6 @@ const VALID_EXCHANGES = SUPPORTED_EXCHANGES;
 // Track user activity (blocking — ensures user exists before any route handler)
 async function trackActivity(userId: string, authProvider: AuthProvider = 'telegram'): Promise<void> {
   try {
-    const { prisma } = await import('../services/prisma.js');
-    const { enforceTrialExpiry } = await import('./subscription.js');
     const tgId = userId.replace('tg_', '');
     const isAdmin = config.admin.telegramIds.includes(tgId);
     await prisma.user.upsert({

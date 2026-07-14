@@ -82,8 +82,7 @@ export function QuickStart({ hasScanResults, selectedCount }: QuickStartProps) {
           <li key={step.key} className="flex items-start gap-2 text-sm">
             <span
               className={clsx(
-                'mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
-                done[step.key] ? 'text-white' : 'text-white opacity-70'
+                'mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-white'
               )}
               style={{ background: done[step.key] ? 'var(--success)' : 'var(--brand)' }}
             >
