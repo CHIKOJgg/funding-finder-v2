@@ -312,15 +312,19 @@ export function ArbitragePage() {
         <div className="card">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-semibold">{t('arb.arbOpportunities')}</h2>
-            <button onClick={() => loadArbitrage(true)} disabled={arbLoading} className="text-sm text-[var(--brand)]">
+            <button
+              onClick={() => loadArbitrage(true)}
+              disabled={arbLoading}
+              className="btn btn-secondary text-sm py-2 px-4 w-auto flex items-center gap-1.5"
+            >
               🔄 {t('arb.refreshBtn')}
             </button>
           </div>
 
           {arbLoading ? (
-            <div className="text-center py-8 text-gray-500" role="status">{t('common.loading')}</div>
+            <div className="text-center py-8 text-[var(--text-muted)]" role="status">{t('common.loading')}</div>
           ) : arbOpportunities.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">{t('arb.noOpportunities')}</div>
+            <div className="text-center py-8 text-[var(--text-muted)]">{t('arb.noOpportunities')}</div>
           ) : (
             <>
               <FilterBar activeCount={activeFilterCount} title={t('filter.title')}>
@@ -385,12 +389,12 @@ export function ArbitragePage() {
               </FilterBar>
 
               {filteredOpportunities.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-[var(--text-muted)]">
                     {t('arb.noFiltered')}
                   </div>
               ) : (
                 <>
-                  <div className="text-xs text-gray-500 mb-2">
+                  <div className="text-xs text-[var(--text-muted)] mb-2">
                     {t('arb.shown', { x: Math.min(visibleCount, filteredOpportunities.length), y: filteredOpportunities.length })}
                   </div>
                   <div className="space-y-3">
@@ -431,9 +435,9 @@ export function ArbitragePage() {
           <h2 className="text-lg font-semibold mb-3">{t('arb.myAlerts')}</h2>
 
           {!user?.id ? (
-            <div className="text-center py-8 text-gray-500">{t('arb.loginToManage')}</div>
+            <div className="text-center py-8 text-[var(--text-muted)]">{t('arb.loginToManage')}</div>
           ) : arbAlerts.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">{t('arb.noAlerts')}</div>
+            <div className="text-center py-8 text-[var(--text-muted)]">{t('arb.noAlerts')}</div>
           ) : (
             <div className="space-y-2">
               {arbAlerts.map((alert) => (
@@ -441,24 +445,24 @@ export function ArbitragePage() {
                   <div className="flex justify-between items-start">
                     <div>
                       <strong>{alert.pair} ({alert.exchangeA} vs {alert.exchangeB})</strong>
-                      <div className="text-sm text-gray-600">
+                  <div className="text-sm text-[var(--text-muted)]">
                         {t('arb.conditionDiff', { threshold: alert.threshold })}
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-[var(--text-muted)]">
                           {t('arb.direction', { dir: alert.direction === 'both' ? t('arb.any') : alert.direction })}
                       </div>
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleToggleAlert(alert.id)}
-                        className="text-sm"
+                        className="w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--surface-2)] border border-[var(--border)] hover:bg-[var(--border)] transition-all text-base"
                         aria-label={alert.isActive ? 'Disable alert' : 'Enable alert'}
                       >
                         {alert.isActive ? '🔕' : '🔔'}
                       </button>
                       <button
                         onClick={() => setDeleteConfirm(alert.id)}
-                        className="text-sm text-red-500"
+                        className="w-9 h-9 rounded-lg flex items-center justify-center bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-all text-base"
                         aria-label="Delete alert"
                       >
                         🗑️
@@ -524,19 +528,19 @@ const OpportunityCard = memo(function OpportunityCard({
           <span className={clsx('ml-2 text-xs px-2 py-0.5 rounded-full', getRiskColor(opp.risk?.level))} title={t('arb.riskLevelTitle')}>
             {opp.risk?.level}
           </span>
-           <div className="text-xs text-gray-500 mt-0.5" title={t('arb.untilFundingTitle')}>
+           <div className="text-xs text-[var(--text-muted)] mt-0.5" title={t('arb.untilFundingTitle')}>
               <CountdownTimer intervalHours={opp.intervalA_hours} className="font-medium" /> {t('arb.untilFundingEx', { ex: opp.exchangeA })}
           </div>
         </div>
         <div className="text-right">
-          <div className="text-green-500 font-bold" title={t('arb.dailySpreadTitle')}>{(opp.difference_per_day * 100).toFixed(4)}%/день</div>
-          <div className="text-xs text-blue-500" title={t('arb.apyTitle')}>{opp.profit?.annualReturn?.toFixed(1)}% APY</div>
+          <div className="text-[var(--success)] font-bold" title={t('arb.dailySpreadTitle')}>{(opp.difference_per_day * 100).toFixed(4)}%/день</div>
+          <div className="text-xs text-[var(--brand)] font-medium" title={t('arb.apyTitle')}>{opp.profit?.annualReturn?.toFixed(1)}% APY</div>
         </div>
       </div>
 
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-xs font-medium text-gray-500">{t('arb.prices')}</span>
-        <span className="text-[10px] text-gray-400">{t('arb.live')}</span>
+        <span className="text-xs font-medium text-[var(--text-muted)]">{t('arb.prices')}</span>
+        <span className="text-xs text-[var(--text-muted)]">{t('arb.live')}</span>
       </div>
       <div className="grid grid-cols-2 gap-2 mb-2">
         <ExchangePriceCell
@@ -572,7 +576,7 @@ const OpportunityCard = memo(function OpportunityCard({
          <div>{t('arb.yearApy')} <strong>{opp.profit?.annualReturn?.toFixed(1)}%</strong></div>
       </div>
 
-      <div className="text-xs text-gray-500 mb-2">
+      <div className="text-xs text-[var(--text-muted)] mb-2">
           {t('arb.fees')} ${opp.profit?.fees?.toFixed(2)} USDT | {t('arb.slippage')} ${opp.profit?.slippage?.toFixed(2)} USDT
       </div>
 
@@ -621,7 +625,7 @@ const OpportunityCard = memo(function OpportunityCard({
           ↗ {t('arb.openEx', { ex: exchangeLabel(opp.exchangeB) })}
         </button>
       </div>
-      <p className="text-xs text-gray-500 mt-2 text-center">
+      <p className="text-xs text-[var(--text-muted)] mt-2 text-center">
         💡 {t('arb.hint', { pair: opp.pair })}
       </p>
     </div>
@@ -647,21 +651,21 @@ function ExchangePriceCell({
 }) {
   const t = useT();
   const valid = isFinite(price.value) && price.value > 0;
-  const fundingColor = funding > 0 ? 'text-green-500' : funding < 0 ? 'text-red-500' : 'text-gray-500';
+  const fundingColor = funding > 0 ? 'text-green-600' : funding < 0 ? 'text-red-600' : 'text-gray-600';
   return (
-    <div className="rounded bg-gray-50 px-2 py-1.5">
+    <div className="rounded-lg bg-surface-2 px-3 py-2 border border-[var(--border)]">
       <div className="flex items-center justify-between gap-1">
-        <span className="text-xs text-gray-500 truncate" title={exchangeLabel(exchange)}>{exchangeLabel(exchange)}</span>
-        <span className="flex items-center gap-1 shrink-0">
-          <span className={clsx('inline-block w-1.5 h-1.5 rounded-full', price.live ? 'bg-green-500 animate-pulse' : 'bg-gray-300')} aria-hidden="true" />
-          <span className="text-sm font-medium text-gray-800">${valid ? formatPrice(price.value) : '—'}</span>
+        <span className="text-xs font-medium text-[var(--text-muted)] truncate" title={exchangeLabel(exchange)}>{exchangeLabel(exchange)}</span>
+        <span className="flex items-center gap-1.5 shrink-0">
+          <span className={clsx('inline-block w-2 h-2 rounded-full', price.live ? 'bg-green-500 animate-pulse' : 'bg-gray-400')} aria-hidden="true" />
+          <span className="text-sm font-semibold text-[var(--text)]">${valid ? formatPrice(price.value) : '—'}</span>
         </span>
       </div>
-      <div className="flex items-center justify-between mt-1 gap-1">
-        <span className="text-[10px] text-gray-400">{t('arb.fundingRate')}</span>
-        <span className="flex items-center gap-1 shrink-0">
-          <span className={clsx('inline-block w-1.5 h-1.5 rounded-full', live ? 'bg-green-500 animate-pulse' : 'bg-gray-300')} aria-hidden="true" />
-          <span className={clsx('text-xs font-medium', fundingColor)}>
+      <div className="flex items-center justify-between mt-1.5 gap-1">
+        <span className="text-xs text-[var(--text-muted)]">{t('arb.fundingRate')}</span>
+        <span className="flex items-center gap-1.5 shrink-0">
+          <span className={clsx('inline-block w-2 h-2 rounded-full', live ? 'bg-green-500 animate-pulse' : 'bg-gray-400')} aria-hidden="true" />
+          <span className={clsx('text-xs font-semibold', fundingColor)}>
             {(funding * 100).toFixed(6)}%/ч ({interval}ч)
           </span>
         </span>
@@ -712,20 +716,20 @@ function ProfitCalculator({
       aria-modal="true"
       aria-labelledby="calculator-title"
     >
-      <div className="bg-white rounded-xl max-w-md w-full">
+      <div className="bg-surface rounded-xl max-w-md w-full">
         <div className="card">
           <h2 id="calculator-title" className="text-lg font-semibold mb-2">{t('arb.profitCalc')}</h2>
           <div className="text-center mb-4">
             <div className="font-bold">{opportunity.pair}</div>
-            <div className="text-sm text-gray-600">{opportunity.exchangeA} vs {opportunity.exchangeB}</div>
-            <div className="text-green-500 font-bold">{(opportunity.difference_per_day * 100).toFixed(4)}%/день</div>
+            <div className="text-sm text-[var(--text-muted)]">{opportunity.exchangeA} vs {opportunity.exchangeB}</div>
+            <div className="text-[var(--success)] font-bold">{(opportunity.difference_per_day * 100).toFixed(4)}%/день</div>
             {opportunity.intervalMismatch && (
-               <div className="text-xs text-orange-600">{t('arb.intervalMismatchShort')}</div>
+               <div className="text-xs text-[var(--warning)]">{t('arb.intervalMismatchShort')}</div>
             )}
           </div>
 
           <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="calc-capital">
+              <label className="block text-sm font-medium text-[var(--text)] mb-1" htmlFor="calc-capital">
               {t('arb.capital')}
             </label>
             <input
@@ -747,24 +751,24 @@ function ProfitCalculator({
           </button>
 
           {result && (
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <div className="text-xs text-gray-500 mb-2">
+            <div className="bg-[var(--surface-2)] p-3 rounded-lg">
+              <div className="text-xs text-[var(--text-muted)] mb-2">
                 {t('arb.netProfitNote')}
               </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>{t('arb.perHour')}</div>
-                <div className={clsx('font-bold', result.profit.netHourly >= 0 ? 'text-green-500' : 'text-red-500')}>{result.profit.netHourly.toFixed(4)} USDT</div>
+                <div className={clsx('font-bold', result.profit.netHourly >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>{result.profit.netHourly.toFixed(4)} USDT</div>
                 <div>{t('arb.perDay')}</div>
-                <div className={clsx('font-bold', result.profit.netDaily >= 0 ? 'text-green-500' : 'text-red-500')}>{result.profit.netDaily.toFixed(2)} USDT</div>
+                <div className={clsx('font-bold', result.profit.netDaily >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>{result.profit.netDaily.toFixed(2)} USDT</div>
                 <div>{t('arb.perWeek')}</div>
-                <div className={clsx('font-bold', result.profit.netWeekly >= 0 ? 'text-green-500' : 'text-red-500')}>{result.profit.netWeekly.toFixed(2)} USDT</div>
+                <div className={clsx('font-bold', result.profit.netWeekly >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>{result.profit.netWeekly.toFixed(2)} USDT</div>
                 <div>{t('arb.perYear')}</div>
-                <div className={clsx('font-bold', result.profit.netAnnual >= 0 ? 'text-green-500' : 'text-red-500')}>{result.profit.netAnnual.toFixed(2)} USDT</div>
+                <div className={clsx('font-bold', result.profit.netAnnual >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>{result.profit.netAnnual.toFixed(2)} USDT</div>
               </div>
-              <div className="mt-2 pt-2 border-t border-gray-200">
+              <div className="mt-2 pt-2 border-t border-[var(--border)]">
                 <div className="flex justify-between">
                   <span>{t('arb.annualReturn')}</span>
-                  <strong className={clsx(result.profit.annualReturn >= 0 ? 'text-green-500' : 'text-red-500')}>{result.profit.annualReturn.toFixed(2)}%</strong>
+                  <strong className={clsx(result.profit.annualReturn >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>{result.profit.annualReturn.toFixed(2)}%</strong>
                 </div>
               </div>
             </div>

@@ -182,7 +182,7 @@ export function MainPage() {
         />
 
         <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="capital-input">
+            <label className="block text-sm font-medium text-[var(--text)] mb-1" htmlFor="capital-input">
               {t('main.capital')}
             </label>
           <input
@@ -403,7 +403,7 @@ export function MainPage() {
       {showAi && (
         <div className="card">
           <h2 className="text-lg font-semibold mb-2">{t('main.aiAnalysisTitle')}</h2>
-          <pre className="bg-gray-50 p-3 rounded-lg text-sm whitespace-pre-wrap overflow-auto max-h-96">
+          <pre className="bg-[var(--surface-2)] p-3 rounded-lg text-sm whitespace-pre-wrap overflow-auto max-h-96">
             {aiText}
           </pre>
         </div>
@@ -412,7 +412,7 @@ export function MainPage() {
       {showRecommendations && (
         <div className="card">
           <h2 className="text-lg font-semibold mb-2">{t('main.recommendationsTitle')}</h2>
-          <pre className="bg-gray-50 p-3 rounded-lg text-sm whitespace-pre-wrap overflow-auto max-h-96">
+          <pre className="bg-[var(--surface-2)] p-3 rounded-lg text-sm whitespace-pre-wrap overflow-auto max-h-96">
             {recommendationsText}
           </pre>
         </div>
@@ -433,15 +433,15 @@ export function MainPage() {
           aria-modal="true"
           aria-labelledby="alert-dialog-title"
         >
-          <div className="bg-white rounded-xl max-w-sm w-full">
+          <div className="bg-surface rounded-xl max-w-sm w-full">
             <div className="card">
               <h2 id="alert-dialog-title" className="text-lg font-semibold mb-2">{t('main.createAlert')}</h2>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-[var(--text-muted)] mb-4">
                 {alertModal.exchange.toUpperCase()}: {alertModal.contract}
               </p>
 
               <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('main.condition')}</label>
+                  <label className="block text-sm font-medium text-[var(--text)] mb-1">{t('main.condition')}</label>
                 <select
                   value={alertCondition}
                   onChange={(e) => setAlertCondition(e.target.value as 'above' | 'below')}
@@ -453,7 +453,7 @@ export function MainPage() {
               </div>
 
               <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="alert-threshold">
+                  <label className="block text-sm font-medium text-[var(--text)] mb-1" htmlFor="alert-threshold">
                     {t('main.threshold')}
                   </label>
                 <input
@@ -634,25 +634,25 @@ const ResultItem = memo(function ResultItem({
   const starred = isWatchlisted(item.exchange, item.contract);
   const price = livePrice != null && !isNaN(livePrice) ? livePrice : item.mark_price;
   return (
-    <div className="border-b border-gray-100 pb-2">
+    <div className="border-b border-[var(--border)] pb-2">
       <div className="flex justify-between items-start">
         <div>
           <strong className="text-sm">{item.exchange.toUpperCase()}: {item.contract}</strong>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-[var(--text-muted)]">
             {t('main.volume', { v: formatNumber(item.volume_24h_settle) })}
           </div>
           <div className="text-xs flex items-center gap-1">
-            <span className={clsx('inline-block w-1.5 h-1.5 rounded-full', livePrice != null ? 'bg-green-500 animate-pulse' : 'bg-gray-300')} aria-hidden="true" />
-            <span className="text-gray-800 font-medium">${formatPrice(price)}</span>
-            <span className="text-gray-400">{t('arb.live')}</span>
+            <span className={clsx('inline-block w-2 h-2 rounded-full', livePrice != null ? 'bg-green-500 animate-pulse' : 'bg-gray-400')} aria-hidden="true" />
+            <span className="text-[var(--text)] font-semibold">${formatPrice(price)}</span>
+            <span className="text-[var(--text-muted)]">{t('arb.live')}</span>
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-[var(--text-muted)]">
             {t('main.realRate', { r: ((item.currentFunding ?? 0) * 100).toFixed(4) })}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-[var(--text-muted)]">
             {t('main.interval', { h: item.funding_interval_hours, s: item.funding_interval_source })}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-[var(--text-muted)]">
             <CountdownTimer intervalHours={item.funding_interval_hours} className="font-medium" />
             <span className="ml-1">{t('main.untilFunding')}</span>
           </div>
@@ -661,16 +661,21 @@ const ResultItem = memo(function ResultItem({
           <div className={clsx('font-bold', getFundingColor(item.funding_rate_per_hour))}>
             {t('main.ratePerHour', { value: ((item.funding_rate_per_hour ?? 0) * 100).toFixed(6) })}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-[var(--text-muted)]">
             {t('main.ratePerDay', { value: ((item.funding_rate_per_day ?? 0) * 100).toFixed(4) })}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-[var(--text-muted)]">
             {t('main.ratePerYear', { value: (item.annualized_rate * 100)?.toFixed(2) })}
           </div>
-          <div className="flex gap-2 justify-end mt-1">
+          <div className="flex gap-1.5 justify-end mt-1.5">
             <button
               onClick={() => toggleWatchlist(item.exchange, item.contract)}
-              className={clsx('text-xs hover:underline', starred ? 'text-yellow-500' : 'text-gray-400')}
+              className={clsx(
+                'w-8 h-8 rounded-lg flex items-center justify-center transition-all',
+                starred
+                  ? 'bg-yellow-100 text-yellow-600 border border-yellow-300'
+                  : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-yellow-50 hover:text-yellow-500'
+              )}
               aria-label={`${starred ? 'Remove from' : 'Add to'} watchlist ${item.exchange} ${item.contract}`}
               aria-pressed={starred}
             >
@@ -678,26 +683,26 @@ const ResultItem = memo(function ResultItem({
             </button>
             <button
               onClick={() => onAlert({ exchange: item.exchange, contract: item.contract })}
-              className="text-xs text-orange-500 hover:underline"
+              className="w-8 h-8 rounded-lg flex items-center justify-center bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-all"
               aria-label={`Create alert for ${item.exchange} ${item.contract}`}
             >
               🔔
             </button>
-             <button
-               onClick={() => onHistory({ exchange: item.exchange, contract: item.contract })}
-               className="text-xs text-[var(--brand)] hover:underline"
-               aria-label={`View history for ${item.exchange} ${item.contract}`}
-             >
-               📊
-             </button>
-             <button
-               onClick={() => openExchange(item.exchange, item.contract)}
-               className="text-xs text-green-600 hover:underline"
-               aria-label={`Open ${item.exchange} ${item.contract} on exchange`}
-                title={t('main.openOnExchange', { contract: item.contract, exchange: exchangeLabel(item.exchange) })}
-             >
-                ↗ {t('main.open')}
-             </button>
+            <button
+              onClick={() => onHistory({ exchange: item.exchange, contract: item.contract })}
+              className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-all"
+              aria-label={`View history for ${item.exchange} ${item.contract}`}
+            >
+              📊
+            </button>
+            <button
+              onClick={() => openExchange(item.exchange, item.contract)}
+              className="h-8 px-2.5 rounded-lg flex items-center justify-center gap-1 bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-all text-xs font-medium"
+              aria-label={`Open ${item.exchange} ${item.contract} on exchange`}
+              title={t('main.openOnExchange', { contract: item.contract, exchange: exchangeLabel(item.exchange) })}
+            >
+              ↗ {t('main.open')}
+            </button>
           </div>
         </div>
       </div>
