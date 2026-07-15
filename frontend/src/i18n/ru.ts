@@ -30,6 +30,7 @@ export const ru: Record<string, string> = {
   'app.scanError': 'Ошибка при сканировании: {error}',
   'app.scanNetworkError': 'Ошибка сети',
   'app.scanFailed': 'Ошибка сканирования',
+  'app.rateLimited': 'Слишком много запросов — подождите немного и попробуйте снова',
   'app.scanDone': 'Сканирование завершено',
   'app.loadOppError': 'Не удалось загрузить возможности',
   'app.networkError': 'Ошибка сети: {error}',

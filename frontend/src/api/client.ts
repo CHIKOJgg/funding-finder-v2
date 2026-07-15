@@ -74,7 +74,11 @@ async function retryRequest<T>(
       // Check raw Axios error before interceptor transforms it
       if (axios.isAxiosError(err)) {
         const status = err.response?.status;
-        if (status && status >= 400 && status < 500 && status !== 429) {
+        // 4xx are client errors and must not be retried (this includes 429
+        // rate-limit responses — retrying them only放大 the load and trips
+        // the limiter harder). 418 (Binance WAF) is the one 4xx worth a
+        // single backoff retry.
+        if (status && status >= 400 && status < 500 && status !== 418) {
           throw lastError;
         }
       }
@@ -90,8 +94,18 @@ async function retryRequest<T>(
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    const message = error.response?.data?.error || error.message || 'Network error';
-    return Promise.reject(new Error(message));
+    const res = error.response;
+    const message = res?.data?.error || error.message || 'Network error';
+    const err = new Error(message);
+    // Surface rate-limit responses as a distinct, recoverable condition so
+    // callers can show a friendly message and back off instead of crashing
+    // or hammering the server.
+    if (res && res.status === 429) {
+      const retryAfter = res.headers?.['retry-after'];
+      (err as any).rateLimited = true;
+      (err as any).retryAfter = retryAfter ? Number(retryAfter) : undefined;
+    }
+    return Promise.reject(err);
   }
 );
 

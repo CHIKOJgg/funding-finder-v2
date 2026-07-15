@@ -261,12 +261,15 @@ function DataProvider() {
           setScanStatus(t('app.found', { count: response.result.scanned }));
           showToast(t('app.scanDone'), 'success');
         } else {
-          setScanStatus(t('app.scanError', { error: response.error }));
-          showToast(t('app.scanFailed'), 'error');
+          const isRate = /too many requests/i.test(String(response.error || ''));
+          setScanStatus(isRate ? t('app.rateLimited') : t('app.scanError', { error: response.error }));
+          showToast(isRate ? t('app.rateLimited') : t('app.scanFailed'), 'error');
         }
       } catch (error) {
-        setScanStatus(t('app.networkError', { error: (error as Error).message }));
-        showToast(t('app.scanNetworkError'), 'error');
+        const isRate =
+          (error as any).rateLimited || /too many requests/i.test((error as Error).message);
+        setScanStatus(isRate ? t('app.rateLimited') : t('app.networkError', { error: (error as Error).message }));
+        showToast(isRate ? t('app.rateLimited') : t('app.scanNetworkError'), 'error');
       } finally {
         setScanLoading(false);
         scanInFlight.current = null;

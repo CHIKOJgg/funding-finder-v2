@@ -30,6 +30,7 @@ export const en: Record<string, string> = {
   'app.scanError': 'Scan error: {error}',
   'app.scanNetworkError': 'Network error',
   'app.scanFailed': 'Scan failed',
+  'app.rateLimited': 'Too many requests — please wait a moment and try again',
   'app.scanDone': 'Scan complete',
   'app.loadOppError': 'Failed to load opportunities',
   'app.networkError': 'Network error: {error}',
