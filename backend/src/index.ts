@@ -47,6 +47,8 @@ import portfolioLiveRoutes from './routes/portfolioLive.js';
 import keysRoutes from './routes/keys.js';
 import webhookRoutes from './routes/webhook.js';
 import adminRoutes from './routes/admin.js';
+import debugRoutes from './routes/debug.js';
+import { requireAdmin } from './middleware/admin.js';
 
 async function initSentry() {
   if (config.sentry.dsn) {
@@ -138,7 +140,22 @@ const UNMETERED_PATHS = new Set([
   '/api/ready',
   '/api/metrics',
   '/api/prometheus',
+  '/api/log',
 ]);
+
+// Shared handler so EVERY rate-limit rejection is logged with the route,
+// user and IP — this is the single best signal for diagnosing a 429 storm.
+function rateLimitHandler(name: string) {
+  return (req: any, res: any, _next: any, options: any) => {
+    const userId = req.userId || req.user?.id || null;
+    const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    logger.warn(
+      { limiter: name, userId, ip, route: req.path, method: req.method },
+      `Rate limit hit (${name}): user=${userId} ip=${ip} ${req.method} ${req.path}`
+    );
+    res.status(options.statusCode).json(options.message);
+  };
+}
 
 // Rate limiting (generous global cap — the app is request-heavy: each page
 // load fires ~10-15 authenticated calls, plus live polling). Health/metrics
@@ -151,6 +168,7 @@ const limiter = rateLimit({
   legacyHeaders: false,
   skip: (req) => UNMETERED_PATHS.has(req.path),
   message: { ok: false, error: 'Too many requests, please try again later' },
+  handler: rateLimitHandler('global'),
 });
 app.use('/api/', limiter);
 
@@ -164,6 +182,7 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   skip: (req) => UNMETERED_PATHS.has(req.path),
   message: { ok: false, error: 'Too many requests, please try again later' },
+  handler: rateLimitHandler('auth'),
 });
 
 // Health check (no auth required)
@@ -273,16 +292,25 @@ app.get('/api/feature-flags', (req, res) => {
   res.json({ ok: true, flags });
 });
 
+// Client log ingestion (Mini App has no DevTools). Accepted WITHOUT auth so it
+// works even during a pre-login crash. Subject only to the global request
+// limiter; logs are batched client-side (~1.5s) so this is low volume.
+import logRoutes from './routes/log.js';
+app.use('/api', logRoutes);
+
 // Routes with auth
 // Scan hits many exchange APIs and AI calls cost money, so add a strict
 // per-user cap on top of the global limiter.
-app.use('/api', authLimiter, authenticate, perUserLimiter(60, 15 * 60 * 1000), scanRoutes);
-app.use('/api', authLimiter, authenticate, perUserLimiter(30, 15 * 60 * 1000), aiRoutes);
+app.use('/api', authLimiter, authenticate, perUserLimiter(60, 15 * 60 * 1000, 'scan'), scanRoutes);
+app.use('/api', authLimiter, authenticate, perUserLimiter(30, 15 * 60 * 1000, 'ai'), aiRoutes);
 app.use('/api', authLimiter, authenticate, historyRoutes);
 app.use('/api', authLimiter, authenticate, analyticsRoutes);
 
 // Admin routes (require admin role)
 app.use('/api', authenticate, adminRoutes);
+
+// Debug/diagnostics routes (require admin role)
+app.use('/api', authenticate, requireAdmin, debugRoutes);
 
 // Webhook routes (no user auth, webhook token/signature verified inside)
 app.use('/api/webhook', webhookRoutes);
@@ -305,7 +333,7 @@ app.use('/api', authLimiter, authenticate, trialRoutes);
 app.use('/api', authLimiter, authenticate, fundingRoutes);
 app.use('/api', authLimiter, authenticate, keysRoutes);
 // Live portfolio + auto-execute places real orders on user exchanges — keep it tightly throttled per user.
-app.use('/api', authLimiter, authenticate, perUserLimiter(20, 15 * 60 * 1000), portfolioLiveRoutes);
+app.use('/api', authLimiter, authenticate, perUserLimiter(20, 15 * 60 * 1000, 'portfolio-live'), portfolioLiveRoutes);
 app.use('/api', authLimiter, authenticate, watchlistRoutes);
 app.use('/api', authLimiter, authenticate, portfolioRoutes);
 

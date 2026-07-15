@@ -14,6 +14,7 @@ import { getSpotFutures, SF_SUPPORTED_EXCHANGES } from '../services/spotFuturesS
 import { getLivePriceBatch } from '../services/priceService.js';
 import { getLiveFundingBatch } from '../services/fundingService.js';
 import { runScan, getCachedScan } from '../services/scanService.js';
+import { getWarmupPromise } from '../services/fundingWarmup.js';
 import { getSubscriptionLimits } from '../middleware/subscription.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';
@@ -160,7 +161,18 @@ router.get('/arbitrage/opportunities', async (req, res) => {
   try {
     // SWR: return a cached scan immediately if one covers these exchanges
     // (the warm full-set cache counts as a superset), refresh in the background.
-    const cached = getCachedScan(exchanges);
+    let cached = getCachedScan(exchanges);
+    if (!cached) {
+      // Cold start: a warm-up scan may already be running (or about to). Ride
+      // it instead of firing our own cold live scan — otherwise the user's
+      // request and the warm-up would scan concurrently and saturate the box.
+      const warm = getWarmupPromise();
+      if (warm) {
+        await warm;
+        cached = getCachedScan(exchanges);
+      }
+    }
+
     let scanResults;
     if (cached) {
       scanResults = cached.result;
@@ -197,8 +209,11 @@ router.get('/arbitrage/opportunities', async (req, res) => {
       logger.warn({ err: error.message }, 'Arbitrage opportunities served stale after scan error');
       return res.json({ ok: true, opportunities: stale.opportunities, metadata: stale.metadata, stale: true });
     }
-    logger.error({ err: error }, 'Arbitrage opportunities error');
-    return res.status(500).json({ ok: false, error: error.message || String(error) });
+    // Never return a hard 500 for a routine poll — that is what surfaces as
+    // "Failed to load opportunities" in the mini app. Degrade gracefully to an
+    // empty list with a flag the client can show as a soft notice.
+    logger.error({ err: error }, 'Arbitrage opportunities error (degraded to empty)');
+    return res.json({ ok: true, opportunities: [], degraded: true, reason: error.message || String(error) });
   }
 });
 
@@ -256,6 +271,13 @@ router.get('/price/batch', async (req, res) => {
       return res.json({ ok: true, prices: {} });
     }
     const prices = await getLivePriceBatch(exchange, symbols);
+    const missing = symbols.filter((s) => prices[s.toUpperCase()] == null);
+    if (missing.length) {
+      // A missing price almost always means the exchange API is unreachable
+      // from this host (datacenter IP blocked / DNS / WAF) — not a code bug.
+      // Surfacing it makes "prices aren't live" diagnosable at a glance.
+      logger.warn({ exchange, missing }, `Live price batch: ${missing.length}/${symbols.length} symbols returned no price`);
+    }
     res.json({ ok: true, prices });
   } catch (e) {
     const error = e as Error;
@@ -279,6 +301,10 @@ router.get('/funding/batch', async (req, res) => {
       return res.json({ ok: true, funding: {} });
     }
     const funding = await getLiveFundingBatch(exchange, symbols);
+    const missing = symbols.filter((s) => funding[s.toUpperCase()] == null);
+    if (missing.length) {
+      logger.warn({ exchange, missing }, `Live funding batch: ${missing.length}/${symbols.length} symbols returned no rate`);
+    }
     res.json({ ok: true, funding });
   } catch (e) {
     const error = e as Error;

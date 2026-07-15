@@ -278,6 +278,33 @@ function storeResult(key: string, result: ScanResult): ScanResult {
   return result;
 }
 
+/** Parse the exchange list out of a `scan:<exchanges>` cache key. */
+function parseExchangesFromKey(key: string): string[] {
+  return key.replace('scan:', '').split(',').filter(Boolean);
+}
+
+/**
+ * Find an in-flight scan whose exchange set is a SUPERSET of the requested
+ * set. Used so a user requesting 3 exchanges can ride the already-running
+ * warm-up scan of all 23 instead of launching a second concurrent scan.
+ */
+function findSupersetInFlight(exchanges: string[]): Promise<ScanResult> | null {
+  const set = new Set(exchanges);
+  for (const [key, promise] of inFlightScans.entries()) {
+    if (!key.startsWith('scan:')) continue;
+    const cachedSet = new Set(parseExchangesFromKey(key));
+    let isSuperset = true;
+    for (const e of set) {
+      if (!cachedSet.has(e)) {
+        isSuperset = false;
+        break;
+      }
+    }
+    if (isSuperset) return promise;
+  }
+  return null;
+}
+
 /**
  * Unified, read-through funding store. Returns the cached scan instantly when
  * fresh; otherwise coalesces concurrent callers onto one live scan. A
@@ -299,6 +326,18 @@ export async function runScan(exchanges: string[]): Promise<ScanResult> {
   // Cold or expired: serve only one live scan at a time per exchange set.
   const existing = inFlightScans.get(key);
   if (existing) return existing;
+
+  // Superset coalescing: if a broader scan (e.g. the scheduled warm-up of all
+  // exchanges) is already in flight and covers the requested set, attach to it
+  // instead of launching a second concurrent scan. This is the key fix for the
+  // "app is slow / crashes on entry" symptom: previously the user's 3-exchange
+  // auto-scan and the 23-exchange warm-up ran simultaneously and saturated the
+  // single Node process, making every other request take 12–30s.
+  const superset = findSupersetInFlight(exchanges);
+  if (superset) {
+    logger.info(`Coalescing subset scan (${key}) onto in-flight superset scan`);
+    return superset;
+  }
 
   const promise = (async () => {
     const result = await doLiveScan(exchanges);
@@ -322,4 +361,12 @@ function refreshScan(key: string, exchanges: string[]): void {
   // Swallow rejections so a failed background refresh doesn't become an
   // unhandled rejection (it's best-effort — the next cycle will retry).
   promise.catch(() => {});
+}
+
+/** Debug snapshot: which scans are currently in flight (for /api/debug). */
+export function scanDebug() {
+  return {
+    inFlight: [...inFlightScans.keys()],
+    cacheKeys: [...cache.keys()].filter((k) => k.startsWith('scan:')).length,
+  };
 }

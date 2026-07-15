@@ -14,6 +14,8 @@ import { getPlanLimits, PlanLimits } from './utils/plans';
 import { LanguageProvider } from './i18n';
 import { useT } from './i18n';
 import type { ScanResult, TrialStatus, WatchlistItem } from './types';
+import { DebugLog, DebugToggle } from './components/DebugLog';
+import { logger as clientLogger } from './utils/logger';
 
 const MainPage = React.lazy(() => import('./pages/MainPage').then(m => ({ default: m.MainPage })));
 const ArbitragePage = React.lazy(() => import('./pages/ArbitragePage').then(m => ({ default: m.ArbitragePage })));
@@ -140,6 +142,12 @@ function DataProvider() {
     localStorage.setItem('ff_onboarding_done', 'true');
     setShowOnboarding(false);
   }, []);
+
+  // Mirror the user id into the client logger so server-correlated logs can be
+  // tied back to a specific Telegram user (vital when we can't open F12).
+  useEffect(() => {
+    clientLogger.setUser(user?.id ?? null);
+  }, [user?.id]);
 
   // Subscription state
   const [subscription, setSubscription] = useState<string>('free');
@@ -456,6 +464,12 @@ function PageLoader() {
 }
 
 export default function App() {
+  // Debug overlay (replacement for F12 in the mini app). Open with `?debug=1`
+  // in the URL, or via the floating bug button.
+  const [debugOpen, setDebugOpen] = useState(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1'
+  );
+
   // Theme: pull native Telegram theme params (guarantees correct contrast)
   // and toggle the `dark` class based on the active color scheme.
   useEffect(() => {
@@ -508,6 +522,8 @@ export default function App() {
           <DataProvider />
         </LanguageProvider>
       </ToastProvider>
+      <DebugToggle onOpen={() => setDebugOpen(true)} />
+      <DebugLog open={debugOpen} onClose={() => setDebugOpen(false)} />
     </ErrorBoundary>
   );
 }

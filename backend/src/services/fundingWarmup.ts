@@ -7,6 +7,14 @@ const ALL_EXCHANGES = SUPPORTED_EXCHANGES;
 const WARMUP_INTERVAL_MS = 5 * 60 * 1000; // align with scan cache TTL
 
 let timer: NodeJS.Timeout | null = null;
+// Resolves when the FIRST (startup) warm-up scan finishes and the full-set
+// cache is populated. Callers (e.g. the arbitrage endpoint on a cold start)
+// can await this to ride the warm-up instead of launching their own cold scan.
+let warmupPromise: Promise<void> | null = null;
+
+export function getWarmupPromise(): Promise<void> | null {
+  return warmupPromise;
+}
 
 /**
  * Periodically runs a full scan so the funding calendar, the main scan endpoint
@@ -18,7 +26,7 @@ let timer: NodeJS.Timeout | null = null;
  * selections are served non-blocking and trigger their own background refresh.
  */
 export function startFundingWarmup(): void {
-  if (timer) return;
+  if (warmupPromise) return;
 
   const run = async () => {
     try {
@@ -43,11 +51,14 @@ export function startFundingWarmup(): void {
     }
   };
 
-  // Kick off shortly after startup, then on an interval.
-  timer = setTimeout(async () => {
+  // Kick off the first warm-up immediately (it populates the cache that every
+  // cold user request would otherwise trigger its own scan for), then repeat
+  // on the interval. Exposing the first-run promise lets the arbitrage
+  // endpoint await it on a cold start instead of competing with it.
+  warmupPromise = (async () => {
     await run();
     timer = setInterval(run, WARMUP_INTERVAL_MS);
-  }, 10_000);
+  })();
 
   logger.info('Funding scan warm-up scheduled');
 }
@@ -58,4 +69,5 @@ export function stopFundingWarmup(): void {
     clearInterval(timer);
     timer = null;
   }
+  warmupPromise = null;
 }

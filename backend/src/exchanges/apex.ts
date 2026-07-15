@@ -24,7 +24,11 @@ export async function scanApex(): Promise<ExchangeResult[]> {
       'apex:symbols',
       async () => {
         const res = await retry(() => client.get('/symbols'));
-        return res.data?.data || [];
+        // Defensive: the endpoint has returned both `{ data: [...] }` and a bare
+        // array across versions. Normalise to an array so the later `.filter`
+        // can never throw ("symbols.filter is not a function").
+        const raw = (res?.data?.data ?? res?.data) as unknown;
+        return Array.isArray(raw) ? raw : [];
       },
       6 * 60 * 60 * 1000
     );

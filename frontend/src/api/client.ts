@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../utils/logger';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api',
@@ -56,6 +57,10 @@ api.interceptors.request.use((config) => {
       } catch { /* ignore parse errors */ }
     }
   }
+  (config as any)._startedAt = Date.now();
+  logger.debug('net', `${String(config.method || 'GET').toUpperCase()} ${config.url || ''}`, {
+    auth: Boolean(authToken || telegramInitData),
+  });
   return config;
 });
 
@@ -71,14 +76,16 @@ async function retryRequest<T>(
       return await fn();
     } catch (err) {
       lastError = err as Error;
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      logger.warn('net', `request attempt ${i + 1}/${retries + 1} failed${status ? ` (${status})` : ''}: ${(err as Error).message}`);
       // Check raw Axios error before interceptor transforms it
       if (axios.isAxiosError(err)) {
-        const status = err.response?.status;
+        const st = err.response?.status;
         // 4xx are client errors and must not be retried (this includes 429
         // rate-limit responses — retrying them only放大 the load and trips
         // the limiter harder). 418 (Binance WAF) is the one 4xx worth a
         // single backoff retry.
-        if (status && status >= 400 && status < 500 && status !== 418) {
+        if (st && st >= 400 && st < 500 && st !== 418) {
           throw lastError;
         }
       }
@@ -87,15 +94,22 @@ async function retryRequest<T>(
       }
     }
   }
+  logger.error('net', `request failed after ${retries + 1} attempts: ${(lastError as Error)?.message}`);
   throw lastError;
 }
 
 // Response interceptor: transform success data and error messages
 api.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    const ms = Date.now() - (((response.config as any)._startedAt as number) || Date.now());
+    logger.info('net', `${response.status} ${String(response.config.method || 'GET').toUpperCase()} ${response.config.url || ''} (${ms}ms)`);
+    return response.data;
+  },
   (error) => {
     const res = error.response;
+    const ms = res ? Date.now() - (((res.config as any)._startedAt as number) || Date.now()) : 0;
     const message = res?.data?.error || error.message || 'Network error';
+    logger.error('net', `${res?.status || 'ERR'} ${error.config?.method?.toUpperCase?.() || 'GET'} ${error.config?.url || ''} (${ms}ms): ${message}`);
     const err = new Error(message);
     // Surface rate-limit responses as a distinct, recoverable condition so
     // callers can show a friendly message and back off instead of crashing
