@@ -24,11 +24,12 @@ export function ExchangeSelector({
   onChange,
   maxExchanges,
   onLimitReached,
-  title = 'Биржи',
+  title,
   showCount = false,
 }: ExchangeSelectorProps) {
   const [specificOpen, setSpecificOpen] = useState(false);
   const t = useT();
+  const titleText = title ?? t('exchangeSelect.label');
 
   const allowed = maxExchanges ?? ALL.length;
   const isAll =
@@ -57,7 +58,7 @@ export function ExchangeSelector({
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold">{title}</h2>
+        <h2 className="text-lg font-semibold">{titleText}</h2>
         {showCount && (
           <span className="chip" style={{ color: 'var(--text-muted)' }}>
             {value.length}/{maxExchanges ?? ALL.length}

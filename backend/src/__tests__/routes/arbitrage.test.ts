@@ -25,6 +25,7 @@ jest.mock('../../services/priceService', () => ({
 }));
 jest.mock('../../services/scanService', () => ({
   runScan: jest.fn(),
+  getCachedScan: jest.fn().mockReturnValue(null),
 }));
 
 import * as arbitrageService from '../../services/arbitrageService';

@@ -525,7 +525,7 @@ const OpportunityCard = memo(function OpportunityCard({
           </div>
         </div>
         <div className="text-right">
-          <div className="text-[var(--success)] font-bold" title={t('arb.dailySpreadTitle')}>{(opp.difference_per_day * 100).toFixed(4)}%/день</div>
+          <div className="text-[var(--success)] font-bold" title={t('arb.dailySpreadTitle')}>{(opp.difference_per_day * 100).toFixed(4)}{t('unit.pctPerDay')}</div>
           <div className="text-xs text-[var(--brand)] font-medium" title={t('arb.apyTitle')}>{opp.profit?.annualReturn?.toFixed(1)}% APY</div>
         </div>
       </div>
@@ -558,7 +558,7 @@ const OpportunityCard = memo(function OpportunityCard({
       )}
 
       <div className="text-sm mb-2">
-          <div>{t('arb.fundingIncome')} +${opp.profit?.grossHourly?.toFixed(4)} USDT/ч · +${opp.profit?.grossDaily?.toFixed(2)} USDT/день</div>
+          <div>{t('arb.fundingIncome')} +${opp.profit?.grossHourly?.toFixed(4)} {t('unit.usdtPerHour')} · +${opp.profit?.grossDaily?.toFixed(2)} {t('unit.usdtPerDay')}</div>
           <div>{t('arb.oneTimeCosts')} ${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)} USDT</div>
         <div>
            {t('arb.netDaily')} <span className={clsx((opp.profit?.netDaily ?? 0) >= 0 ? 'text-green-600' : 'text-red-500')}>
@@ -658,7 +658,7 @@ function ExchangePriceCell({
         <span className="flex items-center gap-1.5 shrink-0">
           <span className={clsx('inline-block w-2 h-2 rounded-full', live ? 'bg-green-500 animate-pulse' : 'bg-gray-400')} aria-hidden="true" />
           <span className={clsx('text-xs font-semibold', fundingColor)}>
-            {(funding * 100).toFixed(6)}%/ч ({interval}ч)
+            {(funding * 100).toFixed(6)}{t('unit.pctPerHour')} ({t('unit.hoursShort', { h: interval })})
           </span>
         </span>
       </div>
@@ -714,7 +714,7 @@ function ProfitCalculator({
           <div className="text-center mb-4">
             <div className="font-bold">{opportunity.pair}</div>
             <div className="text-sm text-[var(--text-muted)]">{opportunity.exchangeA} vs {opportunity.exchangeB}</div>
-            <div className="text-[var(--success)] font-bold">{(opportunity.difference_per_day * 100).toFixed(4)}%/день</div>
+            <div className="text-[var(--success)] font-bold">{(opportunity.difference_per_day * 100).toFixed(4)}{t('unit.pctPerDay')}</div>
             {opportunity.intervalMismatch && (
                <div className="text-xs text-[var(--warning)]">{t('arb.intervalMismatchShort')}</div>
             )}

@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { apiClient } from '../api/client';
 import { useToast } from './Toast';
+import { useT } from '../i18n';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -31,6 +32,7 @@ export function HistoryChart({ exchange, contract, onClose }: HistoryChartProps)
   const [loading, setLoading] = useState(true);
   const [apr, setApr] = useState<{ apr: number; avgRate: number; periodDays: number; dataPoints: number; series: any[] | null } | null>(null);
   const { showToast } = useToast();
+  const t = useT();
   const closeRef = useRef<HTMLButtonElement>(null);
 
   // Focus trap: focus close button on mount
@@ -48,7 +50,7 @@ export function HistoryChart({ exchange, contract, onClose }: HistoryChartProps)
           setHistory(response.history);
         }
       } catch (error) {
-        if (!cancelled) showToast('Не удалось загрузить историю', 'error');
+        if (!cancelled) showToast(t('history.loadError'), 'error');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -103,11 +105,11 @@ export function HistoryChart({ exchange, contract, onClose }: HistoryChartProps)
       x: {
         title: {
           display: true,
-          text: 'Время',
+          text: t('history.timeAxis'),
         },
       },
     },
-  }), []);
+  }), [t]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -130,34 +132,34 @@ export function HistoryChart({ exchange, contract, onClose }: HistoryChartProps)
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-auto">
+      <div className="rounded-xl max-w-lg w-full max-h-[90vh] overflow-auto" style={{ background: 'var(--bg)' }}>
         <div className="card">
           <h2 id="history-title" className="text-lg font-semibold mb-2">
-            История Funding Rates: {exchange.toUpperCase()}:{contract}
+            {t('history.title', { exchange: exchange.toUpperCase(), contract })}
           </h2>
 
           {loading ? (
-            <div className="text-center py-8 text-gray-500" role="status">Загрузка...</div>
+            <div className="text-center py-8 text-muted" role="status">{t('common.loading')}</div>
           ) : history.length > 0 ? (
             <div className="h-64">
               <Line data={chartData} options={chartOptions} />
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">Нет данных за период</div>
+            <div className="text-center py-8 text-muted">{t('history.noData')}</div>
           )}
 
           {apr && (
             <div className="mt-4 p-3 rounded-xl" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>
-              <div className="text-sm font-medium">Средний APR за {apr.periodDays} дн:</div>
+              <div className="text-sm font-medium">{t('history.avgApr', { days: apr.periodDays })}</div>
               <div className="text-2xl font-bold stat">{(apr.apr * 100).toFixed(2)}%</div>
               <div className="text-xs mt-1">
-                Средняя ставка: {(apr.avgRate * 100).toFixed(6)}%/выплата · точек: {apr.dataPoints}
+                {t('history.avgRate', { rate: (apr.avgRate * 100).toFixed(6), points: apr.dataPoints })}
               </div>
             </div>
           )}
 
           <button ref={closeRef} onClick={onClose} className="btn btn-secondary mt-4 w-full">
-            Закрыть
+            {t('common.close')}
           </button>
         </div>
       </div>

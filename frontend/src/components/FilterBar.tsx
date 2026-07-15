@@ -27,7 +27,7 @@ export function FilterBar({ activeCount, children, defaultOpen, title }: Props) 
         className="w-full flex items-center justify-between"
         aria-expanded={open}
       >
-        <span className="flex items-center gap-2 font-medium text-gray-700">
+        <span className="flex items-center gap-2 font-medium text-[var(--text)]">
           <span aria-hidden>🔧</span>
           {label}
           {activeCount > 0 && (
@@ -39,7 +39,7 @@ export function FilterBar({ activeCount, children, defaultOpen, title }: Props) 
             </span>
           )}
         </span>
-        <span className="text-gray-400">{open ? '▴' : '▾'}</span>
+        <span className="text-[var(--text-muted)]">{open ? '▴' : '▾'}</span>
       </button>
 
       {open && <div className="mt-3 space-y-3">{children}</div>}
@@ -51,7 +51,7 @@ export function FilterBar({ activeCount, children, defaultOpen, title }: Props) 
 export function FilterField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+      <label className="block text-sm font-medium text-[var(--text)] mb-1.5">{label}</label>
       {children}
     </div>
   );
@@ -78,7 +78,7 @@ export function SegmentedControl<T extends string>({
             'text-xs px-3 py-1.5 rounded-full border transition',
             value === opt.value
               ? 'bg-[var(--brand)] text-white border-[var(--brand)]'
-              : 'bg-transparent text-gray-600 border-gray-300'
+              : 'bg-transparent text-[var(--text-muted)] border-gray-300'
           )}
           aria-pressed={value === opt.value}
         >

@@ -605,8 +605,8 @@ const PortfolioRow = memo(function PortfolioRow({
             {income >= 0 ? '+' : ''}{formatUsd(income)} USDT
           </div>
           {pnl && (
-            <div className="text-xs text-gray-500">
-              ≈ {(pnl.annualizedPct).toFixed(2)}%/год
+            <div className="text-xs text-muted">
+              ≈ {(pnl.annualizedPct).toFixed(2)}{t('unit.pctPerYear')}
             </div>
           )}
             <button onClick={onRemove} className="text-xs text-red-500 hover:underline mt-1">{t('common.delete')}</button>

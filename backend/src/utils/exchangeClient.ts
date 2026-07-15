@@ -215,15 +215,23 @@ export async function retry<T>(
     } catch (err) {
       lastError = err as Error;
       // Don't retry on 4xx errors (except 429 and 418 — Binance anti-bot)
-      if (axios.isAxiosError(err) && err.response?.status) {
-        const status = err.response.status;
-        if (status >= 400 && status < 500 && status !== 429 && status !== 418) {
-          throw lastError;
-        }
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      if (status && status >= 400 && status < 500 && status !== 429 && status !== 418) {
+        throw lastError;
       }
-      const delay = baseDelay * Math.pow(2, i) * (lastError.message.includes('418') ? 2 : 1);
-      logger.debug(`Retry attempt ${i + 1}/${attempts} failed, waiting ${delay}ms: ${lastError.message}`);
-      await sleep(delay);
+      // Give 418 (Binance anti-bot) extra backoff. Detect it by status first,
+      // falling back to the message string — guarding against errors whose
+      // `message` is undefined (which previously crashed the whole retry).
+      const message = lastError?.message ?? '';
+      const is418 = status === 418 || message.includes('418');
+      // No point sleeping after the final attempt — we're about to throw.
+      if (i < attempts - 1) {
+        const delay = baseDelay * Math.pow(2, i) * (is418 ? 2 : 1);
+        logger.debug(`Retry attempt ${i + 1}/${attempts} failed, waiting ${delay}ms: ${message}`);
+        await sleep(delay);
+      } else {
+        logger.debug(`Retry attempt ${i + 1}/${attempts} failed (final): ${message}`);
+      }
     }
   }
   throw lastError;

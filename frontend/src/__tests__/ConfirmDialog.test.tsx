@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { LanguageProvider } from '../i18n';
 
 describe('ConfirmDialog', () => {
   it('does not render when closed', () => {
@@ -21,7 +22,9 @@ describe('ConfirmDialog', () => {
   it('calls onConfirm when confirm button clicked', () => {
     const onConfirm = vi.fn();
     render(
-      <ConfirmDialog open={true} title="Test" message="Test" onConfirm={onConfirm} onCancel={() => {}} />
+      <LanguageProvider>
+        <ConfirmDialog open={true} title="Test" message="Test" onConfirm={onConfirm} onCancel={() => {}} />
+      </LanguageProvider>
     );
     fireEvent.click(screen.getByText('Подтвердить'));
     expect(onConfirm).toHaveBeenCalledOnce();
@@ -30,7 +33,9 @@ describe('ConfirmDialog', () => {
   it('calls onCancel when cancel button clicked', () => {
     const onCancel = vi.fn();
     render(
-      <ConfirmDialog open={true} title="Test" message="Test" onConfirm={() => {}} onCancel={onCancel} />
+      <LanguageProvider>
+        <ConfirmDialog open={true} title="Test" message="Test" onConfirm={() => {}} onCancel={onCancel} />
+      </LanguageProvider>
     );
     fireEvent.click(screen.getByText('Отмена'));
     expect(onCancel).toHaveBeenCalledOnce();
@@ -54,14 +59,16 @@ describe('ConfirmDialog', () => {
 
   it('uses danger variant class', () => {
     render(
-      <ConfirmDialog
-        open={true}
-        title="Test"
-        message="Test"
-        variant="danger"
-        onConfirm={() => {}}
-        onCancel={() => {}}
-      />
+      <LanguageProvider>
+        <ConfirmDialog
+          open={true}
+          title="Test"
+          message="Test"
+          variant="danger"
+          onConfirm={() => {}}
+          onCancel={() => {}}
+        />
+      </LanguageProvider>
     );
     const btn = screen.getByText('Подтвердить');
     expect(btn.className).toContain('btn-danger');

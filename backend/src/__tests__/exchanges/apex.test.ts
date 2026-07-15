@@ -17,10 +17,10 @@ beforeEach(() => {
 describe('scanApex', () => {
   it('returns normalized ExchangeResult[] for ApeX', async () => {
     mock.routeGet({
-      '/v3/symbols': {
+      '/symbols': {
         data: [{ symbol: 'BTCUSDT', contractType: 'PERPETUAL' }],
       },
-      '/v3/ticker': {
+      '/ticker': {
         data: { fundingRate: '0.0001', markPrice: '50000', turnover24h: '5000000' },
       },
     });

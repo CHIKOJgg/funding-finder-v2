@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { LanguageProvider } from '../i18n';
 
 function ThrowError(): React.ReactNode {
   throw new Error('Test error');
@@ -22,9 +23,11 @@ describe('ErrorBoundary', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     render(
-      <ErrorBoundary>
-        <ThrowError />
-      </ErrorBoundary>
+      <LanguageProvider>
+        <ErrorBoundary>
+          <ThrowError />
+        </ErrorBoundary>
+      </LanguageProvider>
     );
 
     expect(screen.getByText('Что-то пошло не так')).toBeInTheDocument();

@@ -528,6 +528,8 @@ export const en: Record<string, string> = {
 
   // Trial
   'trial.activeTitle': '🎁 Trial Pro is active',
+  'trial.remainDaysHours': '{days}d {hours}h',
+  'trial.remainHours': '{hours}h',
   'trial.remaining': 'Remaining: {countdown}',
   'trial.endedTitle': 'Trial period ended',
   'trial.extend': 'Extend Pro',
@@ -538,6 +540,28 @@ export const en: Record<string, string> = {
   'trial.title': 'Try Pro for free',
   'trial.desc': '{days} days of all features: AI, recommendations, arbitrage and portfolio — free.',
   'trial.activated': 'Trial Pro activated!',
+
+  // Units & suffixes
+  'unit.now': 'now',
+  'unit.dhm': '{d}d {h}h {m}m',
+  'unit.hm': '{h}h {m}m',
+  'unit.ms': '{m}m {s}s',
+  'unit.sec': '{s}s',
+  'unit.hoursShort': '{h}h',
+  'unit.pctPerHour': '%/h',
+  'unit.pctPerDay': '%/day',
+  'unit.pctPerYear': '%/yr',
+  'unit.usdtPerHour': 'USDT/h',
+  'unit.usdtPerDay': 'USDT/day',
+  'unit.usdtPerMonth': 'USDT/mo',
+  'unit.usdtPerYear': 'USDT/yr',
+  'common.confirm': 'Confirm',
+
+  // Error boundary
+  'errorBoundary.title': 'Something went wrong',
+  'errorBoundary.message': 'An unexpected error occurred. Please try refreshing the page.',
+  'errorBoundary.reload': 'Reload page',
+  'errorBoundary.home': 'Go to home',
 
   // Main page (extra literals)
   'main.topRateLine': '{h}%/h · ≈ {d}%/day',

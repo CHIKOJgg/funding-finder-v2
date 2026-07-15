@@ -84,6 +84,25 @@
     color: var(--text) !important;
   }
 
+  /* Hard-coded light surfaces that aren't remapped above — without these,
+     white modals/cards (onboarding, dropdowns, dialogs) stay white on a dark
+     background and read as "broken". Map them to the themed tokens. */
+  .dark .bg-white {
+    background: var(--surface) !important;
+  }
+
+  .dark .bg-gray-100 {
+    background: var(--surface-2) !important;
+  }
+
+  .dark .bg-gray-200 {
+    background: var(--surface-2) !important;
+  }
+
+  .dark .bg-gray-300 {
+    background: var(--border) !important;
+  }
+
   .dark .bg-gray-50 {
     background: var(--surface-2) !important;
   }

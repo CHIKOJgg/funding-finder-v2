@@ -51,21 +51,21 @@ export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }:
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
-      <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-auto">
+      <div className="rounded-xl max-w-md w-full max-h-[90vh] overflow-auto" style={{ background: 'var(--bg)' }}>
         <div className="card">
           <h2 className="text-lg font-semibold mb-1">{t('risk.title')}</h2>
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-muted mb-4">
             {t('risk.desc')}
           </p>
 
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t('risk.capital')}</label>
+          <label className="block text-sm font-medium text-muted mb-1">{t('risk.capital')}</label>
           <input
             type="number" min={100} value={capital}
             onChange={(e) => setCapital(Math.max(100, Number(e.target.value) || 100))}
             className="input-field mb-4"
           />
 
-          <div className="text-sm font-medium text-gray-700 mb-2">{t('risk.acceptableRisk')}</div>
+          <div className="text-sm font-medium text-muted mb-2">{t('risk.acceptableRisk')}</div>
           <div className="flex gap-2 mb-4">
             {(Object.keys(RISK_PRESETS) as RiskLevel[]).map((lvl) => (
               <button
@@ -91,12 +91,12 @@ export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }:
                 <div key={i} className="flex justify-between items-center text-sm rounded-lg p-2" style={{ background: 'var(--surface-2)' }}>
                   <div>
                     <span className="font-medium">{exchangeLabel(b.exchange)}: {b.contract}</span>
-                    <div className="text-xs text-gray-500">
-                      {formatUsd(b.size)} USDT · {(b.ratePerDay * 100).toFixed(4)}%/день
+                    <div className="text-xs text-muted">
+                      {formatUsd(b.size)} USDT · {(b.ratePerDay * 100).toFixed(4)}{t('unit.pctPerDay')}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-green-700">+{formatUsd(b.daily)} USDT/день</span>
+                    <span className="font-bold text-green-700">+{formatUsd(b.daily)} {t('unit.usdtPerDay')}</span>
                     <button
                       onClick={() => openExchange(b.exchange, b.contract)}
                       className="text-xs text-[var(--brand)] hover:underline"
@@ -111,11 +111,11 @@ export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }:
           <div className="rounded-xl p-3 mb-4" style={{ background: 'var(--brand-soft)' }}>
             <div className="flex justify-between text-sm">
               <span style={{ color: 'var(--brand)' }}>{t('risk.expectedIncome')}</span>
-              <strong className="text-green-700">+{formatUsd(totalDaily)} USDT/день</strong>
+              <strong className="text-green-700">+{formatUsd(totalDaily)} {t('unit.usdtPerDay')}</strong>
             </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>≈ {formatUsd(totalDaily * 30)} USDT/мес</span>
-              <span>≈ {formatUsd(totalDaily * 365)} USDT/год</span>
+            <div className="flex justify-between text-xs text-muted mt-1">
+              <span>≈ {formatUsd(totalDaily * 30)} {t('unit.usdtPerMonth')}</span>
+              <span>≈ {formatUsd(totalDaily * 365)} {t('unit.usdtPerYear')}</span>
             </div>
           </div>
 

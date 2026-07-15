@@ -44,7 +44,7 @@ interface AppContextType {
   // ---- Trial ----
   trialStatus: TrialStatus | null;
   refreshTrial: () => Promise<void>;
-  activateTrial: () => Promise<void>;
+  activateTrial: () => Promise<boolean>;
 
   // ---- Watchlist ----
   watchlist: WatchlistItem[];
@@ -78,7 +78,7 @@ export const AppContext = createContext<AppContextType>({
   scanResults: null,
   setScanResults: () => {},
   scanLoading: false,
-  scanStatus: 'Готов к сканированию',
+  scanStatus: '',
   runScan: async () => {},
   selectedExchanges: [],
   setSelectedExchanges: () => {},
@@ -93,7 +93,7 @@ export const AppContext = createContext<AppContextType>({
   applyLiveFunding: () => {},
   trialStatus: null,
   refreshTrial: async () => {},
-  activateTrial: async () => {},
+  activateTrial: async () => false,
   watchlist: [],
   isWatchlisted: () => false,
   toggleWatchlist: async () => {},
@@ -187,12 +187,14 @@ function DataProvider() {
       if (res?.ok) {
         setTrialStatus({ active: true, used: true, endsAt: res.endsAt, daysLeft: res.daysLeft, hoursLeft: res.hoursLeft });
         setSubscription('pro');
+        return true;
       } else if (res?.error) {
         showToast(res.error, 'error');
       }
     } catch (error) {
-      showToast(t('networkError', { message: (error as Error).message }), 'error');
+      showToast(t('app.networkError', { error: (error as Error).message }), 'error');
     }
+    return false;
   }, [showToast, t]);
 
   // Watchlist state

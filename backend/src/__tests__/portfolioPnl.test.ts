@@ -1,12 +1,15 @@
 import { calcFundingIncome, sideSign, PnlInput } from '../services/portfolioPnl.js';
 
 describe('portfolioPnl', () => {
-  it('sideSign maps long->1 and short->-1', () => {
-    expect(sideSign('long')).toBe(1);
-    expect(sideSign('short')).toBe(-1);
+  // Crypto perpetual convention: a positive funding rate means longs PAY shorts.
+  // So a long's funding income is negative when the rate is positive, and a
+  // short's is positive. sideSign encodes this: long -> -1, short -> +1.
+  it('sideSign maps long->-1 and short->+1', () => {
+    expect(sideSign('long')).toBe(-1);
+    expect(sideSign('short')).toBe(1);
   });
 
-  it('computes accumulated funding income for a long receiving positive funding', () => {
+  it('computes accumulated funding cost for a long paying positive funding', () => {
     const openedAt = 1_000_000;
     const now = openedAt + 10 * 3600 * 1000; // 10 hours held
     const input: PnlInput = {
@@ -19,13 +22,13 @@ describe('portfolioPnl', () => {
     };
     const r = calcFundingIncome(input);
     expect(r.hoursHeld).toBeCloseTo(10, 5);
-    // 0.0001 * 1000 * 10 = 1 USD
-    expect(r.fundingIncome).toBeCloseTo(1, 6);
-    expect(r.annualizedPct).toBeCloseTo(0.0001 * 24 * 365 * 100, 4);
-    expect(r.projectedYearly).toBeCloseTo(0.0001 * 1000 * 24 * 365, 4);
+    // notional = 1000 * 2 = 2000; 0.0001 * 2000 * 10 = 2 USD, long PAYS -> -2
+    expect(r.fundingIncome).toBeCloseTo(-2, 6);
+    expect(r.annualizedPct).toBeCloseTo(-0.0001 * 24 * 365 * 100, 4);
+    expect(r.projectedYearly).toBeCloseTo(-0.0001 * 2000 * 24 * 365, 4);
   });
 
-  it('negates income for a short paying positive funding', () => {
+  it('credits income for a short receiving positive funding', () => {
     const input: PnlInput = {
       side: 'short',
       sizeUsd: 1000,
@@ -35,8 +38,8 @@ describe('portfolioPnl', () => {
       nowMs: 3600 * 1000, // 1 hour
     };
     const r = calcFundingIncome(input);
-    expect(r.fundingIncome).toBeCloseTo(-0.2, 6);
-    expect(r.annualizedPct).toBeLessThan(0);
+    expect(r.fundingIncome).toBeCloseTo(0.2, 6);
+    expect(r.annualizedPct).toBeGreaterThan(0);
   });
 
   it('clamps hoursHeld to zero for a future open time', () => {

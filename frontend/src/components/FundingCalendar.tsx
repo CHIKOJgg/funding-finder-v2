@@ -3,16 +3,16 @@ import { apiClient } from '../api/client';
 import { FundingEvent } from '../types';
 import { useT } from '../i18n';
 
-function formatRemaining(seconds: number): string {
-  if (seconds <= 0) return 'сейчас';
+function formatRemaining(t: (key: string, vars?: Record<string, string | number>) => string, seconds: number): string {
+  if (seconds <= 0) return t('unit.now');
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
-  if (d > 0) return `${d}д ${h}ч ${m}м`;
-  if (h > 0) return `${h}ч ${m}м`;
-  if (m > 0) return `${m}м ${s}с`;
-  return `${s}с`;
+  if (d > 0) return t('unit.dhm', { d, h, m });
+  if (h > 0) return t('unit.hm', { h, m });
+  if (m > 0) return t('unit.ms', { m, s });
+  return t('unit.sec', { s });
 }
 
 export function FundingCalendar({ exchanges, refreshSignal }: { exchanges?: string[]; refreshSignal?: number }) {
@@ -79,13 +79,13 @@ export function FundingCalendar({ exchanges, refreshSignal }: { exchanges?: stri
                 <div className="text-xs text-muted">
                   {positive ? t('calendar.receive') : t('calendar.pay')}
                   <span className={positive ? 'text-green-700' : 'text-red-700'}>
-                    {(Math.abs(e.ratePerHour) * 100).toFixed(4)}%/ч
+                    {(Math.abs(e.ratePerHour) * 100).toFixed(4)}{t('unit.pctPerHour')}
                   </span>
                 </div>
               </div>
               <div className="text-right">
                 <div className="text-sm font-bold tabular-nums" style={{ color: 'var(--brand)' }}>
-                  {formatRemaining(remaining)}
+                  {formatRemaining(t, remaining)}
                 </div>
                 <div className="text-xs text-muted">{t('calendar.untilPayout')}</div>
               </div>

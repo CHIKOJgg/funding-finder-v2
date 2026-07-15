@@ -37,9 +37,12 @@ export function calcFundingIncome(input: PnlInput): PnlResult {
   const sign = sideSign(input.side);
   const notional = input.sizeUsd * (input.leverage || 1);
 
-  const fundingIncome = input.ratePerHour * notional * hoursHeld * sign;
-  const annualizedPct = input.ratePerHour * 24 * 365 * 100 * sign;
-  const projectedYearly = input.ratePerHour * notional * 24 * 365 * sign;
+  // Normalize -0 to 0 so the UI never renders a confusing "-0.00 USDT".
+  const nz = (n: number): number => (n === 0 ? 0 : n);
+
+  const fundingIncome = nz(input.ratePerHour * notional * hoursHeld * sign);
+  const annualizedPct = nz(input.ratePerHour * 24 * 365 * 100 * sign);
+  const projectedYearly = nz(input.ratePerHour * notional * 24 * 365 * sign);
 
   return {
     hoursHeld,

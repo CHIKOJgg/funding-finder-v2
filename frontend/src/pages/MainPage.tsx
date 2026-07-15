@@ -4,7 +4,7 @@ import { clsx } from 'clsx';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
 import { PaywallModal } from '../components/PaywallModal';
-import { PaywallFeature } from '../utils/plans';
+import { PaywallFeature, PlanLimits } from '../utils/plans';
 import { apiClient } from '../api/client';
 import { formatNumber, formatPrice, getFundingColor } from '../utils/formatters';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
@@ -322,6 +322,9 @@ export function MainPage() {
               sortBy={sortBy}
               showWatchlistOnly={showWatchlistOnly}
               exchangeFilter={exchangeFilter}
+              planLimits={planLimits}
+              watchlistCount={watchlist.length}
+              onWatchlistLimit={() => setPaywallFeature('watchlist')}
             />
           )}
 
@@ -338,6 +341,9 @@ export function MainPage() {
               sortBy={sortBy}
               showWatchlistOnly={showWatchlistOnly}
               exchangeFilter={exchangeFilter}
+              planLimits={planLimits}
+              watchlistCount={watchlist.length}
+              onWatchlistLimit={() => setPaywallFeature('watchlist')}
             />
           )}
 
@@ -354,6 +360,9 @@ export function MainPage() {
               sortBy={sortBy}
               showWatchlistOnly={showWatchlistOnly}
               exchangeFilter={exchangeFilter}
+              planLimits={planLimits}
+              watchlistCount={watchlist.length}
+              onWatchlistLimit={() => setPaywallFeature('watchlist')}
             />
           )}
 
@@ -561,6 +570,9 @@ const ResultSection = memo(function ResultSection({
   sortBy,
   showWatchlistOnly,
   exchangeFilter = [],
+  planLimits,
+  watchlistCount,
+  onWatchlistLimit,
 }: {
   title: string;
   count: number;
@@ -573,6 +585,9 @@ const ResultSection = memo(function ResultSection({
   sortBy: SortKey;
   showWatchlistOnly: boolean;
   exchangeFilter?: string[];
+  planLimits: PlanLimits;
+  watchlistCount: number;
+  onWatchlistLimit: () => void;
 }) {
   const { isWatchlisted } = useApp();
   const t = useT();
@@ -611,7 +626,7 @@ const ResultSection = memo(function ResultSection({
       </h3>
       <div className="space-y-2">
         {visible.map((item) => (
-          <ResultItem key={`${item.exchange}:${item.contract}`} item={item} livePrice={priceMap[item.contract.toUpperCase()]} onHistory={onHistory} onAlert={onAlert} />
+          <ResultItem key={`${item.exchange}:${item.contract}`} item={item} livePrice={priceMap[item.contract.toUpperCase()]} onHistory={onHistory} onAlert={onAlert} planLimits={planLimits} watchlistCount={watchlistCount} onWatchlistLimit={onWatchlistLimit} />
         ))}
       </div>
     </div>
@@ -623,11 +638,17 @@ const ResultItem = memo(function ResultItem({
   livePrice,
   onHistory,
   onAlert,
+  planLimits,
+  watchlistCount,
+  onWatchlistLimit,
 }: {
   item: ExchangeResult;
   livePrice?: number;
   onHistory: (data: { exchange: string; contract: string }) => void;
   onAlert: (data: { exchange: string; contract: string }) => void;
+  planLimits: PlanLimits;
+  watchlistCount: number;
+  onWatchlistLimit: () => void;
 }) {
   const { isWatchlisted, toggleWatchlist } = useApp();
   const t = useT();
@@ -669,7 +690,13 @@ const ResultItem = memo(function ResultItem({
           </div>
           <div className="flex gap-1.5 justify-end mt-1.5">
             <button
-              onClick={() => toggleWatchlist(item.exchange, item.contract)}
+              onClick={() => {
+                if (!starred && planLimits.watchlistLimit >= 0 && watchlistCount >= planLimits.watchlistLimit) {
+                  onWatchlistLimit();
+                  return;
+                }
+                toggleWatchlist(item.exchange, item.contract);
+              }}
               className={clsx(
                 'w-8 h-8 rounded-lg flex items-center justify-center transition-all',
                 starred

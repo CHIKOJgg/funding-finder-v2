@@ -528,6 +528,8 @@ export const ru: Record<string, string> = {
 
   // Trial
   'trial.activeTitle': '🎁 Пробный Pro активен',
+  'trial.remainDaysHours': '{days} дн. {hours} ч.',
+  'trial.remainHours': '{hours} ч.',
   'trial.remaining': 'Осталось: {countdown}',
   'trial.endedTitle': 'Пробный период завершён',
   'trial.extend': 'Продлить Pro',
@@ -538,6 +540,28 @@ export const ru: Record<string, string> = {
   'trial.title': 'Попробуйте Pro бесплатно',
   'trial.desc': '{days} дня всех фич: AI, рекомендации, арбитраж и портфель — без оплаты.',
   'trial.activated': 'Пробный Pro активирован!',
+
+  // Units & suffixes
+  'unit.now': 'сейчас',
+  'unit.dhm': '{d}д {h}ч {m}м',
+  'unit.hm': '{h}ч {m}м',
+  'unit.ms': '{m}м {s}с',
+  'unit.sec': '{s}с',
+  'unit.hoursShort': '{h}ч',
+  'unit.pctPerHour': '%/ч',
+  'unit.pctPerDay': '%/день',
+  'unit.pctPerYear': '%/год',
+  'unit.usdtPerHour': 'USDT/ч',
+  'unit.usdtPerDay': 'USDT/день',
+  'unit.usdtPerMonth': 'USDT/мес',
+  'unit.usdtPerYear': 'USDT/год',
+  'common.confirm': 'Подтвердить',
+
+  // Error boundary
+  'errorBoundary.title': 'Что-то пошло не так',
+  'errorBoundary.message': 'Произошла непредвиденная ошибка. Попробуйте обновить страницу.',
+  'errorBoundary.reload': 'Обновить страницу',
+  'errorBoundary.home': 'На главную',
 
   // Main page (extra literals)
   'main.topRateLine': '{h}%/ч · ≈ {d}%/день',
