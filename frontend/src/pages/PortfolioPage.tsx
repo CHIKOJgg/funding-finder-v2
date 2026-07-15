@@ -427,7 +427,7 @@ const LiveTab = memo(function LiveTab({
             </div>
             <div className="flex gap-3 justify-end">
               <button onClick={handleExport} disabled={exporting} className="text-sm" style={{ color: 'var(--brand)' }}>⬇ CSV</button>
-              <button onClick={refresh} disabled={loading} className="text-sm" style={{ color: 'var(--brand)' }}>              🔄 {t('portfolio.refresh')}</button>
+              <button onClick={refresh} disabled={loading} className="btn btn-refresh text-sm py-1.5 px-3 w-auto">{t('portfolio.refresh')}</button>
             </div>
           </div>
         </div>

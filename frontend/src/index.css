@@ -10,41 +10,63 @@
      switch keeps the whole app high-contrast in any theme.
    ============================================================ */
 :root {
-  --brand: #3390ec;
-  --brand-hover: #2b7fd6;
-  --brand-soft: rgba(51, 144, 236, 0.12);
+  /* Primary (blue) — Material Design 3 */
+  --brand: #1565C0;
+  --brand-hover: #0D47A1;
+  --brand-soft: #E3F2FD; /* primary container */
+  --on-brand: #FFFFFF;   /* on-primary */
 
-  --success: #16a34a;
-  --success-soft: rgba(22, 163, 74, 0.12);
-  --danger: #e0413e;
-  --danger-soft: rgba(224, 65, 62, 0.12);
-  --warning: #d97706;
-  --warning-soft: rgba(217, 119, 6, 0.14);
+  /* Semantic colors — MD3 (AA contrast with their on-color) */
+  --success: #1B7A3D;
+  --success-soft: #DCF3E4;
+  --on-success: #FFFFFF;
+  --danger: #C62828;
+  --danger-soft: #FBE4E4;
+  --on-danger: #FFFFFF;
+  --warning: #A8650B;
+  --warning-soft: #FBEFD6;
+  --on-warning: #FFFFFF;
 
-  /* Light theme (default) */
-  --bg: #f4f6f8;
-  --surface: #ffffff;
-  --surface-2: #eef1f4;
-  --text: #14181f;
-  --text-muted: #3d4654;
-  --border: #dce1e8;
-  --border-strong: #cdd5df;
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.05);
-  --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.10);
-  --nav-bg: #ffffff;
+  /* Neutral surfaces & text — MD3 light */
+  --bg: #FCFCFF;
+  --surface: #FFFFFF;
+  --surface-2: #F1F3F9; /* surface-variant */
+  --text: #1A1C1E;      /* on-surface */
+  --text-muted: #44474E; /* on-surface-variant */
+  --border: #C7CBD3;    /* outline */
+  --border-strong: #9AA0AA;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.12);
+  --nav-bg: #FFFFFF;
 }
 
 .dark {
-  --bg: #0e1621;
-  --surface: #182533;
-  --surface-2: #21303f;
-  --text: #f7f9fb;
-  --text-muted: #a8b5c4;
-  --border: #2a3848;
-  --border-strong: #36495d;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
-  --nav-bg: #182533;
+  --bg: #111318;
+  --surface: #1C1F26;
+  --surface-2: #2A2E37;
+  --text: #ECEEF2;
+  --text-muted: #B6BBC6;
+  --border: #3A3F4B;
+  --border-strong: #4C525E;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.55);
+  --nav-bg: #1C1F26;
+
+  /* MD3 dark: primary lightens, on-primary becomes dark for contrast */
+  --brand: #82B1FF;
+  --brand-hover: #A8C9FF;
+  --brand-soft: #16335A;
+  --on-brand: #06294F;
+
+  --success: #6DD58F;
+  --success-soft: #0F2E1C;
+  --on-success: #00210C;
+  --danger: #FF8A80;
+  --danger-soft: #3A1414;
+  --on-danger: #2A0808;
+  --warning: #F0B85A;
+  --warning-soft: #33240E;
+  --on-warning: #2A1C00;
 }
 
 /* Native Telegram theme params (set from JS) — overrides above */
@@ -141,7 +163,7 @@
   .dark .exchange-btn.active {
     background: var(--brand);
     border-color: var(--brand);
-    color: #ffffff;
+    color: var(--on-brand);
   }
 
   /* ============================================================
@@ -225,13 +247,16 @@
     border-radius: 12px;
     font-weight: 600;
     transition: all 0.18s ease;
-    disabled: opacity-50;
-    disabled: cursor-not-allowed;
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .btn-primary {
     background: var(--button, var(--brand));
-    color: var(--button-text, #ffffff);
+    color: var(--button-text, var(--on-brand));
   }
 
   .btn-primary:hover {
@@ -248,14 +273,26 @@
     background: var(--border);
   }
 
+  /* Refresh / secondary action: outlined so it sits clearly separate from the
+     surface, tinted with the brand color, label only (no icon). */
+  .btn-refresh {
+    background: transparent;
+    color: var(--brand);
+    border: 1px solid var(--brand);
+  }
+
+  .btn-refresh:hover {
+    background: var(--brand-soft);
+  }
+
   .btn-success {
     background: var(--success);
-    color: #ffffff;
+    color: var(--on-success);
   }
 
   .btn-danger {
     background: var(--danger);
-    color: #ffffff;
+    color: var(--on-danger);
   }
 
   .input-field {
@@ -295,7 +332,7 @@
   .exchange-btn.active {
     background: var(--brand);
     border-color: var(--brand);
-    color: #ffffff;
+    color: var(--on-brand);
   }
 
   .chip {

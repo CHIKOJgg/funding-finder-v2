@@ -307,9 +307,9 @@ export function ArbitragePage() {
             <button
               onClick={() => loadArbitrage(true)}
               disabled={arbLoading}
-              className="btn btn-secondary text-sm py-2 px-4 w-auto flex items-center gap-1.5"
+              className="btn btn-refresh text-sm py-2 px-4 w-auto"
             >
-              🔄 {t('arb.refreshBtn')}
+              {t('arb.refreshBtn')}
             </button>
           </div>
 
