@@ -1,6 +1,38 @@
 import axios from 'axios';
 import { logger } from '../utils/logger';
 
+// ---------------------------------------------------------------------------
+// Client-side 429 backoff (global, applies to every request)
+// Once the server rate-limits us we stop hammering it: every request is paused
+// for `backoffUntil`, then we slow to one request per `minIntervalMs`. This is
+// what prevents a 429 from escalating into a retry storm that keeps the limiter
+// permanently tripped (the old behaviour with the per-exchange batch calls).
+// ---------------------------------------------------------------------------
+let backoffUntil = 0;
+let minIntervalMs = 0;
+const lastRequestAt: { t: number } = { t: 0 };
+
+function onRateLimited(retryAfterHeader?: string) {
+  const retry = retryAfterHeader ? Number(retryAfterHeader) * 1000 : 0;
+  const wait = Math.max(retry, 30_000);
+  backoffUntil = Date.now() + wait;
+  // After a backoff, never fire requests faster than every 2s.
+  minIntervalMs = 2000;
+  logger.warn('net', `429 rate-limited — backing off ${wait}ms, throttling to 1 req/2s`);
+}
+
+export function isBackingOff(): boolean {
+  return Date.now() < backoffUntil;
+}
+
+async function throttled(fn: () => Promise<any>): Promise<any> {
+  const now = Date.now();
+  const waitFor = Math.max(backoffUntil - now, minIntervalMs ? minIntervalMs - (now - lastRequestAt.t) : 0);
+  if (waitFor > 0) await new Promise((r) => setTimeout(r, waitFor));
+  lastRequestAt.t = Date.now();
+  return fn();
+}
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api',
   timeout: 45000,
@@ -73,6 +105,8 @@ async function retryRequest<T>(
   let lastError: Error | undefined;
   for (let i = 0; i <= retries; i++) {
     try {
+      // Honour the global 429 backoff + per-request throttle before each attempt.
+      await throttled(async () => undefined);
       return await fn();
     } catch (err) {
       lastError = err as Error;
@@ -81,10 +115,14 @@ async function retryRequest<T>(
       // Check raw Axios error before interceptor transforms it
       if (axios.isAxiosError(err)) {
         const st = err.response?.status;
-        // 4xx are client errors and must not be retried (this includes 429
-        // rate-limit responses — retrying them only放大 the load and trips
-        // the limiter harder). 418 (Binance WAF) is the one 4xx worth a
-        // single backoff retry.
+        // 429 rate-limit: trigger the global backoff so we stop hammering the
+        // server (retrying only worsens the storm), then surface it immediately.
+        if (st === 429) {
+          onRateLimited((err as any).retryAfter ? String((err as any).retryAfter) : undefined);
+          throw lastError;
+        }
+        // Other 4xx are client errors and must not be retried. 418 (Binance
+        // WAF) is the one 4xx worth a single backoff retry.
         if (st && st >= 400 && st < 500 && st !== 418) {
           throw lastError;
         }
@@ -413,6 +451,7 @@ export const apiClient = {
   },
 
   // ---- Live perp prices for visible Funding rows (batched, per exchange) ----
+  // Kept for backwards compatibility; prefer getLiveBatch for multi-exchange use.
   async getPriceBatch(exchange: string, symbols: string[]) {
     return retryRequest(() => api.get('/price/batch', { params: { exchange, symbols: symbols.join(',') } }));
   },
@@ -420,5 +459,38 @@ export const apiClient = {
   // ---- Live funding rates for visible Arbitrage rows (batched, per exchange) ----
   async getFundingBatch(exchange: string, symbols: string[]) {
     return retryRequest(() => api.get('/funding/batch', { params: { exchange, symbols: symbols.join(',') } }));
+  },
+
+  // ---- Unified live snapshot (ONE request per tick, all exchanges) ----
+  // Collapses the old one-request-per-exchange price+funding polling into a
+  // single call so selecting many exchanges no longer blows any rate budget.
+  // Client-side cache + 429 backoff live here so every caller benefits.
+  //
+  // Cache/dedupe: identical request sets within LIVE_BATCH_CACHE_MS are served
+  // from the last response, so overlapping tabs / re-renders never dupe a hit
+  // against the budget. While backing off after a 429 we return the last-good
+  // snapshot (so the UI stays populated) instead of hitting the limiter again.
+  LIVE_BATCH_CACHE_MS: 4000,
+  _liveBatchCache: { key: '', at: 0, data: null as any } as { key: string; at: number; data: any },
+  async getLiveBatch(requests: { exchange: string; symbols: string[] }[]) {
+    const key = requests
+      .map((r) => `${r.exchange}:${[...r.symbols].sort().join(',')}`)
+      .sort()
+      .join('|');
+    const cache = this._liveBatchCache;
+    const now = Date.now();
+    if (key && cache.key === key && now - cache.at < this.LIVE_BATCH_CACHE_MS && cache.data) {
+      return cache.data;
+    }
+    // During a 429 backoff serve the last good snapshot rather than re-hitting
+    // the server and keeping the limiter permanently tripped.
+    if (isBackingOff() && cache.key && cache.data) {
+      return cache.data;
+    }
+    const res: any = await retryRequest(() => api.post('/live/batch', { requests }));
+    if (res?.ok) {
+      this._liveBatchCache = { key, at: now, data: res };
+    }
+    return res;
   },
 };

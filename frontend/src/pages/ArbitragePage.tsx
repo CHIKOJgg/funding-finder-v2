@@ -62,6 +62,10 @@ function useArbLivePrices(opps: any[]): {
     return map;
   }, [opps]);
 
+  // One request per tick for ALL exchanges via the unified /live/batch
+  // endpoint — this is the fix that stops per-exchange polling from tripping
+  // the rate limiter when many exchanges are selected. The response is keyed by
+  // `${exchange}:${SYMBOL}` so it maps straight onto livePriceKey.
   const depKey = useMemo(
     () => Object.entries(byExchange).map(([ex, syms]) => `${ex}:${[...syms].sort().join(',')}`).sort().join('|'),
     [byExchange]
@@ -69,30 +73,22 @@ function useArbLivePrices(opps: any[]): {
 
   useEffect(() => {
     let cancelled = false;
+    const requests = Object.entries(byExchange).map(([ex, syms]) => ({ exchange: ex, symbols: syms }));
     const load = async () => {
       try {
+        if (requests.length === 0) return;
+        const res: any = await apiClient.getLiveBatch(requests);
+        if (!res?.ok) return;
         const nextPrices: Record<string, number> = {};
         const nextFunding: Record<string, LiveFunding> = {};
-        await Promise.all(
-          Object.entries(byExchange).map(async ([ex, syms]) => {
-            const [priceRes, fundingRes] = (await Promise.allSettled([
-              apiClient.getPriceBatch(ex, syms),
-              apiClient.getFundingBatch(ex, syms),
-            ])) as any;
-            if (priceRes.status === 'fulfilled' && priceRes.value?.ok && priceRes.value.prices) {
-              for (const [s, p] of Object.entries(priceRes.value.prices as Record<string, number>)) {
-                if (typeof p === 'number' && isFinite(p) && p > 0) nextPrices[livePriceKey(ex, s)] = p;
-              }
-            }
-            if (fundingRes.status === 'fulfilled' && fundingRes.value?.ok && fundingRes.value.funding) {
-              for (const [s, f] of Object.entries(fundingRes.value.funding as Record<string, LiveFunding>)) {
-                if (f && typeof f.ratePerHour === 'number' && isFinite(f.ratePerHour)) {
-                  nextFunding[livePriceKey(ex, s)] = f;
-                }
-              }
-            }
-          })
-        );
+        for (const [k, p] of Object.entries(res.prices || {})) {
+          if (typeof p === 'number' && isFinite(p) && p > 0) nextPrices[k] = p;
+        }
+        for (const [k, f] of Object.entries(res.funding || {})) {
+          if (f && typeof (f as LiveFunding).ratePerHour === 'number' && isFinite((f as LiveFunding).ratePerHour)) {
+            nextFunding[k] = f as LiveFunding;
+          }
+        }
         if (!cancelled) {
           setPrices((prev) => ({ ...prev, ...nextPrices }));
           setFunding((prev) => ({ ...prev, ...nextFunding }));

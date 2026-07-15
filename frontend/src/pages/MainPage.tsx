@@ -518,6 +518,11 @@ export function MainPage() {
 function useLivePrices(items: ExchangeResult[]): Record<string, number> {
   const [prices, setPrices] = useState<Record<string, number>>({});
 
+  // One request per tick for ALL exchanges via the unified /live/batch
+  // endpoint — this is the fix that stops per-exchange polling from tripping
+  // the rate limiter when many exchanges are selected. The response is keyed by
+  // `${exchange}:${SYMBOL}`; we re-key to `${exchange}:${contract}` so the
+  // existing ResultItem lookup keeps working.
   const byExchange = useMemo(() => {
     const map: Record<string, string[]> = {};
     for (const it of items) {
@@ -533,15 +538,18 @@ function useLivePrices(items: ExchangeResult[]): Record<string, number> {
 
   useEffect(() => {
     let cancelled = false;
+    const requests = Object.entries(byExchange).map(([ex, syms]) => ({ exchange: ex, symbols: syms }));
     const load = async () => {
       try {
+        if (requests.length === 0) return;
+        const res: any = await apiClient.getLiveBatch(requests);
+        if (!res?.ok || !res.prices) return;
         const next: Record<string, number> = {};
-        await Promise.all(
-          Object.entries(byExchange).map(async ([ex, syms]) => {
-            const res: any = await apiClient.getPriceBatch(ex, syms);
-            if (res?.ok && res.prices) Object.assign(next, res.prices);
-          })
-        );
+        for (const [k, p] of Object.entries(res.prices as Record<string, number>)) {
+          const [ex] = k.split(':');
+          const contract = k.slice(ex.length + 1);
+          next[`${ex}:${contract}`] = p;
+        }
         if (!cancelled) setPrices(next);
       } catch {
         /* keep previous prices on transient error */
@@ -626,7 +634,7 @@ const ResultSection = memo(function ResultSection({
       </h3>
       <div className="space-y-2">
         {visible.map((item) => (
-          <ResultItem key={`${item.exchange}:${item.contract}`} item={item} livePrice={priceMap[item.contract.toUpperCase()]} onHistory={onHistory} onAlert={onAlert} planLimits={planLimits} watchlistCount={watchlistCount} onWatchlistLimit={onWatchlistLimit} />
+          <ResultItem key={`${item.exchange}:${item.contract}`} item={item} livePrice={priceMap[`${item.exchange}:${item.contract}`]} onHistory={onHistory} onAlert={onAlert} planLimits={planLimits} watchlistCount={watchlistCount} onWatchlistLimit={onWatchlistLimit} />
         ))}
       </div>
     </div>

@@ -306,6 +306,12 @@ app.use('/api', authLimiter, authenticate, perUserLimiter(30, 15 * 60 * 1000, 'a
 app.use('/api', authLimiter, authenticate, historyRoutes);
 app.use('/api', authLimiter, authenticate, analyticsRoutes);
 
+// Unified live price+funding snapshot: ONE request per poll tick (all
+// exchanges), so it must be allowed far more often than the per-exchange
+// /price/batch + /funding/batch it replaced. Cap is sized for ~1 call/10s
+// per visible tab with generous headroom. Auth + global limiter still apply.
+app.use('/api/live/batch', authLimiter, authenticate, perUserLimiter(120, 15 * 60 * 1000, 'live-batch'));
+
 // Admin routes (require admin role)
 app.use('/api', authenticate, adminRoutes);
 

@@ -257,6 +257,65 @@ router.get('/arbitrage/spot-futures', async (req, res) => {
   }
 });
 
+// Unified live snapshot: ONE request that resolves the live price AND funding
+// rate for every (exchange, symbol) the client is currently showing, across all
+// exchanges. This collapses what used to be N separate /price/batch + N
+// /funding/batch GETs (one pair per exchange) into a single call per tick —
+// the core fix for the 429 storm that previously tripped any per-user budget
+// the moment more than a handful of exchanges were selected.
+//
+// Body: { requests: [{ exchange, symbols: [...] }] }
+// Response: {
+//   prices:  { "binance:BTCUSDT": 12345.6, ... },
+//   funding: { "binance:BTCUSDT": { ratePerHour, intervalHours, rawRate, nextApply }, ... }
+// }
+// Keys are `${exchange}:${SYMBOL.toUpperCase()}` so the frontend can index
+// directly without re-keying per exchange.
+const LIVE_BATCH_MAX_EXCHANGES = 30;
+const LIVE_BATCH_MAX_SYMBOLS_PER_EXCHANGE = 50;
+
+router.post('/live/batch', async (req, res) => {
+  try {
+    const requests = req.body?.requests;
+    if (!Array.isArray(requests)) {
+      return res.status(400).json({ ok: false, error: 'requests array required' });
+    }
+    const limited = requests.slice(0, LIVE_BATCH_MAX_EXCHANGES);
+    const prices: Record<string, number> = {};
+    const funding: Record<string, any> = {};
+
+    await Promise.all(
+      limited.map(async (r: any) => {
+        const exchange = (r?.exchange as string) || '';
+        if (!exchange || !SUPPORTED_EXCHANGES.includes(exchange)) return;
+        const symbols = Array.isArray(r?.symbols)
+          ? r.symbols.map((s: any) => String(s).trim()).filter(Boolean).slice(0, LIVE_BATCH_MAX_SYMBOLS_PER_EXCHANGE)
+          : [];
+        if (symbols.length === 0) return;
+
+        const [priceMap, fundingMap] = await Promise.all([
+          getLivePriceBatch(exchange, symbols),
+          getLiveFundingBatch(exchange, symbols),
+        ]);
+        for (const [s, p] of Object.entries(priceMap as Record<string, number>)) {
+          if (typeof p === 'number' && isFinite(p) && p > 0) prices[`${exchange}:${s.toUpperCase()}`] = p;
+        }
+        for (const [s, f] of Object.entries(fundingMap as Record<string, any>)) {
+          if (f && typeof f.ratePerHour === 'number' && isFinite(f.ratePerHour)) {
+            funding[`${exchange}:${s.toUpperCase()}`] = f;
+          }
+        }
+      })
+    );
+
+    res.json({ ok: true, prices, funding });
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Live batch error');
+    res.status(500).json({ ok: false, error: error.message || String(error) });
+  }
+});
+
 // Batch live perp prices for the symbols the user is currently viewing on the
 // Funding list. Keys are the (uppercased) symbols passed in; only visible rows
 // are ever requested, so this stays cheap.
