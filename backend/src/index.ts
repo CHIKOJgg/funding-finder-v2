@@ -158,12 +158,13 @@ function rateLimitHandler(name: string) {
 }
 
 // Rate limiting (generous global cap — the app is request-heavy: each page
-// load fires ~10-15 authenticated calls, plus live polling). Health/metrics
-// pings are excluded so they don't starve real-user quota.
+// load fires ~10-15 authenticated calls, plus live polling, often across
+// multiple tabs). Health/metrics pings are excluded so they don't starve
+// real-user quota.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 3000,
-  limit: 3000,
+  max: 6000,
+  limit: 6000,
   standardHeaders: true,
   legacyHeaders: false,
   store: createRateLimitStore('global'),
@@ -174,11 +175,13 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Rate limit for auth-protected app endpoints (scan, arbitrage, profile, etc.)
-// Headroom is sized for normal usage (page loads + ~1-2 live polls/min).
+// Headroom is sized for normal usage (page loads + ~1-2 live polls/min, plus
+// multiple tabs). Each distinct route group consumes from this shared pool, so
+// keep it high enough that a heavy session never trips a 429 on ordinary calls.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 1500,
-  limit: 1500,
+  max: 3000,
+  limit: 3000,
   standardHeaders: true,
   legacyHeaders: false,
   store: createRateLimitStore('auth'),
@@ -313,7 +316,7 @@ app.use('/api', authLimiter, authenticate, analyticsRoutes);
 // exchanges), so it must be allowed far more often than the per-exchange
 // /price/batch + /funding/batch it replaced. Cap is sized for ~1 call/10s
 // per visible tab with generous headroom. Auth + global limiter still apply.
-app.use('/api/live/batch', authLimiter, authenticate, perUserLimiter(120, 15 * 60 * 1000, 'live-batch'));
+app.use('/api/live/batch', authLimiter, authenticate, perUserLimiter(200, 15 * 60 * 1000, 'live-batch'));
 
 // Admin routes (require admin role). Mounted under /api/admin so the global
 // `requireAdmin` inside admin.ts only guards /api/admin/* and does NOT swallow

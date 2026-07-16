@@ -9,9 +9,12 @@ import { perUserLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
 
-// AI calls cost money, so cap per user. Mounted here (not at app.use('/api'))
-// so it only counts real /ai + /recommend hits, never other /api routes.
-router.use(perUserLimiter(30, 15 * 60 * 1000, 'ai'));
+// AI calls hit a paid model, so the /ai endpoint is capped tightly per user.
+// /recommend is a free, local computation (no external cost) so it gets a much
+// more generous cap. Both are scoped to this router so they never bleed into
+// other /api routes.
+const aiLimiter = perUserLimiter(30, 15 * 60 * 1000, 'ai');
+const recommendLimiter = perUserLimiter(300, 15 * 60 * 1000, 'recommend');
 
 const aiSchema = z.object({
   listText: z.string().min(1).max(10000),
@@ -22,7 +25,7 @@ const recommendSchema = z.object({
   capital: z.number().min(100).default(1000),
 });
 
-router.post('/ai', requireSubscription('pro'), validate(aiSchema), async (req, res) => {
+router.post('/ai', aiLimiter, requireSubscription('pro'), validate(aiSchema), async (req, res) => {
   try {
     const { listText } = req.body;
     const ai = await askAIForTop3(listText);
@@ -37,7 +40,7 @@ router.post('/ai', requireSubscription('pro'), validate(aiSchema), async (req, r
   }
 });
 
-router.post('/recommend', validate(recommendSchema), (req, res) => {
+router.post('/recommend', recommendLimiter, validate(recommendSchema), (req, res) => {
   try {
     const { list, capital } = req.body;
     const text = generateRecommendations(list, capital);
