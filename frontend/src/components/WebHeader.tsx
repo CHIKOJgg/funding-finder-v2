@@ -30,7 +30,7 @@ export function WebHeader({ user, onLogout }: WebHeaderProps) {
       <div className="web-header-inner">
         <div className="flex items-center gap-2">
           <span className="text-xl" aria-hidden="true">💰</span>
-          <span className="font-bold">Funding Finder</span>
+          <span className="font-bold text-[var(--text)]">Funding Finder</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm truncate max-w-[40vw]" style={{ color: 'var(--text-muted)' }}>

@@ -117,7 +117,7 @@ export function PortfolioPage() {
   if (!planLimits.portfolioEnabled) {
     return (
       <div className="p-4">
-        <h1 className="text-xl font-bold mb-1">{t('portfolio.title')}</h1>
+        <h1 className="text-xl font-bold mb-1 text-[var(--text)]">{t('portfolio.title')}</h1>
         <div className="card text-center py-8 mt-4">
           <div className="text-4xl mb-3" aria-hidden="true">💼</div>
           <p className="text-muted mb-3">{t('portfolio.lockedDesc')}</p>
@@ -132,7 +132,7 @@ export function PortfolioPage() {
 
   return (
     <div className="p-4">
-        <h1 className="text-xl font-bold mb-1">{t('portfolio.title')}</h1>
+        <h1 className="text-xl font-bold mb-1 text-[var(--text)]">{t('portfolio.title')}</h1>
 
       <div className="flex gap-2 my-4" role="tablist">
         <button

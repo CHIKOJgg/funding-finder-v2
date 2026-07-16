@@ -149,7 +149,7 @@ export function AdminPage() {
   return (
     <div className="p-4 max-w-4xl mx-auto">
       <div className="card">
-        <h1 className="text-xl font-bold mb-2">Admin Panel</h1>
+        <h1 className="text-xl font-bold mb-2 text-[var(--text)]">Admin Panel</h1>
           <p className="text-sm text-gray-600 mb-4">{t('admin.subtitle')}</p>
         <div className="flex gap-2 mb-4">
           <button

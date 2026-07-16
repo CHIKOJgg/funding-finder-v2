@@ -164,7 +164,7 @@ export function MainPage() {
           FF
         </div>
         <div>
-          <h1 className="text-xl font-bold leading-tight">Funding Finder</h1>
+          <h1 className="text-xl font-bold leading-tight text-[var(--text)]">Funding Finder</h1>
           <p className="text-sm text-muted leading-tight">{t('main.subtitle')}</p>
         </div>
       </div>
@@ -664,14 +664,14 @@ const ResultItem = memo(function ResultItem({
   const price = livePrice != null && !isNaN(livePrice) ? livePrice : item.mark_price;
   return (
     <div className="border-b border-[var(--border)] pb-2">
-      <div className="flex justify-between items-start">
-        <div>
-          <strong className="text-sm">{item.exchange.toUpperCase()}: {item.contract}</strong>
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
+        <div className="min-w-0">
+          <strong className="text-sm break-words">{item.exchange.toUpperCase()}: {item.contract}</strong>
           <div className="text-xs text-[var(--text-muted)]">
             {t('main.volume', { v: formatNumber(item.volume_24h_settle) })}
           </div>
           <div className="text-xs flex items-center gap-1">
-            <span className={clsx('inline-block w-2 h-2 rounded-full', livePrice != null ? 'bg-green-500 animate-pulse' : 'bg-gray-400')} aria-hidden="true" />
+            <span className={clsx('inline-block w-2 h-2 rounded-full shrink-0', livePrice != null ? 'bg-green-500 animate-pulse' : 'bg-gray-400')} aria-hidden="true" />
             <span className="text-[var(--text)] font-semibold">${formatPrice(price)}</span>
             <span className="text-[var(--text-muted)]">{t('arb.live')}</span>
           </div>
@@ -686,8 +686,8 @@ const ResultItem = memo(function ResultItem({
             <span className="ml-1">{t('main.untilFunding')}</span>
           </div>
         </div>
-        <div className="text-right">
-          <div className={clsx('font-bold', getFundingColor(item.funding_rate_per_hour))}>
+        <div className="sm:text-right">
+          <div className={clsx('font-bold break-words', getFundingColor(item.funding_rate_per_hour))}>
             {t('main.ratePerHour', { value: ((item.funding_rate_per_hour ?? 0) * 100).toFixed(6) })}
           </div>
           <div className="text-xs text-[var(--text-muted)]">
@@ -696,7 +696,7 @@ const ResultItem = memo(function ResultItem({
           <div className="text-xs text-[var(--text-muted)]">
             {t('main.ratePerYear', { value: (item.annualized_rate * 100)?.toFixed(2) })}
           </div>
-          <div className="flex gap-1.5 justify-end mt-1.5">
+          <div className="flex flex-wrap gap-1.5 justify-start sm:justify-end mt-1.5">
             <button
               onClick={() => {
                 if (!starred && planLimits.watchlistLimit >= 0 && watchlistCount >= planLimits.watchlistLimit) {
@@ -706,7 +706,7 @@ const ResultItem = memo(function ResultItem({
                 toggleWatchlist(item.exchange, item.contract);
               }}
               className={clsx(
-                'w-8 h-8 rounded-lg flex items-center justify-center transition-all',
+                'w-8 h-8 rounded-lg flex items-center justify-center transition-all shrink-0',
                 starred
                   ? 'bg-yellow-100 text-yellow-600 border border-yellow-300'
                   : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-yellow-50 hover:text-yellow-500'
@@ -718,25 +718,25 @@ const ResultItem = memo(function ResultItem({
             </button>
             <button
               onClick={() => onAlert({ exchange: item.exchange, contract: item.contract })}
-              className="w-8 h-8 rounded-lg flex items-center justify-center bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-all shrink-0"
               aria-label={`Create alert for ${item.exchange} ${item.contract}`}
             >
               🔔
             </button>
             <button
               onClick={() => onHistory({ exchange: item.exchange, contract: item.contract })}
-              className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-all shrink-0"
               aria-label={`View history for ${item.exchange} ${item.contract}`}
             >
               📊
             </button>
             <button
               onClick={() => openExchange(item.exchange, item.contract)}
-              className="h-8 px-2.5 rounded-lg flex items-center justify-center gap-1 bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-all text-xs font-medium"
+              className="h-8 px-3 rounded-lg flex items-center justify-center bg-green-600 text-white border border-green-600 hover:bg-green-700 transition-all text-xs font-semibold shrink-0"
               aria-label={`Open ${item.exchange} ${item.contract} on exchange`}
               title={t('main.openOnExchange', { contract: item.contract, exchange: exchangeLabel(item.exchange) })}
             >
-              ↗ {t('main.open')}
+              {t('main.open')}
             </button>
           </div>
         </div>

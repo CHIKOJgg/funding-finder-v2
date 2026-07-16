@@ -168,7 +168,7 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
       <div className="w-full max-w-sm rounded-2xl p-6 shadow-lg" style={{ background: 'var(--surface)', color: 'var(--text)' }}>
         <div className="text-center mb-6">
           <div className="text-4xl mb-2" aria-hidden="true">💰</div>
-          <h1 className="text-xl font-bold">Funding Finder</h1>
+          <h1 className="text-xl font-bold text-[var(--text)]">Funding Finder</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
             {t('login.subtitle')}
           </p>

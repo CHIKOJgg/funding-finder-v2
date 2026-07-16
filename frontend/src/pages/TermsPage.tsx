@@ -5,7 +5,7 @@ export function TermsPage() {
   return (
     <div className="p-4 max-w-2xl mx-auto">
       <div className="card">
-        <h1 className="text-xl font-bold mb-4">{t('terms.title')}</h1>
+        <h1 className="text-xl font-bold mb-4 text-[var(--text)]">{t('terms.title')}</h1>
         <div className="text-sm text-gray-700 space-y-3">
           <p>{t('terms.intro')}</p>
 

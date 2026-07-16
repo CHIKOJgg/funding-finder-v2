@@ -165,13 +165,13 @@ export function ProfilePage() {
       </div>
 
       <div className="card">
-          <h2 className="text-base font-semibold mb-1">🎁 {t('profile.trialTitle')}</h2>
+          <h2 className="text-base font-semibold mb-1 text-[var(--text)]">🎁 {t('profile.trialTitle')}</h2>
           <p className="text-sm text-muted mb-3">{t('profile.trialDesc')}</p>
         <TrialCTA />
       </div>
 
       <div className="card">
-          <h2 className="text-base font-semibold mb-1">🎁 {t('profile.referralTitle')}</h2>
+          <h2 className="text-base font-semibold mb-1 text-[var(--text)]">🎁 {t('profile.referralTitle')}</h2>
           <p className="text-sm text-muted mb-3">{t('profile.referralDesc')}</p>
 
         <div className="flex gap-2 mb-3">

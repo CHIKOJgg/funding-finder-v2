@@ -260,7 +260,7 @@ export function ArbitragePage() {
           FF
         </div>
         <div>
-          <h1 className="text-xl font-bold leading-tight">{t('arb.title')}</h1>
+          <h1 className="text-xl font-bold leading-tight text-[var(--text)]">{t('arb.title')}</h1>
           <p className="text-sm text-muted leading-tight">{t('arb.subtitle')}</p>
         </div>
         <div className="flex items-center gap-1.5 text-xs shrink-0" title={lastUpdated ? t('arb.liveUpdated', { time: new Date(lastUpdated).toLocaleTimeString() }) : undefined}>
@@ -510,9 +510,9 @@ const OpportunityCard = memo(function OpportunityCard({
   const intervalB = fundB ? fundB.intervalHours : opp.intervalB_hours;
   return (
     <div className={clsx('p-3 rounded-lg border-l-4', getRiskColor(opp.risk?.level))}>
-      <div className="flex justify-between items-start mb-2">
-        <div>
-          <strong>{opp.pair}</strong>
+      <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-start mb-2">
+        <div className="min-w-0">
+          <strong className="break-words">{opp.pair}</strong>
           <span className={clsx('ml-2 text-xs px-2 py-0.5 rounded-full', getRiskColor(opp.risk?.level))} title={t('arb.riskLevelTitle')}>
             {opp.risk?.level}
           </span>
@@ -520,8 +520,8 @@ const OpportunityCard = memo(function OpportunityCard({
               <CountdownTimer intervalHours={opp.intervalA_hours} className="font-medium" /> {t('arb.untilFundingEx', { ex: opp.exchangeA })}
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-[var(--success)] font-bold" title={t('arb.dailySpreadTitle')}>{(opp.difference_per_day * 100).toFixed(4)}{t('unit.pctPerDay')}</div>
+        <div className="sm:text-right">
+          <div className="text-[var(--success)] font-bold break-words" title={t('arb.dailySpreadTitle')}>{(opp.difference_per_day * 100).toFixed(4)}{t('unit.pctPerDay')}</div>
           <div className="text-xs text-[var(--brand)] font-medium" title={t('arb.apyTitle')}>{opp.profit?.annualReturn?.toFixed(1)}% APY</div>
         </div>
       </div>
@@ -591,7 +591,7 @@ const OpportunityCard = memo(function OpportunityCard({
         {t('arb.openBoth', { a: exchangeLabel(opp.exchangeA), b: exchangeLabel(opp.exchangeB) })}
       </button>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={onCalculate}
           className="btn btn-success text-sm py-2 flex-[1.4]"
@@ -603,14 +603,14 @@ const OpportunityCard = memo(function OpportunityCard({
           className="btn btn-secondary text-sm py-2 flex-1"
           title={t('arb.openOnExchange', { pair: opp.pair, ex: exchangeLabel(opp.exchangeA) })}
       >
-          ↗ {t('arb.openEx', { ex: exchangeLabel(opp.exchangeA) })}
+          {t('arb.openEx', { ex: exchangeLabel(opp.exchangeA) })}
         </button>
         <button
           onClick={() => openExchange(opp.exchangeB, opp.pair)}
           className="btn btn-secondary text-sm py-2 flex-1"
           title={t('arb.openOnExchange', { pair: opp.pair, ex: exchangeLabel(opp.exchangeB) })}
       >
-          ↗ {t('arb.openEx', { ex: exchangeLabel(opp.exchangeB) })}
+          {t('arb.openEx', { ex: exchangeLabel(opp.exchangeB) })}
         </button>
       </div>
       <p className="text-xs text-[var(--text-muted)] mt-2 text-center">
