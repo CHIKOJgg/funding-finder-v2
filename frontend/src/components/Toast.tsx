@@ -61,7 +61,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             className={`px-4 py-3 rounded-lg shadow-lg text-white text-sm animate-slide-in ${
               toast.type === 'success' ? 'bg-green-700' :
               toast.type === 'error' ? 'bg-red-600' :
-              toast.type === 'spread' ? 'bg-amber-700' :
+              toast.type === 'spread' ? 'bg-amber-800' :
               'bg-blue-600'
             }`}
           >

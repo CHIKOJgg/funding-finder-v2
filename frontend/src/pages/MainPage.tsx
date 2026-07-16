@@ -240,7 +240,7 @@ export function MainPage() {
               className="rounded-xl p-4 mb-4 relative overflow-hidden"
               style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand-hover) 100%)' }}
             >
-              <div className="text-xs font-semibold uppercase tracking-wide text-white opacity-90" title={t('main.bestOpportunityTitle')}>{t('main.bestOpportunity')}</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-white opacity-95" title={t('main.bestOpportunityTitle')}>{t('main.bestOpportunity')}</div>
               <div className="flex items-end justify-between mt-1">
                 <div>
                   <div className="text-xl font-bold text-white">{topPick.exchange.toUpperCase()}: {topPick.contract}</div>

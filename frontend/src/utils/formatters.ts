@@ -35,13 +35,13 @@ export function formatDate(date: string | Date): string {
 
 export function getRiskColor(level: string): string {
   switch (level) {
-    case 'HIGH': return 'text-red-500 bg-red-100';
-    case 'MEDIUM': return 'text-yellow-600 bg-yellow-100';
-    case 'LOW': return 'text-green-500 bg-green-100';
-    default: return 'text-gray-500 bg-gray-100';
+    case 'HIGH': return 'text-red-700 bg-red-100';
+    case 'MEDIUM': return 'text-yellow-700 bg-yellow-100';
+    case 'LOW': return 'text-green-700 bg-green-100';
+    default: return 'text-gray-700 bg-gray-100';
   }
 }
 
 export function getFundingColor(funding: number): string {
-  return funding > 0 ? 'text-green-500' : funding < 0 ? 'text-red-500' : 'text-gray-500';
+  return funding > 0 ? 'text-green-600' : funding < 0 ? 'text-red-600' : 'text-gray-600';
 }

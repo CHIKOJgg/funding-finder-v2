@@ -154,13 +154,13 @@ export function AdminPage() {
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setTab('stats')}
-            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'stats' ? 'bg-[var(--brand)] text-white' : 'bg-gray-200'}`}
+            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'stats' ? 'bg-[var(--brand)] text-white' : 'bg-gray-200 text-[var(--text-muted)]'}`}
           >
             {t('admin.stats')}
           </button>
           <button
             onClick={() => setTab('users')}
-            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'users' ? 'bg-[var(--brand)] text-white' : 'bg-gray-200'}`}
+            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'users' ? 'bg-[var(--brand)] text-white' : 'bg-gray-200 text-[var(--text-muted)]'}`}
           >
             {t('admin.users')}
           </button>
