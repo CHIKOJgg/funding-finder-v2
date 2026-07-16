@@ -12,7 +12,7 @@ import { connectDatabase, disconnectDatabase, checkDatabaseHealth } from './serv
 import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestId, requestLogger } from './middleware/requestLogger.js';
-import { perUserLimiter } from './middleware/rateLimit.js';
+import { perUserLimiter, createRateLimitStore } from './middleware/rateLimit.js';
 import { authenticate } from './middleware/auth.js';
 import authRoutes from './routes/auth.js';
 import { startAlertEvaluator, stopAlertEvaluator } from './services/alertEvaluator.js';
@@ -166,6 +166,7 @@ const limiter = rateLimit({
   limit: 3000,
   standardHeaders: true,
   legacyHeaders: false,
+  store: createRateLimitStore('global'),
   skip: (req) => UNMETERED_PATHS.has(req.path),
   message: { ok: false, error: 'Too many requests, please try again later' },
   handler: rateLimitHandler('global'),
@@ -180,6 +181,7 @@ const authLimiter = rateLimit({
   limit: 1500,
   standardHeaders: true,
   legacyHeaders: false,
+  store: createRateLimitStore('auth'),
   skip: (req) => UNMETERED_PATHS.has(req.path),
   message: { ok: false, error: 'Too many requests, please try again later' },
   handler: rateLimitHandler('auth'),
