@@ -349,7 +349,7 @@ export function AdminPage() {
 
       {editUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-sm w-full">
+          <div className="bg-surface rounded-xl max-w-md w-full" style={{ color: 'var(--text)' }}>
             <div className="card">
               <h2 className="text-lg font-semibold mb-4">
                 {editUser.field === 'subscription' ? t('admin.changeSubscription') : t('admin.editBalanceTitle')}

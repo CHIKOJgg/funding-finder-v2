@@ -49,7 +49,7 @@ export function ConfirmDialog({
       aria-modal="true"
       aria-labelledby="confirm-title"
     >
-      <div className="rounded-xl max-w-sm w-full" style={{ background: 'var(--bg)' }}>
+      <div className="rounded-xl max-w-md w-full" style={{ background: 'var(--bg)' }}>
         <div className="card">
           <h2 id="confirm-title" className="text-lg font-semibold mb-2">{title}</h2>
           <p className="text-sm text-muted mb-4">{message}</p>

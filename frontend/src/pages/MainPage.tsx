@@ -442,7 +442,7 @@ export function MainPage() {
           aria-modal="true"
           aria-labelledby="alert-dialog-title"
         >
-          <div className="bg-surface rounded-xl max-w-sm w-full">
+           <div className="bg-surface rounded-xl max-w-md w-full">
             <div className="card">
               <h2 id="alert-dialog-title" className="text-lg font-semibold mb-2">{t('main.createAlert')}</h2>
               <p className="text-sm text-[var(--text-muted)] mb-4">

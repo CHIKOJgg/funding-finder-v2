@@ -430,21 +430,23 @@ function DataProvider() {
           {isWeb && <WebHeader user={user} onLogout={logout} />}
           <div className={isWeb ? 'web-shell' : ''}>
             <BrowserRouter>
-              <div className="min-h-screen pb-20">
-                <Suspense fallback={<PageLoader />}>
-                  <Routes>
-                    <Route path="/" element={<ErrorBoundary><MainPage /></ErrorBoundary>} />
-                    <Route path="/arbitrage" element={<ErrorBoundary><ArbitragePage /></ErrorBoundary>} />
-                    <Route path="/profile" element={<ErrorBoundary><ProfilePage /></ErrorBoundary>} />
-                    <Route path="/terms" element={<ErrorBoundary><TermsPage /></ErrorBoundary>} />
-                    <Route path="/privacy" element={<ErrorBoundary><PrivacyPage /></ErrorBoundary>} />
-                    <Route path="/admin" element={<ErrorBoundary><AdminPage /></ErrorBoundary>} />
-                    <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
-                    <Route path="/portfolio" element={<ErrorBoundary><PortfolioPage /></ErrorBoundary>} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </Suspense>
+              <div className="web-layout">
                 <Navigation />
+                <main className="web-content">
+                  <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                      <Route path="/" element={<ErrorBoundary><MainPage /></ErrorBoundary>} />
+                      <Route path="/arbitrage" element={<ErrorBoundary><ArbitragePage /></ErrorBoundary>} />
+                      <Route path="/profile" element={<ErrorBoundary><ProfilePage /></ErrorBoundary>} />
+                      <Route path="/terms" element={<ErrorBoundary><TermsPage /></ErrorBoundary>} />
+                      <Route path="/privacy" element={<ErrorBoundary><PrivacyPage /></ErrorBoundary>} />
+                      <Route path="/admin" element={<ErrorBoundary><AdminPage /></ErrorBoundary>} />
+                      <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
+                      <Route path="/portfolio" element={<ErrorBoundary><PortfolioPage /></ErrorBoundary>} />
+                      <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                  </Suspense>
+                </main>
               </div>
             </BrowserRouter>
           </div>
