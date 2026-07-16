@@ -7,8 +7,14 @@ import { runScan, getCachedScan } from '../services/scanService.js';
 import { wsManager } from '../services/websocket.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';
+import { perUserLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
+
+// Scan hits many exchange APIs + can trigger AI cost, so cap it per user.
+// Mounted here (not at app.use('/api')) so it only counts real /scan hits
+// and never bleeds into other /api routes.
+router.use(perUserLimiter(60, 15 * 60 * 1000, 'scan'));
 
 // Serve a cached scan instantly (stale-while-revalidate) if one exists.
 const SCAN_STALE_MS = 60_000;

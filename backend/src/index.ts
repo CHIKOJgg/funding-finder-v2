@@ -301,10 +301,11 @@ import logRoutes from './routes/log.js';
 app.use('/api', logRoutes);
 
 // Routes with auth
-// Scan hits many exchange APIs and AI calls cost money, so add a strict
-// per-user cap on top of the global limiter.
-app.use('/api', authLimiter, authenticate, perUserLimiter(60, 15 * 60 * 1000, 'scan'), scanRoutes);
-app.use('/api', authLimiter, authenticate, perUserLimiter(30, 15 * 60 * 1000, 'ai'), aiRoutes);
+// Scan hits many exchange APIs and AI calls cost money, so each route group
+// carries its own strict per-user cap (defined inside the route files so the
+// limit only counts that group's requests).
+app.use('/api', authLimiter, authenticate, scanRoutes);
+app.use('/api', authLimiter, authenticate, aiRoutes);
 app.use('/api', authLimiter, authenticate, historyRoutes);
 app.use('/api', authLimiter, authenticate, analyticsRoutes);
 
@@ -340,8 +341,8 @@ app.use('/api', authLimiter, authenticate, settingsRoutes);
 app.use('/api', authLimiter, authenticate, trialRoutes);
 app.use('/api', authLimiter, authenticate, fundingRoutes);
 app.use('/api', authLimiter, authenticate, keysRoutes);
-// Live portfolio + auto-execute places real orders on user exchanges — keep it tightly throttled per user.
-app.use('/api', authLimiter, authenticate, perUserLimiter(20, 15 * 60 * 1000, 'portfolio-live'), portfolioLiveRoutes);
+// Live portfolio + auto-execute places real orders on user exchanges — keep it tightly throttled per user (see portfolioLive.ts).
+app.use('/api', authLimiter, authenticate, portfolioLiveRoutes);
 app.use('/api', authLimiter, authenticate, watchlistRoutes);
 app.use('/api', authLimiter, authenticate, portfolioRoutes);
 

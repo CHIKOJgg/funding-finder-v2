@@ -7,8 +7,14 @@ import { validate } from '../middleware/validation.js';
 import { decryptJson } from '../services/exchangeKeys.js';
 import { getAdapter } from '../services/exchangeClients/index.js';
 import { logger } from '../utils/logger.js';
+import { perUserLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
+
+// Live portfolio places real orders on user exchanges — keep it tightly
+// throttled per user. Mounted here (not at app.use('/api')) so it only counts
+// real /portfolio/live hits, never other /api routes.
+router.use(perUserLimiter(20, 15 * 60 * 1000, 'portfolio-live'));
 
 // GET /api/portfolio/live — aggregate real open positions + funding income
 // across the user's connected (encrypted) exchange keys. Each exchange is

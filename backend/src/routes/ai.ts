@@ -5,8 +5,13 @@ import { requireSubscription } from '../middleware/subscription.js';
 import { askAIForTop3 } from '../services/aiService.js';
 import { generateRecommendations } from '../utils/helpers.js';
 import { logger } from '../utils/logger.js';
+import { perUserLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
+
+// AI calls cost money, so cap per user. Mounted here (not at app.use('/api'))
+// so it only counts real /ai + /recommend hits, never other /api routes.
+router.use(perUserLimiter(30, 15 * 60 * 1000, 'ai'));
 
 const aiSchema = z.object({
   listText: z.string().min(1).max(10000),
