@@ -39,6 +39,22 @@ export function createRateLimitStore(prefix: string): Options['store'] | undefin
  * When Redis is configured the counter is shared across every instance, so the
  * cap is a true global per-user limit rather than per-pod.
  */
+
+// Developer / admin accounts that bypass all per-user rate limits. They need
+// generous headroom for debugging and load testing.
+const RATE_LIMIT_EXEMPT_USERS = new Set([
+  'tg_5915824444', // app owner
+]);
+
+/**
+ * Returns true when the request should skip the limiter entirely (exempt user).
+ */
+function isExemptFromLimits(req: Request): boolean {
+  const userId = (req as any).userId || (req as any).user?.id;
+  if (!userId) return false;
+  return RATE_LIMIT_EXEMPT_USERS.has(userId);
+}
+
 export function perUserLimiter(max: number, windowMs: number, name = 'per-user') {
   return rateLimit({
     windowMs,
@@ -49,6 +65,8 @@ export function perUserLimiter(max: number, windowMs: number, name = 'per-user')
     limit: max,
     standardHeaders: true,
     legacyHeaders: false,
+    // Ultimate-tier (dev/admin) users bypass per-user caps entirely.
+    skip: (req: Request) => isExemptFromLimits(req),
     store: createRateLimitStore(name),
     keyGenerator: (req: Request, _res: Response) =>
       (req as any).user?.id || (req as any).userId || ipKeyGenerator(req.ip as string),

@@ -14,7 +14,7 @@ const router = Router();
 // Scan hits many exchange APIs + can trigger AI cost, so cap it per user.
 // Mounted here (not at app.use('/api')) so it only counts real /scan hits
 // and never bleeds into other /api routes.
-router.use(perUserLimiter(60, 15 * 60 * 1000, 'scan'));
+router.use(perUserLimiter(300, 15 * 60 * 1000, 'scan'));
 
 // Serve a cached scan instantly (stale-while-revalidate) if one exists.
 const SCAN_STALE_MS = 60_000;
