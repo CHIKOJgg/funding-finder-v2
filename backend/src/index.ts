@@ -315,11 +315,13 @@ app.use('/api', authLimiter, authenticate, analyticsRoutes);
 // per visible tab with generous headroom. Auth + global limiter still apply.
 app.use('/api/live/batch', authLimiter, authenticate, perUserLimiter(120, 15 * 60 * 1000, 'live-batch'));
 
-// Admin routes (require admin role)
-app.use('/api', authenticate, adminRoutes);
+// Admin routes (require admin role). Mounted under /api/admin so the global
+// `requireAdmin` inside admin.ts only guards /api/admin/* and does NOT swallow
+// ordinary /api routes (profile, watchlist, trial, funding, …) mounted later.
+app.use('/api/admin', authenticate, adminRoutes);
 
 // Debug/diagnostics routes (require admin role)
-app.use('/api', authenticate, requireAdmin, debugRoutes);
+app.use('/api/debug', authenticate, requireAdmin, debugRoutes);
 
 // Webhook routes (no user auth, webhook token/signature verified inside)
 app.use('/api/webhook', webhookRoutes);

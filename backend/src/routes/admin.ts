@@ -13,8 +13,8 @@ const router = Router();
 // All admin routes require admin role
 router.use(requireAdmin);
 
-// GET /admin/users — list all users with pagination
-router.get('/admin/users', async (req: AuthenticatedRequest, res: Response) => {
+// GET /users — list all users with pagination
+router.get('/users', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
@@ -71,8 +71,8 @@ router.get('/admin/users', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-// GET /admin/stats — system statistics
-router.get('/admin/stats', async (req: AuthenticatedRequest, res: Response) => {
+// GET /stats — system statistics
+router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -153,8 +153,8 @@ router.get('/admin/stats', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-// PATCH /admin/users/:id/subscription — update user subscription
-router.patch('/admin/users/:id/subscription', async (req: AuthenticatedRequest, res: Response) => {
+// PATCH /users/:id/subscription — update user subscription
+router.patch('/users/:id/subscription', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { subscription } = req.body;
@@ -178,8 +178,8 @@ router.patch('/admin/users/:id/subscription', async (req: AuthenticatedRequest, 
   }
 });
 
-// PATCH /admin/users/:id/balance — update user balance
-router.patch('/admin/users/:id/balance', async (req: AuthenticatedRequest, res: Response) => {
+// PATCH /users/:id/balance — update user balance
+router.patch('/users/:id/balance', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { balance } = req.body;
@@ -202,8 +202,8 @@ router.patch('/admin/users/:id/balance', async (req: AuthenticatedRequest, res: 
   }
 });
 
-// DELETE /admin/users/:id — delete user and all associated data
-router.delete('/admin/users/:id', async (req: AuthenticatedRequest, res: Response) => {
+// DELETE /users/:id — delete user and all associated data
+router.delete('/users/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
 

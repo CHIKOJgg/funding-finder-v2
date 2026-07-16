@@ -49,44 +49,44 @@ beforeEach(() => {
 });
 
 describe('admin routes', () => {
-  it('GET /admin/users lists users (200)', async () => {
+  it('GET /users lists users (200)', async () => {
     mockPrisma.user.findMany.mockResolvedValue([]);
     mockPrisma.user.count.mockResolvedValue(0);
-    const res = await request(mkApp()).get('/admin/users');
+    const res = await request(mkApp()).get('/users');
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
   });
 
-  it('GET /admin/stats returns stats (200)', async () => {
+  it('GET /stats returns stats (200)', async () => {
     mockPrisma.user.count.mockResolvedValue(0);
     mockPrisma.user.groupBy.mockResolvedValue([]);
     mockPrisma.order.count.mockResolvedValue(0);
     mockPrisma.order.aggregate.mockResolvedValue({ _sum: { amount: 0 } });
     mockPrisma.generalAlert.count.mockResolvedValue(0);
     mockPrisma.fundingRecord.count.mockResolvedValue(0);
-    const res = await request(mkApp()).get('/admin/stats');
+    const res = await request(mkApp()).get('/stats');
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
     expect(res.body.stats).toBeDefined();
   });
 
-  it('PATCH /admin/users/:id/subscription updates plan (200)', async () => {
+  it('PATCH /users/:id/subscription updates plan (200)', async () => {
     mockPrisma.user.update.mockResolvedValue({ telegramId: 'u1', subscription: 'pro' });
-    const res = await request(mkApp()).patch('/admin/users/u1/subscription').send({ subscription: 'pro' });
+    const res = await request(mkApp()).patch('/users/u1/subscription').send({ subscription: 'pro' });
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
   });
 
-  it('PATCH /admin/users/:id/subscription rejects invalid plan (400)', async () => {
-    const res = await request(mkApp()).patch('/admin/users/u1/subscription').send({ subscription: 'diamond' });
+  it('PATCH /users/:id/subscription rejects invalid plan (400)', async () => {
+    const res = await request(mkApp()).patch('/users/u1/subscription').send({ subscription: 'diamond' });
     expect(res.status).toBe(400);
     expect(res.body.ok).toBe(false);
   });
 
-  it('DELETE /admin/users/:id deletes a user (200)', async () => {
+  it('DELETE /users/:id deletes a user (200)', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ telegramId: 'u1' });
     mockPrisma.$transaction.mockResolvedValue(undefined);
-    const res = await request(mkApp()).delete('/admin/users/u1');
+    const res = await request(mkApp()).delete('/users/u1');
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
   });
