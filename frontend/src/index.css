@@ -446,11 +446,11 @@
 
 /* ============================================================
    Website (non-Telegram) layout
-   - On phones: phone-like column with bottom navigation (same as
-     the Telegram mini-app).
-   - On desktop: a side navigation rail + content that fills at
-     least half the viewport so nothing has to be stretched by
-     hand, and tap targets are comfortably large.
+   - Bottom navigation on EVERY screen (phone + desktop), so the
+     app feels the same everywhere.
+   - On desktop the content stretches to fill the viewport width
+     (centered, up to a comfortable max) instead of a narrow
+     480px phone column.
    ============================================================ */
 .web-shell {
   min-height: 100vh;
@@ -462,61 +462,26 @@
 }
 
 .web-content {
-  padding-bottom: 80px; /* room for the bottom nav on mobile */
+  width: 100%;
+  padding: 16px 12px 80px; /* bottom space for the fixed nav */
 }
 
-/* ---- Desktop: side navigation + wide content ---- */
+/* Website only: stretch comfortably across the viewport (centered, wide).
+   Telegram mini-app keeps its native full-width mobile layout untouched. */
+.web-shell .web-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 20px 96px;
+}
+
 @media (min-width: 768px) {
-  .web-shell {
-    box-shadow: none;
-  }
-
-  .web-layout {
-    display: grid;
-    grid-template-columns: 240px 1fr;
-    min-height: 100vh;
-  }
-
-  .web-content {
-    /* At least half the viewport; grows to fill the rest. */
-    min-width: 50vw;
-    max-width: 1100px;
-    margin: 0 auto;
-    width: 100%;
-    padding: 24px 32px 48px;
-  }
-
-  .web-nav {
-    position: sticky !important;
-    top: 0;
-    height: 100vh;
-    border-right: 1px solid var(--border);
-    border-top: none !important;
-    border-bottom: none !important;
-    padding: 16px 12px;
-  }
-
-  .web-nav-inner {
-    flex-direction: column !important;
-    height: 100%;
-    gap: 4px;
-  }
-
-  .web-nav-item {
-    flex-direction: row !important;
-    justify-content: flex-start !important;
-    gap: 12px !important;
-    width: 100% !important;
-    padding: 12px 16px !important;
-    border-radius: 12px;
-  }
-
-  .web-nav-item.active {
-    background: var(--brand-soft);
+  .web-shell .web-content {
+    padding: 32px 40px 96px;
+    max-width: 1400px;
   }
 }
 
-/* ---- Mobile: bottom navigation bar ---- */
+/* ---- Bottom navigation bar (same on phone and desktop) ---- */
 .web-nav {
   position: fixed;
   bottom: 0;
@@ -525,6 +490,12 @@
   z-index: 50;
   border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+.web-shell .web-nav {
+  /* keep the bar tidy on wide screens */
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .web-nav-inner {
@@ -572,7 +543,7 @@
 }
 
 .web-header-inner {
-  max-width: 1100px;
+  max-width: 1400px;
   margin: 0 auto;
   height: 56px;
   padding: 0 16px;
@@ -583,6 +554,6 @@
 
 @media (min-width: 768px) {
   .web-header-inner {
-    padding: 0 32px;
+    padding: 0 40px;
   }
 }
