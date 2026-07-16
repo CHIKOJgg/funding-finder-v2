@@ -465,10 +465,13 @@ function PageLoader() {
 
 export default function App() {
   // Debug overlay (replacement for F12 in the mini app). Open with `?debug=1`
-  // in the URL, or via the floating bug button.
+  // in the URL, or via the floating bug button (shown only to the developer).
   const [debugOpen, setDebugOpen] = useState(
     () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1'
   );
+  const { user: tgUser } = useTelegram();
+  const DEBUG_USER_ID = 'tg_5915824444';
+  const isDebugUser = tgUser?.id === DEBUG_USER_ID;
 
   // Theme: pull native Telegram theme params (guarantees correct contrast)
   // and toggle the `dark` class based on the active color scheme.
@@ -522,7 +525,7 @@ export default function App() {
           <DataProvider />
         </LanguageProvider>
       </ToastProvider>
-      <DebugToggle onOpen={() => setDebugOpen(true)} />
+      {isDebugUser && <DebugToggle onOpen={() => setDebugOpen(true)} />}
       <DebugLog open={debugOpen} onClose={() => setDebugOpen(false)} />
     </ErrorBoundary>
   );

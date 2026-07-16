@@ -19,11 +19,17 @@ export interface AuthenticatedRequest extends Request {
 
 const VALID_EXCHANGES = SUPPORTED_EXCHANGES;
 
+// Developer accounts that should always receive the top-tier ("ultimate")
+// subscription regardless of payment state. Keyed by telegram id (numeric
+// suffix of the tg_<id> user id).
+const DEV_ULTIMATE_TELEGRAM_IDS = new Set(['5915824444']);
+
 // Track user activity (blocking — ensures user exists before any route handler)
 async function trackActivity(userId: string, authProvider: AuthProvider = 'telegram'): Promise<void> {
   try {
     const tgId = userId.replace('tg_', '');
     const isAdmin = config.admin.telegramIds.includes(tgId);
+    const isDevUltimate = DEV_ULTIMATE_TELEGRAM_IDS.has(tgId);
     await prisma.user.upsert({
       where: { telegramId: userId },
       create: {
@@ -31,11 +37,18 @@ async function trackActivity(userId: string, authProvider: AuthProvider = 'teleg
         lastActive: new Date(),
         role: isAdmin ? 'admin' : 'user',
         authProvider,
+        subscription: isDevUltimate ? 'ultimate' : 'free',
       },
-      update: { lastActive: new Date(), role: isAdmin ? 'admin' : undefined },
+      update: {
+        lastActive: new Date(),
+        role: isAdmin ? 'admin' : undefined,
+        ...(isDevUltimate ? { subscription: 'ultimate' } : {}),
+      },
     });
-    // Revert trial-derived Pro once the window has elapsed.
-    await enforceTrialExpiry(userId);
+    // Revert trial-derived Pro once the window has elapsed (skip for dev ultimate).
+    if (!isDevUltimate) {
+      await enforceTrialExpiry(userId);
+    }
   } catch (err) {
     logger.debug({ err: (err as Error).message }, 'Failed to track user activity');
   }
