@@ -7,6 +7,7 @@ import { Onboarding } from './components/Onboarding';
 import { LoginPage } from './components/LoginPage';
 import { WebHeader } from './components/WebHeader';
 import { useTelegram } from './hooks/useTelegram';
+import { useIsWide } from './hooks/useIsWide';
 import { useWebSocket } from './hooks/useWebSocket';
 import { apiClient, getAuthToken } from './api/client';
 import { ALL_EXCHANGES } from './utils/exchanges';
@@ -132,6 +133,7 @@ function isColorDark(hex: string): boolean {
  */
 function DataProvider() {
   const { user, initData, isWeb, authenticated, authProvider, logout, login } = useTelegram();
+  const isWide = useIsWide();
   const { showToast } = useToast();
   const t = useT();
 
@@ -428,7 +430,7 @@ function DataProvider() {
       ) : (
         <>
           {isWeb && <WebHeader user={user} onLogout={logout} />}
-          <div className={isWeb ? 'web-shell' : ''}>
+          <div className={isWide ? 'web-shell' : ''}>
             <BrowserRouter>
               <div className="web-layout">
                 <Navigation />

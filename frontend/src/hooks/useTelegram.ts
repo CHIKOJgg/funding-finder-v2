@@ -42,6 +42,8 @@ interface TelegramWebApp {
     getItem: (key: string, callback: (error: Error | null, result?: string) => void) => void;
     removeItem: (key: string, callback?: (error: Error | null, result?: boolean) => void) => void;
   };
+  onEvent?: (eventType: string, callback: (payload?: any) => void) => void;
+  offEvent?: (eventType: string, callback: (payload?: any) => void) => void;
 }
 
 declare global {
@@ -99,19 +101,29 @@ export function useTelegram() {
       const webApp = window.Telegram.WebApp;
       setTg(webApp);
 
+      const expandNow = () => {
+        try {
+          webApp.expand?.();
+          (webApp as any).requestViewport?.();
+          (webApp as any).disableVerticalSwipes?.();
+        } catch (e) {
+          console.warn('Telegram WebApp API error:', e);
+        }
+      };
+
       try {
         // Expand to fill the available viewport (critical on Telegram
         // desktop, where mini-apps otherwise open in a small side panel).
-        webApp.expand?.();
-        // Newer API: explicitly request the full viewport height.
-        (webApp as any).requestViewport?.();
+        expandNow();
         webApp.enableClosingConfirmation?.();
-        // Disable the pull-to-close gesture so the app behaves like a real
-        // full-screen window rather than a draggable sheet.
-        (webApp as any).disableVerticalSwipes?.();
       } catch (e) {
         console.warn('Telegram WebApp API error:', e);
       }
+
+      // Re-expand whenever the viewport changes (e.g. Telegram desktop
+      // finishes laying out the window, or the user resizes it).
+      const onViewport = () => expandNow();
+      webApp.onEvent?.('viewportChanged', onViewport);
 
       const rawInitData = webApp.initData;
       if (rawInitData) {
@@ -123,6 +135,8 @@ export function useTelegram() {
           applyUser({ id, firstName: telegramUser.first_name, username: telegramUser.username, provider: 'telegram' });
         }
       }
+
+      return () => webApp.offEvent?.('viewportChanged', onViewport);
     } else {
       // Public website mode — require a web session (wallet / Google).
       setIsWeb(true);

@@ -520,6 +520,15 @@
   margin: 0 auto;
 }
 
+/* On wide screens, center the bottom nav and cap its width so the 4 tabs
+   don't stretch absurdly across an ultra-wide desktop window. */
+@media (min-width: 768px) {
+  .web-shell .web-nav-inner {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+}
+
 .web-nav-inner {
   display: flex;
 }
