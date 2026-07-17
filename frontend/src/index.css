@@ -481,7 +481,7 @@
   padding: 0 0 80px; /* bottom space for the fixed nav */
 }
 
-/* Website only: stretch comfortably across the viewport (centered, wide).
+/* Website only: stretch to fill the whole viewport width (no side rail).
    Telegram mini-app keeps its native full-width mobile layout untouched. */
 .web-shell .web-content {
   max-width: 100%;
@@ -491,14 +491,12 @@
 
 @media (min-width: 1200px) {
   .web-shell .web-content {
-    max-width: 1600px;
     padding: 32px 48px 96px;
   }
 }
 
 @media (min-width: 1920px) {
   .web-shell .web-content {
-    max-width: 1800px;
     padding: 40px 64px 96px;
   }
 }
