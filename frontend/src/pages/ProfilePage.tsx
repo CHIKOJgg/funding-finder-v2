@@ -131,14 +131,14 @@ export function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="p-4">
+      <div className="px-3 py-4 sm:px-4">
         <div className="card text-center py-8 text-gray-500" role="status">{t('common.loading')}</div>
       </div>
     );
   }
 
   return (
-    <div className="p-4">
+    <div className="px-3 py-4 sm:px-4">
       <div className="card">
         <div className="flex items-center gap-3 mb-4">
           <div

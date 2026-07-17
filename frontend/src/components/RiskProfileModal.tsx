@@ -50,7 +50,7 @@ export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }:
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4" role="dialog" aria-modal="true">
       <div className="rounded-xl max-w-md w-full max-h-[90vh] overflow-auto" style={{ background: 'var(--bg)' }}>
         <div className="card">
           <h2 className="text-lg font-semibold mb-1">{t('risk.title')}</h2>

@@ -155,7 +155,7 @@ export function MainPage() {
   }, [scanResults]);
 
   return (
-    <div className="p-4">
+    <div className="px-3 py-4 sm:px-4">
       <div className="flex items-center gap-3 mb-4">
         <div
           className="w-11 h-11 rounded-2xl flex items-center justify-center text-lg font-black text-white shrink-0"
@@ -437,7 +437,7 @@ export function MainPage() {
 
       {alertModal && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="alert-dialog-title"
@@ -732,7 +732,7 @@ const ResultItem = memo(function ResultItem({
             </button>
             <button
               onClick={() => openExchange(item.exchange, item.contract)}
-              className="h-8 px-3 rounded-lg flex items-center justify-center bg-green-600 text-white border border-green-600 hover:bg-green-700 transition-all text-xs font-semibold shrink-0"
+                className="h-8 px-3 sm:h-9 sm:px-4 rounded-lg flex items-center justify-center bg-green-600 text-white border border-green-600 hover:bg-green-700 transition-all text-xs font-semibold shrink-0"
               aria-label={`Open ${item.exchange} ${item.contract} on exchange`}
               title={t('main.openOnExchange', { contract: item.contract, exchange: exchangeLabel(item.exchange) })}
             >

@@ -100,8 +100,15 @@ export function useTelegram() {
       setTg(webApp);
 
       try {
+        // Expand to fill the available viewport (critical on Telegram
+        // desktop, where mini-apps otherwise open in a small side panel).
         webApp.expand?.();
+        // Newer API: explicitly request the full viewport height.
+        (webApp as any).requestViewport?.();
         webApp.enableClosingConfirmation?.();
+        // Disable the pull-to-close gesture so the app behaves like a real
+        // full-screen window rather than a draggable sheet.
+        (webApp as any).disableVerticalSwipes?.();
       } catch (e) {
         console.warn('Telegram WebApp API error:', e);
       }

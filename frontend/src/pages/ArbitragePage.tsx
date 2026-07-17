@@ -251,7 +251,7 @@ export function ArbitragePage() {
   const { prices: priceMap, funding: fundingMap } = useArbLivePrices(visibleOpportunities);
 
   return (
-    <div className="p-4">
+    <div className="px-3 py-4 sm:px-4">
       <div className="flex items-center gap-3 mb-4">
         <div
           className="w-11 h-11 rounded-2xl flex items-center justify-center text-lg font-black text-white shrink-0"
@@ -699,7 +699,7 @@ function ProfitCalculator({
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="calculator-title"

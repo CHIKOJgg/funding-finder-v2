@@ -105,7 +105,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
+    <div className="px-3 py-4 sm:px-4 sm:max-w-2xl mx-auto">
       <div className="card">
           <h1 className="text-xl font-bold mb-2 text-[var(--text)]">{t('settings.title')}</h1>
           <p className="text-sm text-gray-600 mb-4">{t('settings.subtitle')}</p>

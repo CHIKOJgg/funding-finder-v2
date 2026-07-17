@@ -85,6 +85,8 @@
 @layer base {
   html {
     background: var(--bg);
+    width: 100%;
+    height: 100%;
   }
 
   body {
@@ -92,6 +94,13 @@
     color: var(--text);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    width: 100%;
+    min-height: 100%;
+  }
+
+  #root {
+    width: 100%;
+    min-height: 100vh;
   }
 
   /* Keep muted text readable in dark mode (was the contrast bug) */
@@ -229,8 +238,14 @@
     border: 1px solid var(--border);
     border-radius: 16px;
     box-shadow: var(--shadow);
-    padding: 16px;
+    padding: 12px;
     margin-bottom: 16px;
+  }
+
+  @media (min-width: 640px) {
+    .card {
+      padding: 16px;
+    }
   }
 
   .card-flush {
@@ -463,21 +478,28 @@
 
 .web-content {
   width: 100%;
-  padding: 16px 12px 80px; /* bottom space for the fixed nav */
+  padding: 0 0 80px; /* bottom space for the fixed nav */
 }
 
 /* Website only: stretch comfortably across the viewport (centered, wide).
    Telegram mini-app keeps its native full-width mobile layout untouched. */
 .web-shell .web-content {
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 24px 20px 96px;
+  padding: 24px 24px 96px;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1200px) {
   .web-shell .web-content {
-    padding: 32px 40px 96px;
-    max-width: 1400px;
+    max-width: 1600px;
+    padding: 32px 48px 96px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .web-shell .web-content {
+    max-width: 1800px;
+    padding: 40px 64px 96px;
   }
 }
 
@@ -494,7 +516,7 @@
 
 .web-shell .web-nav {
   /* keep the bar tidy on wide screens */
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -543,17 +565,23 @@
 }
 
 .web-header-inner {
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
   height: 56px;
-  padding: 0 16px;
+  padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1200px) {
   .web-header-inner {
-    padding: 0 40px;
+    padding: 0 48px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .web-header-inner {
+    padding: 0 64px;
   }
 }

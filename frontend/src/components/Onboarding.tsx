@@ -43,9 +43,9 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
   const current = STEPS[step];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-surface rounded-2xl max-w-md w-full overflow-hidden" style={{ color: 'var(--text)' }}>
-        <div className="text-center p-6">
+        <div className="text-center p-4 sm:p-6">
           <div className="text-6xl mb-4">{current.emoji}</div>
           <h2 className="text-xl font-bold mb-3">{t(current.title)}</h2>
           <p className="text-sm text-muted mb-6">{t(current.description)}</p>
