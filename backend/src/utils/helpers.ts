@@ -80,10 +80,18 @@ export function detectFundingInterval(
     for (let i = 1; i < sorted.length; i++) {
       deltas.push(sorted[i] - sorted[i - 1]);
     }
-    const medDelta = median(deltas);
-    if (medDelta && medDelta > 0) {
-      // Round to nearest known interval
-      const rounded = roundToNearestInterval(medDelta);
+    const medDeltaMs = median(deltas);
+    // `historyTimestamps` are epoch values. Both second- and millisecond-
+    // precision callers exist in the wild, so detect the unit from the median
+    // delta: a delta > 100s can only be milliseconds (no real funding interval
+    // is sub-100s), otherwise treat the value as already-seconds.
+    const medDeltaSec = medDeltaMs
+      ? medDeltaMs > 100_000
+        ? medDeltaMs / 1000
+        : medDeltaMs
+      : 0;
+    if (medDeltaSec > 0) {
+      const rounded = roundToNearestInterval(medDeltaSec);
       return { seconds: rounded, hours: rounded / 3600, source: 'detected' };
     }
   }

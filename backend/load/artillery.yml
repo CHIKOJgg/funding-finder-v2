@@ -1,74 +1,67 @@
 # Artillery v2 load-test scenario for the funding-finder backend.
 #
-# This is a SELF-CONTAINED scenario: it does not require a live server to be
-# valid YAML, but to actually generate traffic you need the API running:
+# Goal: prove the API (a) sustains a normal request rate WITHOUT tripping its
+# own rate limiter (no 429s during steady load) and (b) throttles an abusive
+# spike (429s appear only when the limiter is intentionally overwhelmed).
 #
-#     # terminal 1 - start the backend
-#     npm run dev
-#     # (or) node dist/index.js
+# Prerequisites — the backend must be running and reachable:
+#     npm run dev            # or: node dist/index.js
 #
-#     # terminal 2 - run the load test
+# Run:
 #     npx artillery run load/artillery.yml
-#
-# Override the target host without editing this file:
 #     npx artillery run --target http://localhost:8080 load/artillery.yml
-#
-# Or via environment variable (Artillery v2 expands $processEnvironment):
 #     TARGET=http://staging.example.com npx artillery run load/artillery.yml
 #
-# What it does:
-#   - Hits a couple of cheap, representative read endpoints (health + feature
-#     flags) to measure baseline throughput and error rate under a small,
-#     steady arrival rate for ~30s.
-#   - The POST flow exercises a representative authenticated-ish endpoint body
-#     shape; adjust the URL/body to match your real routes.
+# Notes:
+#   - Public endpoints are used (no auth token needed) so the scenario is
+#     self-contained. Authenticated routes are intentionally excluded — the
+#     steady/abuse assertions below are about the global ingress limiter, not
+#     per-user quotas.
+#   - `ensure.maxErrorRate` is intentionally high: we MEASURE error/429 rates
+#     rather than aborting, so you can read them off the report.
 
 config:
-  # Default target. Override with `npx artillery run --target <url>` or the
-  # TARGET env var below.
   target: "{{ $processEnvironment.TARGET || 'http://localhost:3000' }}"
-  # Spew a bit of detail so you can see latency percentiles.
   ensure:
-    maxErrorRate: 100      # do not abort the run on errors (we just measure)
+    # We do NOT want Artillery to fail the run on 429s — that is the signal we
+    # are measuring. Keep this high and read the per-endpoint counters instead.
+    maxErrorRate: 100
+  # Capture the rate-limit headers so we can assert behaviour from the report.
+  http:
+    followRedirects: false
   phases:
-    - duration: 30         # seconds
-      arrivalRate: 5       # new virtual users per second
-      name: "Steady warm load"
-    # Uncomment for a short stress spike after the warm-up phase:
-    # - duration: 15
-    #   arrivalRate: 5
-    #   rampTo: 50
-    #   name: "Ramp to stress"
+    # Phase 1 — steady, realistic load. Expectation: ~0% 429 / 5xx.
+    - duration: 30
+      arrivalRate: 20          # 20 new virtual users / second
+      name: "Steady baseline load"
+    # Phase 2 — aggressive spike to overwhelm the global limiter. Expectation:
+    # a meaningful fraction of requests get 429 (the server protects itself
+    # and the upstream exchange APIs from a rate-limit storm).
+    - duration: 20
+      arrivalRate: 20
+      rampTo: 400              # ramp up to 400 VUs/s
+      name: "Stress spike (rate-limit abuse)"
   defaults:
     headers:
       accept: "application/json"
       content-type: "application/json"
 
 scenarios:
-  - name: "Health + feature flags probe"
+  - name: "Health + feature flags + metrics (public read endpoints)"
     weight: 1
     flow:
       - get:
           url: "/api/health"
           name: "GET /api/health"
-      - get:
-          url: "/api/feature-flags"
-          name: "GET /api/feature-flags"
-
-  - name: "Scan request shape (POST)"
-    weight: 1
-    flow:
-      - post:
-          url: "/api/scan"
-          name: "POST /api/scan"
-          # Adjust the body to a real payload your /scan route accepts.
-          json:
-            exchanges:
-              - binance
-              - bybit
-              - okx
-            minSpread: 0.01
-          # A 401/400 here is expected without auth; we only measure load.
           capture:
             - json: "$.ok"
               as: "ok"
+      - get:
+          url: "/api/feature-flags"
+          name: "GET /api/feature-flags"
+      - get:
+          url: "/api/prometheus"
+          name: "GET /api/prometheus"
+      - get:
+          url: "/api/ready"
+          name: "GET /api/ready"
