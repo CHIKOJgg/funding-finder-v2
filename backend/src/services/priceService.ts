@@ -307,7 +307,7 @@ async function fetchBulkTickers(exchange: string): Promise<Map<string, number> |
         break;
       case 'bitget':
         symbol = t.symbol;
-        price = parseFloat(t.markPrice) || parseFloat(t.lastPr);
+        price = parseFloat(t.markPrice) || parseFloat(t.lastPrice);
         break;
       case 'mexc':
         symbol = t.symbol;

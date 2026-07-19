@@ -48,6 +48,11 @@ const defaultFlags: Record<string, FeatureFlag> = {
     enabled: true,
     description: 'Cross-exchange arbitrage detection',
   },
+  spot_futures: {
+    name: 'spot_futures',
+    enabled: false,
+    description: 'Spot-Futures basis panel (work in progress, hidden from UI)',
+  },
   alert_evaluator: {
     name: 'alert_evaluator',
     enabled: true,

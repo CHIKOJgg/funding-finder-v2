@@ -450,6 +450,16 @@ export const apiClient = {
     return retryRequest(() => api.get('/arbitrage/spot-futures', { params: { exchange, pair } }));
   },
 
+  // ---- Feature flags (gates UI features independently of subscription tier) ----
+  async getFeatureFlags() {
+    try {
+      const res: any = await retryRequest(() => api.get('/feature-flags'));
+      return res?.data?.flags ?? [];
+    } catch {
+      return [];
+    }
+  },
+
   // ---- Live perp prices for visible Funding rows (batched, per exchange) ----
   // Kept for backwards compatibility; prefer getLiveBatch for multi-exchange use.
   async getPriceBatch(exchange: string, symbols: string[]) {

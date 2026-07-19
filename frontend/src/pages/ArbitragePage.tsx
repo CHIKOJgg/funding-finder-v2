@@ -124,6 +124,18 @@ export function ArbitragePage() {
   const [minApy, setMinApy] = useState(0);
   const [pairQuery, setPairQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(15);
+  // Spot-Futures panel is hidden from the UI until the backend feature is
+  // finished. The backend endpoint stays live for later completion; we only
+  // gate the frontend via the backend's feature flag so it can be toggled
+  // without a redeploy.
+  const [spotFuturesEnabled, setSpotFuturesEnabled] = useState(false);
+
+  useEffect(() => {
+    apiClient.getFeatureFlags().then((flags: any[]) => {
+      const f = flags.find((x) => x.name === 'spot_futures');
+      setSpotFuturesEnabled(!!f?.enabled);
+    });
+  }, []);
 
   useEffect(() => {
     // Cache-first: these only fetch if data isn't already loaded (or in-flight),
@@ -286,14 +298,16 @@ export function ArbitragePage() {
         >
           {t('arb.alerts')}
         </button>
-        <button
-          onClick={() => setActiveTab('spotfutures')}
-          className={clsx('flex-1 py-2.5 rounded-xl font-medium transition-all', activeTab === 'spotfutures' ? 'btn-primary' : 'btn-secondary')}
-          role="tab"
-          aria-selected={activeTab === 'spotfutures'}
-        >
-          {t('arb.spotFutures')}
-        </button>
+        {spotFuturesEnabled && (
+          <button
+            onClick={() => setActiveTab('spotfutures')}
+            className={clsx('flex-1 py-2.5 rounded-xl font-medium transition-all', activeTab === 'spotfutures' ? 'btn-primary' : 'btn-secondary')}
+            role="tab"
+            aria-selected={activeTab === 'spotfutures'}
+          >
+            {t('arb.spotFutures')}
+          </button>
+        )}
       </div>
 
       {activeTab === 'opportunities' && (
@@ -414,7 +428,7 @@ export function ArbitragePage() {
         </div>
       )}
 
-      {activeTab === 'spotfutures' && (
+      {activeTab === 'spotfutures' && spotFuturesEnabled && (
         <SpotFuturesPanel />
       )}
 

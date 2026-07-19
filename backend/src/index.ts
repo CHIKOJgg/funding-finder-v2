@@ -239,8 +239,9 @@ app.get('/api/ready', async (req, res) => {
   }
 });
 
-// Metrics endpoint (detailed system info)
-app.get('/api/metrics', authenticate, async (req, res) => {
+// Metrics endpoint (detailed system info) — admin-only to avoid leaking
+// system internals (cache size, job stats, memory) to any authenticated user.
+app.get('/api/metrics', authenticate, requireAdmin, async (req, res) => {
   try {
     const dbHealth = await checkDatabaseHealth();
     const mem = process.memoryUsage();
@@ -459,6 +460,37 @@ function stopNowPaymentsPolling() {
   }
 }
 
+// Self-ping keep-alive for platforms that spin down idle services (e.g. Render
+// free tier sleeps after ~15 min of no traffic). Pinging our own /api/health
+// every 10 minutes keeps the instance awake. Prefer API_BASE_URL (the public
+// URL) so the request actually reaches the running service; fall back to
+// localhost when it isn't configured (e.g. local dev, where this is a no-op).
+let selfPingTimer: ReturnType<typeof setInterval> | null = null;
+
+async function startSelfPing() {
+  const base = config.apiBaseUrl?.replace(/\/$/, '') || `http://localhost:${config.port}`;
+  const url = `${base}/api/health`;
+  const intervalMs = 10 * 60 * 1000; // 10 minutes — well under the 15 min idle limit
+  logger.info(`Self-ping keep-alive enabled → ${url} every ${intervalMs / 60000} min`);
+  const ping = async () => {
+    try {
+      await fetch(url, { method: 'GET', signal: AbortSignal.timeout(5000) });
+    } catch (err) {
+      logger.warn({ err: (err as Error).message }, 'Self-ping failed');
+    }
+  };
+  // Immediate first ping so we don't wait a full interval after a cold start.
+  await ping();
+  selfPingTimer = setInterval(ping, intervalMs);
+}
+
+function stopSelfPing() {
+  if (selfPingTimer) {
+    clearInterval(selfPingTimer);
+    selfPingTimer = null;
+  }
+}
+
 // Start server
 async function start() {
   try {
@@ -475,6 +507,7 @@ async function start() {
        startDataArchival();
        startFundingWarmup();
        startNowPaymentsPolling();
+       void startSelfPing();
      });
   } catch (err) {
     logger.error('Failed to start server:', err);
@@ -490,6 +523,7 @@ const gracefulShutdown = async (signal: string) => {
   stopDataArchival();
   stopFundingWarmup();
   stopNowPaymentsPolling();
+  stopSelfPing();
   wsManager.close();
   await shutdownJobQueues();
   await disconnectDatabase();

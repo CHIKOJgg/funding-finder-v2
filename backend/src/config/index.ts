@@ -71,7 +71,10 @@ const devSchema = baseSchema.extend({
 const prodSchema = baseSchema.extend({
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid URL'),
   TELEGRAM_BOT_TOKEN: z.string().min(1, 'TELEGRAM_BOT_TOKEN is required in production'),
-  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters in production'),
+  // NOTE: a weak default is intentionally NOT provided in production. If the
+  // env var is missing/short, startup fails (fail-closed) instead of shipping a
+  // forgeable JWT secret. Generate e.g. `openssl rand -hex 32`.
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be set and at least 32 characters in production'),
   WEBHOOK_SECRET: z.string().min(32, 'WEBHOOK_SECRET must be at least 32 characters in production'),
   ENCRYPTION_KEY: z.string().min(32, 'ENCRYPTION_KEY must be at least 32 characters in production (used to encrypt exchange API keys)'),
 });
