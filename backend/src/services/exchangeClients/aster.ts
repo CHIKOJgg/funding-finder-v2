@@ -8,9 +8,10 @@ export const asterAdapter: ExchangeAdapter = {
   supportsTrading: false,
 
   async getPositions(creds: Credentials): Promise<NormalizedPosition[]> {
-    const data = await binanceReq(BASE, '/fapi/v1/positionRisk', creds);
+    const data = await binanceReq(BASE, '/fapi/v2/positionRisk', creds, {});
+    const list: any[] = Array.isArray(data) ? data : [];
     const positions: NormalizedPosition[] = [];
-    for (const p of data || []) {
+    for (const p of list) {
       const amt = parseFloat(p.positionAmt);
       if (!amt || amt === 0) continue;
       const mark = parseFloat(p.markPrice);
@@ -24,21 +25,28 @@ export const asterAdapter: ExchangeAdapter = {
         entryPrice: entry,
         markPrice: isFinite(mark) ? mark : entry,
         leverage: parseFloat(p.leverage) || 1,
-        unrealizedPnl: parseFloat(p.unrealizedProfit) || 0,
+        unrealizedPnl: parseFloat(p.unRealizedProfit) || 0,
       });
     }
     return positions;
   },
 
   async getFundingIncome(creds: Credentials, opts: { symbol?: string; limit?: number } = {}): Promise<NormalizedFundingIncome[]> {
-    const params: Record<string, any> = { incomeType: 'FUNDING', limit: opts.limit ?? 100 };
-    if (opts.symbol) params.symbol = opts.symbol;
-    const data = await binanceReq(BASE, '/fapi/v1/income', creds, params);
-    return (data || []).map((r: any) => ({
-      symbol: r.symbol,
-      income: parseFloat(r.income) || 0,
-      time: r.time,
-      type: r.incomeType || 'FUNDING',
-    }));
+    try {
+      const params: Record<string, any> = { limit: opts.limit ?? 100 };
+      if (opts.symbol) params.symbol = opts.symbol;
+      const data = await binanceReq(BASE, '/fapi/v1/income', creds, params);
+      const list: any[] = Array.isArray(data) ? data : [];
+      return (list || [])
+        .filter((r: any) => r.incomeType === 'FUNDING_FEE' || !r.incomeType)
+        .map((r: any) => ({
+          symbol: r.symbol,
+          income: parseFloat(r.income) || 0,
+          time: Number(r.time) || 0,
+          type: 'FUNDING',
+        }));
+    } catch {
+      return [];
+    }
   },
 };

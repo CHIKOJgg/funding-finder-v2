@@ -271,6 +271,14 @@ export function ProfilePage() {
           currentPlan={subscription}
           onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
         />
+        <PlanCard
+          name="Ultimate"
+          price={999}
+          tagline={t('profile.planTaglineUltimate')}
+          features={['profile.feat25ex', 'profile.featUnlimited', 'profile.featPriorityAi', 'profile.featAllPro', 'profile.featWhiteLabel']}
+          currentPlan={subscription}
+          onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
+        />
       </div>
       </div>
 

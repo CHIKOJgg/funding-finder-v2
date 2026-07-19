@@ -200,5 +200,46 @@ describe('paymentService', () => {
       expect(prismaMock.paymentRecord.create).not.toHaveBeenCalled();
       expect(updated).toBeDefined();
     });
+
+    it('credits the referrer a one-time $5 bonus when a referral pays', async () => {
+      const order = { ...orderObj, id: 'order_ref', userId: 'tg_referral', referralCredited: false };
+      (prismaMock.order.findUnique as jest.Mock).mockImplementation((args: any) =>
+        args?.where?.id ? Promise.resolve(order) : Promise.resolve(null)
+      );
+      (prismaMock.user.findUnique as jest.Mock).mockResolvedValue({ subscription: 'free', referredBy: 'referrer_id' });
+      (prismaMock.user.update as jest.Mock).mockResolvedValue({});
+      (prismaMock.paymentHistory.create as jest.Mock).mockResolvedValue({ id: 'ph1' });
+      (prismaMock.paymentRecord.findUnique as jest.Mock).mockResolvedValue(null);
+
+      await updateOrderFromWebhook('order_ref', 'paid');
+
+      const referrerUpdate = (prismaMock.user.update as jest.Mock).mock.calls.find(
+        (c: any) => c[0]?.where?.id === 'referrer_id'
+      );
+      expect(referrerUpdate).toBeDefined();
+      expect(referrerUpdate[0].data.balance.increment).toBe(5);
+      const orderUpdate = (prismaMock.order.update as jest.Mock).mock.calls.find(
+        (c: any) => c[0]?.where?.id === 'order_ref' && c[0]?.data?.referralCredited === true
+      );
+      expect(orderUpdate).toBeDefined();
+    });
+
+    it('does not double-credit the referrer on replayed webhook', async () => {
+      const order = { ...orderObj, id: 'order_ref2', userId: 'tg_referral', referralCredited: true };
+      (prismaMock.order.findUnique as jest.Mock).mockImplementation((args: any) =>
+        args?.where?.id ? Promise.resolve(order) : Promise.resolve(null)
+      );
+      (prismaMock.user.findUnique as jest.Mock).mockResolvedValue({ subscription: 'free', referredBy: 'referrer_id' });
+      (prismaMock.user.update as jest.Mock).mockResolvedValue({});
+      (prismaMock.paymentHistory.create as jest.Mock).mockResolvedValue({ id: 'ph1' });
+      (prismaMock.paymentRecord.findUnique as jest.Mock).mockResolvedValue(null);
+
+      await updateOrderFromWebhook('order_ref2', 'paid');
+
+      const referrerUpdate = (prismaMock.user.update as jest.Mock).mock.calls.find(
+        (c: any) => c[0]?.where?.id === 'referrer_id'
+      );
+      expect(referrerUpdate).toBeUndefined();
+    });
   });
 });

@@ -165,12 +165,12 @@ async function evaluateAllAlerts(): Promise<void> {
       // Send email notification if user has email enabled
       const sendEmailNotification = async () => {
         try {
-          const settings = await prisma.userSettings.findUnique({ where: { userId: user.telegramId } });
+          const settings = await prisma.userSettings.findUnique({ where: { userId: user.id } });
           if (settings?.emailNotifications && settings?.emailAddress) {
             await sendAlertEmail(settings.emailAddress, triggered.type, triggered.data);
           }
         } catch (err) {
-          logger.debug({ err, userId: user.telegramId }, 'Failed to send email notification');
+          logger.debug({ err, userId: user.id }, 'Failed to send email notification');
         }
       };
       notifications.push(sendEmailNotification());
@@ -178,7 +178,7 @@ async function evaluateAllAlerts(): Promise<void> {
       // Send Pushover notification if the user enabled it and supplied a key.
       const sendPushoverNotification = async () => {
         try {
-          const settings = await prisma.userSettings.findUnique({ where: { userId: user.telegramId } });
+          const settings = await prisma.userSettings.findUnique({ where: { userId: user.id } });
           if (settings?.pushoverNotifications && settings?.pushoverKey) {
             await sendPushoverAlert(
               settings.pushoverKey,
@@ -188,7 +188,7 @@ async function evaluateAllAlerts(): Promise<void> {
             );
           }
         } catch (err) {
-          logger.debug({ err, userId: user.telegramId }, 'Failed to send Pushover notification');
+          logger.debug({ err, userId: user.id }, 'Failed to send Pushover notification');
         }
       };
       notifications.push(sendPushoverNotification());

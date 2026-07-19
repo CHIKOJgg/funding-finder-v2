@@ -50,8 +50,8 @@ const defaultFlags: Record<string, FeatureFlag> = {
   },
   spot_futures: {
     name: 'spot_futures',
-    enabled: false,
-    description: 'Spot-Futures basis panel (work in progress, hidden from UI)',
+    enabled: true,
+    description: 'Spot-Futures basis panel (cash-and-carry arbitrage)',
   },
   alert_evaluator: {
     name: 'alert_evaluator',

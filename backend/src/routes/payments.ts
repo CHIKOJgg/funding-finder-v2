@@ -20,7 +20,7 @@ import { logger } from '../utils/logger.js';
 const router = Router();
 
 const createOrderSchema = z.object({
-  planId: z.enum(['basic', 'pro', 'promax']),
+  planId: z.enum(['basic', 'pro', 'promax', 'ultimate']),
   currency: z.string().default('USDT'),
   // Crypto gateway selection: Crypto Pay (Telegram) or NOWPayments (website).
   provider: z.enum(['crypto_pay', 'nowpayments']).optional().default('crypto_pay'),

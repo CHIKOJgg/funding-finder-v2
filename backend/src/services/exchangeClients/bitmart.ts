@@ -8,33 +8,43 @@ export const bitmartAdapter: ExchangeAdapter = {
   supportsTrading: false,
 
   async getPositions(creds: Credentials): Promise<NormalizedPosition[]> {
-    const data = await bitmartReq(BASE, '/v2/contract/private/positions', creds);
-    const list: any[] = data?.data || [];
+    const data = await bitmartReq(BASE, '/contract/v1/ifContract/openPositions', creds, {});
+    const list: any[] = data?.data?.positions ?? data?.data ?? [];
     const positions: NormalizedPosition[] = [];
     for (const p of list) {
-      const size = parseFloat(p.current_amount);
-      if (!size || size === 0) continue;
+      const amt = parseFloat(p.position_qty ?? p.size);
+      if (!amt || amt === 0) continue;
       const mark = parseFloat(p.mark_price);
-      const entry = parseFloat(p.avg_cost);
-      const side: 'long' | 'short' = (p.side === 2 || p.position_type === 'short') ? 'short' : 'long';
+      const entry = parseFloat(p.avg_entrance_price ?? p.entryPrice);
       positions.push({
         exchange: 'bitmart',
         symbol: p.symbol,
-        side,
-        size: Math.abs(size),
-        notional: Math.abs(size) * (isFinite(mark) ? mark : 0),
+        side: amt > 0 ? 'long' : 'short',
+        size: Math.abs(amt),
+        notional: Math.abs(amt) * (isFinite(mark) ? mark : 0),
         entryPrice: entry,
         markPrice: isFinite(mark) ? mark : entry,
         leverage: parseFloat(p.leverage) || 1,
-        unrealizedPnl: parseFloat(p.unrealized_pnl) || 0,
+        unrealizedPnl: parseFloat(p.unrealized_profit ?? p.unrealizedPnl) || 0,
       });
     }
     return positions;
   },
 
-  async getFundingIncome(_creds: Credentials, _opts: { symbol?: string; limit?: number } = {}): Promise<NormalizedFundingIncome[]> {
-    // BitMart has no single simple funding-income endpoint; positions cover the
-    // primary PnL view. Return empty (caller tolerates it).
-    return [];
+  async getFundingIncome(creds: Credentials, opts: { symbol?: string; limit?: number } = {}): Promise<NormalizedFundingIncome[]> {
+    try {
+      const params: Record<string, any> = { limit: opts.limit ?? 100 };
+      if (opts.symbol) params.symbol = opts.symbol;
+      const data = await bitmartReq(BASE, '/contract/v1/ifContract/fundingHistory', creds, params);
+      const list: any[] = data?.data?.records ?? data?.data ?? [];
+      return (list || []).map((r: any) => ({
+        symbol: r.symbol,
+        income: parseFloat(r.funding ?? r.amount) || 0,
+        time: Number(r.timestamp ?? r.time) || 0,
+        type: 'FUNDING',
+      }));
+    } catch {
+      return [];
+    }
   },
 };

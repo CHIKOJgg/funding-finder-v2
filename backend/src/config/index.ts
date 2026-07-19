@@ -71,6 +71,7 @@ const baseSchema = z.object({
 
 const devSchema = baseSchema.extend({
   DATABASE_URL: z.string().url().optional().default('postgresql://postgres:postgres@localhost:5432/funding_finder'),
+  DIRECT_URL: z.string().url().optional().default('postgresql://postgres:postgres@localhost:5432/funding_finder'),
   TELEGRAM_BOT_TOKEN: z.string().optional().default(''),
   JWT_SECRET: z.string().optional().default('dev-secret-change-in-production'),
   WEBHOOK_SECRET: z.string().optional().default('changeme'),
@@ -79,6 +80,7 @@ const devSchema = baseSchema.extend({
 
 const prodSchema = baseSchema.extend({
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid URL'),
+  DIRECT_URL: z.string().url('DIRECT_URL must be a valid URL').optional(),
   TELEGRAM_BOT_TOKEN: z.string().min(1, 'TELEGRAM_BOT_TOKEN is required in production'),
   // NOTE: a weak default is intentionally NOT provided in production. If the
   // env var is missing/short, startup fails (fail-closed) instead of shipping a

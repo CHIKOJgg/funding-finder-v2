@@ -454,7 +454,7 @@ export const apiClient = {
   async getFeatureFlags() {
     try {
       const res: any = await retryRequest(() => api.get('/feature-flags'));
-      return res?.data?.flags ?? [];
+      return res?.flags ?? [];
     } catch {
       return [];
     }

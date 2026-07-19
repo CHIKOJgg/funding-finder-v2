@@ -162,7 +162,7 @@ export interface Plan {
   features: string[];
 }
 
-export type PlanId = 'basic' | 'pro' | 'promax';
+export type PlanId = 'basic' | 'pro' | 'promax' | 'ultimate';
 
 export interface TelegramUser {
   id: number;

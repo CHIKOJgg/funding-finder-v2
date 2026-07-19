@@ -86,6 +86,7 @@ model Order {
   invoiceId   String?
   invoice     Invoice?
   transactionId String?
+  referralCredited Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

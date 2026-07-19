@@ -1,38 +1,50 @@
 import type { Credentials, ExchangeAdapter, NormalizedPosition, NormalizedFundingIncome } from './types.js';
 import { wexStyleReq } from './signers.js';
 
-const BASE = 'https://api.coinw.com';
+const BASE = 'https://fapi.coinw.com';
 
 export const coinwAdapter: ExchangeAdapter = {
   exchange: 'coinw',
   supportsTrading: false,
 
   async getPositions(creds: Credentials): Promise<NormalizedPosition[]> {
-    const data = await wexStyleReq(BASE, '/api/v2/futures/private/position', creds);
-    const list: any[] = data?.data || [];
+    const data = await wexStyleReq(BASE, '/api/v1/position/list', creds, {});
+    const list: any[] = data?.data?.positions ?? data?.data ?? [];
     const positions: NormalizedPosition[] = [];
     for (const p of list) {
-      const size = parseFloat(p.positionAmount) || parseFloat(p.amount) || parseFloat(p.volume);
-      if (!size || size === 0) continue;
+      const amt = parseFloat(p.positionAmt ?? p.vol);
+      if (!amt || amt === 0) continue;
       const mark = parseFloat(p.markPrice);
-      const entry = parseFloat(p.avgPrice);
-      const side: 'long' | 'short' = (p.side === 'short' || size < 0) ? 'short' : 'long';
+      const entry = parseFloat(p.entryPrice);
       positions.push({
         exchange: 'coinw',
         symbol: p.symbol,
-        side,
-        size: Math.abs(size),
-        notional: Math.abs(size) * (isFinite(mark) ? mark : 0),
+        side: amt > 0 ? 'long' : 'short',
+        size: Math.abs(amt),
+        notional: Math.abs(amt) * (isFinite(mark) ? mark : 0),
         entryPrice: entry,
         markPrice: isFinite(mark) ? mark : entry,
         leverage: parseFloat(p.leverage) || 1,
-        unrealizedPnl: parseFloat(p.unrealizedProfit) || parseFloat(p.unrealisedPnl) || 0,
+        unrealizedPnl: parseFloat(p.unRealizedPnl ?? p.unrealizedPnl) || 0,
       });
     }
     return positions;
   },
 
-  async getFundingIncome(_creds: Credentials, _opts: { symbol?: string; limit?: number } = {}): Promise<NormalizedFundingIncome[]> {
-    return [];
+  async getFundingIncome(creds: Credentials, opts: { symbol?: string; limit?: number } = {}): Promise<NormalizedFundingIncome[]> {
+    try {
+      const params: Record<string, any> = { page: 1, pageSize: opts.limit ?? 100 };
+      if (opts.symbol) params.symbol = opts.symbol;
+      const data = await wexStyleReq(BASE, '/api/v1/funding/record', creds, params);
+      const list: any[] = data?.data?.rows ?? data?.data ?? [];
+      return (list || []).map((r: any) => ({
+        symbol: r.symbol,
+        income: parseFloat(r.funding ?? r.amount) || 0,
+        time: Number(r.time) || 0,
+        type: 'FUNDING',
+      }));
+    } catch {
+      return [];
+    }
   },
 };

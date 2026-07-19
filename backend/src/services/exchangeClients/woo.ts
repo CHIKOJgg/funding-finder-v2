@@ -1,31 +1,31 @@
 import type { Credentials, ExchangeAdapter, NormalizedPosition, NormalizedFundingIncome } from './types.js';
-import { wexStyleReq } from './signers.js';
+import { wooReq } from './signers.js';
 
-const BASE = 'https://fapi.weex.com';
+const BASE = 'https://api.woo.org';
 
-export const weexAdapter: ExchangeAdapter = {
-  exchange: 'weex',
+export const wooAdapter: ExchangeAdapter = {
+  exchange: 'woo',
   supportsTrading: false,
 
   async getPositions(creds: Credentials): Promise<NormalizedPosition[]> {
-    const data = await wexStyleReq(BASE, '/api/v1/position/list', creds, { symbol: '', posId: '' });
-    const list: any[] = data?.data?.positions ?? data?.data ?? [];
+    const data = await wooReq(BASE, '/v3/positions', creds, {});
+    const list: any[] = data?.rows ?? data?.data ?? [];
     const positions: NormalizedPosition[] = [];
     for (const p of list) {
-      const amt = parseFloat(p.positionAmt ?? p.vol);
+      const amt = parseFloat(p.size ?? p.position);
       if (!amt || amt === 0) continue;
       const mark = parseFloat(p.markPrice);
-      const entry = parseFloat(p.entryPrice);
+      const entry = parseFloat(p.averageOpenPrice ?? p.entryPrice);
       positions.push({
-        exchange: 'weex',
+        exchange: 'woo',
         symbol: p.symbol,
-        side: amt > 0 ? 'long' : 'short',
+        side: (p.side ?? (amt > 0 ? 'LONG' : 'SHORT')).toLowerCase() === 'short' ? 'short' : 'long',
         size: Math.abs(amt),
         notional: Math.abs(amt) * (isFinite(mark) ? mark : 0),
         entryPrice: entry,
         markPrice: isFinite(mark) ? mark : entry,
         leverage: parseFloat(p.leverage) || 1,
-        unrealizedPnl: parseFloat(p.unRealizedPnl ?? p.unrealizedPnl) || 0,
+        unrealizedPnl: parseFloat(p.unrealizedPnl ?? p.pnl) || 0,
       });
     }
     return positions;
@@ -33,14 +33,14 @@ export const weexAdapter: ExchangeAdapter = {
 
   async getFundingIncome(creds: Credentials, opts: { symbol?: string; limit?: number } = {}): Promise<NormalizedFundingIncome[]> {
     try {
-      const params: Record<string, any> = { page: 1, pageSize: opts.limit ?? 100 };
+      const params: Record<string, any> = { pageSize: opts.limit ?? 100 };
       if (opts.symbol) params.symbol = opts.symbol;
-      const data = await wexStyleReq(BASE, '/api/v1/funding/record', creds, params);
-      const list: any[] = data?.data?.rows ?? data?.data ?? [];
+      const data = await wooReq(BASE, '/v3/funding_fee/history', creds, params);
+      const list: any[] = data?.rows ?? data?.data ?? [];
       return (list || []).map((r: any) => ({
         symbol: r.symbol,
-        income: parseFloat(r.funding ?? r.amount) || 0,
-        time: Number(r.time) || 0,
+        income: parseFloat(r.fundingFee ?? r.amount) || 0,
+        time: Number(r.timestamp) || 0,
         type: 'FUNDING',
       }));
     } catch {

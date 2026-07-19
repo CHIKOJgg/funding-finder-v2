@@ -22,6 +22,11 @@ export const PLANS: Record<PlanId, Plan> = {
     name: 'Pro Max',
     features: ['Все функции Pro', 'Эксклюзивные сигналы', 'Персональная поддержка', 'Ранний доступ'],
   },
+  ultimate: {
+    price: 999,
+    name: 'Ultimate',
+    features: ['Все функции Pro Max', 'Все 25 бирж', 'Безлимитные алерты', 'Приоритетный AI', 'White-label'],
+  },
 };
 
 function getApiBaseUrl(): string {
@@ -244,6 +249,29 @@ export async function updateOrderFromWebhook(
   if (!order) order = await prisma.order.findFirst({ where: { invoiceId: lookup } });
   if (!order) return null;
 
+  if (status === 'refunded' || status === 'failed') {
+    // Refund / failed payment: revoke the granted plan if the user is still on
+    // it (never downgrade a user who has since upgraded to a higher tier).
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { telegramId: order.userId } });
+      if (!user) return null;
+      if (user.subscription === order.planId && order.planId !== 'free') {
+        await tx.user.update({
+          where: { telegramId: order.userId },
+          data: { subscription: 'free' },
+        });
+        logger.info({ userId: order.userId, plan: order.planId }, 'Subscription revoked after refund/failure');
+      }
+      await tx.order.update({
+        where: { id: order.id },
+        data: { status, updatedAt: new Date() },
+      });
+      await tx.invoice.updateMany({ where: { orderId: order.id }, data: { status } });
+      return order;
+    });
+    return result;
+  }
+
   if (status === 'paid') {
     // Idempotent grant. The whole thing runs in one transaction so concurrent
     // calls (webhook + status poll + reconcile) cannot double-credit. The
@@ -296,6 +324,21 @@ export async function updateOrderFromWebhook(
         where: { orderId: order.id },
         data: { status: 'paid' },
       });
+
+      // Credit the referrer a one-time bonus when their referral pays for a plan.
+      // Guarded by `referralCredited` so a replayed webhook can't double-pay.
+      if (!currentOrder.referralCredited && user.referredBy) {
+        const REFERRAL_BONUS = 5;
+        await tx.user.update({
+          where: { id: user.referredBy },
+          data: { balance: { increment: REFERRAL_BONUS } },
+        });
+        await tx.order.update({
+          where: { id: order.id },
+          data: { referralCredited: true },
+        });
+        logger.info({ referrerId: user.referredBy, orderId: order.id }, 'Referral bonus credited to balance');
+      }
 
       return currentOrder;
     });

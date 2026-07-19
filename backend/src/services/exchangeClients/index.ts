@@ -9,6 +9,14 @@ import { phemexAdapter } from './phemex.js';
 import { htxAdapter } from './htx.js';
 import { hyperliquidAdapter } from './hyperliquid.js';
 import { bingxAdapter } from './bingx.js';
+import { wooAdapter } from './woo.js';
+import { coinexAdapter } from './coinex.js';
+import { weexAdapter } from './weex.js';
+import { coinwAdapter } from './coinw.js';
+import { bitmartAdapter } from './bitmart.js';
+import { blofinAdapter } from './blofin.js';
+import { apexAdapter } from './apex.js';
+import { asterAdapter } from './aster.js';
 
 const REGISTRY: Record<string, ExchangeAdapter> = {
   binance: binanceAdapter,
@@ -21,6 +29,14 @@ const REGISTRY: Record<string, ExchangeAdapter> = {
   htx: htxAdapter,
   hyperliquid: hyperliquidAdapter,
   bingx: bingxAdapter,
+  woo: wooAdapter,
+  coinex: coinexAdapter,
+  weex: weexAdapter,
+  coinw: coinwAdapter,
+  bitmart: bitmartAdapter,
+  blofin: blofinAdapter,
+  apex: apexAdapter,
+  aster: asterAdapter,
 };
 
 export function getAdapter(exchange: string): ExchangeAdapter {

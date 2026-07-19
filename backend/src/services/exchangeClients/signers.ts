@@ -198,3 +198,32 @@ export async function wexStyleReq(
     : await axios.post(url, body, { headers: { 'Content-Type': 'application/json' }, timeout: 10000 });
   return res.data;
 }
+
+// ---- WOO X style (x-api-key header, HMAC-SHA256 over ts+method+path+body) ----
+export async function wooReq(
+  base: string, path: string, creds: Creds,
+  params: Record<string, any> = {}, method: 'GET' | 'POST' = 'GET'
+): Promise<any> {
+  const timestamp = String(Date.now());
+  let urlPath = path;
+  let body = '';
+  if (method === 'GET') {
+    const s = qs(params);
+    if (s) urlPath = `${path}?${s}`;
+  } else {
+    body = JSON.stringify(params);
+  }
+  const prehash = timestamp + method + urlPath + body;
+  const sig = hmac(creds.secret, prehash);
+  const headers = {
+    'x-api-key': creds.apiKey,
+    'x-api-signature': sig,
+    'x-api-timestamp': timestamp,
+    'Content-Type': 'application/json',
+  };
+  const url = `${base}${urlPath}`;
+  const res = method === 'GET'
+    ? await axios.get(url, { headers, timeout: 10000 })
+    : await axios.post(url, body, { headers, timeout: 10000 });
+  return res.data;
+}

@@ -9,7 +9,7 @@ import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { useT } from '../i18n';
 
-const EXCHANGES = ['binance', 'bybit', 'okx', 'gate', 'mexc'] as const;
+const EXCHANGES = ['binance', 'bybit', 'okx', 'gate', 'mexc', 'bitget', 'phemex', 'htx', 'hyperliquid', 'bingx', 'woo', 'coinex', 'weex', 'coinw', 'bitmart', 'blofin', 'apex', 'aster'] as const;
 const SIM_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'] as const;
 
 function formatUsd(n: number): string {
@@ -64,7 +64,11 @@ export function PortfolioPage() {
       const res: any = await apiClient.getLivePortfolio();
       if (res?.ok) setLive(res);
     } catch (err: any) {
-      showToast(err?.message || t('portfolio.loadError'), 'error');
+      if (err?.message && /authentication|subscription|pro/i.test(err.message)) {
+        setPaywall('portfolio');
+      } else {
+        showToast(err?.message || t('portfolio.loadError'), 'error');
+      }
     } finally {
       setLiveLoading(false);
     }
@@ -461,7 +465,17 @@ const LiveTab = memo(function LiveTab({
               <div key={ex.exchange} className="mb-3 rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
                 <div className="flex justify-between items-center mb-2">
                   <strong>{exchangeLabel(ex.exchange)}{ex.label ? ` · ${ex.label}` : ''}</strong>
-                  <button onClick={() => openExchange(ex.exchange, '')} className="text-xs" style={{ color: 'var(--brand)' }}              >↗ {t('portfolio.exchangeBtn')}</button>
+                  <div className="flex items-center gap-2">
+                    {ex.supported === false && (
+                      <span className="text-xs chip" style={{ background: 'rgba(220,38,38,0.12)', color: '#dc2626' }}>{t('portfolio.unsupported')}</span>
+                    )}
+                    {ex.supportsTrading ? (
+                      <span className="text-xs chip" style={{ background: 'rgba(22,163,74,0.12)', color: '#16a34a' }}>{t('portfolio.tradeEnabled')}</span>
+                    ) : (
+                      <span className="text-xs chip" style={{ background: 'rgba(100,116,139,0.12)', color: '#64748b' }}>{t('portfolio.readOnly')}</span>
+                    )}
+                    <button onClick={() => openExchange(ex.exchange, '')} className="text-xs" style={{ color: 'var(--brand)' }}              >↗ {t('portfolio.exchangeBtn')}</button>
+                  </div>
                 </div>
                 {ex.error ? (
                   <div className="text-xs text-red-500">⚠️ {ex.error}</div>

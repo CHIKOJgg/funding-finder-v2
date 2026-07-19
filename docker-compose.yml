@@ -27,11 +27,13 @@ services:
       - '3001:3000'
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/funding_finder
-      NODE_ENV: development
+      DIRECT_URL: postgresql://postgres:postgres@db:5432/funding_finder
+      NODE_ENV: production
       PORT: '3000'
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-your_bot_token_here}
       JWT_SECRET: ${JWT_SECRET:-change-me-to-random-64-chars}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:-change-me-to-random-64-chars}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change-me-to-random-32-chars-min}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       AI_MODEL: x-ai/grok-4.1-fast:free
       SETTLE: usdt
@@ -40,7 +42,13 @@ services:
       CRYPTO_PAY_API_TOKEN: ${CRYPTO_PAY_API_TOKEN:-}
       CRYPTO_BOT_USERNAME: CryptoBot
       CRYPTO_PAY_NETWORK: testnet
-      CORS_ORIGINS: https://t.me,https://telegram.org
+      NOWPAYMENTS_API_KEY: ${NOWPAYMENTS_API_KEY:-}
+      NOWPAYMENTS_IPN_SECRET: ${NOWPAYMENTS_IPN_SECRET:-}
+      NOWPAYMENTS_NETWORK: ${NOWPAYMENTS_NETWORK:-sandbox}
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:3001}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      WEB_AUTH_DOMAIN: ${WEB_AUTH_DOMAIN:-localhost}
+      CORS_ORIGINS: https://t.me,https://telegram.org,http://localhost,http://localhost:3001,http://localhost:80
     depends_on:
       db:
         condition: service_healthy

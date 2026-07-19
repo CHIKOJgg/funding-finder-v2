@@ -5,7 +5,7 @@ import { AuthenticatedRequest } from '../middleware/auth.js';
 import { requireSubscription } from '../middleware/subscription.js';
 import { validate } from '../middleware/validation.js';
 import { decryptJson } from '../services/exchangeKeys.js';
-import { getAdapter } from '../services/exchangeClients/index.js';
+import { getAdapter, supportedExchanges } from '../services/exchangeClients/index.js';
 import { logger } from '../utils/logger.js';
 import { perUserLimiter } from '../middleware/rateLimit.js';
 
@@ -43,9 +43,18 @@ async function gatherLive(userId: string): Promise<{ exchanges: any[]; totals: a
         error: null,
       };
       try {
+        if (!supportedExchanges().includes(k.exchange.toLowerCase())) {
+          entry.supported = false;
+          const dexExchanges = ['dydx', 'paradex', 'drift', 'helix', 'bluefin'];
+          entry.error = dexExchanges.includes(k.exchange.toLowerCase())
+            ? 'DEX требует подключение через кошелёк (пока не поддерживается)'
+            : 'Биржа пока не поддерживается для подключения по API';
+          return;
+        }
         const creds = decryptJson<{ apiKey: string; secret: string; passphrase?: string }>(k.encPayload);
         const adapter = getAdapter(k.exchange);
         entry.supportsTrading = Boolean(adapter.supportsTrading);
+        entry.supported = true;
 
         const [positions, funding] = await Promise.all([
           adapter.getPositions(creds),
@@ -123,7 +132,7 @@ router.get('/portfolio/live/export', requireSubscription('pro'), async (req: Aut
 });
 
 const executeSchema = z.object({
-  exchange: z.enum(['binance', 'bybit', 'okx', 'gate', 'mexc']),
+  exchange: z.enum(['binance', 'bybit', 'okx']),
   symbol: z.string().min(2),
   side: z.enum(['long', 'short']),
   notionalUsd: z.number().positive().max(1_000_000),
@@ -160,7 +169,12 @@ router.post('/portfolio/auto-execute', requireSubscription('pro'), validate(exec
     }
 
     const creds = decryptJson<{ apiKey: string; secret: string; passphrase?: string }>(key.encPayload);
-    const adapter = getAdapter(exchange);
+    let adapter;
+    try {
+      adapter = getAdapter(exchange);
+    } catch {
+      return res.status(400).json({ ok: false, error: 'Эта биржа пока не поддерживается для авто-исполнения' });
+    }
     if (!adapter.placeMarketOrder) {
       return res.status(400).json({ ok: false, error: 'Эта биржа не поддерживает авто-исполнение' });
     }
