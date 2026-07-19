@@ -49,6 +49,7 @@ import keysRoutes from './routes/keys.js';
 import webhookRoutes from './routes/webhook.js';
 import adminRoutes from './routes/admin.js';
 import debugRoutes from './routes/debug.js';
+import publicRoutes from './routes/public.js';
 import { requireAdmin } from './middleware/admin.js';
 
 async function initSentry() {
@@ -339,7 +340,6 @@ app.use('/api/public', publicRoutes);
 // Public, versioned API contract (Block B2). Decouples the consumer-facing
 // surface (/api/v1) from the Mini App's internal /api routes. The handlers are
 // shared, so behaviour is identical; only the URL prefix differs.
-import publicRoutes from './routes/public.js';
 import v1Routes from './routes/v1.js';
 // Web-auth is mounted separately at /api/v1/auth because it ESTABLISHES a
 // session and must not sit behind the global `authenticate` middleware.
