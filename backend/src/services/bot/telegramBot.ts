@@ -13,6 +13,7 @@ import { logger } from '../../utils/logger.js';
 import { runScan, getCachedScan } from '../scanService.js';
 import { getLivePriceBatch, toNative } from '../priceService.js';
 import { handleReferral } from '../paymentService.js';
+import { getPlanTier, getPlanLimitsForTier } from '../../middleware/subscription.js';
 
 const REFERRAL_PREFIX = 'ref_';
 
@@ -254,7 +255,12 @@ export class TelegramBot {
 
   private async onScan(msg: TgMessage, args: string[]): Promise<void> {
     const chatId = msg.chat.id;
-    await this.resolveUser(msg.from!); // ensure account exists
+    const user = await this.resolveUser(msg.from!); // ensure account exists
+
+    // Tier-aware: cap the number of exchanges to the user's plan limit so the
+    // bot funnels free users toward a paid plan (Block C monetization).
+    const limits = getPlanLimitsForTier(getPlanTier(user.subscription));
+    const maxEx = limits.maxExchanges;
 
     let exchanges = args.filter(Boolean).map((e) => e.toLowerCase());
     if (exchanges.length === 0) {
@@ -266,7 +272,16 @@ export class TelegramBot {
         : ['gate', 'binance', 'bybit', 'okx', 'mexc'];
     }
 
-    await this.send(chatId, `🔍 Сканирую: ${exchanges.join(', ')}…`);
+    let capped = false;
+    if (exchanges.length > maxEx) {
+      exchanges = exchanges.slice(0, maxEx);
+      capped = true;
+    }
+
+    const capNote = capped
+      ? `\n_Ваш тариф «${user.subscription}» ограничен ${maxEx} биржами. Обновитесь для большего._`
+      : '';
+    await this.send(chatId, `🔍 Сканирую: ${exchanges.join(', ')}…${capNote}`);
     // Prefer a fresh-enough cached scan to stay snappy and cheap.
     const cached = getCachedScan(exchanges);
     const result =
