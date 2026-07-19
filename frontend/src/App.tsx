@@ -474,8 +474,8 @@ export default function App() {
     () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1'
   );
   const { user: tgUser } = useTelegram();
-  const DEBUG_USER_ID = 'tg_5915824444';
-  const isDebugUser = tgUser?.id === DEBUG_USER_ID;
+  const DEBUG_USER_ID = import.meta.env.VITE_DEBUG_TELEGRAM_ID as string | undefined;
+  const isDebugUser = Boolean(DEBUG_USER_ID) && tgUser?.id === DEBUG_USER_ID;
 
   // Theme: pull native Telegram theme params (guarantees correct contrast)
   // and toggle the `dark` class based on the active color scheme.

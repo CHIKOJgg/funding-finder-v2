@@ -269,6 +269,12 @@ export async function verifyGoogleIdToken(idToken: string): Promise<GoogleVerify
       issuer: ['https://accounts.google.com', 'accounts.google.com'],
     }) as { sub: string; email?: string; email_verified?: boolean };
 
+    // Reject unverified Google accounts — otherwise anyone could forge an
+    // id_token claim with a random sub and impersonate a user.
+    if (payload.email_verified !== true) {
+      return { ok: false, reason: 'Google email is not verified' };
+    }
+
     return { ok: true, sub: payload.sub, email: payload.email };
   } catch (err) {
     return { ok: false, reason: `Google verification failed: ${(err as Error).message}` };

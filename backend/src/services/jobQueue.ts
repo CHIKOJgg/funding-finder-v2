@@ -80,18 +80,14 @@ export function initJobQueues(): void {
     logger.error({ jobId: job?.id, error: err.message }, 'Scan job failed');
   });
 
-  // Alert worker
+  // Alert worker — dispatches notifications. (Evaluation itself runs on the
+  // alertEvaluator timer, so there is no 'evaluate' job type to handle here.)
   alertWorker = new Worker(
     'alert',
     async (job: Job<AlertJobData>) => {
       logger.info({ jobId: job.id, type: job.data.type }, 'Processing alert job');
 
-      if (job.data.type === 'evaluate') {
-        // Trigger alert evaluation by importing and running the evaluator
-        const evaluator = await import('./alertEvaluator.js');
-        // The evaluator runs on a timer, so we just log the trigger
-        logger.info('Alert evaluation triggered via job queue');
-      } else if (job.data.type === 'send-notification' && job.data.userId && job.data.data) {
+      if (job.data.type === 'send-notification' && job.data.userId && job.data.data) {
         const { sendAlertNotification } = await import('./telegramNotify.js');
         const chatId = parseInt(job.data.userId.replace('tg_', ''), 10);
         if (chatId && !isNaN(chatId)) {
@@ -134,22 +130,6 @@ export async function addScanJob(exchanges: string[], userId?: string): Promise<
   );
 
   logger.info({ jobId: job.id, exchanges }, 'Scan job queued');
-  return job.id ?? null;
-}
-
-export async function addAlertEvaluationJob(): Promise<string | null> {
-  if (!alertQueue) return null;
-
-  const job = await alertQueue.add(
-    'evaluate',
-    { type: 'evaluate' as const },
-    {
-      priority: 3,
-      attempts: 1,
-      removeOnComplete: { count: 50 },
-    }
-  );
-
   return job.id ?? null;
 }
 

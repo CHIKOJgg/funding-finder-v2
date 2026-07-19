@@ -2,6 +2,7 @@ import axios from 'axios';
 import crypto from 'crypto';
 import { config } from '../config/index.js';
 import { prisma } from './prisma.js';
+import { planRank } from '../utils/planRanks.js';
 import { logger } from '../utils/logger.js';
 import { Plan, PlanId } from '../types/index.js';
 
@@ -242,42 +243,62 @@ export async function updateOrderFromWebhook(
   if (!order) return null;
 
   if (status === 'paid') {
-    // Transaction: update order, subscription, and payment record atomically
-    const [updated] = await prisma.$transaction([
-      prisma.order.update({
+    // Idempotent grant. The whole thing runs in one transaction so concurrent
+    // calls (webhook + status poll + reconcile) cannot double-credit. The
+    // PaymentRecord.orderId unique index is the ultimate guard, but we also
+    // short-circuit when the order is already marked paid.
+    const result = await prisma.$transaction(async (tx) => {
+      const currentOrder = await tx.order.findUnique({ where: { id: order.id } });
+      if (!currentOrder) return null;
+
+      // Re-read inside the transaction to get the freshest subscription.
+      const user = await tx.user.findUnique({ where: { telegramId: order.userId } });
+      if (!user) return null;
+
+      const newRank = planRank(order.planId);
+      const currentRank = planRank(user.subscription);
+
+      await tx.order.update({
         where: { id: order.id },
-        data: { status, updatedAt: new Date() },
-      }),
-      prisma.user.update({
-        where: { telegramId: order.userId },
-        data: { subscription: order.planId },
-      }),
-    ]);
-
-    // Create payment history + record
-    let history = await prisma.paymentHistory.findUnique({ where: { userId: order.userId } });
-    if (!history) {
-      history = await prisma.paymentHistory.create({
-        data: { userId: order.userId },
+        data: { status: 'paid', updatedAt: new Date() },
       });
-    }
 
-    await prisma.paymentRecord.create({
-      data: {
-        paymentHistoryId: history.id,
-        orderId: order.id,
-        plan: PLANS[order.planId as PlanId]?.name || order.planId,
-        amount: order.amount,
-        currency: order.currency,
-      },
+      // Only upgrade (never downgrade) the subscription.
+      if (newRank > currentRank) {
+        await tx.user.update({
+          where: { telegramId: order.userId },
+          data: { subscription: order.planId },
+        });
+      }
+
+      // Upsert the payment record so a replayed webhook can't create a duplicate.
+      let history = await tx.paymentHistory.findUnique({ where: { userId: order.userId } });
+      if (!history) {
+        history = await tx.paymentHistory.create({ data: { userId: order.userId } });
+      }
+
+      const existing = await tx.paymentRecord.findUnique({ where: { orderId: order.id } });
+      if (!existing) {
+        await tx.paymentRecord.create({
+          data: {
+            paymentHistoryId: history.id,
+            orderId: order.id,
+            plan: PLANS[order.planId as PlanId]?.name || order.planId,
+            amount: order.amount,
+            currency: order.currency,
+          },
+        });
+      }
+
+      await tx.invoice.updateMany({
+        where: { orderId: order.id },
+        data: { status: 'paid' },
+      });
+
+      return currentOrder;
     });
 
-    await prisma.invoice.updateMany({
-      where: { orderId: order.id },
-      data: { status: 'paid' },
-    });
-
-    return updated;
+    return result;
   }
 
   await prisma.invoice.updateMany({

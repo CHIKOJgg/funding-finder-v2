@@ -54,6 +54,7 @@ const baseSchema = z.object({
   SMTP_PASS: z.string().optional().default(''),
   EMAIL_FROM: z.string().optional().default('Funding Finder <noreply@fundingfinder.app>'),
   ADMIN_TELEGRAM_IDS: z.string().optional().default(''),
+  DEV_ULTIMATE_TELEGRAM_IDS: z.string().optional().default(''),
   SENTRY_DSN: z.string().optional().default(''),
 
   // Pushover — push notifications for arbitrage alerts (https://pushover.net).
@@ -196,6 +197,7 @@ export const config = {
 
   admin: {
     telegramIds: env.ADMIN_TELEGRAM_IDS.split(',').map((id) => id.trim()).filter(Boolean),
+    devUltimateTelegramIds: env.DEV_ULTIMATE_TELEGRAM_IDS.split(',').map((id) => id.trim()).filter(Boolean),
   },
 
   sentry: {

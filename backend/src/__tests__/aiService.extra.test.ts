@@ -17,15 +17,28 @@ jest.mock('../services/prisma', () => ({
 }));
 jest.mock('../utils/logger.js');
 
-const axiosMock = installMockAxios();
+let axiosMock = installMockAxios();
 
 // aiService caches free models in a module-level singleton. Re-require the
 // module under test in each test (after resetModules) so the cache starts cold
-// and config overrides are picked up fresh. resetModules invalidates the axios
-// mock, so we re-bind it to our mock fns inside loadAi().
+// and config overrides are picked up fresh. resetModules also gives aiService a
+// FRESH `axios` instance, so after re-installing the mock we rebind its
+// `get`/`post` onto that fresh axios — otherwise the tests would configure a
+// stale mock that aiService no longer references.
 function loadAi() {
   jest.resetModules();
-  installMockAxios();
+  const fresh = installMockAxios();
+  // aiService does `import axios from 'axios'`, i.e. the DEFAULT export; its
+  // `axios.post`/`axios.get` are `module.exports.default.*`. After resetModules
+  // that default is a fresh instance, so bind our mock fns onto it.
+  const ax = require('axios');
+  // Bind onto whatever surface aiService's `import axios from 'axios'` resolves
+  // to (it varies with the __esModule interop: either `ax` or `ax.default`).
+  for (const surf of [ax, ax.default].filter(Boolean)) {
+    surf.get = fresh.get;
+    surf.post = fresh.post;
+  }
+  axiosMock = fresh;
   const ai = require('../services/aiService.js');
   const cfg = require('../config/index.js').config;
   return { ai, cfg };
@@ -142,7 +155,7 @@ describe('aiService', () => {
     axiosMock.post.mockImplementation(async () => { throw new Error('429 rate limit'); });
     const res = await ai.askAI([{ role: 'user', content: 'x' }]);
     expect(res.text).toBeNull();
-    expect(res.note).toMatch(/nedostupny/);
+    expect(res.note).toMatch(/недоступны/);
   });
 
   it('askAI tries the next model when one returns empty content', async () => {
@@ -170,7 +183,7 @@ describe('aiService', () => {
     axiosMock.post.mockImplementation(async (_url: any, body: any) => {
       const msgs = body.messages;
       expect(msgs[0].role).toBe('system');
-      expect(msgs[1].content).toContain('monety');
+      expect(msgs[1].content).toContain('монет');
       return { data: { choices: [{ message: { content: 'BTC, ETH, SOL' } }] } };
     });
     const res = await ai.askAIForTop3('BTC USDT');

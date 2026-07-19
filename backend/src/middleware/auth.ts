@@ -21,8 +21,9 @@ const VALID_EXCHANGES = SUPPORTED_EXCHANGES;
 
 // Developer accounts that should always receive the top-tier ("ultimate")
 // subscription regardless of payment state. Keyed by telegram id (numeric
-// suffix of the tg_<id> user id).
-const DEV_ULTIMATE_TELEGRAM_IDS = new Set(['5915824444']);
+// suffix of the tg_<id> user id). Configured via DEV_ULTIMATE_TELEGRAM_IDS
+// (empty by default) so it is never hardcoded.
+const DEV_ULTIMATE_TELEGRAM_IDS = new Set(config.admin.devUltimateTelegramIds);
 
 // Track user activity (blocking — ensures user exists before any route handler)
 async function trackActivity(userId: string, authProvider: AuthProvider = 'telegram'): Promise<void> {
@@ -85,11 +86,15 @@ export async function validateTelegramInitData(req: Request, res: Response, next
     }
 
     const authDate = urlParams.get('auth_date');
-    if (authDate) {
+    if (!authDate) {
+      logger.warn('Missing auth_date in Telegram init data');
+      return res.status(401).json({ ok: false, error: 'Missing authentication timestamp' });
+    }
+    {
       const authTimestamp = parseInt(authDate, 10) * 1000;
       const now = Date.now();
       const MAX_AGE_MS = 24 * 60 * 60 * 1000;
-      if (now - authTimestamp > MAX_AGE_MS) {
+      if (!Number.isFinite(authTimestamp) || now - authTimestamp > MAX_AGE_MS) {
         logger.warn('Telegram init data expired');
         return res.status(401).json({ ok: false, error: 'Authentication expired' });
       }
@@ -197,9 +202,10 @@ export function validateTelegramInitDataSync(initData: string): { userId: string
     if (!verifyInitDataHash(urlParams, hash)) return null;
 
     const authDate = urlParams.get('auth_date');
-    if (authDate) {
+    if (!authDate) return null;
+    {
       const authTimestamp = parseInt(authDate, 10) * 1000;
-      if (Date.now() - authTimestamp > 24 * 60 * 60 * 1000) return null;
+      if (!Number.isFinite(authTimestamp) || Date.now() - authTimestamp > 24 * 60 * 60 * 1000) return null;
     }
 
     const userStr = urlParams.get('user');

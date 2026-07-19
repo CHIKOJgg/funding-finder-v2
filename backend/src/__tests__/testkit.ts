@@ -104,21 +104,28 @@ export function installMockAxios(): MockAxios {
  * .mockResolvedValue(...)`.
  */
 export function createPrismaMock(): any {
-  const cache = new Map<string, any>();
+  const modelCache = new Map<string, any>();
 
-  const makeModel = (): any =>
-    new Proxy(
+  // Each model gets its OWN method cache so that, e.g., `order.findUnique`
+  // and `user.findUnique` resolve to distinct `jest.fn` instances. (The
+  // previous implementation shared a single method cache keyed only by the
+  // method name, which collapsed every model's `findUnique` onto one fn and
+  // made it impossible to stub per-model return values.)
+  const makeModel = (modelName: string): any => {
+    const methodCache = new Map<string, jest.Mock>();
+    return new Proxy(
       {},
       {
         get(_t, prop: string) {
           if (typeof prop !== 'string') return undefined;
-          if (!cache.has(`m:${prop}`)) {
-            cache.set(`m:${prop}`, jest.fn(() => Promise.resolve(null)));
+          if (!methodCache.has(prop)) {
+            methodCache.set(prop, jest.fn(() => Promise.resolve(null)));
           }
-          return cache.get(`m:${prop}`);
+          return methodCache.get(prop);
         },
       }
     );
+  };
 
   return new Proxy(
     {},
@@ -128,15 +135,23 @@ export function createPrismaMock(): any {
         // Prisma client-level helpers (e.g. `$transaction`, `$queryRaw`,
         // `$connect`) are callable functions rather than model namespaces.
         if (prop.startsWith('$')) {
-          if (!cache.has(`r:${prop}`)) {
-            cache.set(`r:${prop}`, jest.fn(() => Promise.resolve(null)));
+          if (!modelCache.has(`r:${prop}`)) {
+            modelCache.set(`r:${prop}`, jest.fn(() => Promise.resolve(null)));
           }
-          return cache.get(`r:${prop}`);
+          return modelCache.get(`r:${prop}`);
         }
-        if (!cache.has(`r:${prop}`)) {
-          cache.set(`r:${prop}`, makeModel());
+        if (!modelCache.has(`r:${prop}`)) {
+          modelCache.set(`r:${prop}`, makeModel(prop));
         }
-        return cache.get(`r:${prop}`);
+        return modelCache.get(`r:${prop}`);
+      },
+      // Allow tests to (re)assign root-level helpers such as `$transaction`.
+      // Without a set trap the assignment would land on the proxy target and be
+      // invisible to the `get` trap, silently dropping custom implementations.
+      set(_t, prop: string, value: any) {
+        if (typeof prop !== 'string') return false;
+        modelCache.set(`r:${prop}`, value);
+        return true;
       },
     }
   );

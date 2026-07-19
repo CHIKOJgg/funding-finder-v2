@@ -2,16 +2,9 @@ import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from './auth.js';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { PLAN_HIERARCHY, PlanTier, getPlanTier, planRank } from '../utils/planRanks.js';
 
-type PlanTier = 'free' | 'basic' | 'pro' | 'promax' | 'ultimate';
-
-const PLAN_HIERARCHY: Record<PlanTier, number> = {
-  free: 0,
-  basic: 1,
-  pro: 2,
-  promax: 3,
-  ultimate: 99, // Admin tier — highest privilege
-};
+export { getPlanTier, planRank };
 
 const PLAN_LIMITS: Record<PlanTier, {
   maxExchanges: number;
@@ -58,11 +51,6 @@ export async function enforceTrialExpiry(userId: string): Promise<boolean> {
   return false;
 }
 
-export function getPlanTier(subscription: string): PlanTier {
-  if (subscription in PLAN_HIERARCHY) return subscription as PlanTier;
-  return 'free';
-}
-
 export function requireSubscription(minimumTier: PlanTier) {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
@@ -77,6 +65,11 @@ export function requireSubscription(minimumTier: PlanTier) {
           data: { telegramId: userId, lastActive: new Date() },
         });
       }
+
+      // Revert any trial-derived Pro whose window has elapsed before checking
+      // the tier, so an expired trial can't pass a paid-feature gate.
+      await enforceTrialExpiry(userId);
+      user = await prisma.user.findUnique({ where: { telegramId: userId } }) ?? user;
 
       const userTier = getPlanTier(user.subscription);
       if (PLAN_HIERARCHY[userTier] < PLAN_HIERARCHY[minimumTier]) {

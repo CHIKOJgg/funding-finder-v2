@@ -96,7 +96,6 @@ describe('priceService', () => {
         return { status: 200, data: shapes[urlPart] } as any;
       });
       const res = await getLivePriceBatch(exchange, [pair]);
-      if (Object.keys(res).length === 0) console.error('EMPTY_FOR', exchange, urlPart);
       expect(Object.keys(res)).toContain(pair);
       expect(typeof res[pair]).toBe('number');
       const lastGet = mockedAxios.get.mock.calls.at(-1);

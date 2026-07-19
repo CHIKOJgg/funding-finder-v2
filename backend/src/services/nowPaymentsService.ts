@@ -172,16 +172,19 @@ export async function handleNowPaymentsWebhook(update: NowPaymentsUpdate) {
   }
 
   // status === 'paid'
-  // Verify the paid amount matches the expected crypto amount (with tolerance).
+  // Verify the paid amount covers the expected crypto amount. The gateway adds
+  // its own network fee ON TOP of the quoted pay_amount, so the user always
+  // sends >= expected. We therefore reject anything below the expected amount
+  // (with a tiny rounding allowance) and never accept a partial/under payment.
   const invoice = await prisma.invoice.findUnique({ where: { orderId: order.id } });
   const expected = invoice?.payAmount;
   const actuallyPaid = update.actually_paid != null ? parseFloat(String(update.actually_paid)) : undefined;
   if (expected && actuallyPaid != null) {
-    // Allow a small tolerance for network fees / rate drift.
-    if (actuallyPaid < expected * 0.99) {
+    // Allow a negligible rounding slack (0.1%) ABOVE expected only; never below.
+    if (actuallyPaid < expected * 0.999) {
       logger.error(
         { paymentId, actuallyPaid, expected },
-        'NOWPayments webhook: paid amount below expected'
+        'NOWPayments webhook: paid amount below expected — rejecting grant'
       );
       return { success: false, processed: false, status: 'paid' };
     }

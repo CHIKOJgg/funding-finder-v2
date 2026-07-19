@@ -76,7 +76,10 @@ function scanWith(item: ExchangeResult): ScanResult {
 describe('alertEvaluator', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // `findMany` mocks must resolve to arrays (the evaluator indexes `.length`).
     (prismaMock.user.findMany as jest.Mock).mockResolvedValue([]);
+    (prismaMock.generalAlert.findMany as jest.Mock).mockResolvedValue([]);
+    (prismaMock.arbitrageAlert.findMany as jest.Mock).mockResolvedValue([]);
     (prismaMock.generalAlert.update as jest.Mock).mockResolvedValue({});
     (prismaMock.arbitrageAlert.update as jest.Mock).mockResolvedValue({});
     (prismaMock.alertTrigger.create as jest.Mock).mockResolvedValue({});
@@ -99,8 +102,8 @@ describe('alertEvaluator', () => {
 
   it('does not evaluate alerts when none are active', async () => {
     jest.useFakeTimers();
-    // The shared model-method mock (prismaMock.findMany) defaults to [] via
-    // beforeEach's user.findMany setup; both alert lists are empty here.
+    // All alert lists are empty here (findMany mocks default to [] in beforeEach),
+    // so the evaluator should return early without performing a scan.
     mockRunScan.mockResolvedValue(scanWith(mk({ exchange: 'binance', contract: 'BTCUSDT', funding_rate_per_hour: 0.0002 })));
 
     startAlertEvaluator();
@@ -113,9 +116,7 @@ describe('alertEvaluator', () => {
 
   it('triggers a general alert when the rate crosses the threshold', async () => {
     jest.useFakeTimers();
-    // NOTE: prismaMock shares the `findMany` mock across ALL models, so this
-    // single assignment drives generalAlert/arbitrageAlert/user lookups alike.
-    // Returning the general alert here is what the evaluator consumes.
+    // Return the general alert; arbitrage/user lookups default to [] in beforeEach.
     (prismaMock.generalAlert.findMany as jest.Mock).mockResolvedValue([
       { id: 'a1', userId: 'tg_123', pair: 'BTC', exchange: 'binance', condition: 'above', threshold: 0.00001, cooldown: 0, lastTriggered: null },
     ]);

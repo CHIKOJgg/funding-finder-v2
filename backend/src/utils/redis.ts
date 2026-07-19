@@ -14,6 +14,12 @@ export function getRedis(): Redis | null {
   initialized = true;
 
   if (!config.redis.url) {
+    if (config.isProduction) {
+      logger.warn(
+        'REDIS_URL is not set in production — cross-instance webhook idempotency and rate limits are DISABLED. ' +
+          'Set REDIS_URL to enable safe horizontal scaling.'
+      );
+    }
     return null;
   }
 

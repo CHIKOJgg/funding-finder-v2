@@ -3,6 +3,7 @@ import { RedisStore } from 'rate-limit-redis';
 import type { Request, Response } from 'express';
 import { logger } from '../utils/logger.js';
 import { getRedis } from '../utils/redis.js';
+import { config } from '../config/index.js';
 
 /**
  * Build a rate-limit store backed by the shared Redis instance when REDIS_URL
@@ -41,10 +42,12 @@ export function createRateLimitStore(prefix: string): Options['store'] | undefin
  */
 
 // Developer / admin accounts that bypass all per-user rate limits. They need
-// generous headroom for debugging and load testing.
-const RATE_LIMIT_EXEMPT_USERS = new Set([
-  'tg_5915824444', // app owner
-]);
+// generous headroom for debugging and load testing. Configured via
+// DEV_ULTIMATE_TELEGRAM_IDS (admin ids are also exempt); empty by default.
+const RATE_LIMIT_EXEMPT_USERS = new Set<string>([
+  ...config.admin.devUltimateTelegramIds,
+  ...config.admin.telegramIds,
+].map((id) => `tg_${id}`));
 
 /**
  * Returns true when the request should skip the limiter entirely (exempt user).

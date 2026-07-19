@@ -10,8 +10,14 @@ import { logger } from '../utils/logger.js';
 function deriveKey(): Buffer {
   if (!config.encryption.key) {
     if (config.isProduction) {
-      logger.error('ENCRYPTION_KEY is not set — API keys would be encrypted with an insecure fallback. Set ENCRYPTION_KEY in production.');
+      // Fail closed in production: encrypting exchange API keys with the JWT
+      // secret is unacceptable. Refuse to boot rather than silently weaken
+      // credential encryption.
+      throw new Error(
+        'ENCRYPTION_KEY is not set — refusing to start in production. API keys would be encrypted with an insecure fallback. Set ENCRYPTION_KEY (>=32 chars).'
+      );
     }
+    logger.warn('ENCRYPTION_KEY not set — using JWT secret fallback (development only).');
     return crypto.scryptSync(config.jwt.secret, 'funding-finder-apikey-salt', 32);
   }
   return crypto.scryptSync(config.encryption.key, 'funding-finder-apikey-salt', 32);

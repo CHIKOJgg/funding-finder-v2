@@ -148,7 +148,7 @@ model PaymentRecord {
   id               String @id @default(cuid())
   paymentHistoryId String
   paymentHistory   PaymentHistory @relation(fields: [paymentHistoryId], references: [id])
-  orderId          String?
+  orderId          String? @unique
   plan             String
   amount           Float
   currency         String

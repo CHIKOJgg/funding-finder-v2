@@ -87,13 +87,18 @@ describe('nowPaymentsService', () => {
   });
 
   describe('handleNowPaymentsWebhook', () => {
-    // prismaMock shares `findUnique` across models; route by where-key.
+    // With per-model mocks, set both `order` and `invoice` findUnique.
     function routeFindUnique(order: any, invoice: any) {
       (prismaMock.order.findUnique as jest.Mock).mockImplementation((args: any) => {
         if (args?.where?.id || args?.where?.invoiceId) return Promise.resolve(order);
-        if (args?.where?.orderId) return Promise.resolve(invoice);
         return Promise.resolve(null);
       });
+      (prismaMock.order.findFirst as jest.Mock).mockImplementation((args: any) =>
+        args?.where?.invoiceId ? Promise.resolve(order) : Promise.resolve(null)
+      );
+      (prismaMock.invoice.findUnique as jest.Mock).mockImplementation((args: any) =>
+        args?.where?.orderId ? Promise.resolve(invoice) : Promise.resolve(null)
+      );
     }
 
     it('ignores an update with no identifiers', async () => {

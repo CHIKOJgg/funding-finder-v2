@@ -102,9 +102,9 @@ async function evaluateAllAlerts(): Promise<void> {
     triggeredAlerts.push(...arbitrageTriggered);
   }
 
-  if (triggeredAlerts.length === 0) return;
+   if (triggeredAlerts.length === 0) return;
 
-  // Batch update all triggered alerts
+   // Batch update all triggered alerts
   const now2 = new Date();
   const alertUpdates: Promise<any>[] = [];
   const triggerCreates: Promise<any>[] = [];

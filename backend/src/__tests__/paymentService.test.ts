@@ -2,15 +2,8 @@ import { prismaMock } from './testkit';
 import { config } from '../config/index.js';
 import crypto from 'crypto';
 
-const mockTx = jest.fn();
 jest.mock('../services/prisma', () => ({
-  prisma: new Proxy(prismaMock, {
-    get(target, prop) {
-      if (prop === '$transaction') return mockTx;
-      if (prop === '$queryRaw' || prop === '$queryRawUnsafe' || prop === '$executeRaw') return jest.fn();
-      return (target as any)[prop];
-    },
-  }),
+  prisma: prismaMock,
   connectDatabase: jest.fn(),
   disconnectDatabase: jest.fn(),
   checkDatabaseHealth: jest.fn().mockResolvedValue({ ok: true, latencyMs: 1 }),
@@ -30,9 +23,10 @@ const ORIGINAL_TOKEN = config.cryptoPay.apiToken;
 describe('paymentService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockTx.mockImplementation((arg: any) =>
-      typeof arg === 'function' ? arg(prismaMock) : Promise.resolve(arg)
-    );
+    (prismaMock as any).$transaction = jest.fn((arg: any) => {
+      if (typeof arg !== 'function') return Promise.resolve(arg);
+      return arg(prismaMock);
+    });
     config.cryptoPay.apiToken = '';
   });
 
@@ -143,9 +137,11 @@ describe('paymentService', () => {
     }
 
     it('grants the subscription and records payment on paid', async () => {
-      routeFindUnique();
+      (prismaMock.order.findUnique as jest.Mock).mockResolvedValue(orderObj);
+      (prismaMock.user.findUnique as jest.Mock).mockResolvedValue({ subscription: 'free' });
       (prismaMock.user.update as jest.Mock).mockResolvedValue({});
       (prismaMock.paymentHistory.create as jest.Mock).mockResolvedValue({ id: 'ph1' });
+      (prismaMock.paymentRecord.findUnique as jest.Mock).mockResolvedValue(null);
       (prismaMock.paymentRecord.create as jest.Mock).mockResolvedValue({});
       (prismaMock.invoice.updateMany as jest.Mock).mockResolvedValue({});
 
@@ -155,6 +151,38 @@ describe('paymentService', () => {
         expect.objectContaining({ where: { telegramId: 'tg_1' }, data: { subscription: 'pro' } })
       );
       expect(prismaMock.paymentRecord.create).toHaveBeenCalled();
+    });
+
+    it('is idempotent: a second paid call does not create a duplicate record', async () => {
+      routeFindUnique();
+      (prismaMock.user.findUnique as jest.Mock).mockResolvedValue({ subscription: 'free' });
+      (prismaMock.user.update as jest.Mock).mockResolvedValue({});
+      (prismaMock.paymentHistory.create as jest.Mock).mockResolvedValue({ id: 'ph1' });
+      (prismaMock.paymentRecord.findUnique as jest.Mock).mockResolvedValue(null);
+      const created = await updateOrderFromWebhook('order_1', 'paid');
+      expect(created).toBeDefined();
+
+      // On the second call the order is already 'paid' and a record already exists.
+      (prismaMock.paymentRecord.findUnique as jest.Mock).mockResolvedValue({ id: 'pr1' });
+      await updateOrderFromWebhook('order_1', 'paid');
+      // Exactly one create across both calls.
+      expect(prismaMock.paymentRecord.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('never downgrades: buying basic over promax keeps promax', async () => {
+      const cheapOrder = { ...orderObj, planId: 'basic' };
+      (prismaMock.order.findUnique as jest.Mock).mockImplementation((args: any) =>
+        args?.where?.id ? Promise.resolve(cheapOrder) : Promise.resolve(null)
+      );
+      (prismaMock.user.findUnique as jest.Mock).mockResolvedValue({ subscription: 'promax' });
+      (prismaMock.user.update as jest.Mock).mockResolvedValue({});
+      (prismaMock.paymentHistory.create as jest.Mock).mockResolvedValue({ id: 'ph1' });
+      (prismaMock.paymentRecord.findUnique as jest.Mock).mockResolvedValue(null);
+
+      await updateOrderFromWebhook('order_1', 'paid');
+      expect(prismaMock.user.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ data: { subscription: 'basic' } })
+      );
     });
 
     it('returns null when the order cannot be found', async () => {
