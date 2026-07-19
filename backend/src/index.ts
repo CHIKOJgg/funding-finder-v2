@@ -306,6 +306,12 @@ app.get('/api/feature-flags', (req, res) => {
 import logRoutes from './routes/log.js';
 app.use('/api', logRoutes);
 
+// Public, unauthenticated marketing surfaces (landing live widget). Mounted
+// BEFORE the authenticated /api mounts so '/api/public/*' is NOT caught by the
+// global `authenticate` middleware. Cross-origin reads are allowed (no auth/
+// cookies); the landing page is hosted on a separate frontend origin.
+app.use('/api/public', cors({ origin: true }), publicRoutes);
+
 // Routes with auth
 // Scan hits many exchange APIs and AI calls cost money, so each route group
 // carries its own strict per-user cap (defined inside the route files so the
@@ -331,14 +337,6 @@ app.use('/api/debug', authenticate, requireAdmin, debugRoutes);
 
 // Webhook routes (no user auth, webhook token/signature verified inside)
 app.use('/api/webhook', webhookRoutes);
-
-// Public, unauthenticated marketing surfaces (landing live widget). Served
-// WITHOUT auth so anonymous visitors see real arbitrage data instantly. Only
-// the global request limiter applies.
-// The landing page is hosted on a SEPARATE origin (frontend static site), so
-// this route must allow cross-origin reads. It carries no cookies/auth, so a
-// permissive CORS here is safe.
-app.use('/api/public', cors({ origin: true }), publicRoutes);
 
 // Public, versioned API contract (Block B2). Decouples the consumer-facing
 // surface (/api/v1) from the Mini App's internal /api routes. The handlers are
