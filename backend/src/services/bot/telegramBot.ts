@@ -37,16 +37,20 @@ type TgUpdate = {
   message?: TgMessage;
 };
 
-const HELP = `🤖 *Funding Finder Bot*
+function helpText(): string {
+  const app = config.branding.supportUsername || config.telegram.botUsername;
+    return `🤖 *${config.branding.name} Bot*
 
 Доступные команды:
 /scan — сканировать топ фандинг-ставок (по вашим биржам)
 /scan binance bybit gate — скан только указанных бирж
 /alerts — список ваших активных алертов
 /price BTC-USDT binance — текущая цена
+/me — ваш тариф и рефералы
 /help — это сообщение
 
-Откройте полное приложение: https://t.me/FundingFinderBot`;
+Откройте полное приложение: https://t.me/${app}`;
+  }
 
 function pct(n: number | undefined): string {
   if (n === undefined || n === null || Number.isNaN(n)) return '—';
@@ -157,8 +161,10 @@ export class TelegramBot {
     try {
       if (cmd === '/start') {
         await this.onStart(msg, args[0]);
-      } else if (cmd === '/help' || cmd === '/start') {
-        await this.send(chatId, HELP);
+      } else if (cmd === '/help') {
+        await this.send(chatId, helpText());
+      } else if (cmd === '/me') {
+        await this.onMe(msg);
       } else if (cmd === '/scan') {
         await this.onScan(msg, args);
       } else if (cmd === '/alerts') {
@@ -166,7 +172,7 @@ export class TelegramBot {
       } else if (cmd === '/price') {
         await this.onPrice(msg, args);
       } else {
-        await this.send(chatId, HELP);
+        await this.send(chatId, helpText());
       }
     } catch (err) {
       logger.error({ err: (err as Error).message, cmd }, 'Telegram bot: command error');
@@ -224,6 +230,26 @@ export class TelegramBot {
       `Делитесь ей и получайте бонусные сканы за приведённых друзей.\n\n` +
       `Команды:\n/scan — топ фандинг-ставок\n/alerts — ваши алерты\n/price BTC-USDT binance — цена\n/help — все команды`;
     await this.send(msg.chat.id, welcome);
+  }
+
+  private async onMe(msg: TgMessage): Promise<void> {
+    const chatId = msg.chat.id;
+    const user = await this.resolveUser(msg.from!);
+    const referralCount = await prisma.user.count({ where: { referredBy: user.id } });
+    const tier = user.subscription || 'free';
+    const trial = user.trialEndsAt
+      ? `активен до ${user.trialEndsAt.toISOString().slice(0, 10)}`
+      : user.trialUsed
+        ? 'использован'
+        : 'не активирован';
+    const text =
+      `👤 *Ваш профиль*\n\n` +
+      `Тариф: \`${tier}\`\n` +
+      `Пробный период: ${trial}\n` +
+      `Бонусные сканы: ${user.trialScans}\n` +
+      `Приведено друзей: ${referralCount}\n\n` +
+      `Реферальный код: \`${user.referralCode}\``;
+    await this.send(chatId, text);
   }
 
   private async onScan(msg: TgMessage, args: string[]): Promise<void> {

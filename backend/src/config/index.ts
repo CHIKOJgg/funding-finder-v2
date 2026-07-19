@@ -58,6 +58,13 @@ const baseSchema = z.object({
   SENTRY_DSN: z.string().optional().default(''),
   TELEGRAM_BOT_USERNAME: z.string().optional().default(''),
 
+  // White-label / branding (Block C). Lets the product be resold under a
+  // different name, support handle and landing URL without code changes.
+  APP_NAME: z.string().optional().default('Funding Finder'),
+  APP_THEME_COLOR: z.string().optional().default('#3390ec'),
+  SUPPORT_TELEGRAM: z.string().optional().default('FundingFinderBot'),
+  LANDING_URL: z.string().optional().default(''),
+
   // Pushover — push notifications for arbitrage alerts (https://pushover.net).
   PUSHOVER_TOKEN: z.string().optional().default(''),
 });
@@ -112,6 +119,13 @@ export const config = {
     telegram: {
       botToken: env.TELEGRAM_BOT_TOKEN.trim(),
       botUsername: env.TELEGRAM_BOT_USERNAME.trim() || 'FundingFinderBot',
+    },
+
+    branding: {
+      name: env.APP_NAME,
+      themeColor: env.APP_THEME_COLOR,
+      supportUsername: env.SUPPORT_TELEGRAM,
+      landingUrl: env.LANDING_URL || undefined,
     },
 
   ai: {
