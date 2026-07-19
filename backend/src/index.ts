@@ -335,7 +335,10 @@ app.use('/api/webhook', webhookRoutes);
 // Public, unauthenticated marketing surfaces (landing live widget). Served
 // WITHOUT auth so anonymous visitors see real arbitrage data instantly. Only
 // the global request limiter applies.
-app.use('/api/public', publicRoutes);
+// The landing page is hosted on a SEPARATE origin (frontend static site), so
+// this route must allow cross-origin reads. It carries no cookies/auth, so a
+// permissive CORS here is safe.
+app.use('/api/public', cors({ origin: true }), publicRoutes);
 
 // Public, versioned API contract (Block B2). Decouples the consumer-facing
 // surface (/api/v1) from the Mini App's internal /api routes. The handlers are
