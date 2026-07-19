@@ -16,8 +16,12 @@ const options: swaggerJsdoc.Options = {
     },
     servers: [
       {
+        url: '/api/v1',
+        description: 'Stable public API (v1) — recommended for integrators and the Telegram bot',
+      },
+      {
         url: '/api',
-        description: 'API server',
+        description: 'Internal Mini App API',
       },
     ],
     components: {
@@ -102,6 +106,14 @@ export function setupSwagger(app: Express): void {
   }));
 
   app.get('/docs.json', (_req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(swaggerSpec);
+  });
+
+  // Stable, versioned OpenAPI contract for external integrators (Block B2).
+  // Served from the same URL space as the public API so it can be referenced
+  // directly from client configs / codegen tooling.
+  app.get('/api/v1/openapi.json', (_req: Request, res: Response) => {
     res.setHeader('Content-Type', 'application/json');
     res.send(swaggerSpec);
   });

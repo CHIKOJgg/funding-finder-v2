@@ -26,6 +26,7 @@ import { featureFlags } from './utils/featureFlags.js';
 import { metricsMiddleware, getMetrics, metricsContentType } from './utils/metrics.js';
 import { initJobQueues, shutdownJobQueues, getJobStats } from './services/jobQueue.js';
 import { getArchiveStats } from './services/dataArchival.js';
+import { startTelegramBot, stopTelegramBot } from './services/bot/telegramBot.js';
 
 // Routes
 import scanRoutes from './routes/scan.js';
@@ -330,6 +331,15 @@ app.use('/api/debug', authenticate, requireAdmin, debugRoutes);
 // Webhook routes (no user auth, webhook token/signature verified inside)
 app.use('/api/webhook', webhookRoutes);
 
+// Public, versioned API contract (Block B2). Decouples the consumer-facing
+// surface (/api/v1) from the Mini App's internal /api routes. The handlers are
+// shared, so behaviour is identical; only the URL prefix differs.
+import v1Routes from './routes/v1.js';
+// Web-auth is mounted separately at /api/v1/auth because it ESTABLISHES a
+// session and must not sit behind the global `authenticate` middleware.
+app.use('/api/v1/auth', authLimiter, authRoutes);
+app.use('/api/v1', authLimiter, authenticate, v1Routes);
+
 // Public web-auth routes (wallet SIWE + Google). These ESTABLISH a session, so
 // they must not sit behind the global `authenticate` middleware.
 app.use('/api/auth', authLimiter, authRoutes);
@@ -506,9 +516,10 @@ async function start() {
        startDailySummary();
        startDataArchival();
        startFundingWarmup();
-       startNowPaymentsPolling();
-       void startSelfPing();
-     });
+        startNowPaymentsPolling();
+        startTelegramBot();
+        void startSelfPing();
+      });
   } catch (err) {
     logger.error('Failed to start server:', err);
     process.exit(1);
@@ -523,6 +534,7 @@ const gracefulShutdown = async (signal: string) => {
   stopDataArchival();
   stopFundingWarmup();
   stopNowPaymentsPolling();
+  stopTelegramBot();
   stopSelfPing();
   wsManager.close();
   await shutdownJobQueues();

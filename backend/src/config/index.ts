@@ -56,6 +56,7 @@ const baseSchema = z.object({
   ADMIN_TELEGRAM_IDS: z.string().optional().default(''),
   DEV_ULTIMATE_TELEGRAM_IDS: z.string().optional().default(''),
   SENTRY_DSN: z.string().optional().default(''),
+  TELEGRAM_BOT_USERNAME: z.string().optional().default(''),
 
   // Pushover — push notifications for arbitrage alerts (https://pushover.net).
   PUSHOVER_TOKEN: z.string().optional().default(''),
@@ -108,9 +109,10 @@ export const config = {
   isProduction,
   databaseUrl: env.DATABASE_URL,
 
-  telegram: {
-    botToken: env.TELEGRAM_BOT_TOKEN.trim(),
-  },
+    telegram: {
+      botToken: env.TELEGRAM_BOT_TOKEN.trim(),
+      botUsername: env.TELEGRAM_BOT_USERNAME.trim() || 'FundingFinderBot',
+    },
 
   ai: {
     openrouterApiKey: env.OPENROUTER_API_KEY,

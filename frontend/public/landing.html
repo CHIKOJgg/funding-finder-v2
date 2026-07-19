@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#3390ec" />
+  <title>Funding Finder — арбитраж фандинга криптобирж</title>
+  <meta name="description" content="Мониторинг ставок финансирования 23 криптобирж, арбитраж, алерты и AI-рекомендации. Открывайте возможности фандинга в один клик." />
+  <style>
+    :root { --brand:#3390ec; --bg:#f3f4f6; --card:#fff; --text:#111827; --muted:#6b7280; --dark:#0f172a; }
+    * { box-sizing: border-box; margin:0; padding:0; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+    a { color:var(--brand); text-decoration:none; }
+    .wrap { max-width:860px; margin:0 auto; padding:0 16px; }
+    header { background:var(--dark); color:#fff; padding:14px 0; position:sticky; top:0; z-index:10; }
+    header .wrap { display:flex; align-items:center; justify-content:space-between; }
+    .logo { font-weight:800; font-size:18px; }
+    .logo span { color:var(--brand); }
+    .btn { display:inline-block; background:var(--brand); color:#fff; padding:12px 22px; border-radius:12px; font-weight:700; font-size:15px; border:none; cursor:pointer; transition:transform .08s ease; }
+    .btn:active { transform:scale(.97); }
+    .btn.ghost { background:transparent; color:var(--brand); border:2px solid var(--brand); }
+    .hero { text-align:center; padding:56px 0 40px; background:linear-gradient(180deg,#eaf3ff,#f3f4f6); }
+    .hero h1 { font-size:32px; line-height:1.15; margin-bottom:14px; }
+    .hero p { color:var(--muted); font-size:17px; max-width:600px; margin:0 auto 24px; }
+    .hero .actions { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+    section { padding:44px 0; }
+    h2 { font-size:24px; text-align:center; margin-bottom:8px; }
+    .sub { text-align:center; color:var(--muted); margin-bottom:28px; }
+    .features { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
+    .feature { background:var(--card); border-radius:14px; padding:18px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    .feature h3 { font-size:16px; margin-bottom:6px; }
+    .feature p { font-size:14px; color:var(--muted); }
+    .pricing { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; align-items:stretch; }
+    .plan { background:var(--card); border-radius:16px; padding:22px 18px; box-shadow:0 1px 3px rgba(0,0,0,.06); display:flex; flex-direction:column; }
+    .plan.featured { border:2px solid var(--brand); box-shadow:0 8px 24px rgba(51,144,236,.18); }
+    .plan .name { font-weight:800; font-size:18px; }
+    .plan .price { font-size:28px; font-weight:800; margin:10px 0 2px; }
+    .plan .price small { font-size:14px; font-weight:500; color:var(--muted); }
+    .plan ul { list-style:none; margin:14px 0 18px; flex:1; }
+    .plan li { font-size:14px; padding:5px 0; border-bottom:1px solid #f1f5f9; }
+    .plan li::before { content:"✓ "; color:var(--brand); font-weight:700; }
+    .faq { max-width:680px; margin:0 auto; }
+    .qa { background:var(--card); border-radius:12px; padding:16px 18px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+    .qa h3 { font-size:15px; margin-bottom:4px; }
+    .qa p { font-size:14px; color:var(--muted); }
+    .ref { background:var(--dark); color:#fff; text-align:center; }
+    .ref .btn { background:#22c55e; }
+    footer { text-align:center; color:var(--muted); font-size:13px; padding:30px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="logo">Funding<span>Finder</span></div>
+      <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Открыть в Telegram</a>
+    </div>
+  </header>
+
+  <div class="hero">
+    <div class="wrap">
+      <h1>Арбитраж фандинга на 23 биржах — в один клик</h1>
+      <p>Сканируйте ставки финансирования, находите арбитраж между биржами, ставьте алерты и получайте AI-рекомендации. Всё в Telegram Mini App и веб-приложении.</p>
+      <div class="actions">
+        <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">🚀 Запустить бота</a>
+        <a class="btn ghost" href="/">Открыть приложение</a>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <div class="wrap">
+      <h2>Возможности</h2>
+      <p class="sub">Одно приложение для всей аналитики фандинга</p>
+      <div class="features">
+        <div class="feature"><h3>📡 Скан 23 бирж</h3><p>Binance, Bybit, OKX, Gate, MEXC, Bitget, Hyperliquid и ещё 17.</p></div>
+        <div class="feature"><h3>⚖️ Арбитраж</h3><p>Находите разницу ставок между биржами для безрисковой прибыли.</p></div>
+        <div class="feature"><h3>🔔 Алерты</h3><p>Уведомления в Telegram при достижении заданной ставки.</p></div>
+        <div class="feature"><h3>🤖 AI-рекомендации</h3><p>Объяснения и идеи по сделкам на базе вашего портфеля.</p></div>
+        <div class="feature"><h3>💼 Портфель</h3><p>Live-PnL и автоисполнение на подключенных биржах.</p></div>
+        <div class="feature"><h3>📊 Аналитика</h3><p>История ставок, графики и экспорт данных.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section style="background:var(--card)">
+    <div class="wrap">
+      <h2>Тарифы</h2>
+      <p class="sub">Оплата в криптовалюте через NOWPayments</p>
+      <div class="pricing">
+        <div class="plan">
+          <div class="name">Free</div>
+          <div class="price">$0</div>
+          <ul>
+            <li>3 биржи в скане</li>
+            <li>3 позиции в портфеле</li>
+            <li>Базовые алерты</li>
+          </ul>
+          <a class="btn ghost" href="/">Начать</a>
+        </div>
+        <div class="plan">
+          <div class="name">Basic</div>
+          <div class="price">$29<small>/мес</small></div>
+          <ul>
+            <li>5 бирж</li>
+            <li>AI выключен</li>
+            <li>Алерты безлимит</li>
+          </ul>
+          <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Подключить</a>
+        </div>
+        <div class="plan featured">
+          <div class="name">Pro</div>
+          <div class="price">$99<small>/мес</small></div>
+          <ul>
+            <li>12 бирж</li>
+            <li>AI-рекомендации</li>
+            <li>Портфель + PnL</li>
+            <li>Безлимитный вотчлист</li>
+          </ul>
+          <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Подключить</a>
+        </div>
+        <div class="plan">
+          <div class="name">Pro Max</div>
+          <div class="price">$499<small>/мес</small></div>
+          <ul>
+            <li>20 бирж</li>
+            <li>Все Pro-фичи</li>
+            <li>Приоритетный AI</li>
+            <li>Максимум лимитов</li>
+          </ul>
+          <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Подключить</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Частые вопросы</h2>
+      <div class="faq">
+        <div class="qa"><h3>Что такое фандинг?</h3><p>Ставка финансирования — это периодический платёж между лонгами и шортами. Положительная ставка означает, что шорты платят лонгам — вы можете зарабатывать, удерживая позицию.</p></div>
+        <div class="qa"><h3>Безопасны ли мои ключи биржи?</h3><p>API-ключи шифруются на сервере (ENCRYPTION_KEY) и используются только для чтения и автоисполнения по вашему разрешению.</p></div>
+        <div class="qa"><h3>Как работает арбитраж?</h3><p>Мы ищем пары, где ставка сильно отличается между биржами, что позволяет забрать разницу, оставаясь рыночно-нейтральным.</p></div>
+        <div class="qa"><h3>Можно ли попробовать бесплатно?</h3><p>Да — тариф Free всегда доступен, а новым пользователям даётся пробный период Pro.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ref">
+    <div class="wrap">
+      <h2 style="color:#fff">Приглашайте друзей — получайте бонусы</h2>
+      <p class="sub" style="color:#cbd5e1">Делитесь своим реферальным кодом из приложения и получайте бонусы за активных рефералов.</p>
+      <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Получить реферальную ссылку</a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      Funding Finder • <a href="https://t.me/FundingFinderBot">Telegram</a> • Не является инвестиционной рекомендацией.
+    </div>
+  </footer>
+</body>
+</html>
