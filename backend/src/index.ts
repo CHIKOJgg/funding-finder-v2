@@ -331,9 +331,15 @@ app.use('/api/debug', authenticate, requireAdmin, debugRoutes);
 // Webhook routes (no user auth, webhook token/signature verified inside)
 app.use('/api/webhook', webhookRoutes);
 
+// Public, unauthenticated marketing surfaces (landing live widget). Served
+// WITHOUT auth so anonymous visitors see real arbitrage data instantly. Only
+// the global request limiter applies.
+app.use('/api/public', publicRoutes);
+
 // Public, versioned API contract (Block B2). Decouples the consumer-facing
 // surface (/api/v1) from the Mini App's internal /api routes. The handlers are
 // shared, so behaviour is identical; only the URL prefix differs.
+import publicRoutes from './routes/public.js';
 import v1Routes from './routes/v1.js';
 // Web-auth is mounted separately at /api/v1/auth because it ESTABLISHES a
 // session and must not sit behind the global `authenticate` middleware.

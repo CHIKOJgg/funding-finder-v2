@@ -1,0 +1,38 @@
+import { en } from './en';
+
+// Spanish (ES) — high-traffic strings translated; the rest falls back to English.
+export const es: Record<string, string> = {
+  ...en,
+
+  'nav.main': 'Inicio',
+  'nav.arbitrage': 'Arbitraje',
+  'nav.portfolio': 'Cartera',
+  'nav.profile': 'Perfil',
+  'nav.oi': 'Rastreador OI',
+  'header.logout': 'Cerrar sesión',
+  'common.loading': 'Cargando...',
+  'common.refresh': 'Actualizar',
+  'common.search': 'Buscar',
+  'common.cancel': 'Cancelar',
+  'common.close': 'Cerrar',
+  'app.scanning': 'Escaneando... Esto puede tardar unos segundos',
+  'app.found': 'Encontrados {count} instrumentos',
+  'main.subtitle': 'Arbitraje de tasas de financiación en tiempo real',
+  'main.scanBtn': '🔎 Escanear',
+  'main.scanResults': 'Resultados del escaneo',
+  'arb.title': 'Arbitraje',
+  'arb.opportunities': 'Oportunidades',
+  'arb.noOpportunities': 'No se encontraron oportunidades de arbitraje',
+  'onboarding.step1Title': '¡Bienvenido a Funding Finder!',
+  'onboarding.step1Desc': 'Un servicio para monitorear las tasas de financiación de exchanges de cripto. Encuentra las mejores oportunidades de arbitraje.',
+  'login.subtitle': 'Arbitraje de financiación. Inicia sesión para continuar.',
+  'login.walletBtn': '🔐 Iniciar sesión con wallet (MetaMask, etc.)',
+  'paywall.subscribe': '🚀 Suscríbete',
+  'profile.yourPlan': 'Tu plan',
+  'profile.referralTitle': '🎁 Programa de referidos',
+  'profile.copyLink': '🔗 Obtener enlace',
+  'trial.title': 'Prueba Pro gratis',
+  'trial.activate': 'Activar {days} días',
+  'crypto.createInvoice': 'Crear factura y pagar',
+  'crypto.statusPaid': 'Pagado ✓',
+};

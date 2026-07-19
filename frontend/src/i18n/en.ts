@@ -588,6 +588,27 @@ export const en: Record<string, string> = {
   // Admin (extra literals)
   'admin.uptimeFormat': '{d}d {h}h {m}m',
 
+  // Admin — business metrics (CMO dashboard)
+  'admin.metrics': 'Business metrics',
+  'admin.metrics.acquisition': 'Acquisition',
+  'admin.metrics.funnel': 'Conversion funnel',
+  'admin.metrics.retention': 'Retention',
+  'admin.metrics.referrals': 'Referrals',
+  'admin.metrics.source': 'Signup source',
+  'admin.newUsersToday': 'New users (24h)',
+  'admin.newUsers7d': 'New users (7d)',
+  'admin.newUsers30d': 'New users (30d)',
+  'admin.paidBase': 'Paying users',
+  'admin.trialActivated': 'Trials activated',
+  'admin.paidOrders': 'Paid orders',
+  'admin.trialToPaid': 'Trial → paid',
+  'admin.arppu': 'ARPPU',
+  'admin.retentionD7': 'D7 retention',
+  'admin.retentionD30': 'D30 retention',
+  'admin.referredUsers': 'Referred users',
+  'admin.referredPaid': 'Referred who paid',
+  'admin.refConversion': 'Referral conversion',
+
   // ExchangeSelect (extra literals)
   'exchangeSelect.specific': 'Select specific',
   'exchangeSelect.allSelected': 'All available exchanges selected',

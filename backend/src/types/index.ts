@@ -156,7 +156,14 @@ export interface ExchangeConfig {
   defaultIntervalSeconds: number;
 }
 
+export type BillingPeriod = 'monthly' | 'annual';
+
 export interface Plan {
+  /** Monthly price in USD (default billing period). */
+  monthlyPrice: number;
+  /** Annual price in USD (20% off the 12× monthly equivalent). */
+  annualPrice: number;
+  /** Legacy alias kept for backward compatibility with older callers/tests. */
   price: number;
   name: string;
   features: string[];

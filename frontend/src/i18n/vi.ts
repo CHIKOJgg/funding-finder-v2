@@ -1,0 +1,38 @@
+import { en } from './en';
+
+// Vietnamese (VI) — high-traffic strings translated; the rest falls back to English.
+export const vi: Record<string, string> = {
+  ...en,
+
+  'nav.main': 'Trang chủ',
+  'nav.arbitrage': 'Chênh lệch giá',
+  'nav.portfolio': 'Danh mục',
+  'nav.profile': 'Hồ sơ',
+  'nav.oi': 'Theo dõi OI',
+  'header.logout': 'Đăng xuất',
+  'common.loading': 'Đang tải...',
+  'common.refresh': 'Làm mới',
+  'common.search': 'Tìm kiếm',
+  'common.cancel': 'Hủy',
+  'common.close': 'Đóng',
+  'app.scanning': 'Đang quét... Có thể mất vài giây',
+  'app.found': 'Đã tìm thấy {count} công cụ',
+  'main.subtitle': 'Chênh lệch tỷ lệ funding theo thời gian thực',
+  'main.scanBtn': '🔎 Quét',
+  'main.scanResults': 'Kết quả quét',
+  'arb.title': 'Chênh lệch giá',
+  'arb.opportunities': 'Cơ hội',
+  'arb.noOpportunities': 'Không tìm thấy cơ hội chênh lệch giá',
+  'onboarding.step1Title': 'Chào mừng đến với Funding Finder!',
+  'onboarding.step1Desc': 'Dịch vụ theo dõi tỷ lệ funding sàn crypto. Tìm cơ hội arbitrage tốt nhất.',
+  'login.subtitle': 'Arbitrage funding. Đăng nhập để tiếp tục.',
+  'login.walletBtn': '🔐 Đăng nhập bằng ví (MetaMask, v.v.)',
+  'paywall.subscribe': '🚀 Đăng ký',
+  'profile.yourPlan': 'Gói của bạn',
+  'profile.referralTitle': '🎁 Chương trình giới thiệu',
+  'profile.copyLink': '🔗 Lấy liên kết',
+  'trial.title': 'Dùng thử Pro miễn phí',
+  'trial.activate': 'Kích hoạt {days} ngày',
+  'crypto.createInvoice': 'Tạo hóa đơn và thanh toán',
+  'crypto.statusPaid': 'Đã thanh toán ✓',
+};

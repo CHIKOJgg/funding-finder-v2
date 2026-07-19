@@ -25,6 +25,8 @@ model User {
   trialUsed      Boolean  @default(false)
   trialEndsAt    DateTime?
   trialScans     Int      @default(1)
+  trialReminderSent Int    @default(0) // bitmask of which reminder days already sent
+  lastFreeAiAt   DateTime? // last day the free user consumed their 1 free AI tip
   referralCode   String   @unique @default(cuid())
   referredBy     String?
   referrer       User?    @relation("Referrals", fields: [referredBy], references: [id])
@@ -87,6 +89,7 @@ model Order {
   invoice     Invoice?
   transactionId String?
   referralCredited Boolean @default(false)
+  billingPeriod  String   @default("monthly")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

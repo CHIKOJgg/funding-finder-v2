@@ -12,19 +12,6 @@ jest.mock('../../services/aiService', () => ({
   askAIForTop3: jest.fn(),
 }));
 
-var mockSubscription: any;
-jest.mock('../../middleware/subscription', () => {
-  mockSubscription = {
-    requireSubscription: jest.fn(() => (_req: any, _res: any, next: any) => next()),
-    getSubscriptionLimits: jest.fn(),
-    enforceTrialExpiry: jest.fn().mockResolvedValue(false),
-    getPlanTier: jest.fn((s: string) => s),
-    getPlanLimitsForTier: jest.fn(() => ({})),
-    TRIAL_DURATION_DAYS: 3,
-  };
-  return mockSubscription;
-});
-
 import * as aiService from '../../services/aiService';
 
 const authUser = makeAuthUser();
@@ -32,13 +19,11 @@ const mkApp = () => createTestApp(aiRoutes, { authUser });
 
 beforeEach(() => {
   jest.resetAllMocks();
-  mockSubscription.getSubscriptionLimits.mockResolvedValue({
-    tier: 'pro',
-    maxExchanges: 25,
-    watchlistLimit: -1,
-    aiEnabled: true,
-    recommendationsEnabled: true,
-    portfolioEnabled: true,
+  // Free users get one AI tip/day; tests use a fresh "today" lastFreeAiAt so
+  // the quota is always available within a single test run.
+  (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+    subscription: 'pro',
+    lastFreeAiAt: null,
   });
 });
 

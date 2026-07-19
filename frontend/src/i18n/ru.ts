@@ -496,6 +496,27 @@ export const ru: Record<string, string> = {
   'admin.userDeleteError': 'Ошибка удаления пользователя',
   'admin.loginRequired': 'Войдите в систему',
 
+  // Admin — бизнес-метрики (CMO-дашборд)
+  'admin.metrics': 'Бизнес-метрики',
+  'admin.metrics.acquisition': 'Привлечение',
+  'admin.metrics.funnel': 'Воронка конверсии',
+  'admin.metrics.retention': 'Удержание',
+  'admin.metrics.referrals': 'Рефералы',
+  'admin.metrics.source': 'Источник регистрации',
+  'admin.newUsersToday': 'Новые (24ч)',
+  'admin.newUsers7d': 'Новые (7д)',
+  'admin.newUsers30d': 'Новые (30д)',
+  'admin.paidBase': 'Платящие',
+  'admin.trialActivated': 'Триалов активировано',
+  'admin.paidOrders': 'Оплаченных заказов',
+  'admin.trialToPaid': 'Триал → оплата',
+  'admin.arppu': 'ARPPU',
+  'admin.retentionD7': 'Удержание D7',
+  'admin.retentionD30': 'Удержание D30',
+  'admin.referredUsers': 'Приведено рефералов',
+  'admin.referredPaid': 'Рефералов оплатили',
+  'admin.refConversion': 'Конверсия рефералов',
+
   // Calendar
   'calendar.formatNow': 'сейчас',
   'calendar.title': '📅 Календарь фандинга',

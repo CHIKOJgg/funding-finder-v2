@@ -49,13 +49,30 @@ interface Stats {
   scans: { totalRecords: number };
 }
 
+interface Metrics {
+  acquisition: { newUsersToday: number; newUsers7d: number; newUsers30d: number };
+  funnel: {
+    paidBase: number;
+    trialActivated: number;
+    paidOrders: number;
+    payingUsers: number;
+    trialToPaidPct: number;
+    arppu: number;
+    totalRevenue: number;
+  };
+  retention: { d7Pct: number; d30Pct: number };
+  referrals: { referredUsers: number; referredPaid: number; conversionPct: number };
+  acquisitionBySource: Record<string, number>;
+}
+
 export function AdminPage() {
   const { user } = useApp();
   const { showToast } = useToast();
   const t = useT();
-  const [tab, setTab] = useState<'users' | 'stats'>('stats');
+  const [tab, setTab] = useState<'users' | 'stats' | 'metrics'>('stats');
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -67,6 +84,13 @@ export function AdminPage() {
     try {
       const res: any = await apiClient.get('/admin/stats');
       if (res.ok) setStats(res.stats);
+    } catch { /* ignore */ }
+  }, []);
+
+  const fetchMetrics = useCallback(async () => {
+    try {
+      const res: any = await apiClient.get('/admin/metrics');
+      if (res.ok) setMetrics(res.metrics);
     } catch { /* ignore */ }
   }, []);
 
@@ -88,7 +112,8 @@ export function AdminPage() {
   useEffect(() => {
     if (tab === 'users') fetchUsers(page, search);
     if (tab === 'stats') fetchStats();
-  }, [tab, page, search, fetchUsers, fetchStats]);
+    if (tab === 'metrics') fetchMetrics();
+  }, [tab, page, search, fetchUsers, fetchStats, fetchMetrics]);
 
   const handleUpdateSubscription = useCallback(async (userId: string, subscription: string) => {
     try {
@@ -163,6 +188,12 @@ export function AdminPage() {
             className={`flex-1 py-2 rounded-lg font-medium ${tab === 'users' ? 'bg-[var(--brand)] text-white' : 'bg-gray-200 text-[var(--text-muted)]'}`}
           >
             {t('admin.users')}
+          </button>
+          <button
+            onClick={() => setTab('metrics')}
+            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'metrics' ? 'bg-[var(--brand)] text-white' : 'bg-gray-200 text-[var(--text-muted)]'}`}
+          >
+            {t('admin.metrics')}
           </button>
         </div>
       </div>
@@ -254,6 +285,99 @@ export function AdminPage() {
                 <div className="font-bold">{stats.scans.totalRecords.toLocaleString()}</div>
                 <div className="text-gray-600">{t('admin.scanRecords')}</div>
               </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {tab === 'metrics' && metrics && (
+        <>
+          <div className="card">
+            <h2 className="text-lg font-semibold mb-3">{t('admin.metrics.acquisition')}</h2>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-700">{metrics.acquisition.newUsersToday}</div>
+                <div className="text-blue-600">{t('admin.newUsersToday')}</div>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-700">{metrics.acquisition.newUsers7d}</div>
+                <div className="text-blue-600">{t('admin.newUsers7d')}</div>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-700">{metrics.acquisition.newUsers30d}</div>
+                <div className="text-blue-600">{t('admin.newUsers30d')}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2 className="text-lg font-semibold mb-3">{t('admin.metrics.funnel')}</h2>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="p-3 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-700">{metrics.funnel.paidBase}</div>
+                <div className="text-green-600">{t('admin.paidBase')}</div>
+              </div>
+              <div className="p-3 bg-purple-50 rounded-lg">
+                <div className="text-2xl font-bold text-purple-700">{metrics.funnel.trialActivated}</div>
+                <div className="text-purple-600">{t('admin.trialActivated')}</div>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold">{metrics.funnel.paidOrders}</div>
+                <div className="text-gray-600">{t('admin.paidOrders')}</div>
+              </div>
+              <div className="p-3 bg-yellow-50 rounded-lg">
+                <div className="text-2xl font-bold text-yellow-700">{metrics.funnel.trialToPaidPct}%</div>
+                <div className="text-yellow-600">{t('admin.trialToPaid')}</div>
+              </div>
+              <div className="p-3 bg-indigo-50 rounded-lg">
+                <div className="text-2xl font-bold text-indigo-700">{metrics.funnel.arppu.toFixed(2)} USDT</div>
+                <div className="text-indigo-600">{t('admin.arppu')}</div>
+              </div>
+              <div className="p-3 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-700">{metrics.funnel.totalRevenue.toFixed(2)} USDT</div>
+                <div className="text-green-600">{t('admin.totalRevenue')}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2 className="text-lg font-semibold mb-3">{t('admin.metrics.retention')}</h2>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="p-3 bg-teal-50 rounded-lg">
+                <div className="text-2xl font-bold text-teal-700">{metrics.retention.d7Pct}%</div>
+                <div className="text-teal-600">{t('admin.retentionD7')}</div>
+              </div>
+              <div className="p-3 bg-teal-50 rounded-lg">
+                <div className="text-2xl font-bold text-teal-700">{metrics.retention.d30Pct}%</div>
+                <div className="text-teal-600">{t('admin.retentionD30')}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2 className="text-lg font-semibold mb-3">{t('admin.metrics.referrals')}</h2>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div className="p-3 bg-orange-50 rounded-lg">
+                <div className="text-2xl font-bold text-orange-700">{metrics.referrals.referredUsers}</div>
+                <div className="text-orange-600">{t('admin.referredUsers')}</div>
+              </div>
+              <div className="p-3 bg-orange-50 rounded-lg">
+                <div className="text-2xl font-bold text-orange-700">{metrics.referrals.referredPaid}</div>
+                <div className="text-orange-600">{t('admin.referredPaid')}</div>
+              </div>
+              <div className="p-3 bg-orange-50 rounded-lg">
+                <div className="text-2xl font-bold text-orange-700">{metrics.referrals.conversionPct}%</div>
+                <div className="text-orange-600">{t('admin.refConversion')}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2 className="text-lg font-semibold mb-3">{t('admin.metrics.source')}</h2>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(metrics.acquisitionBySource).map(([src, count]) => (
+                <span key={src} className="text-xs bg-gray-100 px-2 py-1 rounded">{src}: {String(count)}</span>
+              ))}
             </div>
           </div>
         </>

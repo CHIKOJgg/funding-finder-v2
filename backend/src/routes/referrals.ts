@@ -28,9 +28,16 @@ router.get('/referral/list', async (req, res) => {
     const userId = (req as AuthenticatedRequest).userId!;
     const user = await getUser(userId);
     const referralCount = await prisma.user.count({ where: { referredBy: user.id } });
+    const paidReferrals = await prisma.order.count({
+      where: { userId: user.id, status: 'paid', referralCredited: true },
+    });
     res.json({
       ok: true,
       referrals: referralCount,
+      paidReferrals,
+      earnings: user.balance,
+      bonusRate: 0.2,
+      referralLink: await generateReferralLink(userId),
       bonusScans: user.trialScans,
     });
   } catch (e) {

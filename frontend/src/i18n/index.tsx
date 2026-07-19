@@ -1,13 +1,23 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { ru } from './ru';
 import { en } from './en';
+import { tr } from './tr';
+import { vi } from './vi';
+import { hi } from './hi';
+import { es } from './es';
 
-export type Lang = 'ru' | 'en';
+export type Lang = 'ru' | 'en' | 'tr' | 'vi' | 'hi' | 'es';
 
 export const LANGUAGES: { code: Lang; label: string }[] = [
   { code: 'ru', label: 'RU' },
   { code: 'en', label: 'EN' },
+  { code: 'tr', label: 'TR' },
+  { code: 'vi', label: 'VI' },
+  { code: 'hi', label: 'HI' },
+  { code: 'es', label: 'ES' },
 ];
+
+const DICTS: Record<Lang, Dict> = { ru, en, tr, vi, hi, es };
 
 type Dict = Record<string, string>;
 type Vars = Record<string, string | number>;
@@ -29,7 +39,7 @@ const I18nContext = createContext<I18nContextType>({
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>(() => {
     const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('ff_lang') : null;
-    return saved === 'en' || saved === 'ru' ? saved : 'ru';
+    return (saved as Lang) ?? 'ru';
   });
 
   const setLang = useCallback((l: Lang) => {
@@ -40,8 +50,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const t = useCallback(
     (key: string, vars?: Vars) => {
-      const dict: Dict = lang === 'en' ? en : ru;
-      let str: string = dict[key] ?? ru[key] ?? key;
+      // Resolve order: requested locale → English (global fallback) → key.
+      // English is the lingua franca so newly-added locales (TR/VI/HI/ES) only
+      // need their high-traffic strings translated; the rest degrade to EN.
+      const dict: Dict = DICTS[lang] ?? en;
+      let str: string = dict[key] ?? en[key] ?? key;
       if (vars) {
         for (const [k, v] of Object.entries(vars)) {
           str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));

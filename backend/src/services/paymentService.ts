@@ -6,26 +6,37 @@ import { planRank } from '../utils/planRanks.js';
 import { logger } from '../utils/logger.js';
 import { Plan, PlanId } from '../types/index.js';
 
+// Annual price = 20% off the 12× monthly equivalent (billed once per year).
+const annualFromMonthly = (m: number) => Math.round(m * 12 * 0.8);
+
 export const PLANS: Record<PlanId, Plan> = {
   basic: {
+    monthlyPrice: 29,
+    annualPrice: annualFromMonthly(29),
     price: 29,
     name: 'Basic',
-    features: ['Сканирование 3 бирж', 'Основные рекомендации', 'Обновления каждые 6 часов'],
+    features: ['5 бирж в скане', 'AI-советы', 'Алерты безлимит', 'Обновления каждые 6 часов'],
   },
   pro: {
+    monthlyPrice: 99,
+    annualPrice: annualFromMonthly(99),
     price: 99,
     name: 'Pro',
-    features: ['Все функции Basic', 'AI анализ', 'Приоритетные обновления', 'Экспорт данных'],
+    features: ['12 бирж', 'AI-анализ безлимита', 'Портфель + PnL', 'Безлимитный вотчлист', 'Приоритетные обновления', 'Экспорт данных'],
   },
   promax: {
+    monthlyPrice: 499,
+    annualPrice: annualFromMonthly(499),
     price: 499,
     name: 'Pro Max',
-    features: ['Все функции Pro', 'Эксклюзивные сигналы', 'Персональная поддержка', 'Ранний доступ'],
+    features: ['20 бирж', 'Все функции Pro', 'Эксклюзивные сигналы', 'Персональная поддержка', 'Ранний доступ'],
   },
   ultimate: {
+    monthlyPrice: 999,
+    annualPrice: annualFromMonthly(999),
     price: 999,
     name: 'Ultimate',
-    features: ['Все функции Pro Max', 'Все 25 бирж', 'Безлимитные алерты', 'Приоритетный AI', 'White-label'],
+    features: ['Все 25 бирж', 'Все функции Pro Max', 'Безлимитные алерты', 'Приоритетный AI', 'White-label'],
   },
 };
 
@@ -76,8 +87,9 @@ export async function handleReferral(newTelegramId: string, referralCode: string
   return true;
 }
 
-export async function createCryptoPayInvoice(planId: PlanId, currency: string, orderId: string, telegramId: string) {
+export async function createCryptoPayInvoice(planId: PlanId, currency: string, orderId: string, telegramId: string, amount?: number) {
   const plan = PLANS[planId];
+  const chargeAmount = amount ?? plan.monthlyPrice;
 
   if (!config.cryptoPay.apiToken) {
     logger.warn('Crypto Pay token missing → simulation mode');
@@ -98,7 +110,7 @@ export async function createCryptoPayInvoice(planId: PlanId, currency: string, o
     `${getApiBaseUrl()}/api/createInvoice`,
     {
       asset: currency.toUpperCase(),
-      amount: plan.price,
+      amount: chargeAmount,
       description,
       payload,
       paid_btn_name: 'openBot',
@@ -121,10 +133,17 @@ export async function createOrder(
   planId: PlanId,
   currency: string = 'USDT',
   telegramId: string,
-  options?: { provider?: 'crypto_pay' | 'nowpayments'; payCurrency?: string }
+  options?: {
+    provider?: 'crypto_pay' | 'nowpayments';
+    payCurrency?: string;
+    billingPeriod?: 'monthly' | 'annual';
+  }
 ) {
   const plan = PLANS[planId];
   if (!plan) throw new Error('Invalid plan');
+
+  const billingPeriod = options?.billingPeriod || 'monthly';
+  const amount = billingPeriod === 'annual' ? plan.annualPrice : plan.monthlyPrice;
 
   const provider = options?.provider || 'crypto_pay';
   const orderId = `order_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
@@ -137,7 +156,7 @@ export async function createOrder(
     if (provider === 'nowpayments') {
       const { createNowPaymentsPayment } = await import('./nowPaymentsService.js');
       const payCurrency = (options?.payCurrency || 'usdt').toLowerCase();
-      const np = await createNowPaymentsPayment(plan, planId, payCurrency, orderId);
+      const np = await createNowPaymentsPayment(plan, planId, payCurrency, orderId, amount);
 
       await prisma.$transaction(async (tx) => {
         await tx.order.create({
@@ -145,9 +164,10 @@ export async function createOrder(
             id: orderId,
             planId,
             userId: telegramId,
-            amount: plan.price,
+            amount,
             currency: payCurrency,
             invoiceId: np.paymentId,
+            billingPeriod,
             status: 'waiting',
           },
         });
@@ -173,7 +193,8 @@ export async function createOrder(
         provider: 'nowpayments',
         invoiceId: np.paymentId,
         paymentId: np.paymentId,
-        amount: plan.price,
+        amount,
+        billingPeriod,
         currency: payCurrency,
         payAddress: np.payAddress,
         payAmount: np.payAmount,
@@ -185,7 +206,7 @@ export async function createOrder(
     }
 
     // ---- Crypto Pay (Telegram mini-app) ----
-    const invoiceData = await createCryptoPayInvoice(planId, currency, orderId, telegramId);
+    const invoiceData = await createCryptoPayInvoice(planId, currency, orderId, telegramId, amount);
 
     await prisma.$transaction(async (tx) => {
       await tx.order.create({
@@ -193,8 +214,9 @@ export async function createOrder(
           id: orderId,
           planId,
           userId: telegramId,
-          amount: plan.price,
+          amount,
           currency,
+          billingPeriod,
           invoiceId: invoiceData.invoice_id,
         },
       });
@@ -218,7 +240,8 @@ export async function createOrder(
       orderId,
       provider: 'crypto_pay',
       invoiceId: invoiceData.invoice_id,
-      amount: plan.price,
+      amount,
+      billingPeriod,
       currency,
       botInvoiceUrl: invoiceData.bot_invoice_url,
       miniAppInvoiceUrl: invoiceData.mini_app_invoice_url,
@@ -325,19 +348,23 @@ export async function updateOrderFromWebhook(
         data: { status: 'paid' },
       });
 
-      // Credit the referrer a one-time bonus when their referral pays for a plan.
-      // Guarded by `referralCredited` so a replayed webhook can't double-pay.
+      // Credit the referrer a percentage of the referral's FIRST payment.
+      // A percentage (vs the old flat $5) gives ambassadors real upside and a
+      // stronger incentive to drive paying users. Guarded by `referralCredited`
+      // so a replayed webhook can't double-pay. Amount is capped at the plan
+      // price (no negative or absurd values).
       if (!currentOrder.referralCredited && user.referredBy) {
-        const REFERRAL_BONUS = 5;
+        const REFERRAL_RATE = 0.2; // 20% of first payment
+        const bonus = Math.max(0, Math.min(REFERRAL_RATE * order.amount, order.amount));
         await tx.user.update({
           where: { id: user.referredBy },
-          data: { balance: { increment: REFERRAL_BONUS } },
+          data: { balance: { increment: bonus } },
         });
         await tx.order.update({
           where: { id: order.id },
           data: { referralCredited: true },
         });
-        logger.info({ referrerId: user.referredBy, orderId: order.id }, 'Referral bonus credited to balance');
+        logger.info({ referrerId: user.referredBy, orderId: order.id, bonus }, 'Referral bonus (20% of first payment) credited to balance');
       }
 
       return currentOrder;

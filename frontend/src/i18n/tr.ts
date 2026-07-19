@@ -1,0 +1,39 @@
+import { en } from './en';
+
+// Turkish (TR) — high-traffic marketing/navigation strings translated; the rest
+// falls back to English via the i18n resolver.
+export const tr: Record<string, string> = {
+  ...en,
+
+  'nav.main': 'Ana sayfa',
+  'nav.arbitrage': 'Arbitraj',
+  'nav.portfolio': 'Portföy',
+  'nav.profile': 'Profil',
+  'nav.oi': 'OI Takip',
+  'header.logout': 'Çıkış yap',
+  'common.loading': 'Yükleniyor...',
+  'common.refresh': 'Yenile',
+  'common.search': 'Ara',
+  'common.cancel': 'İptal',
+  'common.close': 'Kapat',
+  'app.scanning': 'Taranıyor... Bu birkaç saniye sürebilir',
+  'app.found': '{count} enstrüman bulundu',
+  'main.subtitle': 'Gerçek zamanlı fonlama oranı arbitrajı',
+  'main.scanBtn': '🔎 Tara',
+  'main.scanResults': 'Tarama sonuçları',
+  'arb.title': 'Arbitraj',
+  'arb.opportunities': 'Fırsatlar',
+  'arb.noOpportunities': 'Arbitraj fırsatı bulunamadı',
+  'onboarding.step1Title': 'Funding Finder\'a hoş geldiniz!',
+  'onboarding.step1Desc': 'Kripto borsası fonlama oranlarını izleme hizmeti. En iyi arbitraj fırsatlarını bulun.',
+  'login.subtitle': 'Fonlama arbitrajı. Devam etmek için giriş yapın.',
+  'login.walletBtn': '🔐 Cüzdan ile giriş yap (MetaMask vb.)',
+  'paywall.subscribe': '🚀 Abone ol',
+  'profile.yourPlan': 'Planınız',
+  'profile.referralTitle': '🎁 Referans programı',
+  'profile.copyLink': '🔗 Bağlantı al',
+  'trial.title': 'Pro\'yu ücretsiz deneyin',
+  'trial.activate': '{days} gün etkinleştir',
+  'crypto.createInvoice': 'Fatura oluştur ve öde',
+  'crypto.statusPaid': 'Ödendi ✓',
+};

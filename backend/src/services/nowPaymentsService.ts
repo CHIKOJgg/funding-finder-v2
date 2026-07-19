@@ -27,14 +27,16 @@ export async function createNowPaymentsPayment(
   plan: Plan,
   planId: PlanId,
   payCurrency: string,
-  orderId: string
+  orderId: string,
+  amount?: number
 ): Promise<NowPaymentsPayment> {
+  const chargeAmount = amount ?? plan.monthlyPrice;
   if (!config.nowPayments.apiKey) {
     logger.warn('NOWPayments API key missing → simulation mode');
     return {
       paymentId: `sim_${Date.now()}`,
       payAddress: 'SIM_WALLET_ADDRESS',
-      payAmount: plan.price,
+      payAmount: chargeAmount,
       payCurrency: payCurrency.toUpperCase(),
       invoiceUrl: null,
       status: 'waiting',
@@ -51,7 +53,7 @@ export async function createNowPaymentsPayment(
   const res = await axios.post(
     `${NP_BASE}/payment`,
     {
-      price_amount: plan.price,
+      price_amount: chargeAmount,
       price_currency: 'usd',
       pay_currency: payCurrency.toLowerCase(),
       order_id: orderId,

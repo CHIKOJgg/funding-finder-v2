@@ -1,0 +1,38 @@
+import { en } from './en';
+
+// Hindi (HI) — high-traffic strings translated; the rest falls back to English.
+export const hi: Record<string, string> = {
+  ...en,
+
+  'nav.main': 'होम',
+  'nav.arbitrage': 'आर्बिट्राज',
+  'nav.portfolio': 'पोर्टफोलियो',
+  'nav.profile': 'प्रोफाइल',
+  'nav.oi': 'OI ट्रैकर',
+  'header.logout': 'लॉग आउट',
+  'common.loading': 'लोड हो रहा है...',
+  'common.refresh': 'रीफ्रेश',
+  'common.search': 'खोजें',
+  'common.cancel': 'रद्द करें',
+  'common.close': 'बंद करें',
+  'app.scanning': 'स्कैन हो रहा है... कुछ सेकंड लग सकते हैं',
+  'app.found': '{count} इंस्ट्रूमेंट मिले',
+  'main.subtitle': 'रीयल-टाइम फंडिंग रेट आर्बिट्राज',
+  'main.scanBtn': '🔎 स्कैन',
+  'main.scanResults': 'स्कैन रिजल्ट',
+  'arb.title': 'आर्बिट्राज',
+  'arb.opportunities': 'अवसर',
+  'arb.noOpportunities': 'कोई आर्बिट्राज अवसर नहीं मिला',
+  'onboarding.step1Title': 'Funding Finder में आपका स्वागत है!',
+  'onboarding.step1Desc': 'क्रिप्टो एक्सचेंज फंडिंग रेट मॉनिटरिंग सेवा। सर्वश्रेष्ठ आर्बिट्राज अवसर खोजें।',
+  'login.subtitle': 'फंडिंग आर्बिट्राज। जारी रखने के लिए साइन इन करें।',
+  'login.walletBtn': '🔐 वॉलेट से साइन इन करें (MetaMask, आदि)',
+  'paywall.subscribe': '🚀 सब्सक्राइब करें',
+  'profile.yourPlan': 'आपका प्लान',
+  'profile.referralTitle': '🎁 रेफरल प्रोग्राम',
+  'profile.copyLink': '🔗 लिंक पाएं',
+  'trial.title': 'Pro मुफ्त आज़माएं',
+  'trial.activate': '{days} दिन सक्रिय करें',
+  'crypto.createInvoice': 'इनवॉइस बनाएं और भुगतान करें',
+  'crypto.statusPaid': 'भुगतान हो गया ✓',
+};

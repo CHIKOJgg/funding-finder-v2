@@ -25,6 +25,8 @@ const createOrderSchema = z.object({
   // Crypto gateway selection: Crypto Pay (Telegram) or NOWPayments (website).
   provider: z.enum(['crypto_pay', 'nowpayments']).optional().default('crypto_pay'),
   payCurrency: z.string().optional(),
+  // Billing period: monthly (default) or annual (-20%).
+  billingPeriod: z.enum(['monthly', 'annual']).optional().default('monthly'),
 });
 
 const withdrawSchema = z.object({
@@ -37,8 +39,8 @@ const withdrawSchema = z.object({
 router.post('/createOrder', validate(createOrderSchema), async (req, res) => {
   try {
     const userId = (req as AuthenticatedRequest).userId!;
-    const { planId, currency, provider, payCurrency } = req.body;
-    const result = await createOrder(planId, currency, userId, { provider, payCurrency });
+    const { planId, currency, provider, payCurrency, billingPeriod } = req.body;
+    const result = await createOrder(planId, currency, userId, { provider, payCurrency, billingPeriod });
     res.json(result);
   } catch (e) {
     const error = e as Error;

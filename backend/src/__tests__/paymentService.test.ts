@@ -201,7 +201,7 @@ describe('paymentService', () => {
       expect(updated).toBeDefined();
     });
 
-    it('credits the referrer a one-time $5 bonus when a referral pays', async () => {
+    it('credits the referrer 20% of the first payment when a referral pays', async () => {
       const order = { ...orderObj, id: 'order_ref', userId: 'tg_referral', referralCredited: false };
       (prismaMock.order.findUnique as jest.Mock).mockImplementation((args: any) =>
         args?.where?.id ? Promise.resolve(order) : Promise.resolve(null)
@@ -217,7 +217,7 @@ describe('paymentService', () => {
         (c: any) => c[0]?.where?.id === 'referrer_id'
       );
       expect(referrerUpdate).toBeDefined();
-      expect(referrerUpdate[0].data.balance.increment).toBe(5);
+      expect(referrerUpdate[0].data.balance.increment).toBeCloseTo(99 * 0.2, 5);
       const orderUpdate = (prismaMock.order.update as jest.Mock).mock.calls.find(
         (c: any) => c[0]?.where?.id === 'order_ref' && c[0]?.data?.referralCredited === true
       );

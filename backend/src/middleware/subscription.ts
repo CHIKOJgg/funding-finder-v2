@@ -14,14 +14,17 @@ const PLAN_LIMITS: Record<PlanTier, {
   portfolioEnabled: boolean;
 }> = {
   free: { maxExchanges: 3, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 3, portfolioEnabled: false },
-  basic: { maxExchanges: 5, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 3, portfolioEnabled: false },
+  basic: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: 3, portfolioEnabled: false },
   pro: { maxExchanges: 12, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
   promax: { maxExchanges: 20, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
   ultimate: { maxExchanges: 25, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
 };
 
 /** Trial duration in days. */
-export const TRIAL_DURATION_DAYS = 3;
+export const TRIAL_DURATION_DAYS = 7;
+
+/** Days-before-expiry thresholds at which a reminder is sent (TG push). */
+export const TRIAL_REMINDER_DAYS = [2, 1];
 
 /**
  * If the user is on a trial-derived "pro" plan whose trial window has elapsed,

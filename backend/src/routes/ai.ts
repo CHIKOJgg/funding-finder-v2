@@ -4,6 +4,7 @@ import { validate } from '../middleware/validation.js';
 import { requireSubscription } from '../middleware/subscription.js';
 import { askAIForTop3 } from '../services/aiService.js';
 import { generateRecommendations } from '../utils/helpers.js';
+import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
 import { perUserLimiter } from '../middleware/rateLimit.js';
 
@@ -25,8 +26,41 @@ const recommendSchema = z.object({
   capital: z.number().min(100).default(1000),
 });
 
-router.post('/ai', aiLimiter, requireSubscription('pro'), validate(aiSchema), async (req, res) => {
+// Free users get exactly ONE AI tip per calendar day (cheap marketing hook to
+// taste Pro). Pro+ are unlimited. Returns true when the free user is allowed to
+// consume their daily tip right now.
+async function consumeFreeAiQuota(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { telegramId: userId },
+    select: { subscription: true, lastFreeAiAt: true },
+  });
+  if (!user) return false;
+  const tier = user.subscription;
+  if (tier === 'pro' || tier === 'promax' || tier === 'ultimate') return true;
+
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  if (user.lastFreeAiAt && user.lastFreeAiAt >= startOfToday) {
+    return false; // already used today
+  }
+  await prisma.user.update({
+    where: { telegramId: userId },
+    data: { lastFreeAiAt: new Date() },
+  });
+  return true;
+}
+
+router.post('/ai', aiLimiter, validate(aiSchema), async (req, res) => {
   try {
+    const userId = (req as any).userId as string;
+    const allowed = await consumeFreeAiQuota(userId);
+    if (!allowed) {
+      return res.status(402).json({
+        ok: false,
+        error: 'Бесплатный AI-совет доступен 1 раз в день. Оформите Pro для безлимита.',
+        code: 'FREE_AI_LIMIT',
+      });
+    }
     const { listText } = req.body;
     const ai = await askAIForTop3(listText);
     // `ai` always carries a `note` explaining empty results (missing key,

@@ -202,6 +202,94 @@ router.patch('/users/:id/balance', async (req: AuthenticatedRequest, res: Respon
   }
 });
 
+// GET /metrics — business/funnel dashboard (CMO plan stage 6).
+// Tracks the conversion funnel from signup → trial → paid, ARPPU, retention
+// and referral performance so growth decisions aren't made blind.
+router.get('/metrics', async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const now = new Date();
+    const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const twoMonthsAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+    const [
+      newUsersToday,
+      newUsers7d,
+      newUsers30d,
+      trialUsers,
+      trialUsedUsers,
+      paidOrders,
+      payingUsers,
+      revenue,
+      referredUsers,
+      referredPaid,
+      authBreakdown,
+      cohort7,
+      cohort30,
+    ] = await Promise.all([
+      prisma.user.count({ where: { createdAt: { gte: dayAgo } } }),
+      prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
+      prisma.user.count({ where: { createdAt: { gte: monthAgo } } }),
+      // Users currently on a paid plan (pro/promax/ultimate) — active paying base.
+      prisma.user.count({ where: { subscription: { in: ['pro', 'promax', 'ultimate'] } } }),
+      // Ever activated a trial.
+      prisma.user.count({ where: { trialUsed: true } }),
+      prisma.order.count({ where: { status: 'paid' } }),
+      prisma.user.count({ where: { orders: { some: { status: 'paid' } } } }),
+      prisma.order.aggregate({ where: { status: 'paid' }, _sum: { amount: true } }),
+      // Users acquired via a referral.
+      prisma.user.count({ where: { referredBy: { not: null } } }),
+      prisma.user.count({ where: { referredBy: { not: null }, orders: { some: { status: 'paid' } } } }),
+      prisma.user.groupBy({ by: ['authProvider'], _count: true }),
+      // Retention: of users created 30–60d ago, how many were active in last 7d.
+      prisma.user.count({ where: { createdAt: { gte: twoMonthsAgo, lt: monthAgo }, lastActive: { gte: weekAgo } } }),
+      prisma.user.count({ where: { createdAt: { gte: twoMonthsAgo, lt: monthAgo }, lastActive: { gte: monthAgo } } }),
+    ]);
+
+    const cohortTotal = await prisma.user.count({ where: { createdAt: { gte: twoMonthsAgo, lt: monthAgo } } });
+    const arppu = payingUsers > 0 ? (revenue._sum.amount || 0) / payingUsers : 0;
+    const trialToPaid = trialUsedUsers > 0 ? (payingUsers / trialUsedUsers) * 100 : 0;
+    const refConv = referredUsers > 0 ? (referredPaid / referredUsers) * 100 : 0;
+
+    res.json({
+      ok: true,
+      metrics: {
+        acquisition: {
+          newUsersToday,
+          newUsers7d,
+          newUsers30d,
+        },
+        funnel: {
+          paidBase: trialUsers,
+          trialActivated: trialUsedUsers,
+          paidOrders,
+          payingUsers,
+          trialToPaidPct: Number(trialToPaid.toFixed(1)),
+          arppu: Number(arppu.toFixed(2)),
+          totalRevenue: revenue._sum.amount || 0,
+        },
+        retention: {
+          d7Pct: cohortTotal > 0 ? Number(((cohort7 / cohortTotal) * 100).toFixed(1)) : 0,
+          d30Pct: cohortTotal > 0 ? Number(((cohort30 / cohortTotal) * 100).toFixed(1)) : 0,
+        },
+        referrals: {
+          referredUsers,
+          referredPaid,
+          conversionPct: Number(refConv.toFixed(1)),
+        },
+        acquisitionBySource: authBreakdown.reduce((acc: Record<string, number>, curr) => {
+          acc[curr.authProvider || 'unknown'] = curr._count;
+          return acc;
+        }, {} as Record<string, number>),
+      },
+    });
+  } catch (err) {
+    logger.error('Admin metrics error:', err);
+    res.status(500).json({ ok: false, error: 'Failed to load metrics' });
+  }
+});
+
 // DELETE /users/:id — delete user and all associated data
 router.delete('/users/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {

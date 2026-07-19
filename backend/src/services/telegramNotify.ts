@@ -4,6 +4,11 @@ import { logger } from '../utils/logger.js';
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
+// Safe accessor — some test/edge configs may omit `ai.appUrl` entirely.
+function getAppUrl(): string | undefined {
+  return config.ai && typeof config.ai.appUrl === 'string' && config.ai.appUrl ? config.ai.appUrl : undefined;
+}
+
 interface SendMessageOptions {
   chatId: number | string;
   text: string;
@@ -116,6 +121,23 @@ export async function sendAlertNotification(
   });
 }
 
+export async function sendTrialReminder(chatId: number, daysLeft: number): Promise<boolean> {
+  const text = [
+    `⏳ <b>Ваш пробный Pro истекает через ${daysLeft} ${daysLeft === 1 ? 'день' : 'дня'}</b>`,
+    ``,
+    `Вы всё ещё на Pro-тарифе — AI-рекомендации, портфель и безлимитный арбитраж активны.`,
+    `Чтобы не потерять доступ, оформите подписку сейчас.`,
+  ].join('\n');
+
+  const replyMarkup = getAppUrl()
+    ? {
+        inline_keyboard: [[{ text: '💳 Продлить Pro', url: getAppUrl()! }]],
+      }
+    : undefined;
+
+  return sendTelegramMessage({ chatId, text, parseMode: 'HTML', replyMarkup });
+}
+
 export async function sendDailySummary(
   chatId: number,
   data: {
@@ -127,6 +149,13 @@ export async function sendDailySummary(
       interval: string;
     }>;
     totalScanned: number;
+    watchlist?: Array<{
+      pair: string;
+      exchange: string;
+      ratePerHour: number;
+      ratePerDay: number;
+      interval: string;
+    }>;
   }
 ): Promise<boolean> {
   if (data.topPairs.length === 0) return false;
@@ -152,13 +181,34 @@ export async function sendDailySummary(
     );
   }
 
+  const wl = data.watchlist || [];
+  if (wl.length > 0) {
+    lines.push('');
+    lines.push(`⭐ <b>Ваш вотчлист:</b>`);
+    lines.push('');
+    for (const w of wl) {
+      const dailyPct = (w.ratePerDay * 100).toFixed(4);
+      lines.push(`• <b>${w.exchange.toUpperCase()}:${w.pair}</b> — ${dailyPct}%/д (${w.interval})`);
+    }
+  }
+
   lines.push('');
   lines.push(`⏰ ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`);
+
+  const replyMarkup = getAppUrl()
+    ? {
+        inline_keyboard: [
+          [{ text: '🚀 Открыть в приложении', url: getAppUrl()! }],
+          [{ text: '🔗 Поделиться', url: `https://t.me/share/url?url=${encodeURIComponent(getAppUrl()!)}&text=${encodeURIComponent('Лучший фандинг на 23 биржах прямо сейчас — Funding Finder')}` }],
+        ],
+      }
+    : undefined;
 
   return sendTelegramMessage({
     chatId,
     text: lines.join('\n'),
     parseMode: 'HTML',
+    replyMarkup,
   });
 }
 
