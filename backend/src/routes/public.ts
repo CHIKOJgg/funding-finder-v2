@@ -1,8 +1,11 @@
 import { Router } from 'express';
+import { z } from 'zod';
+import { validate } from '../middleware/validation.js';
 import { detectArbitrageOpportunities } from '../services/arbitrageService.js';
 import { getCachedScan, runScan } from '../services/scanService.js';
 import { getWarmupPromise } from '../services/fundingWarmup.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
+import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
@@ -94,6 +97,46 @@ router.get('/arbitrage', async (_req, res) => {
       pairsTracked: 0,
       degraded: true,
     });
+  }
+});
+
+// Lead magnet: capture interested visitors who aren't ready to pay yet, so they
+// can be re-engaged by email/newsletter. No auth required.
+const waitlistSchema = z.object({
+  email: z.string().email().optional(),
+  telegram: z.string().optional(),
+  lang: z.string().optional(),
+  source: z.string().optional(),
+  interest: z.enum(['passive', 'arbitrage']).optional(),
+}).refine((d) => d.email || d.telegram, {
+  message: 'email or telegram is required',
+});
+
+router.post('/waitlist', validate(waitlistSchema), async (req, res) => {
+  try {
+    const { email, telegram, lang, source, interest } = req.body;
+    // Dedupe by email when provided; never throw on a repeat signup.
+    if (email) {
+      const existing = await prisma.waitlist.findUnique({ where: { email } });
+      if (existing) {
+        return res.json({ ok: true, already: true, message: 'Already on the list' });
+      }
+    }
+    await prisma.waitlist.create({
+      data: {
+        email: email ?? null,
+        telegram: telegram ?? null,
+        lang: lang ?? null,
+        source: source ?? null,
+        interest: interest ?? null,
+      },
+    });
+    logger.info({ email, telegram, source, interest }, 'Waitlist signup');
+    return res.json({ ok: true, message: 'Subscribed' });
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Waitlist signup error');
+    return res.status(500).json({ ok: false, error: error.message });
   }
 });
 

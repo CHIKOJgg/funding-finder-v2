@@ -13,7 +13,7 @@ export function ProfilePage() {
   const { showToast } = useToast();
   const t = useT();
   const [referralLink, setReferralLink] = useState('');
-  const [referralStats, setReferralStats] = useState({ referrals: 0, bonusScans: 0 });
+  const [referralStats, setReferralStats] = useState({ referrals: 0, paidReferrals: 0, earnings: 0, bonusRate: 0.2 });
   const [referralCode, setReferralCode] = useState('');
   const [applyingReferral, setApplyingReferral] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
@@ -55,8 +55,10 @@ export function ProfilePage() {
       if (balanceRes && (balanceRes as any).ok) setBalance((balanceRes as any).balance);
       if (referralLinkRes && (referralLinkRes as any).ok) setReferralLink((referralLinkRes as any).link);
       if (referralStatsRes && (referralStatsRes as any).ok) setReferralStats({
-        referrals: (referralStatsRes as any).referrals,
-        bonusScans: (referralStatsRes as any).bonusScans,
+        referrals: (referralStatsRes as any).referrals || 0,
+        paidReferrals: (referralStatsRes as any).paidReferrals || 0,
+        earnings: (referralStatsRes as any).earnings || 0,
+        bonusRate: (referralStatsRes as any).bonusRate ?? 0.2,
       });
       if (paymentHistoryRes && (paymentHistoryRes as any).ok) setPaymentHistory((paymentHistoryRes as any).payments || []);
       if (withdrawalHistoryRes && (withdrawalHistoryRes as any).ok) setWithdrawalHistory((withdrawalHistoryRes as any).withdrawals || []);
@@ -172,7 +174,22 @@ export function ProfilePage() {
 
       <div className="card">
           <h2 className="text-base font-semibold mb-1 text-[var(--text)]">🎁 {t('profile.referralTitle')}</h2>
-          <p className="text-sm text-muted mb-3">{t('profile.referralDesc')}</p>
+          <p className="text-sm text-muted mb-3">{t('profile.referralDesc', { rate: Math.round((referralStats.bonusRate || 0.2) * 100) })}</p>
+
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="rounded-xl p-3 text-center" style={{ background: 'var(--surface-2)' }}>
+            <div className="text-xs text-muted">{t('profile.referrals')}</div>
+            <div className="text-lg font-bold stat">{referralStats.referrals}</div>
+          </div>
+          <div className="rounded-xl p-3 text-center" style={{ background: 'var(--surface-2)' }}>
+            <div className="text-xs text-muted">{t('profile.paidReferrals')}</div>
+            <div className="text-lg font-bold stat">{referralStats.paidReferrals}</div>
+          </div>
+          <div className="rounded-xl p-3 text-center" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>
+            <div className="text-xs">{t('profile.earnings')}</div>
+            <div className="text-lg font-bold stat">{referralStats.earnings.toFixed(2)} <span className="text-sm font-medium">USDT</span></div>
+          </div>
+        </div>
 
         <div className="flex gap-2 mb-3">
           <input
@@ -196,7 +213,7 @@ export function ProfilePage() {
             navigator.clipboard.writeText(referralLink);
             showToast(t('profile.linkCopied'), 'success');
           }}
-          className="btn btn-secondary text-sm py-2"
+          className="btn btn-secondary text-sm py-2 w-full"
         >
             🔗 {t('profile.copyLink')}
         </button>
@@ -214,7 +231,7 @@ export function ProfilePage() {
             onClick={() => {
               const text = referralLink || window.location.href;
               if (navigator.share) {
-                navigator.share({ title: 'Funding Finder', text: 'Присоединяйся по моей реферальной ссылке:', url: text }).catch(() => {});
+                navigator.share({ title: 'Funding Finder', text: t('profile.shareText'), url: text }).catch(() => {});
               } else {
                 navigator.clipboard.writeText(text);
                 showToast(t('profile.linkCopied'), 'success');
@@ -228,6 +245,7 @@ export function ProfilePage() {
         {referralLink && (
           <div className="mt-2 text-sm break-all" style={{ color: 'var(--brand)' }}>{referralLink}</div>
         )}
+        <p className="text-xs text-muted mt-3">{t('profile.referralEarnHint', { rate: Math.round((referralStats.bonusRate || 0.2) * 100) })}</p>
       </div>
 
       <div id="subscription" className="scroll-mt-4">

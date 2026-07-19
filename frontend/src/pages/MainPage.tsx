@@ -23,7 +23,7 @@ import { useT } from '../i18n';
 type SortKey = 'rate' | 'volume' | 'interval';
 
 export function MainPage() {
-  const { scanResults, scanLoading, scanStatus, runScan, selectedExchanges, setSelectedExchanges, planLimits, watchlist } = useApp();
+  const { scanResults, scanLoading, scanStatus, runScan, selectedExchanges, setSelectedExchanges, planLimits, watchlist, user } = useApp();
   const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -61,6 +61,28 @@ export function MainPage() {
     await runScan(selectedExchanges);
     setCalendarRefresh((n) => n + 1);
   }, [selectedExchanges, runScan, showToast]);
+
+  const handleShareCard = useCallback(async () => {
+    if (!scanResults) return;
+    try {
+      const all = [
+        ...(scanResults.highYield || []),
+        ...(scanResults.mediumYield || []),
+        ...(scanResults.lowYield || []),
+      ];
+      const opps = all.slice(0, 5).map((r: any) => ({
+        pair: r.contract,
+        exchangeA: r.exchange,
+        exchangeB: r.exchange,
+        annualReturn: r.annualized_rate ?? 0,
+        rate: r.funding_rate_per_hour ?? 0,
+      }));
+      const { shareCardAsImage } = await import('../utils/shareCard');
+      await shareCardAsImage(opps, { username: user?.username ? '@' + user.username : undefined });
+    } catch (e) {
+      showToast(t('main.shareError') || 'Не удалось создать картинку', 'error');
+    }
+  }, [scanResults, user, showToast, t]);
 
   const handleAiAnalysis = useCallback(async () => {
     if (!scanResults) return;
@@ -224,15 +246,24 @@ export function MainPage() {
 
       {!scanLoading && scanResults && (
         <div className="card">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 gap-2">
             <h2 className="text-lg font-semibold">{t('main.scanResults')}</h2>
-            <button
-              onClick={() => navigate('/arbitrage')}
-              className="btn btn-secondary text-sm py-1.5 px-3"
-              title={t('main.arbSpreadsTitle')}
-            >
-              ↔ {t('main.arbitrage')}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleShareCard}
+                className="btn btn-secondary text-sm py-1.5 px-3"
+                title={t('main.shareCardTitle')}
+              >
+                🖼 {t('main.shareCard')}
+              </button>
+              <button
+                onClick={() => navigate('/arbitrage')}
+                className="btn btn-secondary text-sm py-1.5 px-3"
+                title={t('main.arbSpreadsTitle')}
+              >
+                ↔ {t('main.arbitrage')}
+              </button>
+            </div>
           </div>
 
           {topPick && (

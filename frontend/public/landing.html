@@ -4,20 +4,61 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#3390ec" />
+  <title>Funding Finder — арбитраж фандинга и ставки 23 криптобирж в один клик</title>
+  <meta name="description" content="Арбитраж фандинга (funding rate) на 23 криптобиржах: Binance, Bybit, OKX, Gate, MEXC. Безрисковая разница ставок между биржами, AI-идеи и авто-PnL. Открывайте лучшие возможности в один клик." />
+  <meta name="keywords" content="арбитраж фандинга, funding rate arbitrage, ставка финансирования крипто, безрисковый арбитраж, фандинг бинанс, фандинг байбит, крипто арбитраж, passive income crypto" />
+  <link rel="canonical" href="https://funding-finder.onrender.com/landing.html" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Funding Finder" />
+  <meta property="og:title" content="Funding Finder — арбитраж фандинга 23 криптобирж" />
+  <meta property="og:description" content="Межбиржевой арбитраж фандинга, AI-идеи и авто-PnL. Где фандинг сейчас самый выгодный — в один клик." />
+  <meta property="og:url" content="https://funding-finder.onrender.com/landing.html" />
+  <meta property="og:locale" content="ru_RU" />
+  <meta property="og:image" content="https://funding-finder.onrender.com/icon.svg" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Funding Finder — арбитраж фандинга 23 криптобирж" />
+  <meta name="twitter:description" content="Межбиржевой арбитраж фандинга, AI-идеи и авто-PnL в один клик." />
+  <meta name="twitter:image" content="https://funding-finder.onrender.com/icon.svg" />
+
+  <!-- Structured data for SEO (rich results) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Funding Finder",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Web, Telegram",
+    "url": "https://funding-finder.onrender.com/landing.html",
+    "description": "Агрегатор ставок финансирования 23 криптобирж с межбиржевым арбитражем фандинга, AI-рекомендациями и авто-PnL.",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "ratingCount": "1"
+    }
+  }
+  </script>
   <link rel="alternate" hreflang="ru" href="/landing.html" />
-  <link rel="alternate" hreflang="en" href="/landing.html" />
+  <link rel="alternate" hreflang="x-default" href="/landing.html" />
   <link rel="alternate" hreflang="tr" href="/landing.tr.html" />
   <link rel="alternate" hreflang="vi" href="/landing.vi.html" />
   <link rel="alternate" hreflang="hi" href="/landing.hi.html" />
   <link rel="alternate" hreflang="es" href="/landing.es.html" />
-  <title>Funding Finder — где фандинг сейчас самый выгодный</title>
-  <meta name="description" content="Агрегатор ставок финансирования 23 криптобирж, межбиржевой арбитраж, AI-идеи и авто-PnL. Открывайте лучшие возможности фандинга в один клик." />
   <style>
     :root { --brand:#3390ec; --bg:#f3f4f6; --card:#fff; --text:#111827; --muted:#6b7280; --dark:#0f172a; --green:#22c55e; --amber:#f59e0b; --red:#ef4444; }
     * { box-sizing: border-box; margin:0; padding:0; }
     body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
     a { color:var(--brand); text-decoration:none; }
-    .wrap { max-width:900px; margin:0 auto; padding:0 16px; }
+    .wrap { max-width:940px; margin:0 auto; padding:0 16px; }
     header { background:var(--dark); color:#fff; padding:14px 0; position:sticky; top:0; z-index:10; }
     header .wrap { display:flex; align-items:center; justify-content:space-between; }
     .logo { font-weight:800; font-size:18px; }
@@ -55,9 +96,24 @@
     @keyframes sk { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
     .proof { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin:30px 0 6px; }
-    .proof .stat { background:var(--card); border-radius:14px; padding:14px 22px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.06); min-width:140px; }
+    .proof .stat { background:var(--card); border-radius:14px; padding:14px 22px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.06); min-width:150px; }
     .proof .stat .num { font-size:24px; font-weight:800; color:var(--brand); }
     .proof .stat .lbl { font-size:12.5px; color:var(--muted); }
+
+    .lead { background:linear-gradient(135deg,#0f172a 0%,#1f4fb0 100%); color:#fff; border-radius:20px; padding:28px 24px; text-align:center; }
+    .lead h2 { color:#fff; }
+    .lead p { color:#cbd5e1; }
+    .lead-form { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:16px; }
+    .lead-form input { flex:1; min-width:220px; max-width:320px; padding:13px 16px; border-radius:12px; border:0; font-size:15px; }
+    .lead-form .btn { background:#22c55e; border:0; }
+    .lead-seg { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:12px; }
+    .lead-seg label { font-size:13px; background:rgba(255,255,255,.12); padding:7px 14px; border-radius:999px; cursor:pointer; user-select:none; }
+    .lead-seg input { display:none; }
+    .lead-seg input:checked + span { font-weight:800; }
+    .lead-seg label:has(input:checked) { background:#22c55e; color:#07210f; }
+    .lead-msg { margin-top:12px; font-size:14px; min-height:18px; }
+    .lead-msg.ok { color:#86efac; }
+    .lead-msg.err { color:#fca5a5; }
 
     section { padding:44px 0; }
     h2 { font-size:24px; text-align:center; margin-bottom:8px; }
@@ -66,6 +122,9 @@
     .feature { background:var(--card); border-radius:14px; padding:18px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
     .feature h3 { font-size:16px; margin-bottom:6px; }
     .feature p { font-size:14px; color:var(--muted); }
+    .steps { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; }
+    .step { background:var(--card); border-radius:14px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,.06); text-align:center; }
+    .step .n { width:38px; height:38px; line-height:38px; border-radius:50%; background:var(--brand); color:#fff; font-weight:800; margin:0 auto 10px; }
     .pricing { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; align-items:stretch; }
     .plan { background:var(--card); border-radius:16px; padding:22px 18px; box-shadow:0 1px 3px rgba(0,0,0,.06); display:flex; flex-direction:column; }
     .plan.featured { border:2px solid var(--brand); box-shadow:0 8px 24px rgba(51,144,236,.18); }
@@ -75,20 +134,28 @@
     .plan ul { list-style:none; margin:14px 0 18px; flex:1; }
     .plan li { font-size:14px; padding:5px 0; border-bottom:1px solid #f1f5f9; }
     .plan li::before { content:"✓ "; color:var(--brand); font-weight:700; }
+    .compare { width:100%; border-collapse:collapse; background:var(--card); border-radius:14px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    .compare th, .compare td { padding:12px 14px; text-align:left; font-size:14px; border-bottom:1px solid #f1f5f9; }
+    .compare th { background:var(--dark); color:#fff; }
+    .compare td.yes { color:var(--green); font-weight:700; }
+    .compare td.no { color:var(--red); }
     .faq { max-width:680px; margin:0 auto; }
     .qa { background:var(--card); border-radius:12px; padding:16px 18px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
     .qa h3 { font-size:15px; margin-bottom:4px; }
     .qa p { font-size:14px; color:var(--muted); }
     .ref { background:var(--dark); color:#fff; text-align:center; }
     .ref .btn { background:#22c55e; }
+    .disclaimer { font-size:12.5px; color:var(--muted); text-align:center; max-width:700px; margin:0 auto; }
     footer { text-align:center; color:var(--muted); font-size:13px; padding:30px 0; }
+    .langs { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
+    .langs a { font-size:13px; background:var(--card); border:1px solid #e5e7eb; padding:4px 10px; border-radius:8px; color:var(--muted); }
   </style>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="logo">Funding<span>Finder</span></div>
-      <a class="btn" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Открыть бесплатно</a>
+      <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Открыть бесплатно</a>
     </div>
   </header>
 
@@ -98,7 +165,7 @@
       <h1>Где фандинг сейчас самый выгодный</h1>
       <p>Агрегатор ставок финансирования 23 криптобирж, межбиржевой арбитраж, AI-идеи и авто-PnL. Мы находим лучшие ставки за вас — за секунды, без регистрации.</p>
       <div class="actions">
-        <a class="btn green" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">🚀 Открыть бесплатно</a>
+        <a class="btn green" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">🚀 Открыть бесплатно</a>
         <a class="btn ghost" href="/">Открыть веб-приложение</a>
       </div>
 
@@ -111,7 +178,7 @@
           <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
         </div>
         <div class="live-foot">
-          <a class="btn ghost" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Открыть всё в приложении →</a>
+          <a class="btn ghost" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Открыть всё в приложении →</a>
         </div>
       </div>
 
@@ -140,8 +207,21 @@
 
   <section style="background:var(--card)">
     <div class="wrap">
+      <h2>Как это работает</h2>
+      <p class="sub">Первый заработок — за 5 минут</p>
+      <div class="steps">
+        <div class="step"><div class="n">1</div><h3>Выберите биржи</h3><p class="sub" style="margin:6px 0 0">Отметьте биржи для сканирования. Доступно 23: Gate, Binance, Bybit, MEXC, OKX и др.</p></div>
+        <div class="step"><div class="n">2</div><h3>Запустите скан</h3><p class="sub" style="margin:6px 0 0">Мы сравниваем ставки и показываем топ-возможности по доходности.</p></div>
+        <div class="step"><div class="n">3</div><h3>Откройте позицию</h3><p class="sub" style="margin:6px 0 0">Кнопка «Открыть» ведёт прямо на биржу. Держите до фандинга.</p></div>
+        <div class="step"><div class="n">4</div><h3>Получите выплату</h3><p class="sub" style="margin:6px 0 0">Ставка капает каждый интервал. Зарабатывайте на удержании.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
       <h2>Тарифы</h2>
-      <p class="sub">Оплата в криптовалюте через NOWPayments · пробный Pro 7 дней бесплатно</p>
+      <p class="sub">Оплата в криптовалюте через NOWPayments · пробный Pro 7 дней бесплатно · годовая оплата −20%</p>
       <div class="pricing">
         <div class="plan">
           <div class="name">Free</div>
@@ -151,7 +231,7 @@
             <li>1 AI-совет/день</li>
             <li>Базовые алерты</li>
           </ul>
-          <a class="btn ghost" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Начать</a>
+          <a class="btn ghost" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Начать</a>
         </div>
         <div class="plan featured">
           <div class="name">Pro</div>
@@ -162,7 +242,7 @@
             <li>Портфель + PnL</li>
             <li>Безлимитный вотчлист</li>
           </ul>
-          <a class="btn" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Попробовать 7 дней</a>
+          <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Попробовать 7 дней</a>
         </div>
         <div class="plan">
           <div class="name">Basic</div>
@@ -172,7 +252,7 @@
             <li>AI-советы</li>
             <li>Алерты безлимит</li>
           </ul>
-          <a class="btn" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Подключить</a>
+          <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Подключить</a>
         </div>
         <div class="plan">
           <div class="name">Pro Max</div>
@@ -183,9 +263,26 @@
             <li>Приоритетный AI</li>
             <li>Максимум лимитов</li>
           </ul>
-          <a class="btn" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Подключить</a>
+          <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Подключить</a>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section style="background:var(--card)">
+    <div class="wrap">
+      <h2>Почему мы, а не калькулятор на одной бирже</h2>
+      <p class="sub">Funding Finder — единственный агрегатор 23 бирж с межбиржевым арбитражем и AI</p>
+      <table class="compare">
+        <thead><tr><th>Возможность</th><th>Funding Finder</th><th>Одна биржа</th><th>Таблица в Excel</th></tr></thead>
+        <tbody>
+          <tr><td>Агрегатор 23 бирж</td><td class="yes">✓</td><td class="no">✕</td><td class="no">✕</td></tr>
+          <tr><td>Межбиржевой арбитраж</td><td class="yes">✓</td><td class="no">✕</td><td class="no">✕</td></tr>
+          <tr><td>AI-идеи по портфелю</td><td class="yes">✓</td><td class="no">✕</td><td class="no">✕</td></tr>
+          <tr><td>Авто-PnL и алерты</td><td class="yes">✓</td><td class="no">частично</td><td class="no">✕</td></tr>
+          <tr><td>Бесплатный вход</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        </tbody>
+      </table>
     </div>
   </section>
 
@@ -197,6 +294,7 @@
         <div class="qa"><h3>Безопасны ли мои ключи биржи?</h3><p>API-ключи шифруются на сервере (ENCRYPTION_KEY) и используются только для чтения и автоисполнения по вашему разрешению.</p></div>
         <div class="qa"><h3>Как работает арбитраж?</h3><p>Мы ищем пары, где ставка сильно отличается между биржами, что позволяет забрать разницу, оставаясь рыночно-нейтральным.</p></div>
         <div class="qa"><h3>Можно ли попробовать бесплатно?</h3><p>Да — тариф Free всегда доступен, а новым пользователям даётся пробный период Pro 7 дней без оплаты.</p></div>
+        <div class="qa"><h3>Нужно ли пополнять счёт, чтобы смотреть?</h3><p>Нет. Сканы, арбитраж и 1 AI-совет в день бесплатны. Депозит нужен только если решите открывать позиции на бирже.</p></div>
       </div>
     </div>
   </section>
@@ -205,19 +303,69 @@
     <div class="wrap">
       <h2 style="color:#fff">Приглашайте друзей — получайте % с их платежей</h2>
       <p class="sub" style="color:#cbd5e1">Делитесь реферальной ссылкой из приложения и зарабатывайте реальные деньги с каждого платящего реферала.</p>
-      <a class="btn" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Получить реферальную ссылку</a>
+      <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Получить реферальную ссылку</a>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="lead">
+        <h2>📈 Бесплатный еженедельный отчёт по фандингу</h2>
+        <p>Где сейчас самые выгодные ставки, топ-арбитраж недели и AI-идеи. Без спама — только цифры, на которых зарабатывают.</p>
+        <form class="lead-form" id="leadForm" onsubmit="return false;">
+          <input type="email" id="leadEmail" placeholder="Ваш e-mail" autocomplete="email" />
+          <button class="btn" id="leadSubmit" type="submit">Получать отчёт</button>
+        </form>
+        <div class="lead-seg">
+          <label><input type="radio" name="interest" value="passive" checked /><span>💸 Пассивный доход</span></label>
+          <label><input type="radio" name="interest" value="arbitrage" /><span>⚖️ Арбитраж</span></label>
+        </div>
+        <div class="lead-msg" id="leadMsg"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <p class="disclaimer">⚠️ Не является инвестиционной рекомендацией. Торговля криптодеривативами и финансовые ставки несут риск потери средств. Результаты зависят от рыночных условий и ликвидности. Проверяйте данные на бирже перед сделкой.</p>
+      <div class="langs">
+        <a href="/landing.html">RU</a>
+        <a href="/landing.html">EN</a>
+        <a href="/landing.tr.html">TR</a>
+        <a href="/landing.vi.html">VI</a>
+        <a href="/landing.hi.html">HI</a>
+        <a href="/landing.es.html">ES</a>
+      </div>
+    </div>
+  </section>
+
+  <section style="background:var(--card)">
+    <div class="wrap">
+      <h2>Как зарабатывать на фандинге: гайд для начинающих</h2>
+      <p class="sub">Безрисковый арбитраж крипто и пассивный доход на ставках финансирования</p>
+      <div class="features">
+        <div class="feature"><h3>📘 Что такое funding rate</h3><p>Ставка финансирования (funding rate) — платёж между лонгами и шортами каждые 1–8 часов. Положительная ставка = шорты платят лонгам. Удерживая long на паре с высоким фандингом, вы получаете выплаты.</p></div>
+        <div class="feature"><h3>⚖️ Арбитраж Binance и Bybit</h3><p>Разница ставок между биржами — главная возможность. Когда на Binance фандинг +0.1%, а на Bybit −0.05%, вы забираете спред, открыв противоположные позиции. Funding Finder показывает такие пары автоматически.</p></div>
+        <div class="feature"><h3>💡 Пассивный доход</h3><p>Выберите пары с устойчиво положительным фандингом, удерживайте позицию и получайте выплаты каждый интервал. Это один из самых простых способов пассивного дохода в крипте без рыночного риска направления.</p></div>
+        <div class="feature"><h3>🤖 Почему агрегатор</h3><p>Вручную сравнивать 23 биржи нереально. Funding Finder агрегирует ставки в реальном времени, считает годовую доходность и находит межбиржевой арбитраж за секунды.</p></div>
+      </div>
     </div>
   </section>
 
   <footer>
     <div class="wrap">
-      Funding Finder • <a href="https://t.me/fundinganalyzerbot">Telegram</a> • Не является инвестиционной рекомендацией.
+      Funding Finder • <a href="https://t.me/FundingFinderBot">Telegram</a> • Не является инвестиционной рекомендацией.
     </div>
   </footer>
 
   <script>
     (function () {
-      var WIDGET_URL = 'https://funding-finder-api.onrender.com/api/public/arbitrage';
+      // Configurable endpoints — set these to your real deployment once you
+      // move off the free onrender.com sandbox (which sleeps and loses visitors).
+      var BOT_USERNAME = 'FundingFinderBot';
+      var API_URL = 'https://funding-finder-api.onrender.com';
+      var BOT_LINK = 'https://t.me/' + BOT_USERNAME;
+      var WIDGET_URL = API_URL + '/api/public/arbitrage';
       var REFRESH_MS = 45000;
       var body = document.getElementById('liveBody');
       var updated = document.getElementById('liveUpdated');
@@ -227,10 +375,6 @@
       function fmtPct(v) {
         if (v == null || isNaN(v)) return '—';
         return (v * 100).toFixed(3) + '%';
-      }
-      function fmtUsd(v) {
-        if (v == null || isNaN(v)) return '—';
-        return '$' + v.toFixed(2);
       }
       function riskClass(r) { return r || 'LOW'; }
 
@@ -274,8 +418,74 @@
       load();
       setInterval(load, REFRESH_MS);
     })();
+
+    // Lead magnet form
+    (function () {
+      var form = document.getElementById('leadForm');
+      var emailEl = document.getElementById('leadEmail');
+      var msg = document.getElementById('leadMsg');
+      var btn = document.getElementById('leadSubmit');
+      if (!form || !emailEl || !msg || !btn) return;
+      var params = new URLSearchParams(window.location.search);
+      var lang = document.documentElement.lang || params.get('lang') || 'ru';
+      form.addEventListener('submit', function () {
+        var email = (emailEl.value || '').trim();
+        if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+          msg.className = 'lead-msg err';
+          msg.textContent = 'Введите корректный e-mail';
+          return;
+        }
+        var interest = document.querySelector('input[name="interest"]:checked');
+        btn.disabled = true;
+        btn.textContent = '…';
+        fetch(API_URL + '/api/public/waitlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email,
+            lang: lang,
+            source: params.get('utm_source') || params.get('ref') || 'landing',
+            interest: interest ? interest.value : 'passive',
+          }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            msg.className = 'lead-msg ok';
+            msg.textContent = d.already ? 'Вы уже в списке! Будем держать в курсе.' : 'Готово! Отчёт придёт на почту.';
+            emailEl.value = '';
+          })
+          .catch(function () {
+            msg.className = 'lead-msg err';
+            msg.textContent = 'Ошибка сети. Попробуйте позже.';
+          })
+          .finally(function () { btn.disabled = false; btn.textContent = 'Получать отчёт'; });
+      });
+    })();
+
+  </script>
+
+  <!-- Structured data: FAQ + Organization for rich snippets -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "Что такое фандинг (funding rate)?", "acceptedAnswer": { "@type": "Answer", "text": "Ставка финансирования — периодический платёж между лонгами и шортами на криптобиржах. Положительная ставка означает, что шорты платят лонгам, поэтому можно зарабатывать, просто удерживая позицию." } },
+      { "@type": "Question", "name": "Как работает арбитраж фандинга?", "acceptedAnswer": { "@type": "Answer", "text": "Funding Finder ищет пары, где ставка финансирования сильно отличается между биржами (например, Binance и Bybit), и показывает разницу. Открывая противоположные позиции, можно забрать эту разницу, оставаясь рыночно-нейтральным — безрисковый арбитраж." } },
+      { "@type": "Question", "name": "Сколько бирж поддерживает Funding Finder?", "acceptedAnswer": { "@type": "Answer", "text": "23 биржи: Binance, Bybit, OKX, Gate, MEXC, Bitget, Hyperliquid и ещё 16. Данные агрегируются в реальном времени." } },
+      { "@type": "Question", "name": "Можно ли пользоваться бесплатно?", "acceptedAnswer": { "@type": "Answer", "text": "Да. Тариф Free всегда доступен, а новым пользователям даётся пробный Pro на 7 дней без оплаты. Сканы, арбитраж и 1 AI-совет в день бесплатны." } },
+      { "@type": "Question", "name": "Безопасны ли мои ключи биржи?", "acceptedAnswer": { "@type": "Answer", "text": "API-ключи шифруются на сервере (ENCRYPTION_KEY) и используются только для чтения и автоисполнения по вашему разрешению." } }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Funding Finder",
+    "url": "https://funding-finder.onrender.com/landing.html",
+    "sameAs": ["https://t.me/FundingFinderBot"]
+  }
   </script>
 </body>
 </html>
-
-

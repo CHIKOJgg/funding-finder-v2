@@ -320,3 +320,19 @@ model ExecutedOrder {
   @@index([userId])
   @@index([createdAt])
 }
+
+// Pre-signup lead capture (lead magnet). Collects interested visitors who are
+// not ready to pay yet, so they can be nudged via email/newsletter and
+// converted later. Kept separate from User so anonymous visitors need no auth.
+model Waitlist {
+  id        String   @id @default(cuid())
+  email     String?  @unique
+  telegram  String?
+  lang      String? // preferred locale (ru/en/tr/vi/hi/es)
+  source    String? // utm/marketing source (e.g. "reddit", "producthunt")
+  interest  String? // "passive" | "arbitrage" — which pitch resonated
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([lang])
+}

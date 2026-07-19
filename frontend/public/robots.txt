@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://funding-finder.onrender.com/sitemap.xml
