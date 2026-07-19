@@ -200,6 +200,31 @@ export function ProfilePage() {
         >
             🔗 {t('profile.copyLink')}
         </button>
+        <div className="flex gap-2 mt-2">
+          <button
+            onClick={() => {
+              const bot = import.meta.env.VITE_BOT_USERNAME || 'FundingFinderBot';
+              window.open(`https://t.me/${bot}`, '_blank', 'noopener');
+            }}
+            className="btn btn-secondary text-sm py-2 flex-1"
+          >
+            🤖 Открыть бота
+          </button>
+          <button
+            onClick={() => {
+              const text = referralLink || window.location.href;
+              if (navigator.share) {
+                navigator.share({ title: 'Funding Finder', text: 'Присоединяйся по моей реферальной ссылке:', url: text }).catch(() => {});
+              } else {
+                navigator.clipboard.writeText(text);
+                showToast(t('profile.linkCopied'), 'success');
+              }
+            }}
+            className="btn btn-secondary text-sm py-2 flex-1"
+          >
+            📤 Поделиться
+          </button>
+        </div>
         {referralLink && (
           <div className="mt-2 text-sm break-all" style={{ color: 'var(--brand)' }}>{referralLink}</div>
         )}

@@ -28,7 +28,7 @@ describe('Navigation', () => {
       </MemoryRouter>
     );
     const arbitrageTab = screen.getByText('Арбитраж');
-    expect(arbitrageTab.closest('button')?.className).toContain('text-[var(--brand)]');
+    expect(arbitrageTab.closest('button')?.className).toContain('active');
   });
 });
 

@@ -10,9 +10,16 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "cap:init": "cap init FundingFinder com.fundingfinder.app --web-dir=dist",
+    "cap:add:ios": "cap add ios",
+    "cap:add:android": "cap add android",
+    "cap:sync": "cap sync",
+    "cap:open:ios": "cap open ios",
+    "cap:open:android": "cap open android"
   },
   "dependencies": {
+    "@capacitor/core": "^6.0.0",
     "axios": "^1.6.2",
     "chart.js": "^4.4.1",
     "clsx": "^2.1.0",
@@ -22,6 +29,7 @@
     "react-router-dom": "^6.21.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
