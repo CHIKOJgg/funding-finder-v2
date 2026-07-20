@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://funding-finder.onrender.com/sitemap.xml
+# Block noisy AI scrapers if desired (uncomment to enable)
+# User-agent: GPTBot
+# Disallow: /
+
+Sitemap: https://funding-finder-frontend.onrender.com/sitemap.xml
