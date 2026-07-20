@@ -18,7 +18,7 @@ import { PairMatrix } from '../components/PairMatrix';
 import { RiskProfileModal } from '../components/RiskProfileModal';
 import { ResultSkeleton } from '../components/Skeleton';
 import { ExchangeResult } from '../types';
-import { useT } from '../i18n';
+import { useT, useI18n } from '../i18n';
 
 type SortKey = 'rate' | 'volume' | 'interval';
 
@@ -48,6 +48,7 @@ export function MainPage() {
   const [calendarRefresh, setCalendarRefresh] = useState(0);
   const [exchangeFilter, setExchangeFilter] = useState<string[]>([]);
   const t = useT();
+  const { lang } = useI18n();
 
   const handleScan = useCallback(async () => {
     if (selectedExchanges.length === 0) {
@@ -78,11 +79,11 @@ export function MainPage() {
         rate: r.funding_rate_per_hour ?? 0,
       }));
       const { shareCardAsImage } = await import('../utils/shareCard');
-      await shareCardAsImage(opps, { username: user?.username ? '@' + user.username : undefined });
+      await shareCardAsImage(opps, { username: user?.username ? '@' + user.username : undefined, lang });
     } catch (e) {
       showToast(t('main.shareError') || 'Не удалось создать картинку', 'error');
     }
-  }, [scanResults, user, showToast, t]);
+  }, [scanResults, user, showToast, t, lang]);
 
   const handleAiAnalysis = useCallback(async () => {
     if (!scanResults) return;

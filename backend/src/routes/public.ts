@@ -8,6 +8,7 @@ import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
 import { computeTrackRecord } from '../services/trackRecordService.js';
+import { computeWeeklyReport } from '../services/weeklyReport.js';
 
 const router = Router();
 
@@ -115,6 +116,19 @@ router.get('/trackrecord', async (_req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Public track record error');
+    return res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Weekly Funding Report (public JSON). Same numbers the bot posts to the
+// public channel — reusable by the landing page and the email newsletter.
+router.get('/weekly-report', async (_req, res) => {
+  try {
+    const report = await computeWeeklyReport();
+    return res.json({ ok: true, ...report });
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Public weekly report error');
     return res.status(500).json({ ok: false, error: error.message });
   }
 });

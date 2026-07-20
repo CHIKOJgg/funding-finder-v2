@@ -28,6 +28,68 @@ export const EXCHANGE_LABELS: Record<string, string> = {
   bluefin: 'Bluefin',
 };
 
+// ---------------------------------------------------------------------------
+// Affiliate / referral monetization.
+//
+// Every "Open on exchange" click is free traffic we send to the exchange —
+// so it should carry OUR referral code and earn a commission (a second revenue
+// stream that can fund hosting + ads with zero extra work).
+//
+// Each exchange uses a different referral query param. Fill in `code` with your
+// affiliate code from the exchange's partner program to activate revenue.
+// An empty code is a safe no-op (URL is left unchanged), so the app behaves
+// exactly as before until you plug your codes in.
+//
+// Codes can also be injected at build time via Vite env vars
+// (e.g. VITE_AFF_BINANCE=xxxx) so you don't commit them to git.
+interface AffiliateConfig {
+  param: string;
+  code: string;
+}
+
+const env = (import.meta as any).env || {};
+
+export const AFFILIATE: Record<string, AffiliateConfig> = {
+  binance: { param: 'ref', code: env.VITE_AFF_BINANCE || '' },
+  bybit: { param: 'ref', code: env.VITE_AFF_BYBIT || '' },
+  okx: { param: 'channelId', code: env.VITE_AFF_OKX || '' },
+  gate: { param: 'ref', code: env.VITE_AFF_GATE || '' },
+  mexc: { param: 'inviteCode', code: env.VITE_AFF_MEXC || '' },
+  bitget: { param: 'ref', code: env.VITE_AFF_BITGET || '' },
+  bingx: { param: 'ref', code: env.VITE_AFF_BINGX || '' },
+  phemex: { param: 'referralCode', code: env.VITE_AFF_PHEMEX || '' },
+  woo: { param: 'ref', code: env.VITE_AFF_WOO || '' },
+  htx: { param: 'invite_code', code: env.VITE_AFF_HTX || '' },
+  coinex: { param: 'refer_code', code: env.VITE_AFF_COINEX || '' },
+  blofin: { param: 'referral_code', code: env.VITE_AFF_BLOFIN || '' },
+  bitmart: { param: 'r', code: env.VITE_AFF_BITMART || '' },
+  weex: { param: 'code', code: env.VITE_AFF_WEEX || '' },
+  coinw: { param: 'r', code: env.VITE_AFF_COINW || '' },
+  hyperliquid: { param: 'ref', code: env.VITE_AFF_HYPERLIQUID || '' },
+  dydx: { param: 'ref', code: env.VITE_AFF_DYDX || '' },
+  paradex: { param: 'ref', code: env.VITE_AFF_PARADEX || '' },
+  drift: { param: 'ref', code: env.VITE_AFF_DRIFT || '' },
+  helix: { param: 'ref', code: env.VITE_AFF_HELIX || '' },
+  apex: { param: 'ref', code: env.VITE_AFF_APEX || '' },
+  aster: { param: 'ref', code: env.VITE_AFF_ASTER || '' },
+  bluefin: { param: 'ref', code: env.VITE_AFF_BLUEFIN || '' },
+};
+
+/** Append the exchange's affiliate code to a URL, if configured. */
+function withAffiliate(exchange: string, url: string): string {
+  const aff = AFFILIATE[exchange.toLowerCase()];
+  if (!aff || !aff.code) return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.set(aff.param, aff.code);
+    return u.toString();
+  } catch {
+    // Fallback for any non-standard URL: append manually.
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}${encodeURIComponent(aff.param)}=${encodeURIComponent(aff.code)}`;
+  }
+}
+
 /** Single source of truth — must match backend SUPPORTED_EXCHANGES. */
 export const ALL_EXCHANGES = [
   'gate', 'binance', 'bybit', 'mexc', 'okx',
@@ -51,8 +113,11 @@ function normalizePerpSymbol(pair: string): string {
 export function getExchangeTradeUrl(exchange: string, pair: string): string {
   const symbol = normalizePerpSymbol(pair);
   const base = symbol.replace(/USDT$/i, '');
-  // When no specific pair is known (e.g. an exchange-level "open" button) we
-  // still land on the exchange's futures section rather than a dead "#" link.
+  const url = buildBaseTradeUrl(exchange, pair, symbol, base);
+  return withAffiliate(exchange, url);
+}
+
+function buildBaseTradeUrl(exchange: string, pair: string, symbol: string, base: string): string {
   switch (exchange.toLowerCase()) {
     case 'binance':
       return symbol ? `https://www.binance.com/en/futures/${symbol}` : 'https://www.binance.com/en/futures';
