@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#3390ec" />
+  <title>Funding Finder — Embeddable live arbitrage widget (free)</title>
+  <meta name="description" content="Add a live crypto funding arbitrage widget to your website with one script tag. Real-time best cross-exchange rates across 23 exchanges. Free with attribution." />
+  <link rel="canonical" href="https://funding-finder-frontend.onrender.com/embed.html" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <style>
+    :root { --brand:#3390ec; --bg:#f4f6fb; --card:#fff; --text:#0f172a; --muted:#64748b; --dark:#0b1220; --line:#e8edf5; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+    a { color:var(--brand); }
+    .wrap { max-width:920px; margin:0 auto; padding:0 18px; }
+    header { background:var(--dark); color:#fff; padding:14px 0; }
+    header .wrap { display:flex; align-items:center; justify-content:space-between; }
+    .logo { font-weight:800; }
+    .hero { text-align:center; padding:48px 0 24px; }
+    .hero h1 { font-size:clamp(26px,5vw,38px); letter-spacing:-.02em; margin-bottom:12px; }
+    .hero p { color:var(--muted); max-width:600px; margin:0 auto; }
+    .badge { display:inline-block; background:#dcfce7; color:#15803d; font-weight:800; font-size:12px; padding:5px 12px; border-radius:999px; margin-bottom:16px; }
+    section { padding:32px 0; }
+    h2 { font-size:22px; margin-bottom:6px; }
+    .sub { color:var(--muted); margin-bottom:18px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start; }
+    @media (max-width:760px){ .grid { grid-template-columns:1fr; } }
+    pre { background:var(--dark); color:#e2e8f0; padding:18px; border-radius:14px; overflow-x:auto; font-size:13px; line-height:1.5; position:relative; }
+    pre code { font-family:'SF Mono',Menlo,Consolas,monospace; white-space:pre; }
+    .copy { position:absolute; top:10px; right:10px; background:var(--brand); color:#fff; border:0; border-radius:8px; padding:6px 12px; font-weight:700; font-size:12px; cursor:pointer; }
+    .demo { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; }
+    table.opts { width:100%; border-collapse:collapse; background:var(--card); border-radius:12px; overflow:hidden; border:1px solid var(--line); }
+    table.opts th, table.opts td { text-align:left; padding:10px 14px; font-size:14px; border-bottom:1px solid var(--line); }
+    table.opts th { background:var(--dark); color:#fff; }
+    table.opts code { background:#eef2f7; padding:2px 6px; border-radius:6px; font-size:13px; }
+    .cta { text-align:center; padding:36px 0; }
+    .btn { display:inline-block; background:var(--brand); color:#fff; padding:13px 26px; border-radius:12px; font-weight:700; text-decoration:none; }
+    footer { text-align:center; color:var(--muted); font-size:13px; padding:28px 0; border-top:1px solid var(--line); }
+    .toggle { display:inline-flex; background:#e8edf5; border-radius:999px; padding:4px; gap:4px; margin-bottom:14px; }
+    .toggle button { border:0; background:transparent; padding:7px 16px; border-radius:999px; font-weight:700; font-size:13px; color:var(--muted); cursor:pointer; }
+    .toggle button.active { background:var(--brand); color:#fff; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="logo">Funding<span style="color:var(--brand)">Finder</span></div>
+      <a href="/landing.html" style="color:#cbd5e1;text-decoration:none;font-weight:600;font-size:14px">← Back to site</a>
+    </div>
+  </header>
+
+  <div class="hero">
+    <div class="wrap">
+      <span class="badge">FREE WITH ATTRIBUTION</span>
+      <h1>Add a live funding arbitrage widget to your site</h1>
+      <p>Real-time best cross-exchange funding rates across 23 exchanges — one script tag, no backend, no API key. Great for crypto media, affiliates and communities.</p>
+    </div>
+  </div>
+
+  <section>
+    <div class="wrap">
+      <div class="grid">
+        <div>
+          <h2>1. Copy the snippet</h2>
+          <p class="sub">Paste it where the widget should appear.</p>
+          <div class="toggle" role="group" aria-label="Theme">
+            <button type="button" class="active" data-theme="dark" onclick="setTheme('dark', this)">Dark</button>
+            <button type="button" data-theme="light" onclick="setTheme('light', this)">Light</button>
+          </div>
+          <pre><button class="copy" onclick="copySnippet(this)">Copy</button><code id="snippet"></code></pre>
+
+          <h2 style="margin-top:24px">Options</h2>
+          <p class="sub">Configure via <code>data-*</code> attributes on the script tag.</p>
+          <table class="opts">
+            <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+            <tbody>
+              <tr><td><code>data-theme</code></td><td>dark / light</td><td>dark</td></tr>
+              <tr><td><code>data-limit</code></td><td>1–10</td><td>5</td></tr>
+              <tr><td><code>data-lang</code></td><td>en / ru</td><td>en</td></tr>
+              <tr><td><code>data-title</code></td><td>custom text</td><td>—</td></tr>
+              <tr><td><code>data-target</code></td><td>element id</td><td>funding-finder-widget</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <h2>2. Live preview</h2>
+          <p class="sub">This is the real widget, updating every 60s.</p>
+          <div class="demo">
+            <div id="funding-finder-widget"></div>
+          </div>
+          <p class="sub" style="margin-top:14px;font-size:13px">Isolated via Shadow DOM — your site's CSS never affects it. A crawlable "Powered by Funding Finder" backlink is included.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="cta">
+    <div class="wrap">
+      <h2>Want white-label (no attribution) or the raw data API?</h2>
+      <p class="sub">Remove branding, customize, or pull the aggregated funding data directly.</p>
+      <a class="btn" href="/landing.html#b2b">Request B2B access →</a>
+    </div>
+  </div>
+
+  <footer>
+    <div class="wrap">Funding Finder • <a href="/landing.html">Home</a> • <a href="https://t.me/fundinganalyzerbot">Telegram</a></div>
+  </footer>
+
+  <!-- Live widget instance -->
+  <script src="/embed.js" data-theme="dark" data-limit="5" data-lang="en" async></script>
+
+  <script>
+    var currentTheme = 'dark';
+    function buildSnippet(theme) {
+      return '<div id="funding-finder-widget"></div>\n' +
+        '<script src="https://funding-finder-frontend.onrender.com/embed.js"\n' +
+        '        data-theme="' + theme + '" data-limit="5" data-lang="en" async><\/script>';
+    }
+    function refresh() { document.getElementById('snippet').textContent = buildSnippet(currentTheme); }
+    function setTheme(theme, btn) {
+      currentTheme = theme;
+      document.querySelectorAll('.toggle button').forEach(function (b) { b.classList.toggle('active', b === btn); });
+      refresh();
+    }
+    function copySnippet(btn) {
+      var text = document.getElementById('snippet').textContent;
+      navigator.clipboard.writeText(text).then(function () {
+        var old = btn.textContent; btn.textContent = 'Copied!';
+        setTimeout(function () { btn.textContent = old; }, 1500);
+      });
+    }
+    refresh();
+  </script>
+</body>
+</html>
