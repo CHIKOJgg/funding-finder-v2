@@ -36,7 +36,7 @@ export const vi: Record<string, string> = {
   'profile.referrals': 'Giới thiệu',
   'profile.paidReferrals': 'Đã trả',
   'profile.earnings': 'Đã kiếm',
-  'profile.referralDesc': 'Mời bạn bè và nhận {rate}% từ khoản thanh toán đầu tiên của họ vào số dư của bạn.',
+  'profile.referralDesc': 'Mời bạn bè: bạn nhận {rate}% từ khoản thanh toán đầu tiên của họ, và bạn bè được 7 ngày Pro miễn phí.',
   'profile.referralEarnHint': 'Bạn kiếm {rate}% từ khoản thanh toán đầu tiên của mỗi bạn vào số dư USDT. Rút bất cứ lúc nào.',
   'profile.referralPlaceholder': 'Nhập mã giới thiệu...',
   'profile.apply': 'Áp dụng',

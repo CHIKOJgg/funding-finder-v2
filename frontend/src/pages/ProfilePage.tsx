@@ -6,6 +6,7 @@ import { TrialCTA } from '../components/TrialCTA';
 import { CryptoCheckoutModal } from '../components/CryptoCheckoutModal';
 import { apiClient } from '../api/client';
 import { useT } from '../i18n';
+import { PLAN_PRICES } from '../utils/plans';
 
 export function ProfilePage() {
   const { user, subscription: ctxSubscription, isWeb, refreshSubscription } = useApp();
@@ -35,6 +36,18 @@ export function ProfilePage() {
       el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, []);
+
+  // Deep link from the marketing landing page: `/?plan=pro` (or `proplus`)
+  // opens the checkout modal directly so a visitor who clicked "Открыть в PWA"
+  // lands straight on payment. Only fires once the user is known.
+  useEffect(() => {
+    const plan = new URLSearchParams(window.location.search).get('plan');
+    if (!plan || (plan !== 'pro' && plan !== 'proplus')) return;
+    if (!user?.id) return;
+    const price = PLAN_PRICES[plan as 'pro' | 'proplus']?.monthly ?? 0;
+    const name = plan === 'pro' ? 'Pro' : 'Pro+';
+    openCheckout(plan, name, price);
+  }, [user?.id]);
 
   const loadUserData = useCallback(async () => {
     try {
@@ -262,18 +275,9 @@ export function ProfilePage() {
 
         <div className="grid grid-cols-1 gap-3">
         <PlanCard
-          name="Basic"
-          price={29}
-          
-          tagline={t('profile.planTaglineBasic')}
-          features={['profile.feat5ex', 'profile.featEmail', 'profile.featWatchlist']}
-          currentPlan={subscription}
-          onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
-        />
-        <PlanCard
+          planId="pro"
           name="Pro"
-          price={99}
-          
+          price={49}
           tagline={t('profile.planTaglinePro')}
           featured
           features={['profile.feat12ex', 'profile.featAi', 'profile.featCsv', 'profile.featPriority']}
@@ -281,19 +285,11 @@ export function ProfilePage() {
           onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
         />
         <PlanCard
-          name="Pro Max"
-          price={499}
-          
+          planId="proplus"
+          name="Pro+"
+          price={149}
           tagline={t('profile.planTaglineProMax')}
           features={['profile.feat20ex', 'profile.featAllPro', 'profile.featAnalytics', 'profile.featSupport', 'profile.featEarly']}
-          currentPlan={subscription}
-          onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
-        />
-        <PlanCard
-          name="Ultimate"
-          price={999}
-          tagline={t('profile.planTaglineUltimate')}
-          features={['profile.feat25ex', 'profile.featUnlimited', 'profile.featPriorityAi', 'profile.featAllPro', 'profile.featWhiteLabel']}
           currentPlan={subscription}
           onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
         />
@@ -379,15 +375,14 @@ export function ProfilePage() {
 
 function planLabel(plan: string): string {
   switch (plan) {
-    case 'basic': return 'Basic';
     case 'pro': return 'Pro';
-    case 'promax': return 'Pro Max';
-    case 'ultimate': return 'Ultimate';
+    case 'proplus': return 'Pro+';
     default: return 'Free';
   }
 }
 
 const PlanCard = memo(function PlanCard({
+  planId,
   name,
   price,
   tagline,
@@ -396,6 +391,7 @@ const PlanCard = memo(function PlanCard({
   currentPlan,
   onSelect,
 }: {
+  planId: string;
   name: string;
   price: number;
   tagline?: string;
@@ -405,7 +401,6 @@ const PlanCard = memo(function PlanCard({
   onSelect: (planId: string, name: string, price: number) => void;
 }) {
   const t = useT();
-  const planId = name.toLowerCase().replace(' ', '');
   const isCurrent = currentPlan === planId;
 
   return (

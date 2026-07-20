@@ -485,9 +485,8 @@ export function AdminPage() {
                   className="input-field mb-4"
                 >
                   <option value="free">Free</option>
-                  <option value="basic">Basic</option>
                   <option value="pro">Pro</option>
-                  <option value="promax">Pro Max</option>
+                  <option value="proplus">Pro+</option>
                 </select>
               ) : (
                 <input

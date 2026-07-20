@@ -303,7 +303,7 @@ export const en: Record<string, string> = {
   'profile.trialTitle': '🎁 Trial Pro',
   'profile.trialDesc': 'Try all Pro features free — no card required.',
   'profile.referralTitle': '🎁 Referral program',
-  'profile.referralDesc': 'Invite friends and get {rate}% of their first payment straight to your balance.',
+  'profile.referralDesc': 'Invite friends: you get {rate}% of their first payment to your balance, and your friend gets 7 days of Pro free.',
   'profile.referralEarnHint': 'You earn {rate}% of each friend\'s first payment to your USDT balance. Withdraw anytime.',
   'profile.referralPlaceholder': 'Enter referral code...',
   'profile.apply': 'Apply',

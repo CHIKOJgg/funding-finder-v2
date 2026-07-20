@@ -303,7 +303,7 @@ export const ru: Record<string, string> = {
   'profile.trialTitle': '🎁 Пробный Pro',
   'profile.trialDesc': 'Попробуйте все фичи Pro бесплатно — без привязки карты.',
   'profile.referralTitle': '🎁 Реферальная программа',
-  'profile.referralDesc': 'Приглашайте друзей и получайте {rate}% с их первой оплаты прямо на баланс.',
+  'profile.referralDesc': 'Приглашайте друзей: вы получаете {rate}% с их первой оплаты на баланс, а друг — 7 дней Pro бесплатно.',
   'profile.referralEarnHint': 'Вы получаете {rate}% от первого платежа каждого друга на свой баланс USDT. Вывод доступен в любой момент.',
   'profile.referralPlaceholder': 'Введите реферальный код...',
   'profile.apply': 'Применить',

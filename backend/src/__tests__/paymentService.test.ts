@@ -169,19 +169,19 @@ describe('paymentService', () => {
       expect(prismaMock.paymentRecord.create).toHaveBeenCalledTimes(1);
     });
 
-    it('never downgrades: buying basic over promax keeps promax', async () => {
-      const cheapOrder = { ...orderObj, planId: 'basic' };
+    it('never downgrades: buying pro over proplus keeps proplus', async () => {
+      const cheapOrder = { ...orderObj, planId: 'pro' };
       (prismaMock.order.findUnique as jest.Mock).mockImplementation((args: any) =>
         args?.where?.id ? Promise.resolve(cheapOrder) : Promise.resolve(null)
       );
-      (prismaMock.user.findUnique as jest.Mock).mockResolvedValue({ subscription: 'promax' });
+      (prismaMock.user.findUnique as jest.Mock).mockResolvedValue({ subscription: 'proplus' });
       (prismaMock.user.update as jest.Mock).mockResolvedValue({});
       (prismaMock.paymentHistory.create as jest.Mock).mockResolvedValue({ id: 'ph1' });
       (prismaMock.paymentRecord.findUnique as jest.Mock).mockResolvedValue(null);
 
       await updateOrderFromWebhook('order_1', 'paid');
       expect(prismaMock.user.update).not.toHaveBeenCalledWith(
-        expect.objectContaining({ data: { subscription: 'basic' } })
+        expect.objectContaining({ data: { subscription: 'pro' } })
       );
     });
 

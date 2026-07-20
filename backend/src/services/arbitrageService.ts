@@ -199,7 +199,7 @@ const QUOTE_CURRENCIES = ['USDT', 'USDC', 'USD', 'BTC', 'ETH', 'DAI'];
  *   okx   BTC-USDT-SWAP  -> BTCUSDT
  *   mexc  BTC_USDT       -> BTCUSDT
  */
-function canonicalPairKey(contract: string): string {
+export function canonicalPairKey(contract: string): string {
   let key = (contract || '')
     .toUpperCase()
     .replace(/[-_/]/g, ' ')          // separators -> space

@@ -7,6 +7,7 @@ import { getWarmupPromise } from '../services/fundingWarmup.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { computeTrackRecord } from '../services/trackRecordService.js';
 
 const router = Router();
 
@@ -97,6 +98,24 @@ router.get('/arbitrage', async (_req, res) => {
       pairsTracked: 0,
       degraded: true,
     });
+  }
+});
+
+// Social-proof track record: an ILLUSTRATIVE market-neutral funding
+// arbitrage paper backtest from real scanned history. Powers the landing-page
+// "what you could have earned" proof and is the key trust element for converting
+// free visitors into trials. Clearly a ceiling estimate (no fees/slippage).
+router.get('/trackrecord', async (_req, res) => {
+  try {
+    const rec = await computeTrackRecord();
+    if (!rec.available) {
+      return res.json({ ok: true, available: false, note: 'Not enough history yet' });
+    }
+    return res.json({ ...rec, illustrative: true });
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Public track record error');
+    return res.status(500).json({ ok: false, error: error.message });
   }
 });
 

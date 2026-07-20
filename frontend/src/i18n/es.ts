@@ -36,7 +36,7 @@ export const es: Record<string, string> = {
   'profile.referrals': 'Referidos',
   'profile.paidReferrals': 'Pagaron',
   'profile.earnings': 'Ganado',
-  'profile.referralDesc': 'Invita amigos y obtén el {rate}% de su primer pago directo a tu saldo.',
+  'profile.referralDesc': 'Invita amigos: obtén el {rate}% de su primer pago en tu saldo, y tu amigo recibe 7 días de Pro gratis.',
   'profile.referralEarnHint': 'Ganas el {rate}% del primer pago de cada amigo en tu saldo USDT. Retira cuando quieras.',
   'profile.referralPlaceholder': 'Ingresa código de referido...',
   'profile.apply': 'Aplicar',

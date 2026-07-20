@@ -19,7 +19,7 @@ export interface AuthenticatedRequest extends Request {
 
 const VALID_EXCHANGES = SUPPORTED_EXCHANGES;
 
-// Developer accounts that should always receive the top-tier ("ultimate")
+// Developer accounts that should always receive the top-tier ("proplus")
 // subscription regardless of payment state. Keyed by telegram id (numeric
 // suffix of the tg_<id> user id). Configured via DEV_ULTIMATE_TELEGRAM_IDS
 // (empty by default) so it is never hardcoded.
@@ -38,15 +38,15 @@ async function trackActivity(userId: string, authProvider: AuthProvider = 'teleg
         lastActive: new Date(),
         role: isAdmin ? 'admin' : 'user',
         authProvider,
-        subscription: isDevUltimate ? 'ultimate' : 'free',
+        subscription: isDevUltimate ? 'proplus' : 'free',
       },
       update: {
         lastActive: new Date(),
         role: isAdmin ? 'admin' : undefined,
-        ...(isDevUltimate ? { subscription: 'ultimate' } : {}),
+        ...(isDevUltimate ? { subscription: 'proplus' } : {}),
       },
     });
-    // Revert trial-derived Pro once the window has elapsed (skip for dev ultimate).
+    // Revert trial-derived Pro once the window has elapsed (skip for dev proplus).
     if (!isDevUltimate) {
       await enforceTrialExpiry(userId);
     }

@@ -159,7 +159,7 @@ router.patch('/users/:id/subscription', async (req: AuthenticatedRequest, res: R
     const { id } = req.params;
     const { subscription } = req.body;
 
-    const validPlans = ['free', 'basic', 'pro', 'promax'];
+    const validPlans = ['free', 'pro', 'proplus'];
     if (!validPlans.includes(subscription)) {
       return res.status(400).json({ ok: false, error: `Invalid plan. Valid: ${validPlans.join(', ')}` });
     }
@@ -231,8 +231,8 @@ router.get('/metrics', async (_req: AuthenticatedRequest, res: Response) => {
       prisma.user.count({ where: { createdAt: { gte: dayAgo } } }),
       prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
       prisma.user.count({ where: { createdAt: { gte: monthAgo } } }),
-      // Users currently on a paid plan (pro/promax/ultimate) — active paying base.
-      prisma.user.count({ where: { subscription: { in: ['pro', 'promax', 'ultimate'] } } }),
+      // Users currently on a paid plan (pro/proplus) — active paying base.
+      prisma.user.count({ where: { subscription: { in: ['pro', 'proplus'] } } }),
       // Ever activated a trial.
       prisma.user.count({ where: { trialUsed: true } }),
       prisma.order.count({ where: { status: 'paid' } }),

@@ -73,16 +73,15 @@ describe('hasAccess (tier gating)', () => {
   });
 
   test('minTier flag respects tier order', () => {
-    // daily_summary requires at least 'basic'
+    // daily_summary requires at least 'pro'
     expect(featureFlags.hasAccess('daily_summary', 'free')).toBe(false);
-    expect(featureFlags.hasAccess('daily_summary', 'basic')).toBe(true);
     expect(featureFlags.hasAccess('daily_summary', 'pro')).toBe(true);
   });
 
   test('pro flag requires pro tier', () => {
-    expect(featureFlags.hasAccess('advanced_analytics', 'basic')).toBe(false);
+    expect(featureFlags.hasAccess('advanced_analytics', 'free')).toBe(false);
     expect(featureFlags.hasAccess('advanced_analytics', 'pro')).toBe(true);
-    expect(featureFlags.hasAccess('advanced_analytics', 'promax')).toBe(true);
+    expect(featureFlags.hasAccess('advanced_analytics', 'proplus')).toBe(true);
   });
 
   test('disabled flag is never accessible regardless of tier', () => {

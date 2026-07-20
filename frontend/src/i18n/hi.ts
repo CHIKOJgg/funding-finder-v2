@@ -36,7 +36,7 @@ export const hi: Record<string, string> = {
   'profile.referrals': 'रेफरल',
   'profile.paidReferrals': 'भुगतान किए',
   'profile.earnings': 'कमाई',
-  'profile.referralDesc': 'दोस्तों को बुलाएं और उनके पहले भुगतान का {rate}% सीधे अपने बैलेंस में पाएं।',
+  'profile.referralDesc': 'दोस्तों को बुलाएं: पहले भुगतान का {rate}% आपको मिलता है, और दोस्त को 7 दिन का फ्री Pro मिलता है।',
   'profile.referralEarnHint': 'आपको हर दोस्त के पहले भुगतान का {rate}% USDT बैलेंस में मिलता है। कभी भी निकालें।',
   'profile.referralPlaceholder': 'रेफरल कोड डालें...',
   'profile.apply': 'लागू करें',

@@ -18,13 +18,13 @@ const defaultFlags: Record<string, FeatureFlag> = {
     name: 'daily_summary',
     enabled: true,
     description: 'Daily Telegram summary notifications',
-    minTier: 'basic',
+    minTier: 'pro',
   },
   csv_export: {
     name: 'csv_export',
     enabled: true,
     description: 'CSV export of funding history',
-    minTier: 'basic',
+    minTier: 'pro',
   },
   advanced_analytics: {
     name: 'advanced_analytics',
@@ -109,7 +109,7 @@ class FeatureFlags {
     const flag = this.flags.get(flagName);
     if (!flag?.minTier) return true;
 
-    const tierOrder = ['free', 'basic', 'pro', 'promax'];
+    const tierOrder = ['free', 'pro', 'proplus'];
     const userTierIndex = tierOrder.indexOf(userTier);
     const requiredTierIndex = tierOrder.indexOf(flag.minTier);
 

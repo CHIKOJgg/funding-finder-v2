@@ -78,6 +78,22 @@
     .ref { background:var(--dark); color:#fff; text-align:center; }
     .ref .btn { background:#22c55e; }
     footer { text-align:center; color:var(--muted); font-size:13px; padding:30px 0; }
+    .billing-toggle { display:inline-flex; background:#eef2f7; border-radius:999px; padding:4px; margin:0 auto 26px; gap:4px; }
+    .billing-toggle { display:flex; width:max-content; }
+    .billing-toggle button { border:0; background:transparent; padding:9px 18px; border-radius:999px; font-weight:700; font-size:14px; color:var(--muted); cursor:pointer; transition:all .12s ease; }
+    .billing-toggle button.active { background:var(--brand); color:#fff; box-shadow:0 4px 12px rgba(51,144,236,.3); }
+    .billing-toggle .save { font-size:11px; font-weight:800; color:var(--green); margin-left:6px; }
+    .plan-mini { display:block; text-align:center; font-size:12.5px; color:var(--muted); margin-top:10px; text-decoration:underline; }
+    .track { background:linear-gradient(135deg,#0f172a 0%,#1f4fb0 100%); color:#fff; border-radius:20px; padding:30px 24px; }
+    .track h2 { color:#fff; }
+    .track .sub { color:#cbd5e1; }
+    .track-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:14px; margin-top:18px; }
+    .track-stat { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:16px; text-align:center; }
+    .track-stat .num { font-size:26px; font-weight:800; color:#7dd3fc; }
+    .track-stat .lbl { font-size:12.5px; color:#cbd5e1; margin-top:4px; }
+    .track-note { font-size:12px; color:#94a3b8; text-align:center; margin-top:16px; }
+    .pwa-hint { display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:14px; font-size:13.5px; color:var(--muted); }
+    .pwa-hint code { background:var(--dark); color:#fff; padding:3px 9px; border-radius:8px; font-size:12.5px; }
   </style>
 </head>
 <body>
@@ -137,13 +153,19 @@
   <section style="background:var(--card)">
     <div class="wrap">
       <h2>Planlar</h2>
-      <p class="sub">NOWPayments ile kripto ödeme · 7 gün ücretsiz Pro denemesi</p>
+      <p class="sub">Kripto (USDT) ödemesi Crypto Pay ve NOWPayments ile · 7 gün ücretsiz Pro · yıllık ödeme −20%</p>
+      <div style="text-align:center">
+        <div class="billing-toggle" role="group" aria-label="Ödeme dönemi">
+          <button type="button" class="active" data-period="monthly" onclick="setBilling('monthly', this)">Aylık</button>
+          <button type="button" data-period="annual" onclick="setBilling('annual', this)">Yıllık <span class="save">−20%</span></button>
+        </div>
+      </div>
       <div class="pricing">
         <div class="plan">
           <div class="name">Free</div>
-          <div class="price">$0</div>
+          <div class="price" data-monthly="0" data-annual="0">$0</div>
           <ul>
-            <li>3 биржи в скане</li>
+            <li>8 биржи в скане</li>
             <li>1 AI-совет/день</li>
             <li>Базовые алерты</li>
           </ul>
@@ -151,36 +173,47 @@
         </div>
         <div class="plan featured">
           <div class="name">Pro</div>
-          <div class="price">$99<small>/мес</small></div>
+          <div class="price" data-monthly="49" data-annual="470">$49<small>/мес</small></div>
           <ul>
-            <li>12 бирж</li>
+            <li>20 бирж в скане</li>
             <li>AI önerileri</li>
             <li>Portföy + PnL</li>
             <li>Безлимитный вотчлист</li>
           </ul>
-          <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">7 gün dene</a>
+          <a class="btn" href="/?plan=pro&utm_source=landing&utm_medium=landing">PWA'da aç</a>
+          <a class="plan-mini" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">veya Telegram Mini App'te</a>
         </div>
         <div class="plan">
-          <div class="name">Basic</div>
-          <div class="price">$29<small>/мес</small></div>
+          <div class="name">Pro+</div>
+          <div class="price" data-monthly="149" data-annual="1430">$149<small>/мес</small></div>
           <ul>
-            <li>5 бирж</li>
-            <li>AI-советы</li>
-            <li>Алерты безлимит</li>
+            <li>Все 23+ бирж</li>
+            <li>Все фичи Pro</li>
+            <li>Персональная поддержка</li>
+            <li>Ранний доступ к фичам</li>
           </ul>
-          <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Bağla</a>
+          <a class="btn" href="/?plan=proplus&utm_source=landing&utm_medium=landing">PWA'da aç</a>
+          <a class="plan-mini" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">veya Telegram Mini App'te</a>
         </div>
-        <div class="plan">
-          <div class="name">Pro Max</div>
-          <div class="price">$499<small>/мес</small></div>
-          <ul>
-            <li>20 бирж</li>
-            <li>Все Pro-фичи</li>
-            <li>Приоритетный AI</li>
-            <li>Максимум лимитов</li>
-          </ul>
-          <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Bağla</a>
+      </div>
+      <div class="pwa-hint">
+        <span>📲 PWA olarak aç: tarayıcıda «Uygulamayı yükle» veya «Ana ekrana ekle»</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="track" id="trackWidget">
+        <h2>Ne kadar kazanabilirdiniz</h2>
+        <p class="sub">Son <span id="trDays">30</span> gündür 23 borsanın gerçek oranlarıyla gösterim amaçlı hesaplama. Piyasa-nötr arbitraj, 1x kaldıraç, komisyonsuz — bu bir tavan, garanti değil.</p>
+        <div class="track-grid">
+          <div class="track-stat"><div class="num" id="trBestPair">—</div><div class="lbl">en iyi parite, yıllık</div></div>
+          <div class="track-stat"><div class="num" id="trBestApr">—</div><div class="lbl">en iyi parite getirisi</div></div>
+          <div class="track-stat"><div class="num" id="trDivApr">—</div><div class="lbl">çeşitlendirilmiş portföy</div></div>
+          <div class="track-stat"><div class="num" id="trNotional">$10k</div><div class="lbl">varsayılan sermaye</div></div>
         </div>
+        <p class="track-note" id="trNote">Gerçek veriler yükleniyor…</p>
       </div>
     </div>
   </section>
@@ -269,6 +302,36 @@
 
       load();
       setInterval(load, REFRESH_MS);
+    })();
+  </script>
+
+  <script>
+    var API_URL = 'https://funding-finder-api.onrender.com';
+    var TRACK_URL = API_URL + '/api/public/trackrecord';
+    function setBilling(period, btn) {
+      document.querySelectorAll('.billing-toggle button').forEach(function (b) { b.classList.toggle('active', b === btn); });
+      document.querySelectorAll('.pricing .price').forEach(function (el) {
+        var val = period === 'annual' ? el.getAttribute('data-annual') : el.getAttribute('data-monthly');
+        if (val == null) return;
+        var n = parseInt(val, 10);
+        if (n === 0) { el.innerHTML = '$0'; }
+        else if (period === 'annual') { el.innerHTML = '$' + n + '<small>/yıl</small>'; }
+        else { el.innerHTML = '$' + n + '<small>/ay</small>'; }
+      });
+    }
+    (function () {
+      var elDays=document.getElementById('trDays'),elBestPair=document.getElementById('trBestPair'),elBestApr=document.getElementById('trBestApr'),elDivApr=document.getElementById('trDivApr'),elNotional=document.getElementById('trNotional'),elNote=document.getElementById('trNote');
+      function pct(v){return (v==null||isNaN(v))?'—':v.toFixed(0)+'%';}
+      fetch(TRACK_URL,{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+        if(!d||!d.available){elNote.textContent='Henüz yeterli veri yok.';return;}
+        if(elDays&&d.windowDays)elDays.textContent=d.windowDays;
+        if(elBestPair&&d.bestPair&&d.bestPair.pair)elBestPair.textContent=d.bestPair.pair;
+        if(elBestApr)elBestApr.textContent=pct(d.bestPair&&d.bestPair.annualizedPct);
+        if(elDivApr)elDivApr.textContent=pct(d.diversified&&d.diversified.annualizedPct);
+        if(elNotional&&d.notionalUsd)elNotional.textContent='$'+(d.notionalUsd/1000)+'k';
+        var pairs=d.pairsAnalyzed?(' '+d.pairsAnalyzed+' parite üzerinde'):'';
+        elNote.textContent='Gerçek verilerle gösterim amaçlı backtest'+pairs+'. Yatırım tavsiyesi değildir.';
+      }).catch(function(){elNote.textContent='Veriler yüklenemedi.';});
     })();
   </script>
 </body>

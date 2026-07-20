@@ -36,7 +36,7 @@ async function consumeFreeAiQuota(userId: string): Promise<boolean> {
   });
   if (!user) return false;
   const tier = user.subscription;
-  if (tier === 'pro' || tier === 'promax' || tier === 'ultimate') return true;
+  if (tier === 'pro' || tier === 'proplus') return true;
 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);

@@ -13,11 +13,12 @@ const PLAN_LIMITS: Record<PlanTier, {
   watchlistLimit: number; // -1 = unlimited
   portfolioEnabled: boolean;
 }> = {
-  free: { maxExchanges: 3, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 3, portfolioEnabled: false },
-  basic: { maxExchanges: 5, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: 3, portfolioEnabled: false },
-  pro: { maxExchanges: 12, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
-  promax: { maxExchanges: 20, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
-  ultimate: { maxExchanges: 25, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
+  // Free is the top-of-funnel hook, not a crippled demo: enough exchanges and
+  // watchlist room to feel the product's value before hitting the paywall.
+  // (Daily free AI tip is handled separately via `lastFreeAiAt`.)
+  free: { maxExchanges: 8, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 10, portfolioEnabled: false },
+  pro: { maxExchanges: 20, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
+  proplus: { maxExchanges: 25, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
 };
 
 /** Trial duration in days. */

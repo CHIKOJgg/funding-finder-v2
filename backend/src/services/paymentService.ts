@@ -9,34 +9,22 @@ import { Plan, PlanId } from '../types/index.js';
 // Annual price = 20% off the 12× monthly equivalent (billed once per year).
 const annualFromMonthly = (m: number) => Math.round(m * 12 * 0.8);
 
+// Consolidated to 2 paid tiers. Pro is the hero (lower entry price than
+// the old Basic/Pro split), Pro+ is the high-value tier. Free stays free.
 export const PLANS: Record<PlanId, Plan> = {
-  basic: {
-    monthlyPrice: 29,
-    annualPrice: annualFromMonthly(29),
-    price: 29,
-    name: 'Basic',
-    features: ['5 бирж в скане', 'AI-советы', 'Алерты безлимит', 'Обновления каждые 6 часов'],
-  },
   pro: {
-    monthlyPrice: 99,
-    annualPrice: annualFromMonthly(99),
-    price: 99,
+    monthlyPrice: 49,
+    annualPrice: annualFromMonthly(49),
+    price: 49,
     name: 'Pro',
-    features: ['12 бирж', 'AI-анализ безлимита', 'Портфель + PnL', 'Безлимитный вотчлист', 'Приоритетные обновления', 'Экспорт данных'],
+    features: ['20 бирж в скане', 'AI-анализ безлимита', 'Портфель + PnL', 'Безлимитный вотчлист', 'Приоритетные обновления', 'Экспорт данных'],
   },
-  promax: {
-    monthlyPrice: 499,
-    annualPrice: annualFromMonthly(499),
-    price: 499,
-    name: 'Pro Max',
-    features: ['20 бирж', 'Все функции Pro', 'Эксклюзивные сигналы', 'Персональная поддержка', 'Ранний доступ'],
-  },
-  ultimate: {
-    monthlyPrice: 999,
-    annualPrice: annualFromMonthly(999),
-    price: 999,
-    name: 'Ultimate',
-    features: ['Все 25 бирж', 'Все функции Pro Max', 'Безлимитные алерты', 'Приоритетный AI', 'White-label'],
+  proplus: {
+    monthlyPrice: 149,
+    annualPrice: annualFromMonthly(149),
+    price: 149,
+    name: 'Pro+',
+    features: ['Все 25 бирж', 'Все функции Pro', 'Персональная поддержка', 'Ранний доступ к фичам', 'White-label'],
   },
 };
 
@@ -70,19 +58,34 @@ export async function handleReferral(newTelegramId: string, referralCode: string
 
   const newUser = await getUser(newTelegramId);
 
-  // Transaction: link referral and award bonus atomically
-  await prisma.$transaction([
+  // Double-sided incentive: the referred user gets an automatic 7-day Pro
+  // trial (so they experience the full product immediately), and the referrer
+  // keeps their 20% rev-share on the referral's first payment plus +1 scan.
+  // Giving value to BOTH sides turns every user into a growth channel.
+  const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const alreadyHasTrial = newUser.trialUsed || newUser.subscription !== 'free';
+
+  const updates: any[] = [
     prisma.user.update({
       where: { telegramId: newTelegramId },
       data: { referredBy: referrer.id },
     }),
     prisma.user.update({
       where: { id: referrer.id },
-      data: {
-        trialScans: { increment: 1 },
-      },
+      data: { trialScans: { increment: 1 } },
     }),
-  ]);
+  ];
+
+  if (!alreadyHasTrial) {
+    updates.push(
+      prisma.user.update({
+        where: { telegramId: newTelegramId },
+        data: { subscription: 'pro', trialUsed: true, trialEndsAt },
+      })
+    );
+  }
+
+  await prisma.$transaction(updates);
 
   return true;
 }

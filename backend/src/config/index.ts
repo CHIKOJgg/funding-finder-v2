@@ -58,6 +58,11 @@ const baseSchema = z.object({
   SENTRY_DSN: z.string().optional().default(''),
   TELEGRAM_BOT_USERNAME: z.string().optional().default(''),
 
+  // Public marketing signal channel (organic lead-gen, no ad spend). When set
+  // to a chat_id or @channelusername, the bot periodically posts the top
+  // arbitrage opportunity there to grow an audience. Leave empty to disable.
+  PUBLIC_SIGNAL_CHANNEL: z.string().optional().default(''),
+
   // White-label / branding (Block C). Lets the product be resold under a
   // different name, support handle and landing URL without code changes.
   APP_NAME: z.string().optional().default('Funding Finder'),
@@ -118,10 +123,11 @@ export const config = {
   isProduction,
   databaseUrl: env.DATABASE_URL,
 
-    telegram: {
-      botToken: env.TELEGRAM_BOT_TOKEN.trim(),
-      botUsername: env.TELEGRAM_BOT_USERNAME.trim() || 'FundingFinderBot',
-    },
+  telegram: {
+    botToken: env.TELEGRAM_BOT_TOKEN.trim(),
+    botUsername: env.TELEGRAM_BOT_USERNAME.trim() || 'FundingFinderBot',
+    publicSignalChannel: env.PUBLIC_SIGNAL_CHANNEL || undefined,
+  },
 
     branding: {
       name: env.APP_NAME,

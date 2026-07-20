@@ -27,6 +27,7 @@ import { metricsMiddleware, getMetrics, metricsContentType } from './utils/metri
 import { initJobQueues, shutdownJobQueues, getJobStats } from './services/jobQueue.js';
 import { getArchiveStats } from './services/dataArchival.js';
 import { startTelegramBot, stopTelegramBot } from './services/bot/telegramBot.js';
+import { startPublicSignalChannel, stopPublicSignalChannel } from './services/publicSignalChannel.js';
 
 // Routes
 import scanRoutes from './routes/scan.js';
@@ -524,8 +525,9 @@ async function start() {
        startDataArchival();
        startFundingWarmup();
         startNowPaymentsPolling();
-        startTelegramBot();
-        void startSelfPing();
+         startTelegramBot();
+         startPublicSignalChannel();
+         void startSelfPing();
       });
   } catch (err) {
     logger.error('Failed to start server:', err);
@@ -542,6 +544,7 @@ const gracefulShutdown = async (signal: string) => {
   stopFundingWarmup();
   stopNowPaymentsPolling();
   stopTelegramBot();
+  stopPublicSignalChannel();
   stopSelfPing();
   wsManager.close();
   await shutdownJobQueues();

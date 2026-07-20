@@ -37,7 +37,7 @@ export const tr: Record<string, string> = {
   'profile.referrals': 'Referanslar',
   'profile.paidReferrals': 'Ödeyen',
   'profile.earnings': 'Kazanılan',
-  'profile.referralDesc': 'Arkadaşlarını davet et ve ilk ödemelerinin %{rate}’ini doğrudan bakiyene kazan.',
+  'profile.referralDesc': 'Arkadaşlarını davet et: ilk ödemelerinin %{rate}’ini bakiyene kazanır, davet ettiğin kişi de 7 gün ücretsiz Pro kazanır.',
   'profile.referralEarnHint': 'Her arkadaşının ilk ödemesinin %{rate}’ini USDT bakiyene kazanırsın. İstediğin zaman çekebilirsin.',
   'profile.referralPlaceholder': 'Referans kodu girin...',
   'profile.apply': 'Uygula',
