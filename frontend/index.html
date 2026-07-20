@@ -12,6 +12,64 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>Funding Finder — арбитраж фандинга</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!--
+      Funnel gate: send genuine COLD web visitors who hit the bare root to the
+      localized sales landing, while letting the real app load for everyone who
+      already belongs there. Fails open (shows the app) on any error so it can
+      never lock users out. Runs before the SPA mounts to avoid a UI flash.
+
+      "App, do NOT redirect" signals:
+        - Inside a Telegram Mini App (initData / #tgWebAppData present)
+        - Installed PWA (standalone display mode)
+        - Returning / authenticated web user (ff_auth_token or onboarding done)
+        - Explicit app intent (came from a landing CTA: utm_source=landing / ?plan / ?app=1)
+    -->
+    <script>
+      (function () {
+        try {
+          var p = location.pathname;
+          if (p !== '/' && p !== '/index.html') return;
+
+          var qs = new URLSearchParams(location.search);
+          var hash = location.hash || '';
+
+          // 1) Telegram Mini App context.
+          var tgInit = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '';
+          if (tgInit || hash.indexOf('tgWebAppData') !== -1 || qs.has('tgWebAppStartParam')) return;
+
+          // 2) Installed PWA (standalone).
+          var standalone =
+            (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+            window.navigator.standalone === true;
+          if (standalone) return;
+
+          // 3) Returning / authenticated web user.
+          if (localStorage.getItem('ff_auth_token')) return;
+          if (localStorage.getItem('ff_onboarding_done') === 'true') return;
+
+          // 4) Explicit app intent (landing CTA, plan deep-link, or ?app=1).
+          if (qs.get('utm_source') === 'landing' || qs.has('plan') || qs.get('app') === '1') return;
+
+          // 5) Avoid redirect loops within a session.
+          if (sessionStorage.getItem('ff_gate_seen') === '1') return;
+          sessionStorage.setItem('ff_gate_seen', '1');
+
+          // Cold web visitor -> localized sales landing, preserving query (UTM).
+          var lang = (navigator.language || 'en').slice(0, 2).toLowerCase();
+          var localized = {
+            ru: '/landing.ru.html',
+            tr: '/landing.tr.html',
+            vi: '/landing.vi.html',
+            hi: '/landing.hi.html',
+            es: '/landing.es.html',
+          };
+          var target = localized[lang] || '/landing.html';
+          location.replace(target + location.search);
+        } catch (e) {
+          /* fail open: show the app */
+        }
+      })();
+    </script>
   </head>
   <body class="bg-gray-100 text-gray-900">
     <div id="root"></div>
