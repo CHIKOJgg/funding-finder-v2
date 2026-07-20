@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { apiClient } from '../api/client';
 import { useToast } from './Toast';
 import { useT } from '../i18n';
+import { track } from '../utils/analytics';
 
 interface CryptoCheckoutModalProps {
   open: boolean;
@@ -74,6 +75,7 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
           if (!paidFiredRef.current) {
             paidFiredRef.current = true;
             showToast(t('crypto.subscriptionActivated'), 'success');
+            track('paid', { plan: planId });
             onPaid();
             setTimeout(close, 1200);
           }

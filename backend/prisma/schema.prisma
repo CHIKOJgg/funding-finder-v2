@@ -331,8 +331,30 @@ model Waitlist {
   lang      String? // preferred locale (ru/en/tr/vi/hi/es)
   source    String? // utm/marketing source (e.g. "reddit", "producthunt")
   interest  String? // "passive" | "arbitrage" — which pitch resonated
+  welcomeSent Boolean @default(false) // welcome email already dispatched
+  lastWeeklyYmd String? // yyy-mm-dd of last weekly-report broadcast sent
   createdAt DateTime @default(now())
 
   @@index([createdAt])
   @@index([lang])
+}
+
+// Self-hosted, privacy-first funnel analytics. One row per tracked event along
+// the acquisition → activation → conversion path (landing_view, app_open,
+// scan_run, paywall_view, trial_start, paid). No PII beyond an optional
+// telegramId; aggregations power the admin funnel + A/B dashboards.
+model FunnelEvent {
+  id        String   @id @default(cuid())
+  userId    String?  // telegramId / web id when known, else null (anonymous)
+  sessionId String?  // stable per-browser session id (localStorage)
+  event     String   // landing_view | app_open | scan_run | paywall_view | trial_start | paid
+  source    String?  // utm_source (seo | landing | weekly | embed | ...)
+  variant   String?  // A/B test variant (e.g. "A" | "B")
+  meta      String?  // JSON blob (extra context, kept small)
+  createdAt DateTime @default(now())
+
+  @@index([event])
+  @@index([createdAt])
+  @@index([source])
+  @@index([variant])
 }

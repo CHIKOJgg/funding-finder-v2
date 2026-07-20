@@ -150,3 +150,85 @@ export async function sendDailySummaryEmail(
     html,
   });
 }
+
+// ---- Growth email automation (waitlist → newsletter) ----
+
+const APP_URL = process.env.AI_APP_URL || 'https://funding-finder-frontend.onrender.com';
+
+function langGreeting(lang?: string | null): { hi: string; sub: string; cta: string; footer: string } {
+  switch (lang) {
+    case 'ru':
+      return {
+        hi: 'Спасибо, что с нами!',
+        sub: 'Funding Finder собирает ставки фандинга с 23 бирж и показывает лучший рыночно-нейтральный арбитраж за секунды. Никаких крипто-инвестиций от вашего лица — только данные и идеи.',
+        cta: 'Открыть бесплатно',
+        footer: 'Отписаться можно в одно касание — просто ответьте на это письмо.',
+      };
+    default:
+      return {
+        hi: "You're on the list — welcome!",
+        sub: 'Funding Finder aggregates funding rates from 23 exchanges and surfaces the best market-neutral arbitrage in seconds. No capital at risk from us — just data and ideas to trade your own edge.',
+        cta: 'Open free',
+        footer: 'Reply to this email anytime to unsubscribe.',
+      };
+  }
+}
+
+export async function sendWaitlistWelcome(to: string, lang?: string | null): Promise<boolean> {
+  const g = langGreeting(lang);
+  const html = `
+    <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a">
+      <h1 style="font-size:22px;margin:0 0 12px">Funding Finder</h1>
+      <p style="font-size:16px;font-weight:600;margin:0 0 12px">${g.hi}</p>
+      <p style="font-size:15px;line-height:1.6;color:#334155;margin:0 0 20px">${g.sub}</p>
+      <a href="${APP_URL}/?utm_source=waitlist&utm_medium=email&utm_campaign=welcome"
+         style="display:inline-block;background:#3390ec;color:#fff;font-weight:600;padding:12px 22px;border-radius:10px;text-decoration:none">
+        ${g.cta} →
+      </a>
+      <p style="font-size:12px;color:#94a3b8;margin:24px 0 0">${g.footer}</p>
+    </div>
+  `;
+  return sendEmail({ to, subject: 'Welcome to Funding Finder', html, text: `${g.hi}\n${g.sub}\n${APP_URL}` });
+}
+
+export async function sendWeeklyReportEmail(
+  to: string,
+  report: {
+    windowDays: number;
+    bestPair: { pair: string; annualizedPct: number } | null;
+    diversifiedAnnualizedPct: number | null;
+    pairsAnalyzed: number;
+    topLive: Array<{ pair: string; exchangeA: string; exchangeB: string; annualReturn: number | null }>;
+  },
+  lang?: string | null
+): Promise<boolean> {
+  const fmtApr = (v: number | null) => (v == null || isNaN(v) ? '—' : `${(v * 100).toFixed(0)}%`);
+  const title = lang === 'ru' ? 'Еженедельный отчёт по фандингу' : 'Weekly Funding Report';
+  const rows = (report.topLive || [])
+    .map(
+      (o, i) => `
+      <tr>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${i + 1}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${o.pair}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0">${o.exchangeA} ↔ ${o.exchangeB}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;font-weight:600">до ${fmtApr(o.annualReturn)}/год</td>
+      </tr>`
+    )
+    .join('');
+
+  const html = `
+    <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a">
+      <h1 style="font-size:20px;margin:0 0 4px">📊 ${title}</h1>
+      <p style="font-size:13px;color:#64748b;margin:0 0 16px">${report.windowDays}-day market-neutral funding recap</p>
+      ${report.bestPair ? `<p style="font-size:15px;margin:0 0 6px">🏆 <b>${report.bestPair.pair}</b> — до ${fmtApr(report.bestPair.annualizedPct)}/год</p>` : ''}
+      ${report.diversifiedAnnualizedPct != null ? `<p style="font-size:15px;margin:0 0 16px">🧺 ${lang === 'ru' ? 'Диверсиф. портфель' : 'Diversified basket'}: ~${fmtApr(report.diversifiedAnnualizedPct)}/год</p>` : ''}
+      ${rows ? `<table style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr style="text-align:left;color:#64748b"><th>#</th><th>Pair</th><th>Exchanges</th><th>APR</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
+      <a href="${APP_URL}/?utm_source=weekly&utm_medium=email&utm_campaign=report"
+         style="display:inline-block;margin-top:20px;background:#3390ec;color:#fff;font-weight:600;padding:12px 22px;border-radius:10px;text-decoration:none">
+        ${lang === 'ru' ? 'Открыть Funding Finder' : 'Open Funding Finder'} →
+      </a>
+      <p style="font-size:12px;color:#94a3b8;margin:24px 0 0">${lang === 'ru' ? 'Иллюстративно, не инвест-рекомендация.' : 'Illustrative, not investment advice.'}</p>
+    </div>
+  `;
+  return sendEmail({ to, subject: `📊 ${title}`, html });
+}

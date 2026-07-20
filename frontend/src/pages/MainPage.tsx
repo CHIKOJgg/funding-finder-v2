@@ -17,6 +17,7 @@ import { QuickStart } from '../components/QuickStart';
 import { PairMatrix } from '../components/PairMatrix';
 import { RiskProfileModal } from '../components/RiskProfileModal';
 import { ResultSkeleton } from '../components/Skeleton';
+import { ActivationChecklist } from '../components/ActivationChecklist';
 import { ExchangeResult } from '../types';
 import { useT, useI18n } from '../i18n';
 
@@ -193,6 +194,8 @@ export function MainPage() {
       </div>
 
       <QuickStart hasScanResults={Boolean(scanResults)} selectedCount={selectedExchanges.length} />
+
+      {!planLimits.aiEnabled && <ActivationChecklist />}
 
       <div className="card">
         <ExchangeSelector

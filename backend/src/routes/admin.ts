@@ -290,6 +290,91 @@ router.get('/metrics', async (_req: AuthenticatedRequest, res: Response) => {
   }
 });
 
+// GET /funnel — self-hosted event funnel + A/B breakdown (CMO growth loop).
+// Reads the privacy-first FunnelEvent table (no PII) and returns stage counts,
+// conversion between stages, a by-source split and an A/B variant comparison so
+// landing-page headline tests can be judged on real downstream conversion.
+const FUNNEL_STAGES = ['landing_view', 'app_open', 'scan_run', 'paywall_view', 'trial_start', 'paid'] as const;
+
+router.get('/funnel', async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [byEvent, bySource, byVariant, paidOrders] = await Promise.all([
+      prisma.funnelEvent.groupBy({
+        by: ['event'],
+        where: { createdAt: { gte: since } },
+        _count: { _all: true },
+      }),
+      prisma.funnelEvent.groupBy({
+        by: ['source'],
+        where: { createdAt: { gte: since }, source: { not: null } },
+        _count: { _all: true },
+      }),
+      // Per-variant landing→app conversion (the A/B metric that matters).
+      prisma.funnelEvent.groupBy({
+        by: ['variant', 'event'],
+        where: { createdAt: { gte: since }, variant: { not: null } },
+        _count: { _all: true },
+      }),
+      prisma.order.count({ where: { status: 'paid', createdAt: { gte: since } } }),
+    ]);
+
+    const counts: Record<string, number> = {};
+    for (const row of byEvent) counts[row.event] = row._count._all;
+    // 'paid' is also backed by real orders so it stays accurate even if a
+    // client-side 'paid' ping is missed.
+    counts.paid = Math.max(counts.paid || 0, paidOrders);
+
+    const sourceBreakdown: Record<string, number> = {};
+    for (const row of bySource) sourceBreakdown[row.source || 'unknown'] = row._count._all;
+
+    // Build per-variant conversion: landing_view -> app_open -> trial_start.
+    const variantAgg: Record<string, Record<string, number>> = {};
+    for (const row of byVariant) {
+      const v = row.variant || 'unknown';
+      variantAgg[v] = variantAgg[v] || {};
+      variantAgg[v][row.event] = row._count._all;
+    }
+    const variantComparison = Object.entries(variantAgg).map(([variant, ev]) => {
+      const landing = ev.landing_view || 0;
+      const appOpen = ev.app_open || 0;
+      const trial = ev.trial_start || 0;
+      return {
+        variant,
+        landingView: landing,
+        appOpen,
+        trialStart: trial,
+        landingToAppPct: landing > 0 ? Number(((appOpen / landing) * 100).toFixed(1)) : 0,
+        appToTrialPct: appOpen > 0 ? Number(((trial / appOpen) * 100).toFixed(1)) : 0,
+      };
+    });
+
+    const step = (a: number, b: number) => (a > 0 ? Number(((b / a) * 100).toFixed(1)) : 0);
+    const funnel = FUNNEL_STAGES.map((stage, i) => {
+      const value = counts[stage] || 0;
+      const prev = i > 0 ? counts[FUNNEL_STAGES[i - 1]] || 0 : 0;
+      return {
+        stage,
+        value,
+        conversionFromPrevPct: i > 0 ? step(prev, value) : 100,
+      };
+    });
+
+    res.json({
+      ok: true,
+      windowDays: 30,
+      funnel,
+      sourceBreakdown,
+      variantComparison,
+      totalLandingViews: counts.landing_view || 0,
+    });
+  } catch (err) {
+    logger.error('Admin funnel error:', err);
+    res.status(500).json({ ok: false, error: 'Failed to load funnel' });
+  }
+});
+
 // DELETE /users/:id — delete user and all associated data
 router.delete('/users/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {

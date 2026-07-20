@@ -283,8 +283,44 @@
   <div class="hero">
     <div class="wrap">
       <span class="pill">⚡ Live · отслеживаем <b id="exCount">23</b> биржи · <b id="pairCount">—</b> пар в скане сейчас</span>
-      <h1>Зарабатывай <span class="hl">рыночно-нейтрально</span><br>на ставках фандинга</h1>
-      <p class="lead">Funding Finder сканирует <b>23 биржи</b> и показывает лучший межбиржевой арбитраж фандинга за секунды — пассивный доход без ставки на направление рынка. Бесплатный старт, без карты и депозита, чтобы просто смотреть.</p>
+      <h1 id="heroTitle" data-v-a="Зарабатывай рыночно-нейтрально на ставках фандинга" data-v-b="Превращай разрывы фандинга в еженедельный доход — автоматически">Зарабатывай <span class="hl">рыночно-нейтрально</span><br>на ставках фандинга</h1>
+      <p class="lead" id="heroLead" data-v-a="Funding Finder сканирует 23 биржи и показывает лучший межбиржевой арбитраж фандинга за секунды — пассивный доход без ставки на направление рынка. Бесплатный старт, без карты и депозита, чтобы просто смотреть." data-v-b="Funding Finder авто-сканирует 23 биржи на лучшие спреды фандинга и показывает, где открыть каждую ногу. Бесплатный старт — депозит не нужен.">Funding Finder сканирует <b>23 биржи</b> и показывает лучший межбиржевой арбитраж фандинга за секунды — пассивный доход без ставки на направление рынка. Бесплатный старт, без карты и депозита, чтобы просто смотреть.</p>
+      <!-- A/B заголовков: стабильная вариация на браузер (?v=A|B для теста), подмена текста + landing_view с вариантом для воронки в админке. -->
+      <script>
+        (function () {
+          try {
+            var API_URL = 'https://funding-finder-api.onrender.com';
+            var params = new URLSearchParams(location.search);
+            var forced = params.get('v');
+            var v = localStorage.getItem('ff_ab_variant');
+            if (forced === 'A' || forced === 'B') { v = forced; }
+            else if (!v) { v = Math.random() < 0.5 ? 'A' : 'B'; }
+            localStorage.setItem('ff_ab_variant', v);
+
+            var h1 = document.getElementById('heroTitle');
+            var lead = document.getElementById('heroLead');
+            if (h1 && h1.getAttribute('data-v-' + v.toLowerCase())) {
+              h1.textContent = h1.getAttribute('data-v-' + v.toLowerCase());
+            }
+            if (lead && lead.getAttribute('data-v-' + v.toLowerCase())) {
+              lead.textContent = lead.getAttribute('data-v-' + v.toLowerCase());
+            }
+
+            var src = params.get('utm_source');
+            if (src) localStorage.setItem('ff_src', src);
+
+            var sid = localStorage.getItem('ff_analytics_session');
+            if (!sid) { sid = 's_' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('ff_analytics_session', sid); }
+
+            fetch(API_URL + '/api/public/track', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ event: 'landing_view', source: src || undefined, variant: v, sessionId: sid }),
+              keepalive: true,
+            }).catch(function () {});
+          } catch (e) { /* never block the page */ }
+        })();
+      </script>
       <div class="actions">
         <a class="btn green" href="https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=hero" id="ctaHero">🚀 Начать бесплатно — смотреть возможности</a>
         <a class="btn ghost" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Открыть в Telegram</a>

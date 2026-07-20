@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { PaywallFeature } from '../utils/plans';
 import { TrialCTA } from './TrialCTA';
 import { useT } from '../i18n';
+import { track } from '../utils/analytics';
 
 const FEATURE_INFO: Record<PaywallFeature, {
   icon: string;
@@ -52,6 +54,11 @@ export function PaywallModal({
 }) {
   const navigate = useNavigate();
   const t = useT();
+  // Track the paywall impression (a key conversion-stage signal) whenever the
+  // modal is shown for a gated feature. Runs only on the open transition.
+  useEffect(() => {
+    if (open) track('paywall_view', { feature });
+  }, [open, feature]);
   if (!open) return null;
 
   const info = FEATURE_INFO[feature];

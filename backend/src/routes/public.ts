@@ -9,8 +9,41 @@ import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
 import { computeTrackRecord } from '../services/trackRecordService.js';
 import { computeWeeklyReport } from '../services/weeklyReport.js';
+import { sendWaitlistWelcome } from '../services/emailNotify.js';
 
 const router = Router();
+
+// Self-hosted funnel event ingestion. No auth (landing pages are anonymous and
+// served from a separate origin), best-effort and never throws — a tracking
+// failure must never break the page that fired it.
+const trackSchema = z.object({
+  event: z.enum(['landing_view', 'app_open', 'scan_run', 'paywall_view', 'trial_start', 'paid']),
+  source: z.string().max(40).optional(),
+  variant: z.string().max(20).optional(),
+  sessionId: z.string().max(80).optional(),
+  userId: z.string().max(80).optional(),
+  meta: z.record(z.any()).optional(),
+});
+
+router.post('/track', validate(trackSchema), async (req, res) => {
+  try {
+    const { event, source, variant, sessionId, userId, meta } = req.body;
+    await prisma.funnelEvent.create({
+      data: {
+        event,
+        source: source ?? null,
+        variant: variant ?? null,
+        sessionId: sessionId ?? null,
+        userId: userId ?? null,
+        meta: meta ? JSON.stringify(meta).slice(0, 2000) : null,
+      },
+    });
+  } catch (e) {
+    // Swallow: analytics must not 500 the caller.
+    logger.warn({ err: (e as Error).message }, 'Funnel track ingest failed');
+  }
+  return res.json({ ok: true });
+});
 
 // Public (no-auth) live arbitrage snapshot for the marketing landing page.
 //
@@ -165,6 +198,14 @@ router.post('/waitlist', validate(waitlistSchema), async (req, res) => {
       },
     });
     logger.info({ email, telegram, source, interest }, 'Waitlist signup');
+    // Fire-and-forget welcome email (best effort; never blocks the signup).
+    if (email) {
+      void sendWaitlistWelcome(email, lang).then((ok) => {
+        if (ok) {
+          prisma.waitlist.update({ where: { email }, data: { welcomeSent: true } }).catch(() => {});
+        }
+      });
+    }
     return res.json({ ok: true, message: 'Subscribed' });
   } catch (e) {
     const error = e as Error;

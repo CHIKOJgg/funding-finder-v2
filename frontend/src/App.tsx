@@ -17,6 +17,7 @@ import { useT } from './i18n';
 import type { ScanResult, TrialStatus, WatchlistItem } from './types';
 import { DebugLog, DebugToggle } from './components/DebugLog';
 import { logger as clientLogger } from './utils/logger';
+import { track } from './utils/analytics';
 
 const MainPage = React.lazy(() => import('./pages/MainPage').then(m => ({ default: m.MainPage })));
 const ArbitragePage = React.lazy(() => import('./pages/ArbitragePage').then(m => ({ default: m.ArbitragePage })));
@@ -151,6 +152,12 @@ function DataProvider() {
     clientLogger.setUser(user?.id ?? null);
   }, [user?.id]);
 
+  // Track "app_open" once on mount — the activation pivot between the anonymous
+  // landing funnel and the authenticated in-app funnel. Runs once per SPA load.
+  useEffect(() => {
+    track('app_open', undefined, user?.id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Subscription state
   const [subscription, setSubscription] = useState<string>('free');
   const planLimits = useMemo<PlanLimits>(() => getPlanLimits(subscription), [subscription]);
@@ -197,6 +204,7 @@ function DataProvider() {
       if (res?.ok) {
         setTrialStatus({ active: true, used: true, endsAt: res.endsAt, daysLeft: res.daysLeft, hoursLeft: res.hoursLeft });
         setSubscription('pro');
+        track('trial_start', undefined, user?.id);
         return true;
       } else if (res?.error) {
         showToast(res.error, 'error');
@@ -270,6 +278,7 @@ function DataProvider() {
           setScanResults(response.result);
           setScanStatus(t('app.found', { count: response.result.scanned }));
           showToast(t('app.scanDone'), 'success');
+          track('scan_run', { exchanges: exchanges.length }, user?.id);
         } else {
           const isRate = /too many requests/i.test(String(response.error || ''));
           setScanStatus(isRate ? t('app.rateLimited') : t('app.scanError', { error: response.error }));

@@ -149,6 +149,13 @@ ${related.length ? `<h2>Related</h2><div class="rel">${related.map((r) => `<a hr
 <script>
 (function(){
   var API=${JSON.stringify(API)};
+  // Funnel: attribute this SEO page view (source=seo) so the admin funnel can
+  // measure organic landing → app-open conversion. Best-effort, never blocks.
+  try{
+    var ss=localStorage.getItem('ff_analytics_session');
+    if(!ss){ss='s_'+Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem('ff_analytics_session',ss);}
+    fetch(API+'/api/public/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({event:'landing_view',source:'seo',variant:localStorage.getItem('ff_ab_variant')||undefined,sessionId:ss,meta:{page:location.pathname}}),keepalive:true}).catch(function(){});
+  }catch(e){}
   var el=document.querySelector('.live'); if(!el) return;
   var cfg={}; try{cfg=JSON.parse(el.getAttribute('data-live'))}catch(e){}
   var body=el.querySelector('[data-el="body"]');

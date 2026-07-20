@@ -6,6 +6,8 @@ import { getCachedScan, runScan } from './scanService.js';
 import { getWarmupPromise } from './fundingWarmup.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { computeTrackRecord } from './trackRecordService.js';
+import { sendWeeklyReportEmail } from './emailNotify.js';
+import { prisma } from './prisma.js';
 
 // Weekly Funding Report — a content engine for organic, zero-ad-spend growth.
 //
@@ -175,7 +177,46 @@ export async function postWeeklyReport(force = false): Promise<boolean> {
   if (ok) {
     logger.info({ channel }, 'Weekly report: posted');
   }
+
+  // Newsletter broadcast: email the same report to waitlist subscribers who
+  // left an email. Idempotent per calendar day via lastWeeklyYmd so a re-run
+  // never double-sends. Best-effort; failures are logged, never fatal.
+  await broadcastWeeklyReportEmail(report).catch((e) =>
+    logger.warn({ err: (e as Error).message }, 'Weekly report email broadcast failed')
+  );
+
   return ok;
+}
+
+// Email the weekly report to every waitlist entry that has an email address
+// and hasn't been sent today. Throttled in-process (1 email / 120ms) so we
+// don't hammer the SMTP relay; for very large lists this should move to the
+// job queue, but the waitlist is small today.
+async function broadcastWeeklyReportEmail(report: WeeklyReport): Promise<void> {
+  const mskDate = new Date(Date.now() + 3 * 60 * 60 * 1000);
+  const ymd = `${mskDate.getUTCFullYear()}-${mskDate.getUTCMonth() + 1}-${mskDate.getUTCDate()}`;
+
+  const recipients = await prisma.waitlist.findMany({
+    where: {
+      email: { not: null },
+      OR: [{ lastWeeklyYmd: null }, { lastWeeklyYmd: { not: ymd } }],
+    },
+    select: { id: true, email: true, lang: true },
+  });
+  if (recipients.length === 0) return;
+
+  logger.info(`Weekly report: broadcasting to ${recipients.length} waitlist emails`);
+  for (const r of recipients) {
+    const sent = await sendWeeklyReportEmail(r.email as string, report, r.lang);
+    await prisma.waitlist.update({
+      where: { id: r.id },
+      data: { lastWeeklyYmd: ymd },
+    }).catch(() => {});
+    if (sent) {
+      logger.info(`Weekly report emailed to waitlist ${r.id}`);
+    }
+    await new Promise((res) => setTimeout(res, 120));
+  }
 }
 
 export function startWeeklyReport(): void {

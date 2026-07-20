@@ -65,14 +65,30 @@ interface Metrics {
   acquisitionBySource: Record<string, number>;
 }
 
+interface Funnel {
+  windowDays: number;
+  funnel: Array<{ stage: string; value: number; conversionFromPrevPct: number }>;
+  sourceBreakdown: Record<string, number>;
+  variantComparison: Array<{
+    variant: string;
+    landingView: number;
+    appOpen: number;
+    trialStart: number;
+    landingToAppPct: number;
+    appToTrialPct: number;
+  }>;
+  totalLandingViews: number;
+}
+
 export function AdminPage() {
   const { user } = useApp();
   const { showToast } = useToast();
   const t = useT();
-  const [tab, setTab] = useState<'users' | 'stats' | 'metrics'>('stats');
+  const [tab, setTab] = useState<'users' | 'stats' | 'metrics' | 'funnel'>('stats');
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [funnel, setFunnel] = useState<Funnel | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -91,6 +107,13 @@ export function AdminPage() {
     try {
       const res: any = await apiClient.get('/admin/metrics');
       if (res.ok) setMetrics(res.metrics);
+    } catch { /* ignore */ }
+  }, []);
+
+  const fetchFunnel = useCallback(async () => {
+    try {
+      const res: any = await apiClient.get('/admin/funnel');
+      if (res.ok) setFunnel(res);
     } catch { /* ignore */ }
   }, []);
 
@@ -113,7 +136,8 @@ export function AdminPage() {
     if (tab === 'users') fetchUsers(page, search);
     if (tab === 'stats') fetchStats();
     if (tab === 'metrics') fetchMetrics();
-  }, [tab, page, search, fetchUsers, fetchStats, fetchMetrics]);
+    if (tab === 'funnel') fetchFunnel();
+  }, [tab, page, search, fetchUsers, fetchStats, fetchMetrics, fetchFunnel]);
 
   const handleUpdateSubscription = useCallback(async (userId: string, subscription: string) => {
     try {
@@ -194,6 +218,12 @@ export function AdminPage() {
             className={`flex-1 py-2 rounded-lg font-medium ${tab === 'metrics' ? 'bg-[var(--brand)] text-white' : 'bg-gray-200 text-[var(--text-muted)]'}`}
           >
             {t('admin.metrics')}
+          </button>
+          <button
+            onClick={() => setTab('funnel')}
+            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'funnel' ? 'bg-[var(--brand)] text-white' : 'bg-gray-200 text-[var(--text-muted)]'}`}
+          >
+            {t('admin.funnel')}
           </button>
         </div>
       </div>
@@ -380,6 +410,69 @@ export function AdminPage() {
               ))}
             </div>
           </div>
+        </>
+      )}
+
+      {tab === 'funnel' && funnel && (
+        <>
+          <div className="card">
+            <h2 className="text-lg font-semibold mb-1">{t('admin.funnel.eventFunnel')}</h2>
+            <p className="text-xs text-[var(--text-muted)] mb-3">last {funnel.windowDays} days · {funnel.totalLandingViews} landing views</p>
+            {funnel.funnel.map((s) => (
+              <div key={s.stage} className="mb-2">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="font-medium">{t(`admin.funnel.${s.stage}`)}</span>
+                  <span className="text-[var(--text-muted)]">{s.value.toLocaleString()}{s.conversionFromPrevPct < 100 && s.value > 0 ? ` · ${s.conversionFromPrevPct}%` : ''}</span>
+                </div>
+                <div className="h-2 rounded-full bg-[var(--surface-2)] overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${funnel.totalLandingViews > 0 ? Math.max(2, (s.value / funnel.totalLandingViews) * 100) : 0}%`, background: 'var(--brand)' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {funnel.variantComparison.length > 0 && (
+            <div className="card">
+              <h2 className="text-lg font-semibold mb-3">{t('admin.funnel.abTest')}</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-[var(--text-muted)] text-left">
+                      <th className="py-1 pr-2">{t('admin.funnel.variant')}</th>
+                      <th className="py-1 pr-2">{t('admin.funnel.landingView')}</th>
+                      <th className="py-1 pr-2">{t('admin.funnel.appOpen')}</th>
+                      <th className="py-1 pr-2">L→A%</th>
+                      <th className="py-1 pr-2">{t('admin.funnel.trialStart')}</th>
+                      <th className="py-1 pr-2">A→T%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {funnel.variantComparison.map((v) => (
+                      <tr key={v.variant} className="border-t border-[var(--border)]">
+                        <td className="py-1.5 pr-2 font-bold">{v.variant}</td>
+                        <td className="py-1.5 pr-2">{v.landingView.toLocaleString()}</td>
+                        <td className="py-1.5 pr-2">{v.appOpen.toLocaleString()}</td>
+                        <td className="py-1.5 pr-2">{v.landingToAppPct}%</td>
+                        <td className="py-1.5 pr-2">{v.trialStart.toLocaleString()}</td>
+                        <td className="py-1.5 pr-2">{v.appToTrialPct}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {Object.keys(funnel.sourceBreakdown).length > 0 && (
+            <div className="card">
+              <h2 className="text-lg font-semibold mb-3">{t('admin.funnel.bySource')}</h2>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(funnel.sourceBreakdown).map(([src, count]) => (
+                  <span key={src} className="text-xs bg-gray-100 px-2 py-1 rounded">{src}: {String(count)}</span>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
 

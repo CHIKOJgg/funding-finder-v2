@@ -283,8 +283,45 @@
   <div class="hero">
     <div class="wrap">
       <span class="pill">⚡ Live · tracking <b id="exCount">23</b> exchanges · <b id="pairCount">—</b> pairs scanning now</span>
-      <h1>Earn <span class="hl">market-neutral yield</span><br>on crypto funding rates</h1>
-      <p class="lead">Funding Finder scans <b>23 exchanges</b> and surfaces the best cross-exchange funding arbitrage in seconds — passive yield without betting on price direction. Free to start, no card, no deposit to look.</p>
+      <h1 id="heroTitle" data-v-a="Earn market-neutral yield on crypto funding rates" data-v-b="Turn funding-rate gaps into weekly income — automatically">Earn <span class="hl">market-neutral yield</span><br>on crypto funding rates</h1>
+      <p class="lead" id="heroLead" data-v-a="Funding Finder scans 23 exchanges and surfaces the best cross-exchange funding arbitrage in seconds — passive yield without betting on price direction. Free to start, no card, no deposit to look." data-v-b="Funding Finder auto-scans 23 exchanges for the best funding spreads and shows you exactly where to open each leg. Free to start — no deposit required.">Funding Finder scans <b>23 exchanges</b> and surfaces the best cross-exchange funding arbitrage in seconds — passive yield without betting on price direction. Free to start, no card, no deposit to look.</p>
+      <!-- A/B headline test: assign a stable per-browser variant (override with ?v=A|B), swap copy, and fire landing_view with the variant so the admin funnel can compare conversion. -->
+      <script>
+        (function () {
+          try {
+            var API_URL = 'https://funding-finder-api.onrender.com';
+            var params = new URLSearchParams(location.search);
+            var forced = params.get('v');
+            var v = localStorage.getItem('ff_ab_variant');
+            if (forced === 'A' || forced === 'B') { v = forced; }
+            else if (!v) { v = Math.random() < 0.5 ? 'A' : 'B'; }
+            localStorage.setItem('ff_ab_variant', v);
+
+            var h1 = document.getElementById('heroTitle');
+            var lead = document.getElementById('heroLead');
+            if (h1 && h1.getAttribute('data-v-' + v.toLowerCase())) {
+              h1.textContent = h1.getAttribute('data-v-' + v.toLowerCase());
+            }
+            if (lead && lead.getAttribute('data-v-' + v.toLowerCase())) {
+              lead.textContent = lead.getAttribute('data-v-' + v.toLowerCase());
+            }
+
+            // Persist source for downstream in-app attribution.
+            var src = params.get('utm_source');
+            if (src) localStorage.setItem('ff_src', src);
+
+            var sid = localStorage.getItem('ff_analytics_session');
+            if (!sid) { sid = 's_' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('ff_analytics_session', sid); }
+
+            fetch(API_URL + '/api/public/track', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ event: 'landing_view', source: src || undefined, variant: v, sessionId: sid }),
+              keepalive: true,
+            }).catch(function () {});
+          } catch (e) { /* never block the page */ }
+        })();
+      </script>
       <div class="actions">
         <a class="btn green" href="https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=hero" id="ctaHero">🚀 Start free — see live opportunities</a>
         <a class="btn ghost" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Open in Telegram</a>
