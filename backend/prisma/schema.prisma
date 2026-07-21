@@ -18,6 +18,7 @@ model User {
   email          String?  @unique
   walletAddress  String?  @unique
   googleSub      String?  @unique
+  passwordHash   String?
   username       String?
   firstName      String?
   role           String   @default("user")

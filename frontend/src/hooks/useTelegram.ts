@@ -101,8 +101,14 @@ export function useTelegram() {
     // Capture ?ref=CODE from URL before anything else
     captureReferralCode();
 
-    if (window.Telegram?.WebApp) {
-      const webApp = window.Telegram.WebApp;
+    const webApp = window.Telegram?.WebApp;
+    const hasRealTelegramContext = Boolean(
+      webApp?.initData ||
+      window.location.hash.includes('tgWebAppData') ||
+      new URLSearchParams(window.location.search).has('tgWebAppStartParam')
+    );
+
+    if (webApp && hasRealTelegramContext) {
       setTg(webApp);
 
       const expandNow = () => {

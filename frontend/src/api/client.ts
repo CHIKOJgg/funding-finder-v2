@@ -383,6 +383,15 @@ export const apiClient = {
     return api.post('/auth/google', { idToken, referredByCode });
   },
 
+  async emailRegister(email: string, password: string, firstName?: string) {
+    const referredByCode = getStoredReferralCode();
+    return api.post('/auth/register', { email, password, firstName, referredByCode });
+  },
+
+  async emailLogin(email: string, password: string) {
+    return api.post('/auth/login', { email, password });
+  },
+
   async getMe() {
     return api.get('/auth/me');
   },

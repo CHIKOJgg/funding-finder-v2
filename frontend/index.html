@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-title" content="Funding Finder" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>Funding Finder — арбитраж фандинга</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script async src="https://telegram.org/js/telegram-web-app.js"></script>
     <!--
       Funnel gate: send genuine COLD web visitors who hit the bare root to the
       localized sales landing, while letting the real app load for everyone who
@@ -33,9 +33,8 @@
           var qs = new URLSearchParams(location.search);
           var hash = location.hash || '';
 
-          // 1) Telegram Mini App context.
-          var tgInit = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) || '';
-          if (tgInit || hash.indexOf('tgWebAppData') !== -1 || qs.has('tgWebAppStartParam')) return;
+          // 1) Telegram Mini App context (check URL signals — SDK may still be loading async).
+          if (hash.indexOf('tgWebAppData') !== -1 || qs.has('tgWebAppStartParam')) return;
 
           // 2) Installed PWA (standalone).
           var standalone =

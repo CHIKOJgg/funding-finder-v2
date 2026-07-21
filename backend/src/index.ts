@@ -87,11 +87,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com', 'https://telegram.org'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com'],
       imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
       fontSrc: ["'self'", 'data:'],
-      connectSrc: ["'self'", 'wss:', 'https:'],
+      connectSrc: ["'self'", 'wss:', 'https:', 'https://accounts.google.com'],
+      frameSrc: ["'self'", 'https://accounts.google.com', 'https://web.telegram.org'],
       frameAncestors: ["'self'", 'https://web.telegram.org', 'https://t.me'],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],

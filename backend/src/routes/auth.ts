@@ -14,6 +14,34 @@ import { prisma } from '../services/prisma.js';
 import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
 
+// ---------------------------------------------------------------------------
+// Email / password helpers (PBKDF2 via Node built-in crypto — no bcrypt dep)
+// ---------------------------------------------------------------------------
+const KDF_ITERATIONS = 100_000;
+const KDF_KEYLEN = 64;
+const KDF_DIGEST = 'sha512';
+
+function hashPassword(password: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const salt = crypto.randomBytes(16).toString('hex');
+    crypto.scrypt(password, salt, KDF_KEYLEN, { N: 16384, r: 8, p: 1 }, (err, derivedKey) => {
+      if (err) return reject(err);
+      resolve(`${salt}:${derivedKey.toString('hex')}`);
+    });
+  });
+}
+
+function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const [salt, hash] = storedHash.split(':');
+    if (!salt || !hash) return resolve(false);
+    crypto.scrypt(password, salt, KDF_KEYLEN, { N: 16384, r: 8, p: 1 }, (err, derivedKey) => {
+      if (err) return reject(err);
+      resolve(crypto.timingSafeEqual(Buffer.from(hash, 'hex'), derivedKey));
+    });
+  });
+}
+
 const router = Router();
 
 async function resolveReferralCode(code?: string): Promise<string | undefined> {
@@ -195,5 +223,90 @@ if (!config.isProduction) {
     }
   });
 }
+
+// ---------------------------------------------------------------------------
+// Email / password registration + login
+// ---------------------------------------------------------------------------
+
+const registerSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  firstName: z.string().min(1).max(50).optional(),
+  referredByCode: z.string().optional(),
+});
+
+// POST /api/auth/register → create account with email + password
+router.post('/register', validate(registerSchema), async (req: Request, res: Response) => {
+  try {
+    const { email, password, firstName, referredByCode } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if email is already taken
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (existing) {
+      return res.status(409).json({ ok: false, error: 'An account with this email already exists' });
+    }
+
+    const passwordHash = await hashPassword(password);
+    const telegramId = `email_${normalizedEmail}`;
+    const referrerId = referredByCode
+      ? (await prisma.user.findUnique({ where: { referralCode: referredByCode } }))?.id
+      : undefined;
+
+    const user = await prisma.user.create({
+      data: {
+        telegramId,
+        authProvider: 'email',
+        email: normalizedEmail,
+        passwordHash,
+        firstName: firstName || normalizedEmail.split('@')[0],
+        lastActive: new Date(),
+        ...(referrerId ? { referredBy: referrerId } : {}),
+      },
+    });
+
+    const token = signAuthToken({ sub: telegramId, provider: 'email', email: normalizedEmail });
+    res.json({ ok: true, token, user: publicUser(user) });
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Email register error');
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+// POST /api/auth/login → sign in with email + password
+router.post('/login', validate(loginSchema), async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (!user || !user.passwordHash) {
+      return res.status(401).json({ ok: false, error: 'Invalid email or password' });
+    }
+
+    const valid = await verifyPassword(password, user.passwordHash);
+    if (!valid) {
+      return res.status(401).json({ ok: false, error: 'Invalid email or password' });
+    }
+
+    await prisma.user.update({
+      where: { telegramId: user.telegramId },
+      data: { lastActive: new Date() },
+    });
+
+    const token = signAuthToken({ sub: user.telegramId, provider: 'email', email: normalizedEmail });
+    res.json({ ok: true, token, user: publicUser(user) });
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Email login error');
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
 
 export default router;

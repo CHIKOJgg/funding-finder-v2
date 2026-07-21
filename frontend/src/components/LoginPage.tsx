@@ -47,6 +47,8 @@ function loadGoogleScript(): Promise<void> {
   });
 }
 
+type AuthMode = 'login' | 'register';
+
 export function LoginPage({ onAuthenticated }: LoginProps) {
   const { showToast } = useToast();
   const t = useT();
@@ -54,6 +56,14 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const googleBtnRef = useRef<HTMLDivElement | null>(null);
+
+  // Email / password state
+  const [mode, setMode] = useState<AuthMode>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
 
   useEffect(() => {
     apiClient.getAuthConfig()
@@ -163,6 +173,45 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
     }
   };
 
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) {
+      showToast(t('login.emailError'), 'error');
+      return;
+    }
+    if (password.length < 8) {
+      showToast(t('login.passwordError'), 'error');
+      return;
+    }
+
+    setEmailLoading(true);
+    try {
+      if (mode === 'register') {
+        const res: any = await apiClient.emailRegister(trimmedEmail, password, firstName.trim() || undefined);
+        if (res?.ok) {
+          showToast(t('login.registerSuccess'), 'success');
+          onAuthenticated(res.token, res.user);
+        } else {
+          throw new Error(res?.error || t('login.registerError'));
+        }
+      } else {
+        const res: any = await apiClient.emailLogin(trimmedEmail, password);
+        if (res?.ok) {
+          showToast(t('login.success'), 'success');
+          onAuthenticated(res.token, res.user);
+        } else {
+          throw new Error(res?.error || t('login.loginError'));
+        }
+      }
+    } catch (err) {
+      const prefix = mode === 'register' ? t('login.registerError') : t('login.loginError');
+      showToast(prefix + (err as Error).message, 'error');
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--bg)' }}>
       <div className="w-full max-w-sm rounded-2xl p-6 shadow-lg" style={{ background: 'var(--surface)', color: 'var(--text)' }}>
@@ -172,6 +221,97 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
             {t('login.subtitle')}
           </p>
+        </div>
+
+        {/* Email / password form */}
+        <form onSubmit={handleEmailSubmit} className="mb-4">
+          <div className="flex gap-2 mb-3 rounded-lg overflow-hidden" style={{ border: '1px solid var(--border, #e5e7eb)' }}>
+            <button
+              type="button"
+              onClick={() => setMode('login')}
+              className="flex-1 py-2 text-sm font-medium transition-colors"
+              style={{
+                background: mode === 'login' ? 'var(--brand, #3390ec)' : 'transparent',
+                color: mode === 'login' ? '#fff' : 'var(--text)',
+              }}
+            >
+              {t('login.login')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('register')}
+              className="flex-1 py-2 text-sm font-medium transition-colors"
+              style={{
+                background: mode === 'register' ? 'var(--brand, #3390ec)' : 'transparent',
+                color: mode === 'register' ? '#fff' : 'var(--text)',
+              }}
+            >
+              {t('login.register')}
+            </button>
+          </div>
+
+          {mode === 'register' && (
+            <input
+              type="text"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder={t('login.namePlaceholder')}
+              className="w-full mb-2 px-3 py-2.5 rounded-lg text-sm"
+              style={{ background: 'var(--input-bg, #f3f4f6)', color: 'var(--text)', border: '1px solid var(--border, #e5e7eb)' }}
+            />
+          )}
+
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder={t('login.emailPlaceholder')}
+            required
+            autoComplete="email"
+            className="w-full mb-2 px-3 py-2.5 rounded-lg text-sm"
+            style={{ background: 'var(--input-bg, #f3f4f6)', color: 'var(--text)', border: '1px solid var(--border, #e5e7eb)' }}
+          />
+
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t('login.passwordPlaceholder')}
+              required
+              minLength={8}
+              autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+              className="w-full px-3 py-2.5 rounded-lg text-sm pr-10"
+              style={{ background: 'var(--input-bg, #f3f4f6)', color: 'var(--text)', border: '1px solid var(--border, #e5e7eb)' }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-xs opacity-50 hover:opacity-100"
+              style={{ color: 'var(--text-muted)' }}
+              tabIndex={-1}
+            >
+              {showPassword ? '🙈' : '👁'}
+            </button>
+          </div>
+
+          <button
+            type="submit"
+            disabled={emailLoading || loading}
+            className="btn btn-primary w-full mt-3 text-sm py-2.5"
+          >
+            {emailLoading
+              ? t('login.checking')
+              : mode === 'register'
+                ? t('login.registerBtn')
+                : t('login.loginBtn')}
+          </button>
+        </form>
+
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex-1 h-px" style={{ background: 'var(--border, #e5e7eb)' }} />
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('login.orEmail')}</span>
+          <div className="flex-1 h-px" style={{ background: 'var(--border, #e5e7eb)' }} />
         </div>
 
         {config.googleEnabled ? (
@@ -190,7 +330,7 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
           disabled={loading}
           className="btn btn-secondary w-full mb-3 text-base py-3"
         >
-            {loading ? t('login.walletBtnLoading') : t('login.walletBtn')}
+          {loading ? t('login.walletBtnLoading') : t('login.walletBtn')}
         </button>
 
         {config.simulation && (
