@@ -6,6 +6,7 @@ import { sendAlertNotification } from './telegramNotify.js';
 import { sendAlertEmail } from './emailNotify.js';
 import { sendPushoverAlert } from './pushoverNotify.js';
 import { notifyNewSpreads } from './spreadNotifier.js';
+import { fireFundingRateWebhook, fireArbitrageWebhook } from './b2bWebhookFirer.js';
 import { wsManager } from './websocket.js';
 import { logger } from '../utils/logger.js';
 
@@ -192,6 +193,33 @@ async function evaluateAllAlerts(): Promise<void> {
         }
       };
       notifications.push(sendPushoverNotification());
+
+      // Fire B2B webhooks for partners who subscribed to this event type
+      if (triggered.type === 'general' && triggered.data.currentRate !== undefined) {
+        notifications.push(
+          fireFundingRateWebhook({
+            pair: triggered.data.pair,
+            exchange: triggered.data.exchange || '',
+            currentRate: triggered.data.currentRate,
+            threshold: triggered.data.threshold || 0,
+            condition: triggered.data.condition || '',
+          }).catch((err) =>
+            logger.error({ err, alertId: triggered.alertId }, 'Failed to fire B2B funding rate webhook')
+          )
+        );
+      } else if (triggered.type === 'arbitrage' && triggered.data.difference !== undefined) {
+        notifications.push(
+          fireArbitrageWebhook({
+            pair: triggered.data.pair,
+            exchangeA: triggered.data.exchangeA || '',
+            exchangeB: triggered.data.exchangeB || '',
+            difference: triggered.data.difference,
+            threshold: triggered.data.threshold || 0,
+          }).catch((err) =>
+            logger.error({ err, alertId: triggered.alertId }, 'Failed to fire B2B arbitrage webhook')
+          )
+        );
+      }
     }
   }
 

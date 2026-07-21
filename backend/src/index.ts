@@ -340,6 +340,11 @@ app.use('/api/debug', authenticate, requireAdmin, debugRoutes);
 // Webhook routes (no user auth, webhook token/signature verified inside)
 app.use('/api/webhook', webhookRoutes);
 
+// QR Login routes (verify is public, request/status need auth)
+import { qrAuthRouter, qrPublicRouter } from './routes/qrLogin.js';
+app.use('/api', qrPublicRouter);             // /api/qr-login/verify (no auth)
+app.use('/api', authLimiter, authenticate, qrAuthRouter); // /api/qr-login/request, /status
+
 // Public, versioned API contract (Block B2). Decouples the consumer-facing
 // surface (/api/v1) from the Mini App's internal /api routes. The handlers are
 // shared, so behaviour is identical; only the URL prefix differs.

@@ -4,6 +4,7 @@ import { useApp } from '../App';
 import { useToast } from '../components/Toast';
 import { TrialCTA } from '../components/TrialCTA';
 import { CryptoCheckoutModal } from '../components/CryptoCheckoutModal';
+import { QrLoginModal } from '../components/QrLoginModal';
 import { apiClient } from '../api/client';
 import { useT } from '../i18n';
 import { PLAN_PRICES } from '../utils/plans';
@@ -13,6 +14,7 @@ const SITE_URL = 'https://funding-finder-frontend.onrender.com';
 export function ProfilePage() {
   const { user, subscription: ctxSubscription, isWeb, refreshSubscription } = useApp();
   const [checkout, setCheckout] = useState<{ planId: string; planName: string; price: number } | null>(null);
+  const [showQrLogin, setShowQrLogin] = useState(false);
   const { showToast } = useToast();
   const t = useT();
   const [referralLink, setReferralLink] = useState('');
@@ -302,6 +304,22 @@ export function ProfilePage() {
         <p className="text-xs text-muted mt-3">{t('profile.referralEarnHint', { rate: Math.round((referralStats.bonusRate || 0.2) * 100) })}</p>
       </div>
 
+      <div className="rounded-2xl p-4 mb-4" style={{ background: 'var(--surface)' }}>
+        <div className="flex items-center gap-3">
+          <div style={{ fontSize: 28 }}>📱</div>
+          <div className="flex-1">
+            <div className="font-semibold text-sm">{t('profile.qrLoginTitle')}</div>
+            <div className="text-xs text-muted">{t('profile.qrLoginDesc')}</div>
+          </div>
+          <button
+            onClick={() => setShowQrLogin(true)}
+            className="btn btn-secondary text-xs py-1.5 px-3"
+          >
+            {t('profile.qrLoginBtn')}
+          </button>
+        </div>
+      </div>
+
       <div id="subscription" className="scroll-mt-4">
         <div className="mb-4">
           <div className="rounded-2xl p-5 text-white relative overflow-hidden"
@@ -409,6 +427,10 @@ export function ProfilePage() {
           onClose={() => setCheckout(null)}
           onPaid={handleCheckoutPaid}
         />
+      )}
+
+      {showQrLogin && (
+        <QrLoginModal onClose={() => setShowQrLogin(false)} />
       )}
     </div>
   );

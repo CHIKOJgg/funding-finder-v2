@@ -96,6 +96,7 @@ const options: swaggerJsdoc.Options = {
       { name: 'A/B Testing', description: 'A/B headline testing and variant promotion' },
       { name: 'Lead Capture', description: 'Waitlist and lead magnet endpoints' },
       { name: 'Health', description: 'Health check and keep-alive endpoints' },
+      { name: 'B2B Webhooks', description: 'Webhook subscription management for B2B integrations' },
     ],
   },
   apis: ['./src/routes/*.ts'],

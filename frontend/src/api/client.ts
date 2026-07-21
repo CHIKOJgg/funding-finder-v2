@@ -523,4 +523,22 @@ export const apiClient = {
     }
     return res;
   },
+
+  // QR Login: generate a token for the desktop browser to scan
+  async qrLoginRequest() {
+    const res: any = await retryRequest(() => api.post('/qr-login/request'));
+    return res;
+  },
+
+  // QR Login: poll status (long-poll, 45s timeout)
+  async qrLoginStatus(token: string) {
+    const res: any = await retryRequest(() => api.get('/qr-login/status', { params: { token } }));
+    return res;
+  },
+
+  // QR Login: verify scanned token (unauthenticated, called from desktop browser)
+  async qrLoginVerify(token: string) {
+    const res = await retryRequest(() => api.post('/qr-login/verify', { token }));
+    return (res as any).data;
+  },
 };

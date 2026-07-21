@@ -27,6 +27,7 @@ const PrivacyPage = React.lazy(() => import('./pages/PrivacyPage').then(m => ({ 
 const AdminPage = React.lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const PortfolioPage = React.lazy(() => import('./pages/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
+const QrScanPage = React.lazy(() => import('./pages/QrScanPage').then(m => ({ default: m.QrScanPage })));
 
 interface AppContextType {
   user: { id: string; firstName?: string; username?: string; subscription?: string; referralCode?: string } | null;
@@ -464,6 +465,7 @@ function DataProvider() {
                       <Route path="/admin" element={<ErrorBoundary><AdminPage /></ErrorBoundary>} />
                       <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
                       <Route path="/portfolio" element={<ErrorBoundary><PortfolioPage /></ErrorBoundary>} />
+                      <Route path="/qr-scan" element={<ErrorBoundary><QrScanPage /></ErrorBoundary>} />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </Suspense>

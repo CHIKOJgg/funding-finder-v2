@@ -23,6 +23,7 @@ import exportRoutes from './export.js';
 import profileRoutes from './profile.js';
 import settingsRoutes from './settings.js';
 import referralsRoutes from './referrals.js';
+import b2bWebhookRoutes from './b2bWebhooks.js';
 
 const v1 = Router();
 
@@ -39,5 +40,6 @@ v1.use('/', exportRoutes);
 v1.use('/', profileRoutes);
 v1.use('/', settingsRoutes);
 v1.use('/', referralsRoutes);
+v1.use('/', b2bWebhookRoutes);
 
 export default v1;
