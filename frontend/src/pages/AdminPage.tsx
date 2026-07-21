@@ -460,6 +460,29 @@ export function AdminPage() {
                   </tbody>
                 </table>
               </div>
+              <div className="flex gap-2 mt-3">
+                {funnel.variantComparison.map((v) => (
+                  <button
+                    key={v.variant}
+                    className="text-xs px-3 py-1.5 rounded bg-[var(--brand)] text-white hover:opacity-90"
+                    onClick={async () => {
+                      await apiClient.post('/admin/ab/promote', { variant: v.variant });
+                      showToast(`Variant ${v.variant} promoted as winner`, 'success');
+                    }}
+                  >
+                    Promote {v.variant}
+                  </button>
+                ))}
+                <button
+                  className="text-xs px-3 py-1.5 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  onClick={async () => {
+                    await apiClient.post('/admin/ab/promote', { variant: null });
+                    showToast('A/B test reset — random split restored', 'success');
+                  }}
+                >
+                  Reset
+                </button>
+              </div>
             </div>
           )}
 

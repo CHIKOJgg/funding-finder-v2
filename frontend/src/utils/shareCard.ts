@@ -162,14 +162,15 @@ export function buildShareCard(opps: ShareOpportunity[], opts?: { username?: str
   return canvas;
 }
 
-export async function shareCardAsImage(opps: ShareOpportunity[], opts?: { username?: string; lang?: string }): Promise<void> {
+export async function shareCardAsImage(opps: ShareOpportunity[], opts?: { username?: string; lang?: string; referralCode?: string }): Promise<void> {
   const copy = copyFor(opts?.lang);
   const canvas = buildShareCard(opps, opts);
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) return;
 
   const file = new File([blob], 'funding-finder.png', { type: 'image/png' });
-  const text = `${copy.shareText}\n${SITE_URL}`;
+  const refParam = opts?.referralCode ? `?ref=${opts.referralCode}` : '';
+  const text = `${copy.shareText}\n${SITE_URL}${refParam}`;
 
   // Prefer native share with the image (mobile: posts image to TG/Twitter).
   if (navigator.share && (navigator as any).canShare?.({ files: [file] })) {

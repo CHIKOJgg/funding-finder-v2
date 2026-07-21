@@ -16,6 +16,12 @@ import { logger } from '../utils/logger.js';
 
 const router = Router();
 
+async function resolveReferralCode(code?: string): Promise<string | undefined> {
+  if (!code) return undefined;
+  const referrer = await prisma.user.findUnique({ where: { referralCode: code } });
+  return referrer?.id;
+}
+
 async function findOrCreateWebUser(params: {
   telegramId: string;
   provider: 'wallet' | 'google' | 'email';
@@ -23,7 +29,9 @@ async function findOrCreateWebUser(params: {
   googleSub?: string;
   email?: string;
   firstName?: string;
-}): Promise<{ telegramId: string; authProvider: string; walletAddress?: string | null; email?: string | null }> {
+  referredByCode?: string;
+}): Promise<{ telegramId: string; authProvider: string; walletAddress?: string | null; email?: string | null; referralCode: string }> {
+  const referrerId = await resolveReferralCode(params.referredByCode);
   const user = await prisma.user.upsert({
     where: { telegramId: params.telegramId },
     create: {
@@ -34,6 +42,7 @@ async function findOrCreateWebUser(params: {
       email: params.email,
       firstName: params.firstName,
       lastActive: new Date(),
+      ...(referrerId ? { referredBy: referrerId } : {}),
     },
     update: {
       lastActive: new Date(),
@@ -54,6 +63,7 @@ function publicUser(user: any) {
     firstName: user.firstName,
     username: user.username,
     subscription: user.subscription,
+    referralCode: user.referralCode,
   };
 }
 
@@ -77,12 +87,13 @@ router.get('/wallet/nonce', validate(nonceSchema, 'query'), async (req: Request,
 const walletVerifySchema = z.object({
   message: z.string().min(1),
   signature: z.string().min(1),
+  referredByCode: z.string().optional(),
 });
 
 // POST /api/auth/wallet/verify  → verify signature, issue JWT
 router.post('/wallet/verify', validate(walletVerifySchema), async (req: Request, res: Response) => {
   try {
-    const { message, signature } = req.body;
+    const { message, signature, referredByCode } = req.body;
     const result = await verifySiweSignature(message, signature);
     if (!result.ok || !result.address) {
       return res.status(401).json({ ok: false, error: result.reason || 'Signature verification failed' });
@@ -95,6 +106,7 @@ router.post('/wallet/verify', validate(walletVerifySchema), async (req: Request,
       provider: 'wallet',
       walletAddress: address,
       firstName: 'Wallet User',
+      referredByCode,
     });
 
     const token = signAuthToken({ sub: telegramId, provider: 'wallet', walletAddress: address });
@@ -108,15 +120,16 @@ router.post('/wallet/verify', validate(walletVerifySchema), async (req: Request,
 
 const googleSchema = z.object({
   idToken: z.string().min(1),
+  referredByCode: z.string().optional(),
 });
 
 // POST /api/auth/google  → verify Google id_token, issue JWT
 router.post('/google', validate(googleSchema), async (req: Request, res: Response) => {
   try {
-    const { idToken } = req.body;
+    const { idToken, referredByCode } = req.body;
     const result = await verifyGoogleIdToken(idToken);
     if (!result.ok || !result.sub) {
-      return res.status(401).json({ ok: false, error: result.reason || 'Google verification failed' });
+      return res.status(401).json({ ok: false, error: result.reason || 'Google authentication failed' });
     }
 
     const telegramId = `google_${result.sub}`;
@@ -126,6 +139,7 @@ router.post('/google', validate(googleSchema), async (req: Request, res: Respons
       googleSub: result.sub,
       email: result.email,
       firstName: result.email ? result.email.split('@')[0] : 'Google User',
+      referredByCode,
     });
 
     const token = signAuthToken({ sub: telegramId, provider: 'google', email: result.email });

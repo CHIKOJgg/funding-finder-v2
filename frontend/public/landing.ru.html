@@ -294,16 +294,25 @@
             var forced = params.get('v');
             var v = localStorage.getItem('ff_ab_variant');
             if (forced === 'A' || forced === 'B') { v = forced; }
-            else if (!v) { v = Math.random() < 0.5 ? 'A' : 'B'; }
-            localStorage.setItem('ff_ab_variant', v);
-
-            var h1 = document.getElementById('heroTitle');
-            var lead = document.getElementById('heroLead');
-            if (h1 && h1.getAttribute('data-v-' + v.toLowerCase())) {
-              h1.textContent = h1.getAttribute('data-v-' + v.toLowerCase());
+            else {
+              fetch(API_URL + '/api/public/ab-winner').then(function(r){return r.json();}).then(function(d){
+                var w = d && d.winner;
+                if (w === 'A' || w === 'B') { v = w; localStorage.setItem('ff_ab_variant', v); apply(v); }
+              }).catch(function(){});
             }
-            if (lead && lead.getAttribute('data-v-' + v.toLowerCase())) {
-              lead.textContent = lead.getAttribute('data-v-' + v.toLowerCase());
+            if (!v) { v = Math.random() < 0.5 ? 'A' : 'B'; }
+            localStorage.setItem('ff_ab_variant', v);
+            apply(v);
+
+            function apply(v) {
+              var h1 = document.getElementById('heroTitle');
+              var lead = document.getElementById('heroLead');
+              if (h1 && h1.getAttribute('data-v-' + v.toLowerCase())) {
+                h1.textContent = h1.getAttribute('data-v-' + v.toLowerCase());
+              }
+              if (lead && lead.getAttribute('data-v-' + v.toLowerCase())) {
+                lead.textContent = lead.getAttribute('data-v-' + v.toLowerCase());
+              }
             }
 
             var src = params.get('utm_source');
@@ -810,6 +819,9 @@
           .finally(function(){ btn.disabled=false; btn.textContent='Запросить доступ →'; });
       });
     })();
+
+    // Keep-alive: ping the API every 10 min to prevent Render free-tier sleep.
+    setInterval(function(){ fetch(API_URL+'/api/public/ping',{keepalive:true}).catch(function(){}); }, 600000);
   </script>
 
   <!-- Structured data -->

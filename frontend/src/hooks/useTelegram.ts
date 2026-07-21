@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { setTelegramInitData, setCurrentUserId, setAuthToken, getAuthToken, clearAuthToken, apiClient } from '../api/client';
+import { setTelegramInitData, setCurrentUserId, setAuthToken, getAuthToken, clearAuthToken, apiClient, captureReferralCode } from '../api/client';
 
 interface TelegramWebApp {
   initData?: string;
@@ -63,6 +63,7 @@ export interface WebUser {
   provider?: string;
   walletAddress?: string | null;
   email?: string | null;
+  referralCode?: string;
 }
 
 export function useTelegram() {
@@ -97,6 +98,9 @@ export function useTelegram() {
   }, []);
 
   useEffect(() => {
+    // Capture ?ref=CODE from URL before anything else
+    captureReferralCode();
+
     if (window.Telegram?.WebApp) {
       const webApp = window.Telegram.WebApp;
       setTg(webApp);

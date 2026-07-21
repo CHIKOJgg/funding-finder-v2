@@ -80,7 +80,7 @@ export function MainPage() {
         rate: r.funding_rate_per_hour ?? 0,
       }));
       const { shareCardAsImage } = await import('../utils/shareCard');
-      await shareCardAsImage(opps, { username: user?.username ? '@' + user.username : undefined, lang });
+      await shareCardAsImage(opps, { username: user?.username ? '@' + user.username : undefined, lang, referralCode: user?.referralCode });
     } catch (e) {
       showToast(t('main.shareError') || 'Не удалось создать картинку', 'error');
     }

@@ -67,6 +67,24 @@ export function clearAuthToken() {
   setAuthToken(null);
 }
 
+// Referral code capture from URL (?ref=CODE) — stored once, consumed by auth
+const REFERRAL_STORAGE_KEY = 'ff_referral_code';
+export function captureReferralCode() {
+  const url = new URL(window.location.href);
+  const ref = url.searchParams.get('ref');
+  if (ref) {
+    localStorage.setItem(REFERRAL_STORAGE_KEY, ref);
+    url.searchParams.delete('ref');
+    window.history.replaceState({}, '', url.toString());
+  }
+}
+export function getStoredReferralCode(): string | undefined {
+  return localStorage.getItem(REFERRAL_STORAGE_KEY) || undefined;
+}
+export function clearReferralCode() {
+  localStorage.removeItem(REFERRAL_STORAGE_KEY);
+}
+
 api.interceptors.request.use((config) => {
   // Web session (wallet / Google) — preferred when present.
   if (authToken) {
@@ -356,11 +374,13 @@ export const apiClient = {
   },
 
   async walletVerify(message: string, signature: string) {
-    return api.post('/auth/wallet/verify', { message, signature });
+    const referredByCode = getStoredReferralCode();
+    return api.post('/auth/wallet/verify', { message, signature, referredByCode });
   },
 
   async googleLogin(idToken: string) {
-    return api.post('/auth/google', { idToken });
+    const referredByCode = getStoredReferralCode();
+    return api.post('/auth/google', { idToken, referredByCode });
   },
 
   async getMe() {

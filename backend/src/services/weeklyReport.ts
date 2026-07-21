@@ -6,7 +6,7 @@ import { getCachedScan, runScan } from './scanService.js';
 import { getWarmupPromise } from './fundingWarmup.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { computeTrackRecord } from './trackRecordService.js';
-import { sendWeeklyReportEmail } from './emailNotify.js';
+import { sendWeeklyReportEmail, runWinbackEmails } from './emailNotify.js';
 import { prisma } from './prisma.js';
 
 // Weekly Funding Report — a content engine for organic, zero-ad-spend growth.
@@ -230,6 +230,10 @@ export function startWeeklyReport(): void {
   }
   logger.info(`Weekly report enabled → Mondays ${POST_HOUR_MSK}:00 MSK`);
 
+  // Run winback emails daily at 10:00 MSK (idempotent per day per user).
+  let lastWinbackYmd = '';
+  const WINBACK_HOUR_MSK = 10;
+
   // Check hourly; post once on the target weekday+hour (idempotent per day).
   weeklyTimer = setInterval(() => {
     const now = new Date();
@@ -242,6 +246,14 @@ export function startWeeklyReport(): void {
     if (weekday === POST_WEEKDAY && mskHour === POST_HOUR_MSK && ymd !== lastPostedYmd) {
       lastPostedYmd = ymd;
       void postWeeklyReport();
+    }
+
+    // Winback email series — daily at 10:00 MSK
+    if (mskHour === WINBACK_HOUR_MSK && ymd !== lastWinbackYmd) {
+      lastWinbackYmd = ymd;
+      void runWinbackEmails().then((n) => {
+        if (n) logger.info(`Winback emails sent: ${n}`);
+      }).catch((e) => logger.warn({ err: (e as Error).message }, 'Winback email run failed'));
     }
   }, 60 * 60 * 1000);
 }

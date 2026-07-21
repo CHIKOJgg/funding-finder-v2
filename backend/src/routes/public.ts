@@ -214,4 +214,28 @@ router.post('/waitlist', validate(waitlistSchema), async (req, res) => {
   }
 });
 
+// A/B headline winner: the landing page fetches this on load. If a winner has
+// been promoted by the admin, all visitors see that variant (no random split).
+// Returns `{ ok: true, winner: 'A' | 'B' | null }`.
+let abWinner: string | null = null;
+
+export function setAbWinner(variant: string | null) {
+  abWinner = variant;
+}
+
+export function getAbWinner(): string | null {
+  return abWinner;
+}
+
+router.get('/ab-winner', (_req, res) => {
+  res.json({ ok: true, winner: abWinner });
+});
+
+// Ultra-lightweight keep-alive ping. Returns instantly with no DB hit so it
+// can be called every few minutes by the frontend SPA or an external cron
+// (cron-job.org / UptimeRobot) to prevent Render free-tier sleep.
+router.get('/ping', (_req, res) => {
+  res.json({ ok: true, t: Date.now() });
+});
+
 export default router;

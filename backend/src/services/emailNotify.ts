@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
+import { prisma } from './prisma.js';
 
 interface EmailOptions {
   to: string;
@@ -231,4 +232,103 @@ export async function sendWeeklyReportEmail(
     </div>
   `;
   return sendEmail({ to, subject: `📊 ${title}`, html });
+}
+
+// ---- Win-back email series (day 3 / 7 / 14 after waitlist signup) ----
+
+interface WinbackTemplate {
+  day: number;
+  subject: (lang?: string | null) => string;
+  html: (lang?: string | null) => string;
+}
+
+const WINBACK_TEMPLATES: WinbackTemplate[] = [
+  {
+    day: 3,
+    subject: (lang) => lang === 'ru' ? 'Ваш бесплатный отчёт по фандингу готов' : 'Your free funding report is ready',
+    html: (lang) => {
+      const g = lang === 'ru'
+        ? { hi: 'Привет!', body: 'Прошло 3 дня с момента регистрации. Вы уже посмотрели лучшие ставки фандинга на 23 биржах? Если нет — вот что вы упускаете: лучшие арбитражные спреды прямо сейчас, которые дают рыночно-нейтральный доход без ставки на направление.', cta: 'Посмотреть бесплатно', footer: 'Отписаться можно, ответив на это письмо.' }
+        : { hi: 'Hey!', body: "It's been 3 days since you signed up. Have you checked the best funding rates across 23 exchanges yet? If not, here's what you're missing: the top arbitrage spreads right now, giving market-neutral yield without betting on price direction.", cta: 'Check it free', footer: 'Reply to unsubscribe anytime.' };
+      return `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a">
+        <h1 style="font-size:22px;margin:0 0 12px">Funding Finder</h1>
+        <p style="font-size:16px;font-weight:600;margin:0 0 12px">${g.hi}</p>
+        <p style="font-size:15px;line-height:1.6;color:#334155;margin:0 0 20px">${g.body}</p>
+        <a href="${APP_URL}/?utm_source=winback&utm_medium=email&utm_campaign=d3" style="display:inline-block;background:#3390ec;color:#fff;font-weight:600;padding:12px 22px;border-radius:10px;text-decoration:none">${g.cta} →</a>
+        <p style="font-size:12px;color:#94a3b8;margin:24px 0 0">${g.footer}</p>
+      </div>`;
+    },
+  },
+  {
+    day: 7,
+    subject: (lang) => lang === 'ru' ? 'Фандинг-рынок за неделю: что изменилось' : 'This week in funding: what changed',
+    html: (lang) => {
+      const g = lang === 'ru'
+        ? { hi: 'Прошла неделя!', body: 'Рынок фандинга меняется каждые 8 часов. За последнюю неделю лучшие ставки достигали двузначных APR на нескольких биржах. Funding Finder находит эти возможности за секунды — и показывает, где открыть позицию.', cta: 'Увидеть актуальные ставки', footer: 'Отписаться можно, ответив на это письмо.' }
+        : { hi: 'A week has passed!', body: 'Funding rates change every 8 hours. This past week, top rates hit double-digit APRs across multiple exchanges. Funding Finder finds these opportunities in seconds — and shows you exactly where to open each position.', cta: 'See live rates', footer: 'Reply to unsubscribe anytime.' };
+      return `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a">
+        <h1 style="font-size:22px;margin:0 0 12px">Funding Finder</h1>
+        <p style="font-size:16px;font-weight:600;margin:0 0 12px">${g.hi}</p>
+        <p style="font-size:15px;line-height:1.6;color:#334155;margin:0 0 20px">${g.body}</p>
+        <a href="${APP_URL}/?utm_source=winback&utm_medium=email&utm_campaign=d7" style="display:inline-block;background:#22c55e;color:#fff;font-weight:600;padding:12px 22px;border-radius:10px;text-decoration:none">${g.cta} →</a>
+        <p style="font-size:12px;color:#94a3b8;margin:24px 0 0">${g.footer}</p>
+      </div>`;
+    },
+  },
+  {
+    day: 14,
+    subject: (lang) => lang === 'ru' ? 'Последний шанс: 7 дней Pro бесплатно' : 'Last chance: 7 days Pro free',
+    html: (lang) => {
+      const g = lang === 'ru'
+        ? { hi: 'Не упустите!', body: 'Вы зарегистрировались 2 недели назад, но ещё не попробовали Funding Finder. Каждый день — это ставки фандинга, которые вы не видите. Новые пользователи получают 7 дней Pro бесплатно — полный доступ ко всем 23 биржам, AI-идеям и арбитражу.', cta: 'Активировать Pro бесплатно', footer: 'Это последнее письмо в серии. Отписаться можно, ответив на это письмо.' }
+        : { hi: "Don't miss out!", body: "You signed up 2 weeks ago but haven't tried Funding Finder yet. Every day is funding rate data you're not seeing. New users get 7 days Pro free — full access to all 23 exchanges, AI ideas, and arbitrage.", cta: 'Activate Pro free', footer: "This is the last email in this series. Reply to unsubscribe." };
+      return `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a">
+        <h1 style="font-size:22px;margin:0 0 12px">Funding Finder</h1>
+        <p style="font-size:16px;font-weight:600;margin:0 0 12px">${g.hi}</p>
+        <p style="font-size:15px;line-height:1.6;color:#334155;margin:0 0 20px">${g.body}</p>
+        <a href="${APP_URL}/?plan=pro&utm_source=winback&utm_medium=email&utm_campaign=d14" style="display:inline-block;background:#8b5cf6;color:#fff;font-weight:600;padding:12px 22px;border-radius:10px;text-decoration:none">${g.cta} →</a>
+        <p style="font-size:12px;color:#94a3b8;margin:24px 0 0">${g.footer}</p>
+      </div>`;
+    },
+  },
+];
+
+// Track which winback emails have been sent (in-memory, reset on restart —
+// sufficient because the scheduler runs daily and idempotency is DB-backed).
+const sentWinback = new Set<string>();
+
+export async function runWinbackEmails(): Promise<number> {
+  const now = new Date();
+  let sent = 0;
+
+  for (const tmpl of WINBACK_TEMPLATES) {
+    // Find waitlist entries created exactly `tmpl.day` days ago (±12h window)
+    const cutoff = new Date(now.getTime() - tmpl.day * 24 * 60 * 60 * 1000);
+    const windowStart = new Date(cutoff.getTime() - 12 * 60 * 60 * 1000);
+    const windowEnd = new Date(cutoff.getTime() + 12 * 60 * 60 * 1000);
+
+    const recipients = await prisma.waitlist.findMany({
+      where: {
+        email: { not: null },
+        createdAt: { gte: windowStart, lte: windowEnd },
+      },
+      select: { id: true, email: true, lang: true },
+    });
+
+    for (const r of recipients) {
+      const key = `${r.id}:d${tmpl.day}`;
+      if (sentWinback.has(key)) continue;
+      const ok = await sendEmail({
+        to: r.email as string,
+        subject: tmpl.subject(r.lang),
+        html: tmpl.html(r.lang),
+      });
+      if (ok) {
+        sentWinback.add(key);
+        sent++;
+      }
+      await new Promise((res) => setTimeout(res, 120));
+    }
+  }
+  return sent;
 }

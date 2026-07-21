@@ -403,4 +403,23 @@ router.delete('/users/:id', async (req: AuthenticatedRequest, res: Response) => 
   }
 });
 
+// POST /admin/ab/promote — set the winning A/B headline variant. Once promoted,
+// the landing page serves that variant to all visitors (no random split).
+import { setAbWinner } from './public.js';
+
+router.post('/ab/promote', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { variant } = req.body;
+    if (variant !== 'A' && variant !== 'B' && variant !== null) {
+      return res.status(400).json({ ok: false, error: 'variant must be "A", "B", or null (to reset)' });
+    }
+    setAbWinner(variant);
+    logger.info({ adminId: req.userId, variant }, 'A/B winner promoted');
+    res.json({ ok: true, winner: variant });
+  } catch (err) {
+    logger.error('Admin A/B promote error:', err);
+    res.status(500).json({ ok: false, error: 'Failed to promote variant' });
+  }
+});
+
 export default router;

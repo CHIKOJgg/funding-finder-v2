@@ -29,7 +29,7 @@ const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => (
 const PortfolioPage = React.lazy(() => import('./pages/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
 
 interface AppContextType {
-  user: { id: string; firstName?: string; username?: string; subscription?: string } | null;
+  user: { id: string; firstName?: string; username?: string; subscription?: string; referralCode?: string } | null;
 
   // ---- Subscription / plan ----
   subscription: string;
@@ -157,6 +157,16 @@ function DataProvider() {
   useEffect(() => {
     track('app_open', undefined, user?.id);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep-alive ping: hit /api/public/ping every 10 min so the Render free-tier
+  // API stays awake. Fire-and-forget, never blocks the UI.
+  useEffect(() => {
+    const API = (import.meta.env.VITE_API_URL || 'https://funding-finder-api.onrender.com').replace(/\/$/, '');
+    const ping = () => fetch(`${API}/api/public/ping`, { keepalive: true }).catch(() => {});
+    ping();
+    const id = setInterval(ping, 10 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // Subscription state
   const [subscription, setSubscription] = useState<string>('free');
