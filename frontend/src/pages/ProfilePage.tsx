@@ -8,6 +8,8 @@ import { apiClient } from '../api/client';
 import { useT } from '../i18n';
 import { PLAN_PRICES } from '../utils/plans';
 
+const SITE_URL = 'https://funding-finder-frontend.onrender.com';
+
 export function ProfilePage() {
   const { user, subscription: ctxSubscription, isWeb, refreshSubscription } = useApp();
   const [checkout, setCheckout] = useState<{ planId: string; planName: string; price: number } | null>(null);
@@ -238,21 +240,60 @@ export function ProfilePage() {
             }}
             className="btn btn-secondary text-sm py-2 flex-1"
           >
-            🤖 Открыть бота
+            🤖 {t('profile.openBot')}
           </button>
           <button
-            onClick={() => {
-              const text = referralLink || window.location.href;
-              if (navigator.share) {
-                navigator.share({ title: 'Funding Finder', text: t('profile.shareText'), url: text }).catch(() => {});
+            onClick={async () => {
+              const { telegramShareUrl, copyShareText } = await import('../utils/shareLinks');
+              const payload = { text: t('profile.shareText'), url: referralLink || SITE_URL, referralCode: user?.referralCode, utm: { source: 'miniapp', medium: 'share', campaign: 'referral' } };
+              // Mobile: use native share sheet; Desktop: open Telegram share URL; Fallback: clipboard
+              if (/Mobi|Android/i.test(navigator.userAgent)) {
+                navigator.share({ title: 'Funding Finder', text: t('profile.shareText'), url: payload.url }).catch(() => {
+                  window.open(telegramShareUrl(payload), '_blank', 'noopener');
+                });
               } else {
-                navigator.clipboard.writeText(text);
+                await copyShareText(payload);
                 showToast(t('profile.linkCopied'), 'success');
               }
             }}
             className="btn btn-secondary text-sm py-2 flex-1"
           >
-            📤 Поделиться
+            📤 {t('profile.share')}
+          </button>
+        </div>
+        <div className="flex gap-1.5 mt-2">
+          <button
+            onClick={async () => {
+              const { telegramShareUrl } = await import('../utils/shareLinks');
+              const payload = { text: t('profile.shareText'), url: referralLink || SITE_URL, referralCode: user?.referralCode, utm: { source: 'miniapp', medium: 'share', campaign: 'referral_telegram' } };
+              window.open(telegramShareUrl(payload), '_blank', 'noopener');
+            }}
+            className="btn btn-secondary text-xs py-1.5 flex-1"
+            title={t('profile.shareTelegram')}
+          >
+            ✈️ {t('profile.shareTelegram')}
+          </button>
+          <button
+            onClick={async () => {
+              const { twitterShareUrl } = await import('../utils/shareLinks');
+              const payload = { text: t('profile.shareText'), url: referralLink || SITE_URL, referralCode: user?.referralCode, utm: { source: 'miniapp', medium: 'share', campaign: 'referral_twitter' } };
+              window.open(twitterShareUrl(payload), '_blank', 'noopener');
+            }}
+            className="btn btn-secondary text-xs py-1.5 flex-1"
+            title={t('profile.shareX')}
+          >
+            𝕏 {t('profile.shareX')}
+          </button>
+          <button
+            onClick={async () => {
+              const { whatsappShareUrl } = await import('../utils/shareLinks');
+              const payload = { text: t('profile.shareText'), url: referralLink || SITE_URL, referralCode: user?.referralCode, utm: { source: 'miniapp', medium: 'share', campaign: 'referral_whatsapp' } };
+              window.open(whatsappShareUrl(payload), '_blank', 'noopener');
+            }}
+            className="btn btn-secondary text-xs py-1.5 flex-1"
+            title={t('profile.shareWhatsApp')}
+          >
+            💬 {t('profile.shareWhatsApp')}
           </button>
         </div>
         {referralLink && (

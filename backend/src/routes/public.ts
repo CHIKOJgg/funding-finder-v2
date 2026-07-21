@@ -25,6 +25,60 @@ const trackSchema = z.object({
   meta: z.record(z.any()).optional(),
 });
 
+/**
+ * @swagger
+ * /public/track:
+ *   post:
+ *     tags: [Analytics]
+ *     summary: Ingest a funnel event
+ *     description: >
+ *       Track a client-side funnel event (landing_view, app_open, scan_run, etc.).
+ *       No authentication required — landing pages are anonymous and served from
+ *       a separate origin. Fire-and-forget: analytics failures never 500 the caller.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [event]
+ *             properties:
+ *               event:
+ *                 type: string
+ *                 enum: [landing_view, app_open, scan_run, paywall_view, trial_start, paid]
+ *                 description: Funnel event name
+ *               source:
+ *                 type: string
+ *                 maxLength: 40
+ *                 description: Event source (e.g., 'landing', 'seo', 'referral')
+ *               variant:
+ *                 type: string
+ *                 maxLength: 20
+ *                 description: A/B test variant (e.g., 'A' or 'B')
+ *               sessionId:
+ *                 type: string
+ *                 maxLength: 80
+ *                 description: Browser session identifier
+ *               userId:
+ *                 type: string
+ *                 maxLength: 80
+ *                 description: Authenticated user ID (if known)
+ *               meta:
+ *                 type: object
+ *                 additionalProperties: true
+ *                 description: Arbitrary metadata (max 2000 chars when serialized)
+ *     responses:
+ *       200:
+ *         description: Event accepted (best-effort, never fails)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ */
 router.post('/track', validate(trackSchema), async (req, res) => {
   try {
     const { event, source, variant, sessionId, userId, meta } = req.body;
@@ -73,6 +127,78 @@ function publicOpportunity(opp: any) {
   };
 }
 
+/**
+ * @swagger
+ * /public/arbitrage:
+ *   get:
+ *     tags: [Arbitrage]
+ *     summary: Top arbitrage opportunities (public)
+ *     description: >
+ *       Public, no-auth endpoint returning the top 5 cross-exchange arbitrage
+ *       opportunities from the cached scan. Powers the marketing landing page
+ *       "live arbitrage" widget. Serves cached data (60s TTL) — never triggers
+ *       a cold scan. Falls back to stale cache on error.
+ *     responses:
+ *       200:
+ *         description: Arbitrage snapshot
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - type: object
+ *                   properties:
+ *                     ok:
+ *                       type: boolean
+ *                       example: true
+ *                     opportunities:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           pair:
+ *                             type: string
+ *                             example: "BTC-USDT"
+ *                           exchangeA:
+ *                             type: string
+ *                             example: "binance"
+ *                           exchangeB:
+ *                             type: string
+ *                             example: "bybit"
+ *                           opportunity:
+ *                             type: string
+ *                           fundingA_per_day:
+ *                             type: number
+ *                           fundingB_per_day:
+ *                             type: number
+ *                           difference_per_day:
+ *                             type: number
+ *                           annualReturn:
+ *                             type: number
+ *                           netDaily:
+ *                             type: number
+ *                           riskLevel:
+ *                             type: string
+ *                     exchangesTracked:
+ *                       type: integer
+ *                       description: Number of exchanges actively scanned
+ *                       example: 23
+ *                     pairsTracked:
+ *                       type: integer
+ *                       description: Number of trading pairs scanned
+ *                       example: 500
+ *                     generatedAt:
+ *                       type: integer
+ *                       description: Timestamp (ms) of the underlying scan
+ *                     cached:
+ *                       type: boolean
+ *                       description: True if served from cache (not a fresh scan)
+ *                     stale:
+ *                       type: boolean
+ *                       description: True if served from stale cache after an error
+ *                     degraded:
+ *                       type: boolean
+ *                       description: True if no cache available and returned empty
+ */
 router.get('/arbitrage', async (_req, res) => {
   const cached = publicCache.get('top');
   if (cached && Date.now() - cached.ts < PUBLIC_CACHE_TTL_MS) {
@@ -139,6 +265,50 @@ router.get('/arbitrage', async (_req, res) => {
 // arbitrage paper backtest from real scanned history. Powers the landing-page
 // "what you could have earned" proof and is the key trust element for converting
 // free visitors into trials. Clearly a ceiling estimate (no fees/slippage).
+/**
+ * @swagger
+ * /public/trackrecord:
+ *   get:
+ *     tags: [Analytics]
+ *     summary: Illustrative track record (public)
+ *     description: >
+ *       Social-proof backtest: an illustrative market-neutral funding arbitrage
+ *       paper backtest from real scanned history. Powers the landing-page
+ *       "what you could have earned" proof. Clearly a ceiling estimate
+ *       (no fees/slippage). Returns 200 with available=false if not enough
+ *       history yet.
+ *     responses:
+ *       200:
+ *         description: Track record (or unavailable)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   properties:
+ *                     ok:
+ *                       type: boolean
+ *                     available:
+ *                       type: boolean
+ *                       example: false
+ *                     note:
+ *                       type: string
+ *                 - type: object
+ *                   properties:
+ *                     ok:
+ *                       type: boolean
+ *                     illustrative:
+ *                       type: boolean
+ *                       example: true
+ *                     totalReturn:
+ *                       type: number
+ *                     annualized:
+ *                       type: number
+ *                     maxDrawdown:
+ *                       type: number
+ *       500:
+ *         description: Server error
+ */
 router.get('/trackrecord', async (_req, res) => {
   try {
     const rec = await computeTrackRecord();
@@ -155,6 +325,43 @@ router.get('/trackrecord', async (_req, res) => {
 
 // Weekly Funding Report (public JSON). Same numbers the bot posts to the
 // public channel — reusable by the landing page and the email newsletter.
+/**
+ * @swagger
+ * /public/weekly-report:
+ *   get:
+ *     tags: [Analytics]
+ *     summary: Weekly funding report (public)
+ *     description: >
+ *       Public JSON of the weekly funding report. Same numbers the bot posts to
+ *       the public Telegram channel — reusable by the landing page and the email
+ *       newsletter. No authentication required.
+ *     responses:
+ *       200:
+ *         description: Weekly report data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ *                 generatedAt:
+ *                   type: integer
+ *                   description: Timestamp (ms)
+ *                 exchangesScanned:
+ *                   type: integer
+ *                 pairsWithPositiveFunding:
+ *                   type: integer
+ *                 avgFundingRate:
+ *                   type: number
+ *                 topOpportunities:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       500:
+ *         description: Server error
+ */
 router.get('/weekly-report', async (_req, res) => {
   try {
     const report = await computeWeeklyReport();
@@ -178,6 +385,60 @@ const waitlistSchema = z.object({
   message: 'email or telegram is required',
 });
 
+/**
+ * @swagger
+ * /public/waitlist:
+ *   post:
+ *     tags: [Lead Capture]
+ *     summary: Join the waitlist
+ *     description: >
+ *       Capture interested visitors who aren't ready to pay yet. No auth required.
+ *       Deduplicates by email — repeat signups return ok:true with already=true.
+ *       Triggers a welcome email (best-effort, fire-and-forget).
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email address (provide email or telegram)
+ *               telegram:
+ *                 type: string
+ *                 description: Telegram username (provide email or telegram)
+ *               lang:
+ *                 type: string
+ *                 description: UI language of the visitor
+ *               source:
+ *                 type: string
+ *                 description: Traffic source (e.g., 'seo', 'landing', 'b2b-form')
+ *               interest:
+ *                 type: string
+ *                 enum: [passive, arbitrage]
+ *                 description: User's primary interest
+ *           required: []
+ *     responses:
+ *       200:
+ *         description: Subscribed (or already on the list)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ *                 already:
+ *                   type: boolean
+ *                   description: True if email was already registered
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Server error
+ */
 router.post('/waitlist', validate(waitlistSchema), async (req, res) => {
   try {
     const { email, telegram, lang, source, interest } = req.body;
@@ -227,6 +488,34 @@ export function getAbWinner(): string | null {
   return abWinner;
 }
 
+/**
+ * @swagger
+ * /public/ab-winner:
+ *   get:
+ *     tags: [A/B Testing]
+ *     summary: Get promoted A/B winner
+ *     description: >
+ *       Returns the currently promoted A/B headline variant. The landing page
+ *       fetches this on load — if a winner has been promoted by the admin, all
+ *       visitors see that variant (no random split). Returns winner=null when
+ *       no winner has been promoted (random assignment applies).
+ *     responses:
+ *       200:
+ *         description: Current A/B winner
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ *                 winner:
+ *                   type: string
+ *                   enum: [A, B]
+ *                   nullable: true
+ *                   description: Promoted variant (null = no winner, random split)
+ */
 router.get('/ab-winner', (_req, res) => {
   res.json({ ok: true, winner: abWinner });
 });
@@ -234,6 +523,32 @@ router.get('/ab-winner', (_req, res) => {
 // Ultra-lightweight keep-alive ping. Returns instantly with no DB hit so it
 // can be called every few minutes by the frontend SPA or an external cron
 // (cron-job.org / UptimeRobot) to prevent Render free-tier sleep.
+/**
+ * @swagger
+ * /public/ping:
+ *   get:
+ *     tags: [Health]
+ *     summary: Keep-alive ping
+ *     description: >
+ *       Ultra-lightweight health check. No DB hit — returns instantly.
+ *       Used by the frontend SPA (every 10 min) and external cron jobs
+ *       (cron-job.org / UptimeRobot) to prevent Render free-tier sleep.
+ *     responses:
+ *       200:
+ *         description: Pong
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ *                 t:
+ *                   type: integer
+ *                   description: Server timestamp (ms)
+ *                   example: 1700000000000
+ */
 router.get('/ping', (_req, res) => {
   res.json({ ok: true, t: Date.now() });
 });

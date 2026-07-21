@@ -60,7 +60,7 @@ const defaultFlags: Record<string, FeatureFlag> = {
   },
   api_docs: {
     name: 'api_docs',
-    enabled: config.nodeEnv !== 'production',
+    enabled: true,
     description: 'API documentation (Swagger UI)',
   },
 };

@@ -170,7 +170,8 @@ export async function shareCardAsImage(opps: ShareOpportunity[], opts?: { userna
 
   const file = new File([blob], 'funding-finder.png', { type: 'image/png' });
   const refParam = opts?.referralCode ? `?ref=${opts.referralCode}` : '';
-  const text = `${copy.shareText}\n${SITE_URL}${refParam}`;
+  const utmParams = 'utm_source=miniapp&utm_medium=share_card&utm_campaign=organic';
+  const text = `${copy.shareText}\n${SITE_URL}${refParam}${refParam ? '&' : '?'}${utmParams}`;
 
   // Prefer native share with the image (mobile: posts image to TG/Twitter).
   if (navigator.share && (navigator as any).canShare?.({ files: [file] })) {
