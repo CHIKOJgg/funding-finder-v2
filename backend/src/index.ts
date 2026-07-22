@@ -315,6 +315,17 @@ app.use('/api', logRoutes);
 // cookies); the landing page is hosted on a separate frontend origin.
 app.use('/api/public', cors({ origin: true }), publicRoutes);
 
+// Public web-auth routes (wallet SIWE + Google + email). These ESTABLISH a
+// session, so they must NOT sit behind the global `authenticate` middleware.
+// Mounted BEFORE /api + authenticate so requests to /api/auth/* and
+// /api/v1/auth/* are not intercepted by the auth middleware on the catch-all
+// /api prefix.
+app.use('/api/auth', authLimiter, authRoutes);
+import v1Routes from './routes/v1.js';
+app.use('/api/v1/auth', authLimiter, authRoutes);
+import { qrAuthRouter, qrPublicRouter } from './routes/qrLogin.js';
+app.use('/api', qrPublicRouter);             // /api/qr-login/verify (no auth)
+
 // Routes with auth
 // Scan hits many exchange APIs and AI calls cost money, so each route group
 // carries its own strict per-user cap (defined inside the route files so the
@@ -341,23 +352,12 @@ app.use('/api/debug', authenticate, requireAdmin, debugRoutes);
 // Webhook routes (no user auth, webhook token/signature verified inside)
 app.use('/api/webhook', webhookRoutes);
 
-// QR Login routes (verify is public, request/status need auth)
-import { qrAuthRouter, qrPublicRouter } from './routes/qrLogin.js';
-app.use('/api', qrPublicRouter);             // /api/qr-login/verify (no auth)
+// QR Login routes (request/status need auth)
 app.use('/api', authLimiter, authenticate, qrAuthRouter); // /api/qr-login/request, /status
 
 // Public, versioned API contract (Block B2). Decouples the consumer-facing
-// surface (/api/v1) from the Mini App's internal /api routes. The handlers are
-// shared, so behaviour is identical; only the URL prefix differs.
-import v1Routes from './routes/v1.js';
-// Web-auth is mounted separately at /api/v1/auth because it ESTABLISHES a
-// session and must not sit behind the global `authenticate` middleware.
-app.use('/api/v1/auth', authLimiter, authRoutes);
+// surface (/api/v1) from the Mini App's internal /api routes.
 app.use('/api/v1', authLimiter, authenticate, v1Routes);
-
-// Public web-auth routes (wallet SIWE + Google). These ESTABLISH a session, so
-// they must not sit behind the global `authenticate` middleware.
-app.use('/api/auth', authLimiter, authRoutes);
 
 // Protected routes (auth required)
 app.use('/api/alerts', authLimiter, authenticate, alertsRoutes);
