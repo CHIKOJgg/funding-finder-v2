@@ -381,7 +381,7 @@ function DataProvider() {
       'spread'
     );
     if (user?.id) loadArbitrage(true, { silent: true });
-  }, [showToast, user?.id, loadArbitrage]);
+  }, [showToast, user?.id, loadArbitrage, t]);
 
   // Live funding broadcast: the server sends a freshness ping on every warm-up
   // cycle (~5 min). We only record the timestamp — the arbitrage list is kept
@@ -396,12 +396,13 @@ function DataProvider() {
   const wsAuth = useMemo(() => isWeb
     ? { token: getAuthToken() }
     : { initData }, [isWeb, initData]);
+  const handleAlertTriggered = useCallback(() => {
+    loadAlerts(true);
+  }, [loadAlerts]);
   useWebSocket(wsAuth, {
     onNewSpread: handleNewSpread,
     onLiveFunding: applyLiveFunding,
-    onAlertTriggered: useCallback(() => {
-      loadAlerts(true);
-    }, [loadAlerts]),
+    onAlertTriggered: handleAlertTriggered,
   });
 
   const contextValue = useMemo<AppContextType>(() => ({

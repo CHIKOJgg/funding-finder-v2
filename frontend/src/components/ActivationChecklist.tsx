@@ -48,8 +48,6 @@ export function ActivationChecklist() {
     ];
   }, [selectedExchanges.length, scanResults, opened, subscription, trialStatus?.used]);
 
-  if (dismissed) return null;
-
   const done = completed();
   const total = done.filter(Boolean).length;
   const allDone = total === STEPS.length;
@@ -63,6 +61,8 @@ export function ActivationChecklist() {
       return () => clearTimeout(id);
     }
   }, [allDone]);
+
+  if (dismissed) return null;
 
   const stepTitles = [
     t('activation.step1'),

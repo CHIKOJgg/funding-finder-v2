@@ -23,6 +23,14 @@ const MAX_SPREADS_PER_USER_PER_CYCLE = 5;
 
 const lastNotified = new Map<string, number>(); // `${userId}:${key}` -> timestamp
 
+// Evict entries older than 2× the cooldown every 10 minutes.
+setInterval(() => {
+  const cutoff = Date.now() - SPREAD_COOLDOWN_MS * 2;
+  for (const [k, v] of lastNotified) {
+    if (v < cutoff) lastNotified.delete(k);
+  }
+}, 600_000).unref();
+
 function opportunityKey(pair: string, exchangeA: string, exchangeB: string): string {
   const ex = [exchangeA, exchangeB].sort();
   return `${pair}|${ex[0]}|${ex[1]}`;

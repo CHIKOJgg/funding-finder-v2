@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { useApp } from '../App';
@@ -158,14 +158,14 @@ export function MainPage() {
 
   const isPremium = planLimits.aiEnabled;
 
-  // Auto-scan once on first visit so the user lands directly on opportunities
-  // instead of having to press "Сканировать" before seeing anything.
+  const autoScanDone = useRef(false);
+
   useEffect(() => {
-    if (!scanResults && selectedExchanges.length > 0) {
+    if (!scanResults && selectedExchanges.length > 0 && !autoScanDone.current) {
+      autoScanDone.current = true;
       runScan(selectedExchanges);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [runScan, scanResults, selectedExchanges]);
 
   // The single best actionable pick across all yield tiers — surfaces the
   // fastest route from "opened the app" to "open a position".

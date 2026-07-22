@@ -60,15 +60,21 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
     onClose();
   }, [onClose, stopPolling]);
 
-  // Poll order status while an order is open and not yet paid/failed.
+  const orderIdRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
     if (!order?.orderId) return;
-    if (status === 'paid' || status === 'failed' || status === 'expired') return;
+    orderIdRef.current = order.orderId;
+  }, [order?.orderId]);
+
+  useEffect(() => {
+    const oid = order?.orderId;
+    if (!oid) return;
 
     const tick = async () => {
       try {
-        const res: any = await apiClient.getOrderStatus(order.orderId);
-        const st = res?.order?.status || res?.invoice?.status || status;
+        const res: any = await apiClient.getOrderStatus(oid);
+        const st = res?.order?.status || res?.invoice?.status || '';
         setStatus(st);
         if (st === 'paid' || st === 'finished') {
           stopPolling();
@@ -91,7 +97,7 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
     tick();
     pollRef.current = setInterval(tick, 3000);
     return stopPolling;
-  }, [order, status, onPaid, close, showToast, stopPolling]);
+  }, [order?.orderId, onPaid, close, showToast, stopPolling, planId]);
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 

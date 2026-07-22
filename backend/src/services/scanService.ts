@@ -54,45 +54,35 @@ async function saveToHistory(result: ScanResult): Promise<void> {
       seen.add(key);
       return true;
     });
+    if (uniqueItems.length === 0) return;
 
     const now = new Date();
 
-    // Batch upserts in chunks of 50 to avoid overwhelming DB
-    const BATCH_SIZE = 50;
-    for (let i = 0; i < uniqueItems.length; i += BATCH_SIZE) {
-      const batch = uniqueItems.slice(i, i + BATCH_SIZE);
-      try {
-        await prisma.$transaction(
-          batch.map((item) => {
-            const key = `${item.exchange}:${item.contract}`;
-            return prisma.fundingHistory.upsert({
-              where: { key },
-              create: {
-                key,
-                records: {
-                  create: {
-                    timestamp: now,
-                    funding: item.currentFunding,
-                  },
-                },
-              },
-              update: {
-                records: {
-                  create: {
-                    timestamp: now,
-                    funding: item.currentFunding,
-                  },
-                },
-              },
-            });
-          })
-        );
-      } catch (e) {
-        logger.debug(`Batch history save failed: ${(e as Error).message}`);
-      }
-    }
+    // Phase 1: upsert all parent rows in parallel (not wrapped in a single
+    // transaction, since each upsert is independent) so the DB can pipeline them.
+    const parentIds: string[] = await Promise.all(
+      uniqueItems.map(async (item) => {
+        const key = `${item.exchange}:${item.contract}`;
+        const record = await prisma.fundingHistory.upsert({
+          where: { key },
+          create: { key },
+          update: {},
+          select: { id: true },
+        });
+        return record.id;
+      })
+    );
+
+    // Phase 2: bulk-insert all child FundingRecord rows in one statement.
+    await prisma.fundingRecord.createMany({
+      data: parentIds.map((fundingHistoryId, i) => ({
+        fundingHistoryId,
+        timestamp: now,
+        funding: uniqueItems[i].currentFunding,
+      })),
+    });
   } catch (e) {
-    logger.error('Error saving history:', e);
+    logger.warn({ err: (e as Error).message }, 'Failed to save funding history');
   }
 }
 

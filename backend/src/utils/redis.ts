@@ -39,3 +39,15 @@ export function getRedis(): Redis | null {
 
   return client;
 }
+
+export async function closeRedis(): Promise<void> {
+  if (client) {
+    try {
+      await client.quit();
+    } catch (err) {
+      logger.warn({ err: (err as Error).message }, 'Error closing Redis connection');
+    }
+    client = null;
+    initialized = false;
+  }
+}

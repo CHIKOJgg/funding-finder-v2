@@ -32,6 +32,21 @@ const SCAN_STALE_MS = 60_000;
 // because a fresh live scan is temporarily slow or unavailable.
 const arbOppCache = new Map<string, { opportunities: any[]; metadata: any; ts: number }>();
 const ARB_OPP_CACHE_TTL_MS = 60_000;
+const ARB_OPP_CACHE_MAX_SIZE = 500;
+
+// Evict stale entries every 5 minutes so the cache never leaks.
+setInterval(() => {
+  const cutoff = Date.now() - ARB_OPP_CACHE_TTL_MS * 2;
+  for (const [k, v] of arbOppCache) {
+    if (v.ts < cutoff) arbOppCache.delete(k);
+  }
+  if (arbOppCache.size > ARB_OPP_CACHE_MAX_SIZE) {
+    const sorted = [...arbOppCache.entries()].sort((a, b) => a[1].ts - b[1].ts);
+    for (let i = 0; i < sorted.length - ARB_OPP_CACHE_MAX_SIZE; i++) {
+      arbOppCache.delete(sorted[i][0]);
+    }
+  }
+}, 300_000).unref();
 
 function arbOppKey(exchanges: string[]): string {
   return [...new Set(exchanges)].sort().join(',');

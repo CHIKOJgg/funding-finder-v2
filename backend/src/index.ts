@@ -558,6 +558,8 @@ const gracefulShutdown = async (signal: string) => {
   wsManager.close();
   await shutdownJobQueues();
   await disconnectDatabase();
+  const { closeRedis } = await import('./utils/redis.js');
+  await closeRedis();
   process.exit(0);
 };
 

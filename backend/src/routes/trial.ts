@@ -14,37 +14,11 @@ router.post('/trial/activate', async (req: AuthenticatedRequest, res) => {
       return res.status(401).json({ ok: false, error: 'Authentication required' });
     }
 
-    const user = await prisma.user.findUnique({ where: { telegramId: userId } });
-    if (!user) {
-      return res.status(404).json({ ok: false, error: 'User not found' });
-    }
-
-    if (user.trialUsed) {
-      // Idempotent: if the trial is already active (a prior press succeeded
-      // server-side but the client saw a timeout/error), treat the re-press as
-      // a success instead of rejecting it with 409.
-      if (user.subscription === 'pro') {
-        const endsAt = user.trialEndsAt ? user.trialEndsAt.getTime() : null;
-        const msLeft = endsAt ? Math.max(0, endsAt - Date.now()) : 0;
-        return res.json({
-          ok: true,
-          active: true,
-          endsAt: user.trialEndsAt,
-          daysLeft: endsAt ? Math.ceil(msLeft / (24 * 60 * 60 * 1000)) : 0,
-          hoursLeft: Math.floor(msLeft / (60 * 60 * 1000)),
-        });
-      }
-      return res.status(409).json({ ok: false, error: 'Trial already used' });
-    }
-
-    if (user.subscription === 'pro') {
-      return res.status(409).json({ ok: false, error: 'Already on Pro plan' });
-    }
-
+    // Atomic conditional update: only succeeds if trialUsed is still false.
+    // This prevents two concurrent requests from both activating the trial.
     const endsAt = new Date(Date.now() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000);
-
     const updated = await prisma.user.update({
-      where: { telegramId: userId },
+      where: { telegramId: userId, trialUsed: false },
       data: { subscription: 'pro', trialUsed: true, trialEndsAt: endsAt },
     });
 
@@ -54,10 +28,30 @@ router.post('/trial/activate', async (req: AuthenticatedRequest, res) => {
       endsAt: updated.trialEndsAt,
       daysLeft: TRIAL_DURATION_DAYS,
     });
-  } catch (err) {
-    const error = err as Error;
-    logger.error({ err: error }, 'Trial activation error');
-    return res.status(500).json({ ok: false, error: error.message });
+  } catch (err: any) {
+    if (err?.code === 'P2025') {
+      // No row matched — trialUsed is already true or user not found.
+      // Idempotent: if they're already Pro with an active trial, treat
+      // re-presses as success (client may have timed out after a prior success).
+      const user = await prisma.user.findUnique({
+        where: { telegramId: req.userId! },
+        select: { subscription: true, trialEndsAt: true },
+      });
+      if (user?.subscription === 'pro') {
+        const endsAtMs = user.trialEndsAt ? user.trialEndsAt.getTime() : null;
+        const msLeft = endsAtMs ? Math.max(0, endsAtMs - Date.now()) : 0;
+        return res.json({
+          ok: true,
+          active: true,
+          endsAt: user.trialEndsAt,
+          daysLeft: endsAtMs ? Math.ceil(msLeft / (24 * 60 * 60 * 1000)) : 0,
+          hoursLeft: Math.floor(msLeft / (60 * 60 * 1000)),
+        });
+      }
+      return res.status(409).json({ ok: false, error: 'Trial already used' });
+    }
+    logger.error({ err }, 'Trial activation error');
+    return res.status(500).json({ ok: false, error: err?.message || 'Internal error' });
   }
 });
 

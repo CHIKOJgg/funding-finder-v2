@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
 import { PaywallModal } from '../components/PaywallModal';
@@ -294,7 +294,12 @@ const LiveTab = memo(function LiveTab({
   const [exporting, setExporting] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
 
+  const ordersLoadedAt = useRef(0);
+
   const loadOrders = useCallback(async () => {
+    const now = Date.now();
+    if (now - ordersLoadedAt.current < 5000) return;
+    ordersLoadedAt.current = now;
     try {
       const res: any = await apiClient.getExecutedOrders();
       if (res?.ok) setOrders(res.orders || []);
@@ -302,6 +307,7 @@ const LiveTab = memo(function LiveTab({
   }, []);
 
   // Refresh order history when positions refresh (e.g. after an auto-execute).
+  // The 5s dedupe in loadOrders prevents redundant calls from the 30s poll.
   useEffect(() => {
     loadOrders();
   }, [live, loadOrders]);
