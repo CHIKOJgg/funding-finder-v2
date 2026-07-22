@@ -128,7 +128,11 @@ export async function createCryptoPayInvoice(planId: PlanId, currency: string, o
     }
   );
 
-  if (res.data.ok) return res.data.result;
+  if (res.data.ok) {
+    const result = res.data.result;
+    result.invoice_id = String(result.invoice_id);
+    return result;
+  }
   throw new Error(res.data.error?.message || 'Crypto Pay error');
 }
 
