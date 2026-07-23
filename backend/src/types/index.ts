@@ -125,6 +125,7 @@ export interface ArbitrageOpportunity {
   risk: RiskAssessment;
   score: number;
   timestamp: number;
+  persistenceGrade?: string;  // A-F based on how often this pair appeared in recent scans
 }
 
 export interface ProfitCalculation {

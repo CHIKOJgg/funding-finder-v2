@@ -9,6 +9,7 @@ import {
   toggleArbitrageAlert,
   detectArbitrageOpportunities,
   calculateProfit,
+  getPersistenceGrade,
 } from '../services/arbitrageService.js';
 import { getSpotFutures, SF_SUPPORTED_EXCHANGES } from '../services/spotFuturesService.js';
 import { getLivePriceBatch } from '../services/priceService.js';
@@ -207,6 +208,10 @@ router.get('/arbitrage/opportunities', async (req, res) => {
     ];
 
     const opportunities = await detectArbitrageOpportunities(allResults);
+    // Attach persistence grade (A-F) to each opportunity
+    for (const opp of opportunities) {
+      opp.persistenceGrade = getPersistenceGrade(opp.pair, opp.exchangeA, opp.exchangeB);
+    }
     const metadata = {
       scanned: scanResults.scanned,
       intervalDistribution: scanResults.metrics.intervalDistribution,

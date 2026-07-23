@@ -11,6 +11,7 @@ import { ExchangeSelect } from '../components/ExchangeSelect';
 import { FilterBar, FilterField, SegmentedControl } from '../components/FilterBar';
 import { useT } from '../i18n';
 import { SpotFuturesPanel } from '../components/SpotFuturesPanel';
+import { profitCalcClient, breakEvenDays, type ClientProfit } from '../utils/profitCalc';
 type ArbSortKey = 'apy' | 'daily' | 'hourly' | 'risk';
 type RiskFilter = 'ALL' | 'LOW' | 'MEDIUM' | 'HIGH';
 
@@ -513,8 +514,21 @@ const OpportunityCard = memo(function OpportunityCard({
   onCalculate: () => void;
 }) {
   const t = useT();
+  const [showCalc, setShowCalc] = useState(false);
+  const [calcCapital, setCalcCapital] = useState(1000);
   const priceA = resolvePrice(priceMap, opp.exchangeA, opp.pair, opp.markPriceA);
   const priceB = resolvePrice(priceMap, opp.exchangeB, opp.pair, opp.markPriceB);
+
+  const calcProfit = useMemo<ClientProfit | null>(() => {
+    if (!showCalc) return null;
+    return profitCalcClient({
+      exchangeA: opp.exchangeA,
+      exchangeB: opp.exchangeB,
+      difference: opp.difference,
+      volumeA: opp.volumeA,
+      volumeB: opp.volumeB,
+    }, calcCapital);
+  }, [showCalc, opp.exchangeA, opp.exchangeB, opp.difference, opp.volumeA, opp.volumeB, calcCapital]);
   // Live funding (falling back to the scan's values so the card is never blank).
   const fundA = fundingMap?.[livePriceKey(opp.exchangeA, opp.pair)];
   const fundB = fundingMap?.[livePriceKey(opp.exchangeB, opp.pair)];
@@ -530,6 +544,17 @@ const OpportunityCard = memo(function OpportunityCard({
           <span className={clsx('ml-2 text-xs px-2 py-0.5 rounded-full', getRiskColor(opp.risk?.level))} title={t('arb.riskLevelTitle')}>
             {opp.risk?.level}
           </span>
+          {opp.persistenceGrade && (
+            <span className={clsx('ml-1 text-xs px-1.5 py-0.5 rounded-full font-bold', {
+              'bg-green-100 text-green-700': opp.persistenceGrade === 'A',
+              'bg-blue-100 text-blue-700': opp.persistenceGrade === 'B',
+              'bg-yellow-100 text-yellow-700': opp.persistenceGrade === 'C',
+              'bg-orange-100 text-orange-700': opp.persistenceGrade === 'D',
+              'bg-red-100 text-red-700': opp.persistenceGrade === 'F',
+            })} title={t('arb.persistenceTitle')}>
+              {t('arb.persistenceGrade', { grade: opp.persistenceGrade })}
+            </span>
+          )}
            <div className="text-xs text-[var(--text-muted)] mt-0.5" title={t('arb.untilFundingTitle')}>
               <CountdownTimer intervalHours={opp.intervalA_hours} className="font-medium" /> {t('arb.untilFundingEx', { ex: opp.exchangeA })}
           </div>
@@ -628,10 +653,16 @@ const OpportunityCard = memo(function OpportunityCard({
 
       <div className="flex flex-wrap gap-2">
         <button
-          onClick={onCalculate}
+          onClick={() => setShowCalc(!showCalc)}
           className="btn btn-success text-sm py-2 flex-[1.4]"
         >
-          💰 {t('arb.calculate')}
+          💰 {showCalc ? t('arb.hideCalc') : t('arb.calculate')}
+        </button>
+        <button
+          onClick={onCalculate}
+          className="btn btn-secondary text-sm py-2 flex-1"
+        >
+          📊 {t('arb.fullCalc')}
         </button>
         <button
           onClick={() => openExchange(opp.exchangeA, opp.pair)}
@@ -648,6 +679,48 @@ const OpportunityCard = memo(function OpportunityCard({
           {t('arb.openEx', { ex: exchangeLabel(opp.exchangeB) })}
         </button>
       </div>
+
+      {showCalc && calcProfit && (
+        <div className="mt-2 p-2 rounded-lg bg-[var(--surface-2)] border border-[var(--border)]">
+          <div className="flex items-center gap-2 mb-2">
+            <label className="text-xs text-[var(--text-muted)] shrink-0">{t('arb.capital')}</label>
+            <input
+              type="number"
+              min={100}
+              max={1000000}
+              value={calcCapital}
+              onChange={(e) => setCalcCapital(Math.max(100, Math.min(1000000, Number(e.target.value) || 100)))}
+              className="input-field text-xs py-1 flex-1"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+            <div className="text-[var(--text-muted)]">{t('arb.netDaily')}</div>
+            <div className={clsx('font-bold text-right', calcProfit.netDaily >= 0 ? 'text-green-600' : 'text-red-500')}>
+              ${calcProfit.netDaily.toFixed(2)}
+            </div>
+            <div className="text-[var(--text-muted)]">{t('arb.netApy')}</div>
+            <div className={clsx('font-bold text-right', calcProfit.annualReturn >= 0 ? 'text-green-600' : 'text-red-500')}>
+              {calcProfit.annualReturn.toFixed(1)}%
+            </div>
+            <div className="text-[var(--text-muted)]">{t('arb.fees')}</div>
+            <div className="text-right">${calcProfit.fees.toFixed(2)}</div>
+            <div className="text-[var(--text-muted)]">{t('arb.slippage')}</div>
+            <div className="text-right">${calcProfit.slippage.toFixed(2)}</div>
+            <div className="text-[var(--text-muted)]">{t('arb.breakEven')}</div>
+            <div className="text-right">
+              {(() => {
+                const be = breakEvenDays(calcProfit);
+                return (
+                  <span className={be <= 30 ? 'text-green-600' : 'text-yellow-600'}>
+                    ~{be === Infinity ? '∞' : be.toFixed(1)} {t('unit.daysShort')}
+                  </span>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
       <p className="text-xs text-[var(--text-muted)] mt-2 text-center">
         💡 {t('arb.hint', { pair: opp.pair })}
       </p>

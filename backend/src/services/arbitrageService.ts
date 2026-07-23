@@ -3,6 +3,66 @@ import { normalizeFundingRate } from '../utils/helpers.js';
 import { prisma } from './prisma.js';
 import { logger } from '../utils/logger.js';
 
+// ==================== Persistence Score ====================
+
+// Tracks how often a specific (pair, exchangeA, exchangeB) opportunity appears
+// across recent scans. The score reflects "persistence" — how stable/consistent
+// the arbitrage spread is. A persistent opportunity is more actionable than a
+// one-off spike.
+
+interface PersistenceEntry {
+  pair: string;
+  exchangeA: string;
+  exchangeB: string;
+}
+
+const PERSISTENCE_WINDOW = 50;  // last N scans to consider
+const persistenceHistory: PersistenceEntry[][] = [];
+let persistenceScores: Record<string, number> = {};
+
+function persistenceKey(p: PersistenceEntry): string {
+  // Normalise order so A-B == B-A
+  const [a, b] = [p.exchangeA, p.exchangeB].sort();
+  return `${p.pair}:${a}:${b}`;
+}
+
+function recordScan(opportunities: ArbitrageOpportunity[]): void {
+  const entries: PersistenceEntry[] = opportunities.map(o => ({
+    pair: o.pair,
+    exchangeA: o.exchangeA,
+    exchangeB: o.exchangeB,
+  }));
+  persistenceHistory.push(entries);
+  if (persistenceHistory.length > PERSISTENCE_WINDOW) {
+    persistenceHistory.shift();
+  }
+  // Recompute scores
+  const counts: Record<string, number> = {};
+  for (const scan of persistenceHistory) {
+    const unique = new Set(scan.map(persistenceKey));
+    for (const k of unique) {
+      counts[k] = (counts[k] || 0) + 1;
+    }
+  }
+  const total = persistenceHistory.length || 1;
+  const next: Record<string, number> = {};
+  for (const [k, v] of Object.entries(counts)) {
+    next[k] = v / total;
+  }
+  persistenceScores = next;
+}
+
+/** Persistence grade A-F based on how often this pair appeared in recent scans. */
+export function getPersistenceGrade(pair: string, exchangeA: string, exchangeB: string): string {
+  const k = persistenceKey({ pair, exchangeA, exchangeB });
+  const pct = (persistenceScores[k] ?? 0) * 100;
+  if (pct >= 80) return 'A';
+  if (pct >= 60) return 'B';
+  if (pct >= 40) return 'C';
+  if (pct >= 20) return 'D';
+  return 'F';
+}
+
 // Exchange fee structures (taker fees)
 export const EXCHANGE_FEES: Record<string, { taker: number; maker: number }> = {
   binance: { taker: 0.0004, maker: 0.0002 },   // 0.04%
@@ -333,7 +393,10 @@ export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): Arb
   });
 
   // Sort by score (best opportunities first)
-  return opportunities.sort((a, b) => b.score - a.score);
+  const sorted = opportunities.sort((a, b) => b.score - a.score);
+  // Record this scan for persistence tracking
+  recordScan(sorted);
+  return sorted;
 }
 
 // ==================== Alert Management ====================

@@ -779,6 +779,12 @@ export const ru: Record<string, string> = {
   'arb.breakEven': 'Окупаемость',
   'arb.breakEvenValue': '~{days} дн · {cycles} циклов',
 
+  // Arbitrage — inline calculator & persistence
+  'arb.hideCalc': 'Скрыть кальк.',
+  'arb.fullCalc': 'Полный кальк.',
+  'arb.persistenceTitle': 'Пersistence — как часто этот спред появляется в последних сканах (A = ≥80%, F = <20%)',
+  'arb.persistenceGrade': 'P {grade}',
+
   // Units — extra
   'unit.daysShort': 'дн',
   'unit.settlementCycles': 'циклов',

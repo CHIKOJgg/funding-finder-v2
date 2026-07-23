@@ -777,6 +777,12 @@ export const en: Record<string, string> = {
   'arb.breakEven': 'Break-even',
   'arb.breakEvenValue': '~{days}d · {cycles} cycles',
 
+  // Arbitrage — inline calculator & persistence
+  'arb.hideCalc': 'Hide calc',
+  'arb.fullCalc': 'Full calc',
+  'arb.persistenceTitle': 'Persistence — how often this spread appears across recent scans (A = ≥80%, F = <20%)',
+  'arb.persistenceGrade': 'P {grade}',
+
   // Units — extra
   'unit.daysShort': 'd',
   'unit.settlementCycles': 'cycles',
