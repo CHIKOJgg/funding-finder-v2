@@ -556,7 +556,7 @@ const OpportunityCard = memo(function OpportunityCard({
             </span>
           )}
            <div className="text-xs text-[var(--text-muted)] mt-0.5" title={t('arb.untilFundingTitle')}>
-              <CountdownTimer intervalHours={opp.intervalA_hours} className="font-medium" /> {t('arb.untilFundingEx', { ex: opp.exchangeA })}
+              <CountdownTimer intervalHours={opp.intervalA_hours} className="font-medium" showProgress /> {t('arb.untilFundingEx', { ex: opp.exchangeA })}
           </div>
         </div>
         <div className="sm:text-right">
@@ -783,6 +783,8 @@ function ProfitCalculator({
 }) {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [backtest, setBacktest] = useState<any>(null);
+  const [backtestLoading, setBacktestLoading] = useState(false);
   const { showToast } = useToast();
   const t = useT();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -802,6 +804,28 @@ function ProfitCalculator({
       showToast(t('arb.calcError'), 'error');
     } finally {
       setLoading(false);
+    }
+  }, [opportunity, capital, showToast]);
+
+  const handleBacktest = useCallback(async () => {
+    try {
+      setBacktestLoading(true);
+      const response: any = await apiClient.getBacktest(
+        opportunity.pair,
+        opportunity.exchangeA,
+        opportunity.exchangeB,
+        capital,
+        30,
+      );
+      if (response.ok) {
+        setBacktest(response);
+      } else {
+        showToast(t('arb.backtestNoData'), 'info');
+      }
+    } catch {
+      showToast(t('arb.backtestError'), 'error');
+    } finally {
+      setBacktestLoading(false);
     }
   }, [opportunity, capital, showToast]);
 
@@ -842,8 +866,12 @@ function ProfitCalculator({
             />
           </div>
 
-          <button onClick={handleCalculate} disabled={loading} className="btn btn-success mb-4 w-full">
+          <button onClick={handleCalculate} disabled={loading} className="btn btn-success mb-3 w-full">
             {loading ? t('arb.calculating') : t('arb.calculateProfit')}
+          </button>
+
+          <button onClick={handleBacktest} disabled={backtestLoading} className="btn btn-secondary mb-4 w-full text-sm">
+            {backtestLoading ? t('arb.calculating') : `📈 ${t('arb.backtest')}`}
           </button>
 
           {result && (
@@ -884,6 +912,57 @@ function ProfitCalculator({
                   );
                 })()}
               </div>
+            </div>
+          )}
+
+          {backtest && backtest.available && (
+            <div className="bg-[var(--surface-2)] p-3 rounded-lg mb-3">
+              <div className="text-sm font-semibold mb-2">{t('arb.backtest')} ({backtest.days}d)</div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="text-[var(--text-muted)]">{t('arb.backtestDays')}</div>
+                <div className="text-right">{backtest.daysWithSpread} / {backtest.totalDays}</div>
+                <div className="text-[var(--text-muted)]">{t('arb.backtestWinRate')}</div>
+                <div className={clsx('text-right font-bold', backtest.winRate >= 50 ? 'text-green-600' : 'text-yellow-600')}>
+                  {backtest.winRate.toFixed(0)}%
+                </div>
+                <div className="text-[var(--text-muted)]">{t('arb.backtestCumulative')}</div>
+                <div className="text-right font-bold">{backtest.cumulativePct.toFixed(2)}%</div>
+                <div className="text-[var(--text-muted)]">{t('arb.backtestAnnualized')}</div>
+                <div className={clsx('text-right font-bold', backtest.annualizedPct >= 0 ? 'text-green-600' : 'text-red-500')}>
+                  {backtest.annualizedPct.toFixed(1)}%
+                </div>
+                <div className="text-[var(--text-muted)]">{t('arb.backtestProfit')}</div>
+                <div className={clsx('text-right font-bold', backtest.totalProfit >= 0 ? 'text-green-600' : 'text-red-500')}>
+                  ${backtest.totalProfit.toFixed(2)}
+                </div>
+                <div className="text-[var(--text-muted)]">{t('arb.backtestMaxDD')}</div>
+                <div className="text-right text-red-500">${backtest.maxDrawdown.toFixed(2)}</div>
+              </div>
+              {backtest.daily && backtest.daily.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-[var(--border)]">
+                  <div className="text-xs text-[var(--text-muted)] mb-1">{t('arb.backtestDaily')}</div>
+                  <div className="flex gap-px items-end h-12">
+                    {backtest.daily.map((d: any, i: number) => {
+                      const maxAbs = Math.max(...backtest.daily.map((x: any) => Math.abs(x.profitUsd)), 1);
+                      const h = Math.abs(d.profitUsd) / maxAbs * 100;
+                      return (
+                        <div
+                          key={i}
+                          className={clsx('flex-1 rounded-t', d.profitUsd >= 0 ? 'bg-green-400' : 'bg-red-400')}
+                          style={{ height: `${Math.max(4, h)}%` }}
+                          title={`${d.date}: $${d.profitUsd.toFixed(2)}`}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {backtest && !backtest.available && (
+            <div className="bg-[var(--surface-2)] p-3 rounded-lg mb-3 text-xs text-[var(--text-muted)] text-center">
+              {t('arb.backtestNoData')}
             </div>
           )}
 

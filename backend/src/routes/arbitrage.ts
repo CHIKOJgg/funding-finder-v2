@@ -18,6 +18,7 @@ import { runScan, getCachedScan } from '../services/scanService.js';
 import { getWarmupPromise } from '../services/fundingWarmup.js';
 import { getSubscriptionLimits } from '../middleware/subscription.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
+import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
@@ -257,6 +258,142 @@ router.post('/arbitrage/calculate-profit', validate(calculateProfitSchema), asyn
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Profit calculation error');
+    res.status(500).json({ ok: false, error: error.message || String(error) });
+  }
+});
+
+// Pair-specific backtest: compute historical arbitrage returns for a specific
+// pair + exchange combination using the FundingHistory data the scanner stores.
+// GET /api/arbitrage/backtest?pair=BTC/USDT&exchangeA=binance&exchangeB=bybit&days=30&capital=1000
+router.get('/arbitrage/backtest', async (req, res) => {
+  try {
+    const pair = (req.query.pair as string) || '';
+    const exchangeA = (req.query.exchangeA as string) || '';
+    const exchangeB = (req.query.exchangeB as string) || '';
+    const days = Math.min(Math.max(parseInt(req.query.days as string) || 30, 7), 90);
+    const capital = Math.min(Math.max(parseFloat(req.query.capital as string) || 1000, 100), 1000000);
+
+    if (!pair || !exchangeA || !exchangeB) {
+      return res.status(400).json({ ok: false, error: 'pair, exchangeA, exchangeB are required' });
+    }
+
+    // Derive the canonical contract key from the pair (e.g. "BTC/USDT" -> "BTCUSDT")
+    const canonicalPair = pair.replace('/', '').toUpperCase();
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const [histA, histB] = await Promise.all([
+      prisma.fundingHistory.findUnique({
+        where: { key: `${exchangeA}:${canonicalPair}` },
+        include: {
+          records: {
+            where: { timestamp: { gte: since } },
+            orderBy: { timestamp: 'asc' },
+          },
+        },
+      }),
+      prisma.fundingHistory.findUnique({
+        where: { key: `${exchangeB}:${canonicalPair}` },
+        include: {
+          records: {
+            where: { timestamp: { gte: since } },
+            orderBy: { timestamp: 'asc' },
+          },
+        },
+      }),
+    ]);
+
+    const recordsA = histA?.records || [];
+    const recordsB = histB?.records || [];
+
+    if (recordsA.length === 0 || recordsB.length === 0) {
+      return res.json({
+        ok: true,
+        available: false,
+        pair,
+        exchangeA,
+        exchangeB,
+        days,
+        capital,
+        message: 'Insufficient history data',
+      });
+    }
+
+    // Group records by day, taking the latest rate each day per exchange
+    function latestPerDay(records: { timestamp: Date; funding: number }[]): Map<string, number> {
+      const map = new Map<string, number>();
+      for (const r of records) {
+        const d = r.timestamp;
+        const key = `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`;
+        map.set(key, r.funding); // last one wins (sorted asc)
+      }
+      return map;
+    }
+
+    const dayMapA = latestPerDay(recordsA);
+    const dayMapB = latestPerDay(recordsB);
+
+    // Compute daily spread (abs difference) and cumulative profit
+    const dailyResults: { date: string; spread: number; profitUsd: number }[] = [];
+    let cumulativeSpread = 0;
+    let daysWithSpread = 0;
+    let maxDrawdown = 0;
+    let peak = 0;
+
+    // Fee constants (taker)
+    const feeA = 0.0005; // default
+    const feeB = 0.0005;
+    const oneTimeCostPct = (feeA + feeB) * 2; // entry + exit on both legs
+
+    for (const [day, rateA] of dayMapA) {
+      const rateB = dayMapB.get(day);
+      if (rateB == null) continue;
+
+      const spread = Math.abs(rateA - rateB);
+      if (spread <= 0) continue;
+
+      cumulativeSpread += spread;
+      daysWithSpread += 1;
+
+      const grossProfit = capital * spread;
+      const oneTimeCost = capital * oneTimeCostPct;
+      const netProfit = grossProfit - oneTimeCost;
+
+      dailyResults.push({ date: day, spread, profitUsd: netProfit });
+
+      // Drawdown tracking
+      const totalPnl = dailyResults.reduce((s, d) => s + d.profitUsd, 0);
+      if (totalPnl > peak) peak = totalPnl;
+      const dd = peak - totalPnl;
+      if (dd > maxDrawdown) maxDrawdown = dd;
+    }
+
+    const totalProfit = dailyResults.reduce((s, d) => s + d.profitUsd, 0);
+    const winDays = dailyResults.filter(d => d.profitUsd > 0).length;
+    const winRate = dailyResults.length > 0 ? (winDays / dailyResults.length) * 100 : 0;
+    const cumulativePct = (cumulativeSpread * 100);
+    const annualizedPct = daysWithSpread > 0 ? (cumulativePct / daysWithSpread) * 365 : 0;
+
+    return res.json({
+      ok: true,
+      available: true,
+      pair,
+      exchangeA,
+      exchangeB,
+      days,
+      capital,
+      daysWithSpread,
+      totalDays: dailyResults.length,
+      cumulativeSpread,
+      cumulativePct,
+      annualizedPct,
+      totalProfit,
+      winRate,
+      maxDrawdown,
+      daily: dailyResults.slice(-30), // last 30 days max for payload size
+    });
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Backtest error');
     res.status(500).json({ ok: false, error: error.message || String(error) });
   }
 });

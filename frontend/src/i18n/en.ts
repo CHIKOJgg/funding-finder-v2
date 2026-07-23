@@ -783,6 +783,18 @@ export const en: Record<string, string> = {
   'arb.persistenceTitle': 'Persistence — how often this spread appears across recent scans (A = ≥80%, F = <20%)',
   'arb.persistenceGrade': 'P {grade}',
 
+  // Arbitrage — backtest
+  'arb.backtest': 'Backtest (30d)',
+  'arb.backtestDays': 'Days with spread',
+  'arb.backtestWinRate': 'Win rate',
+  'arb.backtestCumulative': 'Cumulative return',
+  'arb.backtestAnnualized': 'Annualized (est.)',
+  'arb.backtestProfit': 'Net profit',
+  'arb.backtestMaxDD': 'Max drawdown',
+  'arb.backtestDaily': 'Daily PnL (last 30d)',
+  'arb.backtestNoData': 'Not enough history data for this pair yet',
+  'arb.backtestError': 'Failed to load backtest',
+
   // Units — extra
   'unit.daysShort': 'd',
   'unit.settlementCycles': 'cycles',

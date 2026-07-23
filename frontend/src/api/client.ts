@@ -205,6 +205,10 @@ export const apiClient = {
     return retryRequest(() => api.post('/arbitrage/calculate-profit', { opportunity, capital }));
   },
 
+  async getBacktest(pair: string, exchangeA: string, exchangeB: string, capital: number, days = 30) {
+    return retryRequest(() => api.get('/arbitrage/backtest', { params: { pair, exchangeA, exchangeB, capital, days } }));
+  },
+
   async getHistory(exchange: string, contract: string, limit = 100, offset = 0) {
     return retryRequest(() => api.get(`/history/${exchange}/${contract}`, { params: { limit, offset } }));
   },

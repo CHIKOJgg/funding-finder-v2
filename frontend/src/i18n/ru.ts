@@ -785,6 +785,18 @@ export const ru: Record<string, string> = {
   'arb.persistenceTitle': 'Пersistence — как часто этот спред появляется в последних сканах (A = ≥80%, F = <20%)',
   'arb.persistenceGrade': 'P {grade}',
 
+  // Arbitrage — backtest
+  'arb.backtest': 'Бэктест (30д)',
+  'arb.backtestDays': 'Дней со спредом',
+  'arb.backtestWinRate': 'Винрейт',
+  'arb.backtestCumulative': 'Кумулятивная доходность',
+  'arb.backtestAnnualized': 'Годовая (оценка)',
+  'arb.backtestProfit': 'Чистая прибыль',
+  'arb.backtestMaxDD': 'Макс. просадка',
+  'arb.backtestDaily': 'Дневной PnL (30д)',
+  'arb.backtestNoData': 'Недостаточно данных по истории для этой пары',
+  'arb.backtestError': 'Ошибка загрузки бэктеста',
+
   // Units — extra
   'unit.daysShort': 'дн',
   'unit.settlementCycles': 'циклов',
