@@ -797,6 +797,21 @@ export const ru: Record<string, string> = {
   'arb.backtestNoData': 'Недостаточно данных по истории для этой пары',
   'arb.backtestError': 'Ошибка загрузки бэктеста',
 
+  // Liquidation heatmap
+  'arb.liqHeatmap': 'Карта ликвидаций',
+  'arb.liqLongSide': 'Зоны ликвидации лонгов (поддержка)',
+  'arb.liqShortSide': 'Зоны ликвидации шортов (сопротивление)',
+  'arb.liqCurrentPrice': 'Текущая цена',
+  'arb.liqNote': 'Оценочные зоны (0.4% поддерживающая маржа)',
+
+  // OI-Weighted volume signal
+  'arb.oiSignal': 'Объём',
+  'arb.oiSignalTitle': 'Минимальный объём 24ч между двумя биржами — выше = надёжнее спред',
+  'arb.oiSignalHigh': 'Сильный',
+  'arb.oiSignalMed': 'Средний',
+  'arb.oiSignalLow': 'Низкий',
+  'arb.oiSignalThin': 'Тонкий',
+
   // Units — extra
   'unit.daysShort': 'дн',
   'unit.settlementCycles': 'циклов',

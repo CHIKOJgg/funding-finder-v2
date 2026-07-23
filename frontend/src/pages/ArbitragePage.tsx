@@ -12,6 +12,7 @@ import { FilterBar, FilterField, SegmentedControl } from '../components/FilterBa
 import { useT } from '../i18n';
 import { SpotFuturesPanel } from '../components/SpotFuturesPanel';
 import { profitCalcClient, breakEvenDays, type ClientProfit } from '../utils/profitCalc';
+import { LiquidationHeatmap } from '../components/LiquidationHeatmap';
 type ArbSortKey = 'apy' | 'daily' | 'hourly' | 'risk';
 type RiskFilter = 'ALL' | 'LOW' | 'MEDIUM' | 'HIGH';
 
@@ -515,6 +516,7 @@ const OpportunityCard = memo(function OpportunityCard({
 }) {
   const t = useT();
   const [showCalc, setShowCalc] = useState(false);
+  const [showLiq, setShowLiq] = useState(false);
   const [calcCapital, setCalcCapital] = useState(1000);
   const priceA = resolvePrice(priceMap, opp.exchangeA, opp.pair, opp.markPriceA);
   const priceB = resolvePrice(priceMap, opp.exchangeB, opp.pair, opp.markPriceB);
@@ -566,8 +568,16 @@ const OpportunityCard = memo(function OpportunityCard({
             </span>
             <span className="text-xs font-normal text-[var(--text-muted)]">{t('arb.netApy')}</span>
           </div>
-          <div className="text-xs text-[var(--text-muted)]" title={t('arb.dailySpreadTitle')}>
+           <div className="text-xs text-[var(--text-muted)]" title={t('arb.dailySpreadTitle')}>
             {t('arb.grossLabel')}: {(opp.profit?.grossDaily != null ? (opp.profit.grossDaily / 1000 * 100).toFixed(1) : '—')}% · {t('arb.fees')}: {(opp.profit?.fees != null ? (opp.profit.fees / 1000 * 100).toFixed(2) : '—')}% · {t('arb.slippage')}: {(opp.profit?.slippage != null ? (opp.profit.slippage / 1000 * 100).toFixed(2) : '—')}%
+          </div>
+          <div className="text-[10px] text-[var(--text-muted)] mt-0.5" title={t('arb.oiSignalTitle')}>
+            {(() => {
+              const minVol = Math.min(opp.volumeA || 0, opp.volumeB || 0);
+              const label = minVol > 10_000_000 ? t('arb.oiSignalHigh') : minVol > 1_000_000 ? t('arb.oiSignalMed') : minVol > 100_000 ? t('arb.oiSignalLow') : t('arb.oiSignalThin');
+              const color = minVol > 10_000_000 ? 'text-green-600' : minVol > 1_000_000 ? 'text-blue-600' : minVol > 100_000 ? 'text-yellow-600' : 'text-red-500';
+              return <span className={color}>● {t('arb.oiSignal')}: {label} (${minVol > 1_000_000 ? `${(minVol / 1_000_000).toFixed(1)}M` : `${(minVol / 1_000).toFixed(0)}K`})</span>;
+            })()}
           </div>
         </div>
       </div>
@@ -719,6 +729,19 @@ const OpportunityCard = memo(function OpportunityCard({
             </div>
           </div>
         </div>
+      )}
+
+      {priceA.value > 0 && (
+        <button
+          onClick={() => setShowLiq(!showLiq)}
+          className="btn btn-secondary text-xs py-1.5 w-full mt-1"
+        >
+          {showLiq ? '▾' : '▸'} {t('arb.liqHeatmap')}
+        </button>
+      )}
+
+      {showLiq && priceA.value > 0 && (
+        <LiquidationHeatmap price={priceA.value} className="mt-1" />
       )}
 
       <p className="text-xs text-[var(--text-muted)] mt-2 text-center">

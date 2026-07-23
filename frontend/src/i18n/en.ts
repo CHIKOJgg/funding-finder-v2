@@ -795,6 +795,21 @@ export const en: Record<string, string> = {
   'arb.backtestNoData': 'Not enough history data for this pair yet',
   'arb.backtestError': 'Failed to load backtest',
 
+  // Liquidation heatmap
+  'arb.liqHeatmap': 'Liquidation heatmap',
+  'arb.liqLongSide': 'Long liq. zones (support)',
+  'arb.liqShortSide': 'Short liq. zones (resistance)',
+  'arb.liqCurrentPrice': 'Current price',
+  'arb.liqNote': 'Estimated zones (0.4% maintenance margin)',
+
+  // OI-Weighted volume signal
+  'arb.oiSignal': 'Volume signal',
+  'arb.oiSignalTitle': 'Minimum 24h settlement volume between the two exchanges — higher = more reliable spread',
+  'arb.oiSignalHigh': 'Strong',
+  'arb.oiSignalMed': 'Medium',
+  'arb.oiSignalLow': 'Low',
+  'arb.oiSignalThin': 'Thin',
+
   // Units — extra
   'unit.daysShort': 'd',
   'unit.settlementCycles': 'cycles',
