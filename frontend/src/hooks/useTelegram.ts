@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { setTelegramInitData, setCurrentUserId, setAuthToken, getAuthToken, clearAuthToken, apiClient, captureReferralCode } from '../api/client';
 
 interface TelegramWebApp {
@@ -97,18 +97,19 @@ export function useTelegram() {
     setCurrentUserId(null);
   }, []);
 
+  // Ref to track whether we've already initialised Telegram (prevents duplicate
+  // runs when the effect fires again after the SDK finishes loading).
+  const tgReady = useRef(false);
+
   useEffect(() => {
     // Capture ?ref=CODE from URL before anything else
     captureReferralCode();
 
-    const webApp = window.Telegram?.WebApp;
-    const hasRealTelegramContext = Boolean(
-      webApp?.initData ||
-      window.location.hash.includes('tgWebAppData') ||
-      new URLSearchParams(window.location.search).has('tgWebAppStartParam')
-    );
+    if (tgReady.current) return;
 
-    if (webApp && hasRealTelegramContext) {
+    function setupTelegram(webApp: TelegramWebApp) {
+      if (tgReady.current) return;
+      tgReady.current = true;
       setTg(webApp);
 
       const expandNow = () => {
@@ -145,8 +146,40 @@ export function useTelegram() {
           applyUser({ id, firstName: telegramUser.first_name, username: telegramUser.username, provider: 'telegram' });
         }
       }
+    }
 
-      return () => webApp.offEvent?.('viewportChanged', onViewport);
+    const webApp = window.Telegram?.WebApp;
+    const hasTelegramUrlSignals =
+      window.location.hash.includes('tgWebAppData') ||
+      new URLSearchParams(window.location.search).has('tgWebAppStartParam');
+
+    if (webApp?.initData) {
+      // Telegram Mini App (native) — WebApp is injected synchronously.
+      setupTelegram(webApp);
+    } else if (webApp) {
+      // Telegram Mini App without initData (edge case on some clients).
+      // Still mark as Telegram so the web login page never shows.
+      setupTelegram(webApp);
+    } else if (hasTelegramUrlSignals) {
+      // On web.telegram.org the SDK may still be loading async. Wait for it
+      // instead of falling through to the web auth path.
+      const poll = setInterval(() => {
+        const w = window.Telegram?.WebApp;
+        if (w) {
+          clearInterval(poll);
+          clearTimeout(failSafe);
+          setupTelegram(w);
+        }
+      }, 100);
+      const failSafe = setTimeout(() => {
+        clearInterval(poll);
+        // SDK didn't load — still mark as non-web so we don't show the
+        // website login page inside Telegram's browser.
+        if (!tgReady.current) {
+          tgReady.current = true;
+          setIsWeb(false);
+        }
+      }, 8000);
     } else {
       // Public website mode — require a web session (wallet / Google).
       setIsWeb(true);
