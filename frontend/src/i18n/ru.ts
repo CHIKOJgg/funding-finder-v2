@@ -750,4 +750,36 @@ export const ru: Record<string, string> = {
   'sf.history': 'История ставки фандинга',
   'sf.open': '↗ Открыть {ex}',
   'sf.notSupported': 'Спот-Фьючерс не поддерживается для {exchange}. Используйте Binance, Bybit, OKX, Gate.io или MEXC.',
+
+  // Public heatmap page
+  'public.title': 'Ставки финансирования в реальном времени',
+  'public.subtitle': 'Real-time ставки funding rate на 25+ биржах',
+  'public.pairsScanned': 'пар просканировано',
+  'public.updated': 'Обновлено',
+  'public.noData': 'Данных пока нет. Идёт сканирование…',
+  'public.sortRateDesc': 'Ставка (сначала высокие)',
+  'public.sortRateAsc': 'Ставка (сначала низкие)',
+  'public.sortVolume': 'По объёму',
+  'public.sortExchange': 'По бирже',
+  'public.allExchanges': 'Все биржи',
+  'public.positiveRates': '📈 Положительный фандинг (лонги платят)',
+  'public.negativeRates': '📉 Отрицательный фандинг (шорты платят)',
+  'public.exchange': 'Биржа',
+  'public.contract': 'Контракт',
+  'public.ratePerHour': 'Ставка/ч',
+  'public.annualized': 'APR',
+  'public.price': 'Цена',
+  'public.volume24h': 'Объём 24ч',
+  'public.cta': '🔓 Полный доступ: 25+ бирж, арбитраж, алерты — войдите через Telegram',
+  'public.loginTelegram': 'Войти через Telegram',
+
+  // Arbitrage — NetAPR labels
+  'arb.netApy': 'Net APY',
+  'arb.grossLabel': 'Gross',
+  'arb.breakEven': 'Окупаемость',
+  'arb.breakEvenValue': '~{days} дн · {cycles} циклов',
+
+  // Units — extra
+  'unit.daysShort': 'дн',
+  'unit.settlementCycles': 'циклов',
 };

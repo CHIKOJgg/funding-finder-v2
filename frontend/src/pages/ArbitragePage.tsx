@@ -535,8 +535,15 @@ const OpportunityCard = memo(function OpportunityCard({
           </div>
         </div>
         <div className="sm:text-right">
-          <div className="text-[var(--success)] font-bold break-words" title={t('arb.dailySpreadTitle')}>{(opp.difference_per_day * 100).toFixed(4)}{t('unit.pctPerDay')}</div>
-          <div className="text-xs text-[var(--brand)] font-medium" title={t('arb.apyTitle')}>{opp.profit?.annualReturn?.toFixed(1)}% APY</div>
+          <div className="flex items-baseline gap-1 justify-end">
+            <span className="text-lg font-bold text-[var(--success)]" title={t('arb.apyTitle')}>
+              {opp.profit?.annualReturn?.toFixed(1)}%
+            </span>
+            <span className="text-xs font-normal text-[var(--text-muted)]">{t('arb.netApy')}</span>
+          </div>
+          <div className="text-xs text-[var(--text-muted)]" title={t('arb.dailySpreadTitle')}>
+            {t('arb.grossLabel')}: {(opp.profit?.grossDaily != null ? (opp.profit.grossDaily / 1000 * 100).toFixed(1) : '—')}% · {t('arb.fees')}: {(opp.profit?.fees != null ? (opp.profit.fees / 1000 * 100).toFixed(2) : '—')}% · {t('arb.slippage')}: {(opp.profit?.slippage != null ? (opp.profit.slippage / 1000 * 100).toFixed(2) : '—')}%
+          </div>
         </div>
       </div>
 
@@ -544,7 +551,7 @@ const OpportunityCard = memo(function OpportunityCard({
         <span className="text-xs font-medium text-[var(--text-muted)]">{t('arb.prices')}</span>
         <span className="text-xs text-[var(--text-muted)]">{t('arb.live')}</span>
       </div>
-      <div className="grid grid-cols-2 gap-2 mb-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
         <ExchangePriceCell
           exchange={opp.exchangeA}
           price={priceA}
@@ -575,7 +582,21 @@ const OpportunityCard = memo(function OpportunityCard({
             {(opp.profit?.netDaily ?? 0) >= 0 ? '+' : ''}${opp.profit?.netDaily?.toFixed(2)} USDT
           </span>
         </div>
-         <div>{t('arb.yearApy')} <strong>{opp.profit?.annualReturn?.toFixed(1)}%</strong></div>
+        {(() => {
+          const oneTimeCost = (opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0);
+          const grossDaily = opp.profit?.grossDaily ?? 0;
+          if (grossDaily <= 0 || oneTimeCost <= 0) return null;
+          const breakEven = oneTimeCost / grossDaily;
+          const intervalHours = opp.intervalA_hours || 8;
+          const cycles = Math.ceil(breakEven * 24 / intervalHours);
+          return (
+            <div className="text-xs text-[var(--text-muted)]">
+              {t('arb.breakEven')}: <strong className={breakEven <= 30 ? 'text-green-600' : 'text-yellow-600'}>
+                ~{breakEven.toFixed(1)} {t('unit.daysShort')} · {cycles} {t('unit.settlementCycles')}
+              </strong>
+            </div>
+          );
+        })()}
       </div>
 
       <div className="text-xs text-[var(--text-muted)] mb-2">
@@ -667,8 +688,8 @@ function ExchangePriceCell({
         <span className="text-xs text-[var(--text-muted)]">{t('arb.fundingRate')}</span>
         <span className="flex items-center gap-1.5 shrink-0">
           <span className={clsx('inline-block w-2 h-2 rounded-full', live ? 'bg-green-500 animate-pulse' : 'bg-gray-400')} aria-hidden="true" />
-          <span className={clsx('text-xs font-semibold', fundingColor)}>
-            {(funding * 100).toFixed(6)}{t('unit.pctPerHour')} ({t('unit.hoursShort', { h: interval })})
+          <span className={clsx('text-xs font-semibold truncate max-w-full', fundingColor)} title={`${(funding * 100).toFixed(4)}%/${t('unit.hoursShort', { h: interval })}`}>
+            {(funding * 100).toFixed(4)}{t('unit.pctPerHour')} ({t('unit.hoursShort', { h: interval })})
           </span>
         </span>
       </div>
@@ -772,6 +793,23 @@ function ProfitCalculator({
                   <span>{t('arb.annualReturn')}</span>
                   <strong className={clsx(result.profit.annualReturn >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>{result.profit.annualReturn.toFixed(2)}%</strong>
                 </div>
+              </div>
+              <div className="mt-2 pt-2 border-t border-[var(--border)]">
+                {(() => {
+                  const oneTimeCost = (result.profit.fees || 0) + (result.profit.slippage || 0);
+                  const grossDaily = result.profit.grossDaily || 0;
+                  const breakEven = grossDaily > 0 ? oneTimeCost / grossDaily : Infinity;
+                  const intervalHours = opportunity.intervalA_hours || 8;
+                  const cycles = Math.ceil(breakEven * 24 / intervalHours);
+                  return (
+                    <div className="flex justify-between text-sm">
+                      <span>{t('arb.breakEven')}</span>
+                      <strong className={breakEven > 0 && breakEven <= 30 ? 'text-green-600' : 'text-yellow-600'}>
+                        {t('arb.breakEvenValue', { days: breakEven.toFixed(1), cycles })}
+                      </strong>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}

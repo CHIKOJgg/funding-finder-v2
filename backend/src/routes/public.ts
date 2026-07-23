@@ -261,6 +261,76 @@ router.get('/arbitrage', async (_req, res) => {
   }
 });
 
+// ─── Public funding heatmap ────────────────────────────────────────────────────
+// Read-only heatmap: exchange × pair × funding rate. No auth required.
+// Returns top positive and top negative funding rates from the warm cache.
+const HEATMAP_CACHE_TTL_MS = 30_000;
+
+router.get('/heatmap', async (_req, res) => {
+  const cached = publicCache.get('heatmap');
+  if (cached && Date.now() - cached.ts < HEATMAP_CACHE_TTL_MS) {
+    return res.json({ ok: true, ...cached.payload, cached: true });
+  }
+
+  try {
+    let scan = getCachedScan(SUPPORTED_EXCHANGES);
+    if (!scan) {
+      const warm = getWarmupPromise();
+      if (warm) {
+        await warm;
+        scan = getCachedScan(SUPPORTED_EXCHANGES);
+      }
+    }
+    if (!scan) {
+      const result = await runScan(SUPPORTED_EXCHANGES);
+      scan = { result, ts: Date.now(), ageMs: 0 };
+    }
+
+    const allResults = [
+      ...scan.result.highYield,
+      ...scan.result.mediumYield,
+      ...scan.result.lowYield,
+    ];
+
+    const pairs = allResults.map((r) => ({
+      exchange: r.exchange,
+      contract: r.contract,
+      funding_rate_per_hour: r.funding_rate_per_hour,
+      annualized_rate: r.annualized_rate,
+      mark_price: r.mark_price,
+      volume_24h_settle: r.volume_24h_settle,
+      funding_interval_hours: r.funding_interval_hours,
+    }));
+
+    // Sort by absolute hourly rate descending and take top 40
+    pairs.sort((a, b) => Math.abs(b.funding_rate_per_hour) - Math.abs(a.funding_rate_per_hour));
+    const top = pairs.slice(0, 40);
+
+    const payload = {
+      pairs: top,
+      scanned: scan.result.scanned,
+      generatedAt: scan.ts,
+    };
+
+    publicCache.set('heatmap', { payload, ts: Date.now() });
+    return res.json({ ok: true, ...payload });
+  } catch (e) {
+    const error = e as Error;
+    const stale = publicCache.get('heatmap');
+    if (stale) {
+      logger.warn({ err: error.message }, 'Public heatmap served stale after error');
+      return res.json({ ok: true, ...stale.payload, stale: true });
+    }
+    logger.error({ err: error }, 'Public heatmap error (degraded to empty)');
+    return res.json({
+      ok: true,
+      pairs: [],
+      scanned: 0,
+      degraded: true,
+    });
+  }
+});
+
 // Social-proof track record: an ILLUSTRATIVE market-neutral funding
 // arbitrage paper backtest from real scanned history. Powers the landing-page
 // "what you could have earned" proof and is the key trust element for converting

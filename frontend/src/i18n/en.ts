@@ -748,4 +748,36 @@ export const en: Record<string, string> = {
   'sf.history': 'Funding rate history',
   'sf.open': '↗ Open {ex}',
   'sf.notSupported': 'Spot-Futures is not supported for {exchange}. Use Binance, Bybit, OKX, Gate.io or MEXC.',
+
+  // Public heatmap page
+  'public.title': 'Live Funding Rates',
+  'public.subtitle': 'Real-time perpetual funding rates across 25+ exchanges',
+  'public.pairsScanned': 'pairs scanned',
+  'public.updated': 'Updated',
+  'public.noData': 'No data available yet. Scanning in progress…',
+  'public.sortRateDesc': 'Rate (highest first)',
+  'public.sortRateAsc': 'Rate (lowest first)',
+  'public.sortVolume': 'By volume',
+  'public.sortExchange': 'By exchange',
+  'public.allExchanges': 'All exchanges',
+  'public.positiveRates': '📈 Positive funding (longs pay)',
+  'public.negativeRates': '📉 Negative funding (shorts pay)',
+  'public.exchange': 'Exchange',
+  'public.contract': 'Contract',
+  'public.ratePerHour': 'Rate/h',
+  'public.annualized': 'APR',
+  'public.price': 'Price',
+  'public.volume24h': 'Vol 24h',
+  'public.cta': '🔓 Full access: 25+ exchanges, arbitrage scanner, alerts — log in via Telegram',
+  'public.loginTelegram': 'Log in via Telegram',
+
+  // Arbitrage — NetAPR labels
+  'arb.netApy': 'Net APY',
+  'arb.grossLabel': 'Gross',
+  'arb.breakEven': 'Break-even',
+  'arb.breakEvenValue': '~{days}d · {cycles} cycles',
+
+  // Units — extra
+  'unit.daysShort': 'd',
+  'unit.settlementCycles': 'cycles',
 };

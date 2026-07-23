@@ -28,6 +28,7 @@ const AdminPage = React.lazy(() => import('./pages/AdminPage').then(m => ({ defa
 const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const PortfolioPage = React.lazy(() => import('./pages/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
 const QrScanPage = React.lazy(() => import('./pages/QrScanPage').then(m => ({ default: m.QrScanPage })));
+const PublicPage = React.lazy(() => import('./pages/PublicPage').then(m => ({ default: m.PublicPage })));
 
 interface AppContextType {
   user: { id: string; firstName?: string; username?: string; subscription?: string; referralCode?: string } | null;
@@ -447,7 +448,12 @@ function DataProvider() {
   return (
     <AppContext.Provider value={contextValue}>
       {isWeb && !authenticated ? (
-        <LoginPage onAuthenticated={login} />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/public" element={<Suspense fallback={<PageLoader />}><PublicPage /></Suspense>} />
+            <Route path="*" element={<LoginPage onAuthenticated={login} />} />
+          </Routes>
+        </BrowserRouter>
       ) : (
         <>
           {isWeb && <WebHeader user={user} onLogout={logout} />}
@@ -467,6 +473,7 @@ function DataProvider() {
                       <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
                       <Route path="/portfolio" element={<ErrorBoundary><PortfolioPage /></ErrorBoundary>} />
                       <Route path="/qr-scan" element={<ErrorBoundary><QrScanPage /></ErrorBoundary>} />
+                      <Route path="/public" element={<ErrorBoundary><PublicPage /></ErrorBoundary>} />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </Suspense>

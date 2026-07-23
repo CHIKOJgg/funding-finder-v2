@@ -309,11 +309,24 @@ app.get('/api/feature-flags', (req, res) => {
 import logRoutes from './routes/log.js';
 app.use('/api', logRoutes);
 
+// Rate limit for public, unauthenticated endpoints (landing page, heatmap).
+// Tighter than global to protect the scan cache from anonymous traffic storms.
+const publicLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: createRateLimitStore('public'),
+  message: { ok: false, error: 'Rate limited' },
+  handler: rateLimitHandler('public'),
+});
+
 // Public, unauthenticated marketing surfaces (landing live widget). Mounted
 // BEFORE the authenticated /api mounts so '/api/public/*' is NOT caught by the
 // global `authenticate` middleware. Cross-origin reads are allowed (no auth/
 // cookies); the landing page is hosted on a separate frontend origin.
-app.use('/api/public', cors({ origin: true }), publicRoutes);
+app.use('/api/public', cors({ origin: true }), publicLimiter, publicRoutes);
 
 // Public web-auth routes (wallet SIWE + Google + email). These ESTABLISH a
 // session, so they must NOT sit behind the global `authenticate` middleware.
