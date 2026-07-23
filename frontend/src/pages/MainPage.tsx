@@ -723,7 +723,7 @@ const ResultItem = memo(function ResultItem({
         </div>
         <div className="sm:text-right">
           <div className={clsx('font-bold break-words', getFundingColor(item.funding_rate_per_hour))}>
-            {t('main.ratePerHour', { value: ((item.funding_rate_per_hour ?? 0) * 100).toFixed(6) })}
+            {t('main.ratePerHour', { value: ((item.funding_rate_per_hour ?? 0) * 100).toFixed(4) })}
           </div>
           <div className="text-xs text-[var(--text-muted)]">
             {t('main.ratePerDay', { value: ((item.funding_rate_per_day ?? 0) * 100).toFixed(4) })}
