@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
 import { useT } from '../i18n';
 import { formatPrice } from '../utils/formatters';
@@ -16,6 +16,13 @@ interface HeatmapEntry {
 
 type SortKey = 'rate_desc' | 'rate_asc' | 'volume' | 'exchange';
 
+const FAQ_ITEMS = [
+  { q: 'public.faq1Q', a: 'public.faq1A' },
+  { q: 'public.faq2Q', a: 'public.faq2A' },
+  { q: 'public.faq3Q', a: 'public.faq3A' },
+  { q: 'public.faq4Q', a: 'public.faq4A' },
+];
+
 export function PublicPage() {
   const t = useT();
   const [pairs, setPairs] = useState<HeatmapEntry[]>([]);
@@ -25,8 +32,15 @@ export function PublicPage() {
   const [scanned, setScanned] = useState(0);
   const [sortBy, setSortBy] = useState<SortKey>('rate_desc');
   const [filterExchange, setFilterExchange] = useState<string>('');
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const API = (import.meta.env.VITE_API_URL || 'https://funding-finder-api.onrender.com').replace(/\/$/, '');
+
+  useEffect(() => {
+    document.title = 'Funding Finder — Real-time Crypto Funding Rates | Free Heatmap';
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute('content', 'Track perpetual funding rates across 25+ crypto exchanges in real-time. Free heatmap, arbitrage scanner, and AI analysis. Start earning from funding rates today.');
+  }, []);
 
   const fetchHeatmap = useCallback(async () => {
     try {
@@ -53,11 +67,11 @@ export function PublicPage() {
     return () => clearInterval(id);
   }, [fetchHeatmap]);
 
-  const exchanges = [...new Set(pairs.map((p) => p.exchange))].sort();
+  const exchanges = useMemo(() => [...new Set(pairs.map((p) => p.exchange))].sort(), [pairs]);
 
-  const filtered = pairs.filter((p) => !filterExchange || p.exchange === filterExchange);
+  const filtered = useMemo(() => pairs.filter((p) => !filterExchange || p.exchange === filterExchange), [pairs, filterExchange]);
 
-  const sorted = [...filtered].sort((a, b) => {
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
     switch (sortBy) {
       case 'rate_desc':
         return Math.abs(b.funding_rate_per_hour) - Math.abs(a.funding_rate_per_hour);
@@ -70,25 +84,88 @@ export function PublicPage() {
       default:
         return 0;
     }
-  });
+  }), [filtered, sortBy]);
 
-  const positive = sorted.filter((p) => p.funding_rate_per_hour > 0);
-  const negative = sorted.filter((p) => p.funding_rate_per_hour < 0);
+  const positive = useMemo(() => sorted.filter((p) => p.funding_rate_per_hour > 0), [sorted]);
+  const negative = useMemo(() => sorted.filter((p) => p.funding_rate_per_hour < 0), [sorted]);
+
+  const stats = useMemo(() => {
+    if (pairs.length === 0) return null;
+    const totalVol = pairs.reduce((s, p) => s + (p.volume_24h_settle || 0), 0);
+    const avgRate = pairs.reduce((s, p) => s + Math.abs(p.funding_rate_per_hour), 0) / pairs.length;
+    const exCount = exchanges.length;
+    return { totalVol, avgRate, exCount };
+  }, [pairs, exchanges]);
 
   return (
     <div className="px-3 py-4 sm:px-4">
-      <div className="mb-4">
-        <h1 className="text-xl font-bold text-[var(--text)]">{t('public.title')}</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-1">{t('public.subtitle')}</p>
-        {generatedAt && (
-          <div className="text-xs text-[var(--text-muted)] mt-1">
-            {scanned} {t('public.pairsScanned')} · {t('public.updated')} {new Date(generatedAt).toLocaleTimeString()}
+      {/* Hero Section */}
+      <div className="text-center mb-6">
+        <div className="inline-flex items-center gap-2 mb-3">
+          <div
+            className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black text-white"
+            style={{ background: 'linear-gradient(135deg, #3390ec, #1f4fb0)' }}
+          >
+            FF
+          </div>
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text)] mb-2">
+          {t('public.heroTitle')}
+        </h1>
+        <p className="text-sm sm:text-base text-[var(--text-muted)] max-w-lg mx-auto mb-4">
+          {t('public.heroSubtitle')}
+        </p>
+
+        {/* Stats bar */}
+        {stats && (
+          <div className="flex justify-center gap-4 sm:gap-8 mb-4 text-center">
+            <div>
+              <div className="text-lg sm:text-xl font-bold text-[var(--text)]">{scanned}+</div>
+              <div className="text-xs text-[var(--text-muted)]">{t('public.statPairs')}</div>
+            </div>
+            <div>
+              <div className="text-lg sm:text-xl font-bold text-[var(--text)]">{stats.exCount}+</div>
+              <div className="text-xs text-[var(--text-muted)]">{t('public.statExchanges')}</div>
+            </div>
+            <div>
+              <div className="text-lg sm:text-xl font-bold text-[var(--text)]">
+                ${(stats.totalVol / 1_000_000_000).toFixed(1)}B
+              </div>
+              <div className="text-xs text-[var(--text-muted)]">{t('public.statVolume')}</div>
+            </div>
           </div>
         )}
+
+        {/* Multi-CTA */}
+        <div className="flex flex-col sm:flex-row justify-center gap-3">
+          <a
+            href="https://t.me/FundingFinderBot"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-primary text-sm py-2.5 px-6"
+          >
+            {t('public.ctaTelegram')}
+          </a>
+          <a
+            href="/"
+            className="btn btn-secondary text-sm py-2.5 px-6"
+          >
+            {t('public.ctaWeb')}
+          </a>
+        </div>
       </div>
 
+      {generatedAt && (
+        <div className="text-center text-xs text-[var(--text-muted)] mb-4">
+          {t('public.updated')} {new Date(generatedAt).toLocaleTimeString()}
+        </div>
+      )}
+
       {loading ? (
-        <div className="text-center py-12 text-[var(--text-muted)]">{t('common.loading')}</div>
+        <div className="text-center py-12 text-[var(--text-muted)]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-3"></div>
+          {t('common.loading')}
+        </div>
       ) : error ? (
         <div className="text-center py-12 text-red-500">{error}</div>
       ) : pairs.length === 0 ? (
@@ -170,6 +247,7 @@ export function PublicPage() {
         </>
       )}
 
+      {/* Bottom CTA */}
       <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-center">
         <p className="text-sm font-medium text-blue-900 mb-2">{t('public.cta')}</p>
         <div className="flex justify-center gap-3">
@@ -181,6 +259,48 @@ export function PublicPage() {
           >
             {t('public.loginTelegram')}
           </a>
+          <a href="/" className="btn btn-secondary text-sm py-2 px-4">
+            {t('public.ctaWeb')}
+          </a>
+        </div>
+      </div>
+
+      {/* FAQ Section */}
+      <div className="mt-8 mb-4">
+        <h2 className="text-lg font-bold text-[var(--text)] mb-4 text-center">{t('public.faqTitle')}</h2>
+        <div className="space-y-2">
+          {FAQ_ITEMS.map((item, idx) => (
+            <div key={idx} className="rounded-xl overflow-hidden" style={{ background: 'var(--surface-2)' }}>
+              <button
+                onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                className="w-full p-3 text-left flex items-center justify-between gap-2"
+              >
+                <span className="text-sm font-semibold text-[var(--text)]">{t(item.q)}</span>
+                <span
+                  className="text-lg shrink-0 transition-transform"
+                  style={{ color: 'var(--text-muted)', transform: openFaq === idx ? 'rotate(45deg)' : 'rotate(0deg)' }}
+                >
+                  +
+                </span>
+              </button>
+              {openFaq === idx && (
+                <div className="px-3 pb-3 text-sm" style={{ color: 'var(--text-muted)' }}>
+                  {t(item.a)}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="text-center py-6 border-t mt-6" style={{ borderColor: 'var(--border)' }}>
+        <p className="text-xs text-[var(--text-muted)]">
+          Funding Finder © {new Date().getFullYear()} · {t('public.footerNote')}
+        </p>
+        <div className="flex justify-center gap-4 mt-2">
+          <a href="/terms" className="text-xs hover:underline" style={{ color: 'var(--brand)' }}>{t('public.termsLink')}</a>
+          <a href="/privacy" className="text-xs hover:underline" style={{ color: 'var(--brand)' }}>{t('public.privacyLink')}</a>
         </div>
       </div>
     </div>
@@ -193,7 +313,6 @@ function HeatmapRow({ entry }: { entry: HeatmapEntry }) {
   const annPct = (entry.annualized_rate * 100).toFixed(1);
   const isPositive = rate > 0;
 
-  // Color intensity based on absolute rate
   const absRate = Math.abs(rate);
   let bgClass = '';
   if (absRate > 0.0005) bgClass = isPositive ? 'bg-green-100' : 'bg-red-100';
