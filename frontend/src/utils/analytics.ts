@@ -12,6 +12,7 @@ export type TrackEvent =
   | 'scan_run'
   | 'paywall_view'
   | 'trial_start'
+  | 'onboarding_complete'
   | 'paid';
 
 const API_URL = (import.meta.env.VITE_API_URL || 'https://funding-finder-api.onrender.com')
