@@ -784,6 +784,13 @@ export const en: Record<string, string> = {
   'settings.pushoverKey': 'Pushover User Key',
   'settings.pushoverDevice': 'Device (optional)',
   'settings.pushoverDevicePlaceholder': 'all devices',
+  'settings.exportImport': 'Export / Import',
+  'settings.exportImportHint': 'Save your settings to a file or restore from a backup.',
+  'settings.export': 'Export',
+  'settings.import': 'Import',
+  'settings.exportDone': 'Settings exported',
+  'settings.importDone': 'Settings imported',
+  'settings.importError': 'Invalid settings file',
 
   // OI Tracker
   'nav.oi': 'OI Tracker',

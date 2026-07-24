@@ -754,6 +754,13 @@ export const ru: Record<string, string> = {
   'settings.pushoverKey': 'User Key Pushover',
   'settings.pushoverDevice': 'Устройство (необязательно)',
   'settings.pushoverDevicePlaceholder': 'все устройства',
+  'settings.exportImport': 'Экспорт / Импорт',
+  'settings.exportImportHint': 'Сохраните настройки в файл или восстановите из резервной копии.',
+  'settings.export': 'Экспорт',
+  'settings.import': 'Импорт',
+  'settings.exportDone': 'Настройки экспортированы',
+  'settings.importDone': 'Настройки импортированы',
+  'settings.importError': 'Неверный файл настроек',
 
   // OI Tracker
   'nav.oi': 'OI Трекер',
