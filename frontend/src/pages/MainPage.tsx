@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
@@ -18,6 +18,8 @@ import { PairMatrix } from '../components/PairMatrix';
 import { RiskProfileModal } from '../components/RiskProfileModal';
 import { ResultSkeleton } from '../components/Skeleton';
 import { ActivationChecklist } from '../components/ActivationChecklist';
+import { SoftPaywallBanner } from '../components/SoftPaywallBanner';
+import { InstallBanner } from '../components/InstallBanner';
 import { ExchangeResult } from '../types';
 import { useT, useI18n } from '../i18n';
 
@@ -25,7 +27,7 @@ type SortKey = 'rate' | 'volume' | 'interval';
 
 export function MainPage() {
   const { scanResults, scanLoading, scanStatus, runScan, selectedExchanges, setSelectedExchanges, planLimits, watchlist, user } = useApp();
-  const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [paywallFeature, setPaywallFeature] = useState<PaywallFeature | null>(null);
@@ -36,20 +38,42 @@ export function MainPage() {
   const [showAi, setShowAi] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [historyModal, setHistoryModal] = useState<{ exchange: string; contract: string } | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '');
   const [showMatrix, setShowMatrix] = useState(false);
   const [showRisk, setShowRisk] = useState(false);
-  const [sortBy, setSortBy] = useState<SortKey>('rate');
+  const [sortBy, setSortBy] = useState<SortKey>(() => {
+    const s = searchParams.get('sort');
+    if (s === 'volume' || s === 'interval') return s;
+    return 'rate';
+  });
+  const [yieldFilter, setYieldFilter] = useState<'all' | 'high' | 'medium' | 'low'>(() => {
+    const y = searchParams.get('yield');
+    if (y === 'high' || y === 'medium' || y === 'low') return y;
+    return 'all';
+  });
+  const [showWatchlistOnly, setShowWatchlistOnly] = useState(() => searchParams.get('wl') === '1');
   const [alertModal, setAlertModal] = useState<{ exchange: string; contract: string } | null>(null);
-  const [alertCondition, setAlertCondition] = useState<'above' | 'below'>('above');
+  const [alertCondition, setAlertCondition] = useState<'above' | 'below' | 'flip'>('above');
   const [alertThreshold, setAlertThreshold] = useState(0.01);
   const [alertCreating, setAlertCreating] = useState(false);
-  // Bumped after each manual scan so the funding calendar (which polls on its
-  // own timer) refreshes immediately instead of waiting up to 60s.
   const [calendarRefresh, setCalendarRefresh] = useState(0);
-  const [exchangeFilter, setExchangeFilter] = useState<string[]>([]);
+  const [exchangeFilter, setExchangeFilter] = useState<string[]>(() => {
+    const ex = searchParams.get('ex');
+    return ex ? ex.split(',').filter(Boolean) : [];
+  });
   const t = useT();
   const { lang } = useI18n();
+
+  // Sync state to URL search params
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (sortBy !== 'rate') params.set('sort', sortBy);
+    if (yieldFilter !== 'all') params.set('yield', yieldFilter);
+    if (searchQuery) params.set('q', searchQuery);
+    if (showWatchlistOnly) params.set('wl', '1');
+    if (exchangeFilter.length > 0) params.set('ex', exchangeFilter.join(','));
+    setSearchParams(params, { replace: true });
+  }, [sortBy, yieldFilter, searchQuery, showWatchlistOnly, exchangeFilter, setSearchParams]);
 
   const handleScan = useCallback(async () => {
     if (selectedExchanges.length === 0) {
@@ -141,10 +165,10 @@ export function MainPage() {
         pair: alertModal.contract,
         exchange: alertModal.exchange,
         condition: alertCondition,
-        threshold: alertThreshold / 100, // convert from % to decimal
+        threshold: alertCondition === 'flip' ? 0 : alertThreshold / 100,
       });
       if (response.ok) {
-        showToast(t('main.alertCreated'), 'success');
+        showToast(alertCondition === 'flip' ? t('alert.flipCreated') : t('main.alertCreated'), 'success');
         setAlertModal(null);
       } else {
         showToast(t('main.alertCreateError', { error: response.error || t('main.unknownError') }), 'error');
@@ -193,11 +217,13 @@ export function MainPage() {
         </div>
       </div>
 
+      <InstallBanner />
+
       <QuickStart hasScanResults={Boolean(scanResults)} selectedCount={selectedExchanges.length} />
 
       {!planLimits.aiEnabled && <ActivationChecklist />}
 
-      <div className="card">
+<div className="card" style={scanResults ? { position: 'sticky', top: '0', zIndex: 30, background: 'var(--surface)' } : undefined}>
         <ExchangeSelector
           value={selectedExchanges}
           onChange={setSelectedExchanges}
@@ -325,8 +351,27 @@ export function MainPage() {
             </select>
           </div>
 
-          <ExchangeSelect selected={exchangeFilter} onChange={setExchangeFilter} />
+<ExchangeSelect selected={exchangeFilter} onChange={setExchangeFilter} />
 
+          {/* Quick-filter chips */}
+          <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+            {(['all', 'high', 'medium', 'low'] as const).map((key) => (
+              <button
+                key={key}
+                onClick={() => setYieldFilter(key)}
+                className="text-xs px-3 py-1.5 rounded-full font-semibold whitespace-nowrap transition-all"
+                style={{
+                  background: yieldFilter === key ? 'var(--brand)' : 'var(--surface-2)',
+                  color: yieldFilter === key ? '#fff' : 'var(--text-muted)',
+                }}
+              >
+                {key === 'all' && t('common.all')}
+                {key === 'high' && t('main.highYield')}
+                {key === 'medium' && t('main.mediumYield')}
+                {key === 'low' && t('main.lowYield')}
+              </button>
+            ))}
+          </div>
 
           {scanResults.metrics?.intervalDistribution && (
             <div className="mb-4 p-3 rounded-xl" style={{ background: 'var(--brand-soft)' }}>
@@ -344,7 +389,7 @@ export function MainPage() {
             </div>
           )}
 
-          {scanResults.highYield?.length > 0 && (
+{(yieldFilter === 'all' || yieldFilter === 'high') && scanResults.highYield?.length > 0 && (
             <ResultSection
               title={t('main.highYield')}
               count={scanResults.highYield.length}
@@ -363,7 +408,7 @@ export function MainPage() {
             />
           )}
 
-          {scanResults.mediumYield?.length > 0 && (
+          {(yieldFilter === 'all' || yieldFilter === 'medium') && scanResults.mediumYield?.length > 0 && (
             <ResultSection
               title={t('main.mediumYield')}
               count={scanResults.mediumYield.length}
@@ -382,7 +427,7 @@ export function MainPage() {
             />
           )}
 
-          {scanResults.lowYield?.length > 0 && (
+          {(yieldFilter === 'all' || yieldFilter === 'low') && scanResults.lowYield?.length > 0 && (
             <ResultSection
               title={t('main.lowYield')}
               count={scanResults.lowYield.length}
@@ -398,6 +443,14 @@ export function MainPage() {
               planLimits={planLimits}
               watchlistCount={watchlist.length}
               onWatchlistLimit={() => setPaywallFeature('watchlist')}
+            />
+          )}
+
+          {!planLimits.aiEnabled && (
+            <SoftPaywallBanner
+              used={selectedExchanges.length}
+              total={planLimits.maxExchanges}
+              featureLabel={t('exchangeSelect.label') || 'exchanges'}
             />
           )}
 
@@ -488,14 +541,16 @@ export function MainPage() {
                   <label className="block text-sm font-medium text-[var(--text)] mb-1">{t('main.condition')}</label>
                 <select
                   value={alertCondition}
-                  onChange={(e) => setAlertCondition(e.target.value as 'above' | 'below')}
+                  onChange={(e) => setAlertCondition(e.target.value as 'above' | 'below' | 'flip')}
                   className="input-field"
                 >
                   <option value="above">{t('main.above')}</option>
                   <option value="below">{t('main.below')}</option>
+                  <option value="flip">🔄 Direction flip</option>
                 </select>
               </div>
 
+              {alertCondition !== 'flip' && (
               <div className="mb-4">
                   <label className="block text-sm font-medium text-[var(--text)] mb-1" htmlFor="alert-threshold">
                     {t('main.threshold')}
@@ -510,6 +565,7 @@ export function MainPage() {
                   className="input-field"
                 />
               </div>
+              )}
 
               <div className="flex gap-2">
                 <button
@@ -520,7 +576,7 @@ export function MainPage() {
                 </button>
                 <button
                   onClick={handleCreateAlert}
-                  disabled={alertCreating || alertThreshold <= 0}
+                  disabled={alertCreating || (alertCondition !== 'flip' && alertThreshold <= 0)}
                   className="btn btn-primary flex-1"
                 >
                   {alertCreating ? t('main.creating') : t('common.create')}
@@ -601,6 +657,45 @@ function useLivePrices(items: ExchangeResult[]): Record<string, number> {
   return prices;
 }
 
+// Fetch sparkline data for a set of (exchange, contract) pairs
+function useSparklines(items: ExchangeResult[]): Record<string, number[]> {
+  const [data, setData] = useState<Record<string, number[]>>({});
+  const depKey = useMemo(
+    () => items.map((it) => `${it.exchange}:${it.contract}`).sort().join('|'),
+    [items]
+  );
+
+  useEffect(() => {
+    if (items.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const results: Record<string, number[]> = {};
+      // Fetch sparkline data for up to 10 items at a time
+      const batch = items.slice(0, 10);
+      const entries = await Promise.all(
+        batch.map(async (it) => {
+          try {
+            const key = `${it.exchange}:${it.contract}`;
+            const res: any = await apiClient.getHistory(it.exchange, it.contract, 14);
+            if (res?.ok && res.history?.length > 1) {
+              const values = res.history.map((r: any) => r.funding * 100).filter((v: number) => isFinite(v));
+              return [key, values] as const;
+            }
+          } catch { /* ignore */ }
+          return null;
+        })
+      );
+      for (const e of entries) {
+        if (e) results[e[0]] = e[1];
+      }
+      if (!cancelled) setData(results);
+    })();
+    return () => { cancelled = true; };
+  }, [depKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return data;
+}
+
 const ResultSection = memo(function ResultSection({
   title,
   count,
@@ -659,6 +754,7 @@ const ResultSection = memo(function ResultSection({
   // that keeps price parsing cheap (no whole-market scan on every refresh).
   const visible = sorted.slice(0, limit);
   const priceMap = useLivePrices(visible);
+  const sparklineMap = useSparklines(visible);
 
   if (sorted.length === 0 && searchQuery) return null;
 
@@ -669,7 +765,7 @@ const ResultSection = memo(function ResultSection({
       </h3>
       <div className="space-y-2">
         {visible.map((item) => (
-          <ResultItem key={`${item.exchange}:${item.contract}`} item={item} livePrice={priceMap[`${item.exchange}:${item.contract}`]} onHistory={onHistory} onAlert={onAlert} planLimits={planLimits} watchlistCount={watchlistCount} onWatchlistLimit={onWatchlistLimit} />
+          <ResultItem key={`${item.exchange}:${item.contract}`} item={item} livePrice={priceMap[`${item.exchange}:${item.contract}`]} sparklineData={sparklineMap[`${item.exchange}:${item.contract}`]} onHistory={onHistory} onAlert={onAlert} planLimits={planLimits} watchlistCount={watchlistCount} onWatchlistLimit={onWatchlistLimit} />
         ))}
       </div>
     </div>
@@ -679,6 +775,7 @@ const ResultSection = memo(function ResultSection({
 const ResultItem = memo(function ResultItem({
   item,
   livePrice,
+  sparklineData,
   onHistory,
   onAlert,
   planLimits,
@@ -687,6 +784,7 @@ const ResultItem = memo(function ResultItem({
 }: {
   item: ExchangeResult;
   livePrice?: number;
+  sparklineData?: number[];
   onHistory: (data: { exchange: string; contract: string }) => void;
   onAlert: (data: { exchange: string; contract: string }) => void;
   planLimits: PlanLimits;
@@ -697,11 +795,18 @@ const ResultItem = memo(function ResultItem({
   const t = useT();
   const starred = isWatchlisted(item.exchange, item.contract);
   const price = livePrice != null && !isNaN(livePrice) ? livePrice : item.mark_price;
+
+  // Health: green if volume > 0 and funding_next_apply is in the future
+  const isHealthy = item.volume_24h_settle > 0 && item.funding_next_apply > Date.now() - 86400000;
   return (
     <div className="border-b border-[var(--border)] pb-2">
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
         <div className="min-w-0">
-          <strong className="text-sm break-words">{item.exchange.toUpperCase()}: {item.contract}</strong>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className={clsx('inline-block w-2 h-2 rounded-full shrink-0', isHealthy ? 'bg-green-500' : 'bg-red-400')} aria-hidden="true" title={isHealthy ? 'Exchange responding' : 'Stale data'} />
+            <strong className="text-sm break-words">{item.exchange.toUpperCase()}: {item.contract}</strong>
+            {sparklineData && <FundingSparkline data={sparklineData} width={48} height={16} />}
+          </div>
           <div className="text-xs text-[var(--text-muted)]">
             {t('main.volume', { v: formatNumber(item.volume_24h_settle) })}
           </div>
@@ -779,6 +884,26 @@ const ResultItem = memo(function ResultItem({
     </div>
   );
 });
+
+// Simple inline SVG sparkline (no Chart.js dependency)
+function FundingSparkline({ data, width = 60, height = 20 }: { data: number[]; width?: number; height?: number }) {
+  if (data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / range) * (height - 2) - 1;
+    return `${x},${y}`;
+  });
+  const d = `M${pts.join(' L')}`;
+  const color = data[data.length - 1] >= data[0] ? 'var(--green, #16a34a)' : 'var(--red, #ef4444)';
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="shrink-0" aria-hidden="true">
+      <path d={d} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 function createListText(results: any, t: (key: string) => string) {
   let text = '';

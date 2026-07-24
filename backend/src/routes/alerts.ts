@@ -16,8 +16,8 @@ const router = Router();
 const createAlertSchema = z.object({
   pair: z.string().min(1),
   exchange: z.string().min(1),
-  condition: z.enum(['above', 'below']),
-  threshold: z.number(),
+  condition: z.enum(['above', 'below', 'flip']),
+  threshold: z.number().default(0),
   cooldown: z.number().optional(),
 });
 

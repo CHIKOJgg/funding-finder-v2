@@ -3,6 +3,7 @@ import { clsx } from 'clsx';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { SoftPaywallBanner } from '../components/SoftPaywallBanner';
 import { apiClient } from '../api/client';
 import { getRiskColor, formatPrice } from '../utils/formatters';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
@@ -111,7 +112,7 @@ function useArbLivePrices(opps: any[]): {
 }
 
 export function ArbitragePage() {
-  const { user, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts, liveFundingAt } = useApp();
+  const { user, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts, liveFundingAt, subscription } = useApp();
   const { showToast } = useToast();
   const t = useT();
   const [activeTab, setActiveTab] = useState<'opportunities' | 'alerts' | 'spotfutures'>('opportunities');
@@ -415,13 +416,23 @@ export function ArbitragePage() {
                       />
                     ))}
                   </div>
-                  {visibleCount < filteredOpportunities.length && (
+{visibleCount < filteredOpportunities.length && (
                     <button
                       onClick={() => setVisibleCount((c) => c + 15)}
                       className="btn btn-secondary text-sm py-2 w-full mt-3"
                     >
                       {t('arb.showMore', { n: filteredOpportunities.length - visibleCount })}
                     </button>
+                  )}
+
+                  {subscription === 'free' && (
+                    <div className="mt-3">
+                      <SoftPaywallBanner
+                        used={Math.min(visibleCount, 5)}
+                        total={10}
+                        featureLabel={t('arb.opportunities') || 'arbitrage scans'}
+                      />
+                    </div>
                   )}
                 </>
               )}

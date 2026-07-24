@@ -14,6 +14,9 @@ const CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 let evaluationTimer: ReturnType<typeof setInterval> | null = null;
 let isEvaluating = false;
 
+// Track previous funding rates per (exchange, pair) for flip detection
+const prevRates = new Map<string, number>();
+
 export function startAlertEvaluator(): void {
   if (evaluationTimer) {
     logger.warn('Alert evaluator already running');
@@ -58,6 +61,7 @@ interface TriggeredAlert {
     threshold?: number;
     difference?: number;
     condition?: string;
+    direction?: string;
   };
 }
 
@@ -274,6 +278,13 @@ function evaluateGeneralAlerts(alerts: any[], allResults: any[], now: Date): Tri
         isTriggered = true;
       } else if (alert.condition === 'below' && currentRate < alert.threshold) {
         isTriggered = true;
+      } else if (alert.condition === 'flip') {
+        const key = `${alert.exchange}:${alert.pair}`;
+        const prev = prevRates.get(key);
+        if (prev != null && Math.sign(prev) !== 0 && Math.sign(currentRate) !== 0 && Math.sign(prev) !== Math.sign(currentRate)) {
+          isTriggered = true;
+        }
+        prevRates.set(key, currentRate);
       }
 
       if (isTriggered) {
@@ -287,6 +298,7 @@ function evaluateGeneralAlerts(alerts: any[], allResults: any[], now: Date): Tri
             currentRate,
             threshold: alert.threshold,
             condition: alert.condition,
+            direction: alert.condition === 'flip' ? (currentRate > 0 ? 'positive' : 'negative') : undefined,
           },
         });
         logger.info(

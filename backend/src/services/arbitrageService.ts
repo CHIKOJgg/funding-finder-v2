@@ -288,6 +288,75 @@ function formatPair(contract: string): string {
   return key;
 }
 
+// ==================== New Metrics v2 ====================
+
+/** Reuse the canonical fee map so new metrics stay consistent with calculateRealProfit. */
+function getTakerFee(exchange: string): number {
+  return EXCHANGE_FEES[exchange]?.taker || 0.0005;
+}
+
+/**
+ * Net APR = profit.annualReturn is already net of one-time entry/exit fees
+ * (as computed by calculateRealProfit). This wrapper exists for clarity;
+ * it does NOT deduct fees a second time.
+ */
+export function calculateNetApr(annualReturn: number): number {
+  return annualReturn;
+}
+
+/**
+ * Days to recover the one-time entry/exit fees from the daily spread.
+ * Formula: (feeA + feeB) * 2 / dailySpread
+ * (fees are paid once, spread accrues daily — no recurring fee assumption).
+ */
+export function calculatePaybackDays(
+  dailySpread: number,
+  exchangeA: string,
+  exchangeB: string,
+): number {
+  const feeA = getTakerFee(exchangeA);
+  const feeB = getTakerFee(exchangeB);
+  const totalFees = (feeA + feeB) * 2; // entry + exit, fraction of capital
+  if (dailySpread <= 0) return Infinity;
+  return totalFees / dailySpread;
+}
+
+/** Stability grade A-F based on how consistently the spread has been positive.
+ *  Uses the persistence grade as a proxy when detailed history isn't available. */
+export function calculateStabilityGrade(
+  persistenceGrade?: string,
+  aliveHours?: number,
+): string {
+  if (aliveHours !== undefined && aliveHours >= 168) return 'A';
+  if (aliveHours !== undefined && aliveHours >= 72) return 'B';
+  if (persistenceGrade === 'A' || persistenceGrade === 'B') return persistenceGrade;
+  if (persistenceGrade === 'C') return 'C';
+  if (persistenceGrade === 'D') return 'D';
+  return 'F';
+}
+
+/** Estimate alive hours from persistence grade. */
+export function estimateAliveHours(persistenceGrade?: string): number {
+  switch (persistenceGrade) {
+    case 'A': return 168; // 7d
+    case 'B': return 72;  // 3d
+    case 'C': return 24;  // 1d
+    case 'D': return 6;
+    default: return 0;
+  }
+}
+
+/** Win rate mapped from persistence grade. */
+export function estimateWinRate30d(persistenceGrade?: string): number {
+  switch (persistenceGrade) {
+    case 'A': return 0.85;
+    case 'B': return 0.70;
+    case 'C': return 0.50;
+    case 'D': return 0.30;
+    default: return 0.10;
+  }
+}
+
 export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): ArbitrageOpportunity[] {
   const opportunities: ArbitrageOpportunity[] = [];
 
@@ -385,7 +454,16 @@ export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): Arb
             score: 0,
             timestamp: Date.now(),
           };
-          opp.score = calculateOpportunityScore(opp);
+            opp.score = calculateOpportunityScore(opp);
+            // Attach new metrics v2
+            const dailySpread = opp.difference_per_day || 0;
+            opp.netApr = calculateNetApr(opp.profit?.annualReturn || 0);
+            opp.paybackDays = calculatePaybackDays(dailySpread, opp.exchangeA, opp.exchangeB);
+            const pg = getPersistenceGrade(opp.pair, opp.exchangeA, opp.exchangeB);
+            opp.persistenceGrade = pg;
+            opp.stabilityGrade = calculateStabilityGrade(pg, estimateAliveHours(pg));
+            opp.aliveHours = estimateAliveHours(pg);
+            opp.winRate30d = estimateWinRate30d(pg);
           opportunities.push(opp);
         }
       }

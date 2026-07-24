@@ -245,7 +245,7 @@ export const en: Record<string, string> = {
 
   // Paywall
   'paywall.exchangesTitle': 'More exchanges',
-  'paywall.exchangesDesc': 'Your plan lets you scan a limited number of exchanges. Upgrade to Pro to compare all exchanges at once (up to 12 on Pro) and find the best funding rates.',
+  'paywall.exchangesDesc': 'Your plan lets you scan a limited number of exchanges. Upgrade to Pro to compare all exchanges at once (up to 20 on Pro) and find the best funding rates.',
   'paywall.aiTitle': 'AI Analysis',
   'paywall.aiDesc': 'AI breakdown of funding rates by a neural network is available on the Pro plan. Learn which pairs to hold and which to close.',
   'paywall.recommendationsTitle': 'Recommendations',
@@ -253,10 +253,32 @@ export const en: Record<string, string> = {
   'paywall.portfolioTitle': 'Portfolio simulator',
   'paywall.portfolioDesc': 'A funding income simulator (Paper PnL) with annualized return calculation is available on the Pro plan. Evaluate positions risk-free.',
   'paywall.watchlistTitle': 'Unlimited watchlist',
-  'paywall.watchlistDesc': 'On the free plan you can save up to 3 pairs. Upgrade to Pro to add any number of pairs to your watchlist.',
+  'paywall.watchlistDesc': 'On the free plan you can save up to 10 pairs. Upgrade to Pro to add any number of pairs to your watchlist.',
   'paywall.planOnly': 'Only for {plan} subscribers',
-  'paywall.subscribe': '🚀 Subscribe',
+  'paywall.subscribe': 'Subscribe ${price}/mo',
   'paywall.notNow': 'Not now',
+  'paywall.socialProof': '💎 {count} traders upgraded this week',
+  'paywall.compareTitle': 'Compare plans',
+  'paywall.planFree': 'Free',
+  'paywall.planPro': 'Pro',
+  'paywall.planProPlus': 'Pro+',
+  'paywall.freePrice': 'Free',
+  'paywall.freeFeat1': '8 exchanges',
+  'paywall.freeFeat2': '1 AI idea / day',
+  'paywall.freeFeat3': 'Basic alerts',
+  'paywall.proFeat1': '20 exchanges',
+  'paywall.proFeat2': 'Unlimited AI ideas',
+  'paywall.proFeat3': 'Portfolio + auto-PnL',
+  'paywall.proFeat4': 'Unlimited watchlist',
+  'paywall.proFeat5': 'Arbitrage signals',
+  'paywall.proplusFeat1': 'All 25 exchanges',
+  'paywall.proplusFeat2': 'Priority AI analysis',
+  'paywall.proplusFeat3': 'Personal support',
+  'paywall.currentPlan': '✓ Current',
+  'paywall.upgradeRate': 'Users who hit this limit upgrade',
+  'paywall.trialEnds': '🔥 Trial ends in',
+  'paywall.manageSubscription': '⚙️ Manage subscription',
+  'paywall.footer': 'Pay with USDT · Cancel anytime',
 
   // Settings
   'settings.loadError': 'Failed to load settings',
@@ -583,6 +605,16 @@ export const en: Record<string, string> = {
   'trial.desc': '{days} days of all features: AI, recommendations, arbitrage and portfolio — free.',
   'trial.activated': 'Trial Pro activated!',
 
+  // Install banner
+  'install.title': 'Install Funding Finder',
+  'install.desc': 'Add to home screen for faster access',
+  'install.install': 'Install',
+
+  // Soft Paywall
+  'softPaywall.title': '🔒 You\'ve used {used} of {total} {feature}. Upgrade to unlock all.',
+  'softPaywall.desc': 'Start your {days}-day free trial — no card required.',
+  'softPaywall.viewPlans': 'View plans',
+
   // Units & suffixes
   'unit.now': 'now',
   'unit.dhm': '{d}d {h}h {m}m',
@@ -813,4 +845,9 @@ export const en: Record<string, string> = {
   // Units — extra
   'unit.daysShort': 'd',
   'unit.settlementCycles': 'cycles',
+
+  // Flip alerts
+  'alert.flip': '🔄 Direction flip',
+  'alert.flipDesc': 'Triggers when funding rate changes sign (positive ↔ negative). Useful for detecting market sentiment shifts.',
+  'alert.flipCreated': 'Flip alert created — we\'ll notify you when the sign changes',
 };

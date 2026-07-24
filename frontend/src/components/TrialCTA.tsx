@@ -1,11 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../App';
 import { useToast } from './Toast';
 import { TRIAL_DURATION_DAYS } from '../utils/plans';
 import { useT } from '../i18n';
+import { track } from '../utils/analytics';
 
-export function TrialCTA({ compact = false }: { compact?: boolean }) {
+interface TrialCTAProps {
+  compact?: boolean;
+  showTimer?: boolean;
+  source?: string;
+}
+
+export function TrialCTA({ compact = false, showTimer = false, source }: TrialCTAProps) {
   const { trialStatus, activateTrial, refreshTrial, subscription } = useApp();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -14,6 +21,7 @@ export function TrialCTA({ compact = false }: { compact?: boolean }) {
 
   const active = trialStatus?.active ?? (subscription === 'pro' && trialStatus?.used);
   const usedUp = trialStatus?.used && !trialStatus?.active;
+  const endsAt = trialStatus?.endsAt;
 
   const formatCountdown = (endsAt: string | null, daysLeft: number, hoursLeft: number): string => {
     if (!endsAt) return '';
@@ -32,13 +40,13 @@ export function TrialCTA({ compact = false }: { compact?: boolean }) {
       if (ok) {
         await refreshTrial();
         showToast(t('trial.activated'), 'success');
+        track('trial_start', { source: source || 'trial_cta' });
       }
     } finally {
       setActivating(false);
     }
   };
 
-  // Route the user to the plans section so the trial CTA always leads somewhere.
   const goToPlans = () => {
     const el = document.getElementById('subscription');
     if (el) {
@@ -52,9 +60,14 @@ export function TrialCTA({ compact = false }: { compact?: boolean }) {
     return (
       <div className="rounded-xl p-3 text-center" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>
         <div className="text-sm font-semibold">{t('trial.activeTitle')}</div>
-        {trialStatus?.endsAt && (
+        {endsAt && (
           <div className="text-xs mt-1">
-            {t('trial.remaining', { countdown: formatCountdown(trialStatus.endsAt, trialStatus.daysLeft, trialStatus.hoursLeft) })}
+            {t('trial.remaining', { countdown: formatCountdown(endsAt, trialStatus.daysLeft, trialStatus.hoursLeft) })}
+          </div>
+        )}
+        {showTimer && endsAt && (
+          <div className="mt-2">
+            <TrialCountdownTimer endsAt={endsAt} />
           </div>
         )}
       </div>
@@ -101,4 +114,17 @@ export function TrialCTA({ compact = false }: { compact?: boolean }) {
       </button>
     </div>
   );
+}
+
+function TrialCountdownTimer({ endsAt }: { endsAt: string }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const diff = Math.max(0, new Date(endsAt).getTime() - now);
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  return <span className="font-mono">{h.toString().padStart(2, '0')}:{m.toString().padStart(2, '0')}:{s.toString().padStart(2, '0')}</span>;
 }

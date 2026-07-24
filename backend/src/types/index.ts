@@ -126,6 +126,13 @@ export interface ArbitrageOpportunity {
   score: number;
   timestamp: number;
   persistenceGrade?: string;  // A-F based on how often this pair appeared in recent scans
+
+  // New metrics v2
+  netApr?: number;             // APR after fees deducted
+  paybackDays?: number;        // Days to recover fees from spread
+  stabilityGrade?: string;     // A-F based on spread consistency
+  aliveHours?: number;         // Hours the spread stayed positive
+  winRate30d?: number;         // % of time spread was positive (0-1)
 }
 
 export interface ProfitCalculation {

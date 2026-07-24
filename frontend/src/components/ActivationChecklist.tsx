@@ -2,12 +2,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useApp } from '../App';
 import { useT } from '../i18n';
 
-// "First profit in 5 minutes" activation checklist. Guides a brand-new user
-// through the four actions that turn an open app into a real, activated user:
-// pick exchanges → run a scan → open the trade → start the free trial.
-// Each step is driven by a genuine signal (real state, not a click-through
-// wizard) so the progress bar reflects what the user has actually done.
-
 const STEPS = [
   { key: 'exchanges', signal: 'exchanges' },
   { key: 'scan', signal: 'scan' },
@@ -16,20 +10,28 @@ const STEPS = [
 ] as const;
 
 const DISMISS_KEY = 'ff_activation_dismissed';
+const FIRST_OPEN_KEY = 'ff_first_open';
 
 export function ActivationChecklist() {
   const { selectedExchanges, scanResults, subscription, trialStatus } = useApp();
   const t = useT();
   const [opened, setOpened] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [daysSinceOpen, setDaysSinceOpen] = useState(0);
 
   useEffect(() => {
     try {
       setDismissed(localStorage.getItem(DISMISS_KEY) === '1');
       setOpened(localStorage.getItem('ff_opened_position') === '1');
+      const firstOpen = localStorage.getItem(FIRST_OPEN_KEY);
+      if (firstOpen) {
+        const diff = Date.now() - parseInt(firstOpen, 10);
+        setDaysSinceOpen(Math.floor(diff / 86400000));
+      } else {
+        localStorage.setItem(FIRST_OPEN_KEY, String(Date.now()));
+      }
     } catch { /* ignore */ }
 
-    // Re-read the "opened a position" flag while the checklist is visible.
     const id = setInterval(() => {
       try {
         setOpened(localStorage.getItem('ff_opened_position') === '1');
@@ -57,7 +59,7 @@ export function ActivationChecklist() {
       const id = setTimeout(() => {
         try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* ignore */ }
         setDismissed(true);
-      }, 2500);
+      }, 3000);
       return () => clearTimeout(id);
     }
   }, [allDone]);
@@ -77,11 +79,14 @@ export function ActivationChecklist() {
     t('activation.step4Sub'),
   ];
 
+  const nextStepIdx = done.indexOf(false);
+  const pct = (total / STEPS.length) * 100;
+
   return (
     <div className="card" style={{ borderColor: 'var(--brand)', borderWidth: 1.5 }}>
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm font-bold" style={{ color: 'var(--brand)' }}>
-          {allDone ? '🎉 ' + t('activation.done') : t('activation.title')}
+          {allDone ? '🎉 ' + t('activation.done') : '🚀 ' + t('activation.title')}
         </div>
         <button
           onClick={() => {
@@ -89,30 +94,54 @@ export function ActivationChecklist() {
             setDismissed(true);
           }}
           className="text-xs text-[var(--text-muted)] px-1"
-          aria-label="Dismiss checklist"
+          aria-label="Dismiss"
         >
           ✕
         </button>
       </div>
 
-      <div className="h-2 rounded-full bg-[var(--surface-2)] overflow-hidden mb-3">
+      {/* Gamification: fire emoji + count */}
+      {!allDone && (
         <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${(total / STEPS.length) * 100}%`, background: 'var(--brand)' }}
-        />
+          className="rounded-lg p-2 mb-2 text-xs font-semibold flex items-center gap-1.5"
+          style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}
+        >
+          <span>🔥</span>
+          <span>{total}/{STEPS.length} done — {STEPS.length - total} remaining</span>
+        </div>
+      )}
+
+      {/* Progress bar with label */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-2)' }}>
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${pct}%`, background: pct >= 100 ? 'var(--green)' : 'var(--brand)' }}
+          />
+        </div>
+        <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
+          {Math.round(pct)}%
+        </span>
       </div>
 
+      {/* Steps */}
       <ul className="space-y-1.5">
         {STEPS.map((s, i) => (
-          <li key={s.key} className="flex items-center gap-2 text-sm">
+          <li
+            key={s.key}
+            className="flex items-center gap-2 text-sm p-1.5 rounded-lg"
+            style={{
+              background: i === nextStepIdx && !allDone ? 'var(--surface-2)' : 'transparent',
+            }}
+          >
             <span
-              className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+              className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all"
               style={{
-                background: done[i] ? 'var(--brand)' : 'var(--surface-2)',
-                color: done[i] ? '#fff' : 'var(--text-muted)',
+                background: done[i] ? 'var(--green)' : i === nextStepIdx ? 'var(--brand)' : 'var(--surface-2)',
+                color: done[i] ? '#fff' : i === nextStepIdx ? '#fff' : 'var(--text-muted)',
               }}
             >
-              {done[i] ? '✓' : i + 1}
+              {done[i] ? '✓' : i === nextStepIdx ? '→' : i + 1}
             </span>
             <div className={done[i] ? 'line-through text-[var(--text-muted)]' : ''}>
               <div className="font-medium leading-tight">{stepTitles[i]}</div>
@@ -121,8 +150,21 @@ export function ActivationChecklist() {
         ))}
       </ul>
 
-      {!allDone && (
-        <p className="text-xs text-[var(--text-muted)] mt-2">{stepSub[done.indexOf(false)]}</p>
+      {/* Next step hint */}
+      {!allDone && nextStepIdx >= 0 && (
+        <p className="text-xs mt-2 flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+          <span>💡</span>
+          <span>{stepSub[nextStepIdx]}</span>
+        </p>
+      )}
+
+      {/* Retention hint */}
+      {daysSinceOpen >= 1 && !allDone && (
+        <p className="text-xs mt-2 text-center" style={{ color: 'var(--amber)' }}>
+          {daysSinceOpen >= 7
+            ? '📆 Day ' + daysSinceOpen + ' — complete activation to unlock full potential'
+            : '📆 ' + daysSinceOpen + 'd since start — finish setup'}
+        </p>
       )}
     </div>
   );

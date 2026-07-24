@@ -14,13 +14,13 @@ interface CryptoCheckoutModalProps {
 }
 
 const CURRENCIES = [
-  { code: 'usdterc20', label: 'USDT (Ethereum ERC-20)' },
-  { code: 'usdttrc20', label: 'USDT (Tron TRC-20)' },
-  { code: 'usdtbsc', label: 'USDT (BNB BEP-20)' },
-  { code: 'usdc', label: 'USDC (Ethereum)' },
-  { code: 'eth', label: 'ETH' },
-  { code: 'btc', label: 'BTC' },
-  { code: 'sol', label: 'SOL' },
+  { code: 'usdterc20', label: 'USDT (ERC-20)', icon: '🔷' },
+  { code: 'usdttrc20', label: 'USDT (TRC-20)', icon: '🔶' },
+  { code: 'usdtbsc', label: 'USDT (BEP-20)', icon: '🟡' },
+  { code: 'usdc', label: 'USDC', icon: '💠' },
+  { code: 'eth', label: 'ETH', icon: '⬡' },
+  { code: 'btc', label: 'BTC', icon: '₿' },
+  { code: 'sol', label: 'SOL', icon: '◎' },
 ];
 
 const STATUS_LABEL: Record<string, string> = {
@@ -39,7 +39,7 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
   const [currency, setCurrency] = useState('usdterc20');
   const [creating, setCreating] = useState(false);
   const [order, setOrder] = useState<any>(null);
-  const [status, setStatus] = useState<string>(''); // local mirror for display
+  const [status, setStatus] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const paidFiredRef = useRef(false);
@@ -149,6 +149,11 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
 
   if (!open) return null;
 
+  const isWaiting = status === 'pending' || status === 'waiting' || status === 'confirming';
+  const isPaid = status === 'paid' || status === 'finished';
+  const isFailed = status === 'failed' || status === 'expired';
+  const progressPct = isPaid ? 100 : isWaiting ? 45 : 0;
+
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
@@ -168,29 +173,59 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
 
         {!order ? (
           <>
-            <label className="text-sm font-medium mb-1 block">{t('crypto.selectCoin')}</label>
-            <select
-              className="input-field w-full mb-4"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-            >
+            <label className="text-sm font-medium mb-2 block">{t('crypto.selectCoin')}</label>
+            <div className="grid grid-cols-2 gap-2 mb-4">
               {CURRENCIES.map((c) => (
-                <option key={c.code} value={c.code}>{c.label}</option>
+                <button
+                  key={c.code}
+                  onClick={() => setCurrency(c.code)}
+                  className="flex items-center gap-2 rounded-xl p-2.5 text-sm font-medium transition-all"
+                  style={{
+                    background: currency === c.code ? 'var(--brand-soft)' : 'var(--surface-2)',
+                    border: currency === c.code ? '1px solid var(--brand)' : '1px solid transparent',
+                    color: currency === c.code ? 'var(--brand)' : 'var(--text)',
+                  }}
+                >
+                  <span className="text-lg">{c.icon}</span>
+                  <span>{c.label}</span>
+                </button>
               ))}
-            </select>
+            </div>
             <button onClick={createPayment} disabled={creating} className="btn btn-primary w-full mb-2">
               {creating ? t('crypto.creatingInvoice') : t('crypto.createInvoice')}
             </button>
           </>
         ) : (
           <div className="space-y-3">
+            {/* Progress bar */}
+            {status && (
+              <div className="mb-2">
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-2)' }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-700 ease-out"
+                    style={{
+                      width: `${progressPct}%`,
+                      background: isPaid ? 'var(--green, #16a34a)' : isFailed ? '#ef4444' : 'var(--brand)',
+                      animation: isWaiting ? 'pulse 1.5s ease-in-out infinite' : 'none',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Status badge */}
             <div
               className="rounded-xl p-3 text-center text-sm font-semibold"
               style={{
-                background: status === 'paid' ? 'var(--success-soft)' : 'var(--surface-2)',
-                color: status === 'paid' ? 'var(--success)' : 'var(--text)',
+                background: isPaid ? 'var(--success-soft, #dcfce7)' : isFailed ? '#fee2e2' : 'var(--surface-2)',
+                color: isPaid ? 'var(--success, #15803d)' : isFailed ? '#b91c1c' : 'var(--text)',
               }}
             >
+              {isWaiting && (
+                <span className="inline-block mr-2 animate-pulse">⏳</span>
+              )}
+              {isPaid && <span className="inline-block mr-2">✅</span>}
+              {isFailed && <span className="inline-block mr-2">❌</span>}
               {t(STATUS_LABEL[status] || 'crypto.statusProcessing')}
             </div>
 
@@ -200,17 +235,47 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
               </a>
             )}
 
+            {/* QR Code area */}
             {order.payAddress && order.payAddress !== 'SIM_WALLET_ADDRESS' && (
-              <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
-                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                   {t('crypto.depositAddress', { currency: order.payCurrency })}
+              <div className="rounded-xl p-4 text-center" style={{ background: 'var(--surface-2)' }}>
+                <div className="flex justify-center mb-3">
+                  <div
+                    id="payment-qr"
+                    className="w-40 h-40 rounded-xl bg-white flex items-center justify-center"
+                    style={{ padding: '8px' }}
+                  >
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(order.payAddress)}`}
+                      alt="QR code"
+                      className="w-full h-full"
+                      loading="lazy"
+                    />
+                  </div>
                 </div>
-                <div className="font-mono text-sm break-all select-all mt-1">{order.payAddress}</div>
-                <button onClick={copyAddress} className="btn btn-secondary text-xs mt-2 py-1.5">
-                  {copied ? t('crypto.copied') : t('crypto.copyAddress')}
-                </button>
+                <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                  {t('crypto.depositAddress', { currency: order.payCurrency })}
+                </div>
+                <div className="font-mono text-sm break-all select-all bg-white dark:bg-gray-800 rounded-lg p-2 mb-2">
+                  {order.payAddress}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={copyAddress} className="btn btn-secondary text-xs py-1.5 flex-1">
+                    {copied ? t('crypto.copied') : t('crypto.copyAddress')}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (order.payCurrency?.startsWith('usdt')) {
+                        const botLink = 'https://t.me/CryptoBot';
+                        window.open(botLink, '_blank');
+                      }
+                    }}
+                    className="btn btn-primary text-xs py-1.5 flex-1"
+                  >
+                    {t('crypto.openCryptoBot') || 'Open Crypto Bot'}
+                  </button>
+                </div>
                 {order.payAmount != null && (
-                  <div className="text-sm mt-2">
+                  <div className="text-sm font-semibold mt-2">
                     {t('crypto.amount', { amount: order.payAmount, currency: order.payCurrency })}
                   </div>
                 )}
