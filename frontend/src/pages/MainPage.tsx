@@ -20,6 +20,7 @@ import { ResultSkeleton } from '../components/Skeleton';
 import { ActivationChecklist } from '../components/ActivationChecklist';
 import { SoftPaywallBanner } from '../components/SoftPaywallBanner';
 import { InstallBanner } from '../components/InstallBanner';
+import { PullToRefresh } from '../components/PullToRefresh';
 import { ExchangeResult } from '../types';
 import { useT, useI18n } from '../i18n';
 
@@ -191,6 +192,35 @@ export function MainPage() {
     }
   }, [runScan, scanResults, selectedExchanges]);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 's' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        if (!scanLoading) handleScan();
+      }
+      if (e.key === 'a' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        if (scanResults) {
+          const first = (scanResults.highYield || [])[0] || (scanResults.mediumYield || [])[0];
+          if (first) setAlertModal({ exchange: first.exchange, contract: first.contract });
+        }
+      }
+      if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        document.getElementById('search-input')?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [scanLoading, scanResults]);
+
+  const handleRefresh = useCallback(async () => {
+    await runScan(selectedExchanges);
+    setCalendarRefresh((n) => n + 1);
+  }, [selectedExchanges, runScan]);
+
   // The single best actionable pick across all yield tiers — surfaces the
   // fastest route from "opened the app" to "open a position".
   const topPick = useMemo(() => {
@@ -203,6 +233,7 @@ export function MainPage() {
   }, [scanResults]);
 
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="px-3 py-4 sm:px-4">
       <div className="flex items-center gap-3 mb-4">
         <div
@@ -265,6 +296,21 @@ export function MainPage() {
         {scanStatus}
       </div>
 
+      {/* Keyboard shortcuts hint */}
+      {!scanResults && !scanLoading && (
+        <div className="flex justify-center gap-3 text-xs mt-2 mb-2" style={{ color: 'var(--text-muted)' }}>
+          <span className="px-2 py-1 rounded" style={{ background: 'var(--surface-2)' }}>
+            <kbd className="font-mono">S</kbd> {t('main.shortcutScan')}
+          </span>
+          <span className="px-2 py-1 rounded" style={{ background: 'var(--surface-2)' }}>
+            <kbd className="font-mono">/</kbd> {t('main.shortcutSearch')}
+          </span>
+          <span className="px-2 py-1 rounded" style={{ background: 'var(--surface-2)' }}>
+            <kbd className="font-mono">A</kbd> {t('main.shortcutAlert')}
+          </span>
+        </div>
+      )}
+
       <FundingCalendar exchanges={selectedExchanges} refreshSignal={calendarRefresh} />
 
       {scanLoading && (
@@ -324,6 +370,7 @@ export function MainPage() {
 
           <div className="flex gap-2 mb-4">
             <input
+              id="search-input"
               type="text"
               placeholder={t('main.searchPlaceholder')}
               value={searchQuery}
@@ -600,6 +647,7 @@ export function MainPage() {
         defaultCapital={capital}
       />
     </div>
+    </PullToRefresh>
   );
 }
 

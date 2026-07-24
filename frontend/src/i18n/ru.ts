@@ -121,6 +121,9 @@ export const ru: Record<string, string> = {
   'main.untilFunding': 'до фандинга',
   'main.openOnExchange': 'Открыть {contract} на {exchange}',
   'main.open': '↗ Открыть',
+  'main.shortcutScan': 'сканировать',
+  'main.shortcutSearch': 'поиск',
+  'main.shortcutAlert': 'оповещение',
 
   // Arbitrage
   'arb.title': 'Арбитраж',

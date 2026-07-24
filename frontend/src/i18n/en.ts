@@ -121,6 +121,9 @@ export const en: Record<string, string> = {
   'main.untilFunding': 'until funding',
   'main.openOnExchange': 'Open {contract} on {exchange}',
   'main.open': '↗ Open',
+  'main.shortcutScan': 'scan',
+  'main.shortcutSearch': 'search',
+  'main.shortcutAlert': 'alert',
 
   // Arbitrage
   'arb.title': 'Arbitrage',
