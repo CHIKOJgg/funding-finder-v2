@@ -6,7 +6,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const APEX_BASE = 'https://omni.apex.exchange/api/v3';
-const CONCURRENCY = 6;
+const CONCURRENCY = 3;
 const APEX_INTERVAL = KNOWN_INTERVALS.HOURLY; // 1h fixed
 
 function deriveNextHourly(): number {

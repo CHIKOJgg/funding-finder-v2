@@ -5,7 +5,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const WOO_BASE = 'https://api.woox.io';
-const CONCURRENCY = 8;
+const CONCURRENCY = 3;
 
 export async function scanWOO(): Promise<ExchangeResult[]> {
   try {

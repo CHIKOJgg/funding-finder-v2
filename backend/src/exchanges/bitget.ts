@@ -6,7 +6,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const BITGET_BASE = 'https://api.bitget.com';
-const CONCURRENCY = 8;
+const CONCURRENCY = 3;
 const BITGET_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // 8h default
 
 // Derive next funding time from the funding interval aligned to UTC day

@@ -6,7 +6,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const BITMART_BASE = 'https://api.bitmart.com';
-const CONCURRENCY = 6;
+const CONCURRENCY = 3;
 const BITMART_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // typical 8h
 
 export async function scanBitMart(): Promise<ExchangeResult[]> {

@@ -16,7 +16,7 @@ interface PersistenceEntry {
   exchangeB: string;
 }
 
-const PERSISTENCE_WINDOW = 50;  // last N scans to consider
+const PERSISTENCE_WINDOW = 20;  // last N scans to consider
 const persistenceHistory: PersistenceEntry[][] = [];
 let persistenceScores: Record<string, number> = {};
 

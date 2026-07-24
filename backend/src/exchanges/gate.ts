@@ -6,7 +6,7 @@ import { logger } from '../utils/logger.js';
 import { config } from '../config/index.js';
 
 const GATE_BASE = 'https://fx-api.gateio.ws/api/v4';
-const CONCURRENCY = 8;
+const CONCURRENCY = 3;
 
 export async function scanGate(): Promise<ExchangeResult[]> {
   try {

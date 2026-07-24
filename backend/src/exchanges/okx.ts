@@ -5,7 +5,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const OKX_BASE = 'https://www.okx.com';
-const MAX_CONCURRENCY = 6;
+const MAX_CONCURRENCY = 3;
 const OKX_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // OKX is always 8h
 
 export async function scanOKX(): Promise<ExchangeResult[]> {

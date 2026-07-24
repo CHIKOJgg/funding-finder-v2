@@ -5,7 +5,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const MEXC_BASE = 'https://contract.mexc.com';
-const MAX_CONCURRENCY = 6;
+const MAX_CONCURRENCY = 3;
 const MEXC_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // MEXC is always 8h
 
 export async function scanMEXC(): Promise<ExchangeResult[]> {

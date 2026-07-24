@@ -6,7 +6,7 @@ import { logger } from '../utils/logger.js';
 import { KNOWN_INTERVALS } from '../types/index.js';
 
 const BINANCE_BASE = 'https://fapi.binance.com';
-const CONCURRENCY = 4;
+const CONCURRENCY = 3;
 const BINANCE_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // Binance is always 8h
 
 // Fetch premium index for ALL symbols in a single request (vs N per-symbol

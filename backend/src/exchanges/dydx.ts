@@ -6,7 +6,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const DYDX_BASE = 'https://indexer.dydx.trade';
-const CONCURRENCY = 8;
+const CONCURRENCY = 3;
 const DYDX_INTERVAL = KNOWN_INTERVALS.HOURLY; // 1h fixed
 
 function deriveNextHourly(): number {

@@ -6,7 +6,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const HTX_BASE = 'https://api.hbdm.com';
-const CONCURRENCY = 6;
+const CONCURRENCY = 3;
 const HTX_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR;
 
 export async function scanHtx(): Promise<ExchangeResult[]> {

@@ -6,7 +6,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const COINW_BASE = 'https://api.coinw.com';
-const CONCURRENCY = 6;
+const CONCURRENCY = 3;
 const COINW_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // typical 8h
 
 export async function scanCoinW(): Promise<ExchangeResult[]> {

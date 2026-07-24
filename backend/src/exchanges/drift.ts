@@ -6,7 +6,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const DRIFT_BASE = 'https://data.api.drift.trade';
-const CONCURRENCY = 6;
+const CONCURRENCY = 3;
 const DRIFT_INTERVAL = KNOWN_INTERVALS.HOURLY; // per-market, ~1h
 
 export async function scanDrift(): Promise<ExchangeResult[]> {

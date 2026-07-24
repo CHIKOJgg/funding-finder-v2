@@ -6,7 +6,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const PARADEX_BASE = 'https://api.paradex.io';
-const CONCURRENCY = 8;
+const CONCURRENCY = 3;
 
 export async function scanParadex(): Promise<ExchangeResult[]> {
   try {

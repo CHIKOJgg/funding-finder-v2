@@ -203,12 +203,12 @@ export async function processScanResults(all: ExchangeResult[]): Promise<ScanRes
   logger.info(`Legacy hourly: ${hourly.length}, twohour: ${twohour.length}, fallback: ${fallback.length}`);
 
   const result: ScanResult = {
-    highYield: highYield.slice(0, 100),
-    mediumYield: mediumYield.slice(0, 100),
-    lowYield: lowYield.slice(0, 100),
-    hourly: hourly.slice(0, 100),
-    twohour: twohour.slice(0, 100),
-    fallback: fallback.slice(0, 100),
+    highYield: highYield.slice(0, 50),
+    mediumYield: mediumYield.slice(0, 50),
+    lowYield: lowYield.slice(0, 50),
+    hourly: hourly.slice(0, 50),
+    twohour: twohour.slice(0, 50),
+    fallback: fallback.slice(0, 50),
     scanned: cleaned.length,
     metrics: {
       minFundingUsed: dynamicMinHourly,

@@ -5,7 +5,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const PHEMEX_BASE = 'https://api.phemex.com';
-const CONCURRENCY = 8;
+const CONCURRENCY = 3;
 
 export async function scanPhemex(): Promise<ExchangeResult[]> {
   try {

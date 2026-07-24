@@ -15,7 +15,7 @@ interface CacheEntry<T> {
 class MemoryCache {
   private store = new Map<string, CacheEntry<any>>();
   private defaultTTL = 60_000;
-  private maxSize = 20000;
+  private maxSize = 500;
 
   get<T>(key: string): T | null {
     const entry = this.store.get(key);
@@ -181,10 +181,13 @@ export async function mapWithConcurrency<T, R>(
   let index = 0;
 
   async function runner(): Promise<void> {
-    while (index < arr.length) {
+    while (true) {
       const i = index++;
+      if (i >= arr.length) break;
+      // Free the item reference early so GC can reclaim it
+      const item = arr[i];
       try {
-        results[i] = await worker(arr[i], i);
+        results[i] = await worker(item, i);
       } catch {
         results[i] = null;
       }

@@ -49,15 +49,29 @@ export async function computeTrackRecord(
 }> {
   const since = new Date(Date.now() - days * DAY_MS);
 
-  const histories = await prisma.fundingHistory.findMany({
-    where: { records: { some: { timestamp: { gte: since } } } },
-    include: {
-      records: {
-        where: { timestamp: { gte: since } },
-        orderBy: { timestamp: 'asc' },
+  // Load in batches to avoid OOM
+  const BATCH_SIZE = 100;
+  let cursor: string | undefined;
+  const allHistories: any[] = [];
+
+  while (true) {
+    const batch = await prisma.fundingHistory.findMany({
+      where: { records: { some: { timestamp: { gte: since } } } },
+      include: {
+        records: {
+          where: { timestamp: { gte: since } },
+          orderBy: { timestamp: 'asc' },
+        },
       },
-    },
-  });
+      take: BATCH_SIZE,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      orderBy: { id: 'asc' },
+    });
+
+    if (batch.length === 0) break;
+    allHistories.push(...batch);
+    cursor = batch[batch.length - 1].id;
+  }
 
   const base = {
     ok: true,
@@ -69,12 +83,12 @@ export async function computeTrackRecord(
     diversified: null as any,
   };
 
-  if (!histories.length) return base;
+  if (!allHistories.length) return base;
 
   // canonical pair -> day -> exchange -> latest rate that day
   const byPair = new Map<string, Map<string, Map<string, number>>>();
 
-  for (const h of histories) {
+  for (const h of allHistories) {
     const sep = h.key.indexOf(':');
     if (sep < 0) continue;
     const exchange = h.key.slice(0, sep);

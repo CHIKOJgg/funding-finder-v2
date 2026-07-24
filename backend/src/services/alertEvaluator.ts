@@ -16,6 +16,14 @@ let isEvaluating = false;
 
 // Track previous funding rates per (exchange, pair) for flip detection
 const prevRates = new Map<string, number>();
+const PREV_RATES_MAX = 500;
+function setPrevRate(key: string, value: number): void {
+  if (prevRates.size >= PREV_RATES_MAX) {
+    const firstKey = prevRates.keys().next().value;
+    if (firstKey !== undefined) prevRates.delete(firstKey);
+  }
+  prevRates.set(key, value);
+}
 
 export function startAlertEvaluator(): void {
   if (evaluationTimer) {
@@ -284,7 +292,7 @@ function evaluateGeneralAlerts(alerts: any[], allResults: any[], now: Date): Tri
         if (prev != null && Math.sign(prev) !== 0 && Math.sign(currentRate) !== 0 && Math.sign(prev) !== Math.sign(currentRate)) {
           isTriggered = true;
         }
-        prevRates.set(key, currentRate);
+        setPrevRate(key, currentRate);
       }
 
       if (isTriggered) {

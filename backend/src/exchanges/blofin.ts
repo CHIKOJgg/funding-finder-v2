@@ -6,7 +6,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const BLOFIN_BASE = 'https://openapi.blofin.com';
-const CONCURRENCY = 6;
+const CONCURRENCY = 3;
 const BLOFIN_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // not exposed by API
 
 export async function scanBloFin(): Promise<ExchangeResult[]> {

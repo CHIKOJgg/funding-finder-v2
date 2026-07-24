@@ -6,7 +6,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const BINGX_BASE = 'https://open-api.bingx.com';
-const CONCURRENCY = 8;
+const CONCURRENCY = 3;
 const BINGX_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // 8h fixed
 
 export async function scanBingX(): Promise<ExchangeResult[]> {
