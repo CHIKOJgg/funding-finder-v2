@@ -127,6 +127,7 @@ export function ArbitragePage() {
   const [minApy, setMinApy] = useState(0);
   const [pairQuery, setPairQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(15);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
   // Spot-Futures panel is hidden from the UI until the backend feature is
   // finished. The backend endpoint stays live for later completion; we only
   // gate the frontend via the backend's feature flag so it can be toggled
@@ -257,6 +258,22 @@ export function ArbitragePage() {
     setVisibleCount(15);
   }, []);
 
+  // Infinite scroll: auto-load more when sentinel becomes visible
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisibleCount((c) => c + 15);
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [filteredOpportunities.length]);
+
   // Live prices for the symbols the user is actually looking at. Refreshed
   // every 10s inside the hook; falls back to each opportunity's mark price.
   const visibleOpportunities = useMemo(
@@ -327,9 +344,24 @@ export function ArbitragePage() {
           </div>
 
           {arbLoading ? (
-            <div className="text-center py-8 text-[var(--text-muted)]" role="status">{t('common.loading')}</div>
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="p-3 rounded-lg border-l-4 border-gray-300 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-1/3 mb-2" />
+                  <div className="h-3 bg-gray-200 rounded w-1/2 mb-2" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="h-12 bg-gray-200 rounded" />
+                    <div className="h-12 bg-gray-200 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : arbOpportunities.length === 0 ? (
-            <div className="text-center py-8 text-[var(--text-muted)]">{t('arb.noOpportunities')}</div>
+            <div className="text-center py-10 text-[var(--text-muted)]">
+              <div className="text-4xl mb-3">🔍</div>
+              <p className="font-medium">{t('arb.noOpportunities')}</p>
+              <p className="text-xs mt-1">{t('arb.noOpportunitiesHint')}</p>
+            </div>
           ) : (
             <>
               <FilterBar activeCount={activeFilterCount} title={t('filter.title')}>
@@ -395,7 +427,11 @@ export function ArbitragePage() {
 
               {filteredOpportunities.length === 0 ? (
                   <div className="text-center py-8 text-[var(--text-muted)]">
-                    {t('arb.noFiltered')}
+                    <div className="text-3xl mb-2">⏳</div>
+                    <p>{t('arb.noFiltered')}</p>
+                    <button onClick={resetFilters} className="btn btn-secondary text-xs mt-2 py-1.5 px-3">
+                      {t('common.resetFilters')}
+                    </button>
                   </div>
               ) : (
                 <>
@@ -416,13 +452,15 @@ export function ArbitragePage() {
                       />
                     ))}
                   </div>
-{visibleCount < filteredOpportunities.length && (
-                    <button
-                      onClick={() => setVisibleCount((c) => c + 15)}
-                      className="btn btn-secondary text-sm py-2 w-full mt-3"
-                    >
-                      {t('arb.showMore', { n: filteredOpportunities.length - visibleCount })}
-                    </button>
+                  {visibleCount < filteredOpportunities.length && (
+                    <div ref={loadMoreRef} className="py-4 text-center text-xs text-[var(--text-muted)]">
+                      {t('arb.loadingMore')}
+                    </div>
+                  )}
+                  {visibleCount >= filteredOpportunities.length && filteredOpportunities.length > 15 && (
+                    <div className="py-3 text-center text-xs text-[var(--text-muted)]">
+                      {t('arb.allLoaded', { count: filteredOpportunities.length })}
+                    </div>
                   )}
 
                   {subscription === 'free' && (
