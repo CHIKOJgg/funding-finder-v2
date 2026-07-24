@@ -113,7 +113,7 @@ export function ContextMenu({
       label: t('contextMenu.share') || 'Share',
       action: () => {
         hapticSelection();
-        const text = `${item.exchange.toUpperCase()} ${item.contract}: ${(item.rate * 100).toFixed(3)}% APR`;
+        const text = `${item.exchange.toUpperCase()} ${item.contract}: ${(item.annualized_rate * 100).toFixed(3)}% APR`;
         if (navigator.share) {
           navigator.share({ title: 'Funding rate', text }).catch(() => undefined);
         } else if (navigator.clipboard) {

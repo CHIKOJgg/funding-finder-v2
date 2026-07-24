@@ -1,3 +1,61 @@
+export interface TelegramWebApp {
+  initData?: string;
+  initDataUnsafe?: {
+    user?: {
+      id: number;
+      first_name?: string;
+      last_name?: string;
+      username?: string;
+    };
+    start_param?: string;
+  };
+  expand?: () => void;
+  enableClosingConfirmation?: () => void;
+  openLink?: (url: string) => void;
+  close?: () => void;
+  BackButton?: {
+    show: () => void;
+    hide: () => void;
+    onClick: (callback: () => void) => void;
+  };
+  MainButton?: {
+    setText: (text: string) => void;
+    show: () => void;
+    hide: () => void;
+    onClick: (callback: () => void) => void;
+    offClick: (callback: () => void) => void;
+  };
+  colorScheme?: string;
+  themeParams?: {
+    bg_color?: string;
+    text_color?: string;
+    hint_color?: string;
+    link_color?: string;
+    button_color?: string;
+    button_text_color?: string;
+  };
+  CloudStorage?: {
+    setItem: (key: string, value: string, callback?: (error: Error | null, result?: boolean) => void) => void;
+    getItem: (key: string, callback: (error: Error | null, result?: string) => void) => void;
+    removeItem: (key: string, callback?: (error: Error | null, result?: boolean) => void) => void;
+  };
+  onEvent?: (eventType: string, callback: (payload?: any) => void) => void;
+  offEvent?: (eventType: string, callback: (payload?: any) => void) => void;
+  HapticFeedback?: {
+    impactOccurred: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void;
+    notificationOccurred: (type: 'error' | 'success' | 'warning') => void;
+    selectionChanged: () => void;
+  };
+}
+
+declare global {
+  interface Window {
+    Telegram?: { WebApp?: TelegramWebApp };
+    ethereum?: any;
+    google?: any;
+  }
+}
+
 export interface ExchangeResult {
   exchange: string;
   contract: string;
