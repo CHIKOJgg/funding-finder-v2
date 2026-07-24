@@ -642,6 +642,10 @@ export const ru: Record<string, string> = {
   'trial.title': 'Попробуйте Pro бесплатно',
   'trial.desc': '{days} дня всех фич: AI, рекомендации, арбитраж и портфель — без оплаты.',
   'trial.activated': 'Пробный Pro активирован!',
+  'trial.endingSoon': 'Ваш пробный период скоро закончится! Подключите Pro, чтобы сохранить доступ.',
+  'trial.upgradeNow': '⚡ Подключить Pro',
+  'trial.specialOffer': '🎁 Специальное предложение: продлите на 3 дня за $9.99',
+  'trial.specialOfferDesc': 'Ограниченное предложение — получите 3 дополнительных дня Pro',
 
   // Units & suffixes
   'unit.now': 'сейчас',

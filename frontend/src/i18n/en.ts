@@ -617,6 +617,10 @@ export const en: Record<string, string> = {
   'trial.title': 'Try Pro for free',
   'trial.desc': '{days} days of all features: AI, recommendations, arbitrage and portfolio — free.',
   'trial.activated': 'Trial Pro activated!',
+  'trial.endingSoon': 'Your trial is ending soon! Upgrade now to keep Pro features.',
+  'trial.upgradeNow': '⚡ Upgrade to Pro',
+  'trial.specialOffer': '🎁 Special offer: Extend 3 days for $9.99',
+  'trial.specialOfferDesc': 'Limited time — get 3 extra days of Pro access',
 
   // Install banner
   'install.title': 'Install Funding Finder',
