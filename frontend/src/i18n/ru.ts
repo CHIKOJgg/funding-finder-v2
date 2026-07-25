@@ -830,6 +830,8 @@ export const ru: Record<string, string> = {
   'public.sortVolume': 'По объёму',
   'public.sortExchange': 'По бирже',
   'public.allExchanges': 'Все биржи',
+  'public.sortLabel': 'Сортировка',
+  'public.exchangeFilterLabel': 'Фильтр по бирже',
   'public.positiveRates': '📈 Положительный фандинг (лонги платят)',
   'public.negativeRates': '📉 Отрицательный фандинг (шорты платят)',
   'public.exchange': 'Биржа',

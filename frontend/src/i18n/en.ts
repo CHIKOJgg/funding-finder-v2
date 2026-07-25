@@ -860,6 +860,8 @@ export const en: Record<string, string> = {
   'public.sortVolume': 'By volume',
   'public.sortExchange': 'By exchange',
   'public.allExchanges': 'All exchanges',
+  'public.sortLabel': 'Sort by',
+  'public.exchangeFilterLabel': 'Filter by exchange',
   'public.positiveRates': '📈 Positive funding (longs pay)',
   'public.negativeRates': '📉 Negative funding (shorts pay)',
   'public.exchange': 'Exchange',

@@ -177,6 +177,7 @@ export function PublicPage() {
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortKey)}
               className="input-field text-sm"
+              aria-label={t('public.sortLabel')}
             >
               <option value="rate_desc">{t('public.sortRateDesc')}</option>
               <option value="rate_asc">{t('public.sortRateAsc')}</option>
@@ -187,6 +188,7 @@ export function PublicPage() {
               value={filterExchange}
               onChange={(e) => setFilterExchange(e.target.value)}
               className="input-field text-sm"
+              aria-label={t('public.exchangeFilterLabel')}
             >
               <option value="">{t('public.allExchanges')}</option>
               {exchanges.map((ex) => (

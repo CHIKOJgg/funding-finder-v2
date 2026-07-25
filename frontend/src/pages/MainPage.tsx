@@ -547,7 +547,7 @@ export function MainPage() {
       {showAi && (
         <div className="card">
           <h2 className="text-lg font-semibold mb-2">{t('main.aiAnalysisTitle')}</h2>
-          <pre className="bg-[var(--surface-2)] p-3 rounded-lg text-sm whitespace-pre-wrap overflow-auto max-h-96">
+          <pre className="bg-[var(--surface-2)] p-3 rounded-lg text-sm whitespace-pre-wrap overflow-auto max-h-96" aria-live="polite">
             {aiText}
           </pre>
         </div>
@@ -556,7 +556,7 @@ export function MainPage() {
       {showRecommendations && (
         <div className="card">
           <h2 className="text-lg font-semibold mb-2">{t('main.recommendationsTitle')}</h2>
-          <pre className="bg-[var(--surface-2)] p-3 rounded-lg text-sm whitespace-pre-wrap overflow-auto max-h-96">
+          <pre className="bg-[var(--surface-2)] p-3 rounded-lg text-sm whitespace-pre-wrap overflow-auto max-h-96" aria-live="polite">
             {recommendationsText}
           </pre>
         </div>

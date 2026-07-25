@@ -404,7 +404,7 @@ function UrgencyTimer() {
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
   return (
-    <span className="text-xs font-bold tabular-nums" style={{ color: '#dc2626' }}>
+    <span className="text-xs font-bold tabular-nums" style={{ color: '#dc2626' }} aria-live="polite">
       {h}h {m}m
     </span>
   );
@@ -420,5 +420,5 @@ function TrialCountdown({ endsAt }: { endsAt: string }) {
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
   const s = Math.floor((diff % 60000) / 1000);
-  return <span>{h}h {m}m {s}s</span>;
+  return <span aria-live="polite">{h}h {m}m {s}s</span>;
 }

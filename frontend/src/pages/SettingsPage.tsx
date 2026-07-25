@@ -433,8 +433,9 @@ export function SettingsPage() {
       <AccordionSection title={t('settings.appearance')} icon="🎨" defaultOpen={false}>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.theme')}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="settings-theme">{t('settings.theme')}</label>
             <select
+              id="settings-theme"
               value={settings.theme}
               onChange={(e) => setSettings((prev) => ({ ...prev, theme: e.target.value as 'auto' | 'light' | 'dark' }))}
               className="input-field"
@@ -446,8 +447,9 @@ export function SettingsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.timezone')}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="settings-timezone">{t('settings.timezone')}</label>
             <select
+              id="settings-timezone"
               value={settings.timezone}
               onChange={(e) => setSettings((prev) => ({ ...prev, timezone: e.target.value }))}
               className="input-field"
