@@ -8,8 +8,25 @@ import { QrLoginModal } from '../components/QrLoginModal';
 import { apiClient } from '../api/client';
 import { useT } from '../i18n';
 import { PLAN_PRICES } from '../utils/plans';
+import { clsx } from 'clsx';
 
 const SITE_URL = 'https://funding-finder-frontend.onrender.com';
+
+interface UserStats {
+  totalScans: number;
+  totalAlerts: number;
+  uniqueExchanges: number;
+}
+
+const ACHIEVEMENTS = [
+  { id: 'first_scan', icon: '🔍', key: 'profile.achFirstScan', condition: (s: UserStats) => s.totalScans >= 1 },
+  { id: 'scanner', icon: '🤖', key: 'profile.achScanner', condition: (s: UserStats) => s.totalScans >= 10 },
+  { id: 'master_scanner', icon: '🏆', key: 'profile.achMasterScanner', condition: (s: UserStats) => s.totalScans >= 100 },
+  { id: 'alert_setter', icon: '🔔', key: 'profile.achAlertSetter', condition: (s: UserStats) => s.totalAlerts >= 1 },
+  { id: 'referral', icon: '🤝', key: 'profile.achReferral', condition: (_s: UserStats, r: number) => r >= 1 },
+  { id: 'pro_user', icon: '⭐', key: 'profile.achProUser', condition: (_s: UserStats, _r: number, sub: string) => sub === 'pro' || sub === 'proplus' },
+  { id: 'diversified', icon: '🌐', key: 'profile.achDiversified', condition: (s: UserStats) => s.uniqueExchanges >= 3 },
+];
 
 export function ProfilePage() {
   const { user, subscription: ctxSubscription, isWeb, refreshSubscription } = useApp();
@@ -26,6 +43,7 @@ export function ProfilePage() {
   const [balance, setBalance] = useState(0);
   const [subscription, setSubscription] = useState('free');
   const [loading, setLoading] = useState(true);
+  const [userStats, setUserStats] = useState<UserStats>({ totalScans: 0, totalAlerts: 0, uniqueExchanges: 0 });
 
   useEffect(() => {
     if (user?.id) {
@@ -83,6 +101,11 @@ export function ProfilePage() {
         const profile = (profileRes as any).user || profileRes;
         setSubscription(profile.subscription || 'free');
         if (profile.balance !== undefined) setBalance(profile.balance);
+        setUserStats({
+          totalScans: profile.totalScans || 0,
+          totalAlerts: profile.totalAlerts || 0,
+          uniqueExchanges: profile.uniqueExchanges || 0,
+        });
       }
 
       // Only show error if ALL requests failed
@@ -181,6 +204,54 @@ export function ProfilePage() {
             <div className="text-lg font-bold stat">{referralStats.referrals}</div>
           </div>
         </div>
+      </div>
+
+      {/* Usage Dashboard */}
+      <div className="card">
+        <h2 className="text-base font-semibold mb-3">📊 {t('profile.dashboard')}</h2>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-xl p-3 text-center" style={{ background: 'var(--surface-2)' }}>
+            <div className="text-xs text-muted">{t('profile.scansCount')}</div>
+            <div className="text-lg font-bold stat">{userStats.totalScans}</div>
+          </div>
+          <div className="rounded-xl p-3 text-center" style={{ background: 'var(--surface-2)' }}>
+            <div className="text-xs text-muted">{t('profile.alertsCount')}</div>
+            <div className="text-lg font-bold stat">{userStats.totalAlerts}</div>
+          </div>
+          <div className="rounded-xl p-3 text-center" style={{ background: 'var(--surface-2)' }}>
+            <div className="text-xs text-muted">{t('profile.exchangesCount')}</div>
+            <div className="text-lg font-bold stat">{userStats.uniqueExchanges}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Achievements */}
+      <div className="card">
+        <h2 className="text-base font-semibold mb-3">🏅 {t('profile.achievements')}</h2>
+        <div className="grid grid-cols-4 gap-2">
+          {ACHIEVEMENTS.map((ach) => {
+            const unlocked = ach.condition(userStats, referralStats.referrals, subscription);
+            return (
+              <div
+                key={ach.id}
+                className={clsx(
+                  'flex flex-col items-center p-2 rounded-xl text-center transition-all',
+                  unlocked ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'opacity-40 grayscale'
+                )}
+                title={t(ach.key)}
+              >
+                <span className="text-2xl">{ach.icon}</span>
+                <span className="text-[10px] mt-1 leading-tight">{t(ach.key)}</span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted mt-2 text-center">
+          {t('profile.achievementProgress', {
+            count: ACHIEVEMENTS.filter((a) => a.condition(userStats, referralStats.referrals, subscription)).length,
+            total: ACHIEVEMENTS.length,
+          })}
+        </p>
       </div>
 
       <div className="card">
