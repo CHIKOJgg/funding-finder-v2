@@ -27,6 +27,14 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: process.env.NODE_ENV === 'development',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'router': ['react-router-dom'],
+        },
+      },
+    },
   },
   test: {
     globals: true,
