@@ -466,7 +466,7 @@ async function syncDatabaseSchema() {
     env.SHADOW_DATABASE_URL = env.DIRECT_URL;
   }
   try {
-    execSync(`${prismaCmd} db push --skip-generate --accept-data-loss`, {
+    execSync(`${prismaCmd} db push --skip-generate`, {
       cwd: path.resolve(__dirname, '..'),
       stdio: 'pipe',
       timeout: 120000,
@@ -563,6 +563,7 @@ async function start() {
        startDataArchival();
        startFundingWarmup();
         startNowPaymentsPolling();
+        startMarketDataRefresh();
          startTelegramBot();
           startPublicSignalChannel();
           startWeeklyReport();

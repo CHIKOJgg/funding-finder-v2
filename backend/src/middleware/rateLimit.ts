@@ -72,7 +72,7 @@ export function perUserLimiter(max: number, windowMs: number, name = 'per-user')
     skip: (req: Request) => isExemptFromLimits(req),
     store: createRateLimitStore(name),
     keyGenerator: (req: Request, _res: Response) =>
-      (req as any).user?.id || (req as any).userId || ipKeyGenerator(req.ip as string),
+      (req as any).userId || ipKeyGenerator(req.ip as string),
     message: { ok: false, error: 'Too many requests, please slow down' },
     // Surface every rejection with context so a 429 storm is diagnosable
     // without guessing which limiter / user / route tripped.

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { setTelegramInitData, setCurrentUserId, setAuthToken, getAuthToken, clearAuthToken, apiClient, captureReferralCode } from '../api/client';
+import { setTelegramInitData, setAuthToken, getAuthToken, clearAuthToken, apiClient, captureReferralCode } from '../api/client';
 import type { TelegramWebApp } from '../types';
 
 export interface WebUser {
@@ -22,7 +22,6 @@ export function useTelegram() {
 
   const applyUser = useCallback((u: WebUser) => {
     setUser(u);
-    setCurrentUserId(u.id);
     setAuthProvider(u.provider);
     setAuthenticated(true);
   }, []);
@@ -40,7 +39,6 @@ export function useTelegram() {
     setAuthProvider(undefined);
     setAuthenticated(false);
     setInitData(null);
-    setCurrentUserId(null);
   }, []);
 
   // Ref to track whether we've already initialised Telegram (prevents duplicate

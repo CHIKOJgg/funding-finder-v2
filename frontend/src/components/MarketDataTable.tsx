@@ -55,11 +55,11 @@ export default function MarketDataTable({ exchange, contract }: MarketDataTableP
       ]);
 
       setData({
-        latestOI: oiRes.data?.data ?? null,
+        latestOI: oiRes ?? null,
         oiHistory: [],
-        latestLSR: lsrRes.data?.latest ?? null,
-        lsrHistory: lsrRes.data?.history ?? [],
-        liquidations: liqRes.data?.data ?? [],
+        latestLSR: lsrRes?.latest ?? null,
+        lsrHistory: lsrRes?.history ?? [],
+        liquidations: liqRes ?? [],
       });
     } catch (err) {
       console.warn('Market data fetch failed:', err);

@@ -1,7 +1,10 @@
 import { prisma } from './prisma.js';
 import { logger } from '../utils/logger.js';
 
-// Open Interest data fetching and storage
+// Track last OI value per key to avoid inserting duplicate records
+const lastOiValues = new Map<string, { value: number; timestamp: number }>();
+
+// Open Interest data fetching and storage (with dedup)
 export async function upsertOpenInterest(
   exchange: string,
   contract: string,
@@ -9,6 +12,12 @@ export async function upsertOpenInterest(
   timestamp: number = Date.now()
 ): Promise<void> {
   const key = `${exchange}:${contract}`;
+  const last = lastOiValues.get(key);
+  // Skip if value hasn't changed meaningfully and last record was < 5 min ago
+  if (last && Math.abs(last.value - openInterestUsd) / (last.value || 1) < 0.001 && timestamp - last.timestamp < 300_000) {
+    return;
+  }
+  lastOiValues.set(key, { value: openInterestUsd, timestamp });
   try {
     await prisma.openInterestHistory.upsert({
       where: { key },
@@ -35,7 +44,10 @@ export async function upsertOpenInterest(
   }
 }
 
-// Long/Short ratio data fetching and storage
+// Track last LSR value per key to avoid inserting duplicate records
+const lastLsrValues = new Map<string, { value: number; timestamp: number }>();
+
+// Long/Short ratio data fetching and storage (with dedup)
 export async function upsertLongShortRatio(
   exchange: string,
   contract: string,
@@ -45,6 +57,11 @@ export async function upsertLongShortRatio(
   timestamp: number = Date.now()
 ): Promise<void> {
   const key = `${exchange}:${contract}`;
+  const last = lastLsrValues.get(key);
+  if (last && Math.abs(last.value - longShortRatio) < 0.001 && timestamp - last.timestamp < 300_000) {
+    return;
+  }
+  lastLsrValues.set(key, { value: longShortRatio, timestamp });
   try {
     await prisma.longShortRatioHistory.upsert({
       where: { key },
@@ -73,6 +90,16 @@ export async function upsertLongShortRatio(
   } catch (err) {
     logger.debug(`Failed to upsert LSR for ${key}: ${(err as Error).message}`);
   }
+}
+
+// Periodically evict stale entries from dedup caches to prevent memory leak
+const DEDUP_CACHE_MAX_AGE = 10 * 60 * 1000;
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const cutoff = Date.now() - DEDUP_CACHE_MAX_AGE;
+    for (const [k, v] of lastOiValues) { if (v.timestamp < cutoff) lastOiValues.delete(k); }
+    for (const [k, v] of lastLsrValues) { if (v.timestamp < cutoff) lastLsrValues.delete(k); }
+  }, 5 * 60 * 1000);
 }
 
 // Liquidation data storage

@@ -25,8 +25,17 @@ const querySchema = z.object({
 
 const oiWeightedCache = new Map<string, { value: number; expiresAt: number }>();
 const CACHE_TTL_MS = 30_000;
+const OI_WEIGHTED_CACHE_MAX = 500;
 
 function getCachedOiWeighted(key: string, fetchFn: () => Promise<number>): Promise<number> {
+  // Evict stale entries periodically (every 50 calls)
+  if (oiWeightedCache.size > OI_WEIGHTED_CACHE_MAX) {
+    const now = Date.now();
+    for (const [k, v] of oiWeightedCache) {
+      if (now >= v.expiresAt) oiWeightedCache.delete(k);
+      if (oiWeightedCache.size <= OI_WEIGHTED_CACHE_MAX) break;
+    }
+  }
   const cached = oiWeightedCache.get(key);
   if (cached && Date.now() < cached.expiresAt) {
     return Promise.resolve(cached.value);
@@ -99,12 +108,18 @@ router.get('/liquidation-snapshots/:exchange/:contract', marketDataLimiter, asyn
   }
 });
 
-router.get('/oi-weighted-rate', marketDataLimiter, validate(z.object({
+const oiWeightedQuerySchema = z.object({
   contract: z.string().min(1),
-  exchanges: z.array(z.string()).min(2).max(10),
-})), async (req, res) => {
+  exchanges: z.string().min(1),
+});
+
+router.get('/oi-weighted-rate', marketDataLimiter, validate(oiWeightedQuerySchema, 'query'), async (req, res) => {
   try {
-    const { contract, exchanges } = req.query as unknown as { contract: string; exchanges: string[] };
+    const { contract, exchanges: exchangesStr } = req.query as unknown as { contract: string; exchanges: string };
+    const exchanges = exchangesStr.split(',').map((e) => e.trim()).filter(Boolean);
+    if (exchanges.length < 2 || exchanges.length > 10) {
+      return sendError(res, 400, 'Provide 2-10 comma-separated exchanges', 'OI_WEIGHTED_INPUT');
+    }
     const exchangeRates = exchanges.map((e) => ({ exchange: e, rate: 0 }));
     const key = `oi-weighted:${contract}:${exchanges.join(',')}`;
     try {

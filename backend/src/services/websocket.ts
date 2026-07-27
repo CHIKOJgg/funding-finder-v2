@@ -108,9 +108,12 @@ class WebSocketManager {
               return;
             }
             userId = payload.sub;
-          } else {
+          } else if (process.env.NODE_ENV === 'development') {
             // Dev mode fallback
             userId = `dev_ws_${Date.now()}`;
+          } else {
+            ws.close(4001, 'Authentication required');
+            return;
           }
 
           authenticated = true;

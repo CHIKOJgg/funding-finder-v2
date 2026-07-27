@@ -76,6 +76,9 @@ export const AFFILIATE: Record<string, AffiliateConfig> = {
   apex: { param: 'ref', code: env.VITE_AFF_APEX || '' },
   aster: { param: 'ref', code: env.VITE_AFF_ASTER || '' },
   bluefin: { param: 'ref', code: env.VITE_AFF_BLUEFIN || '' },
+  kucoin: { param: 'ref', code: env.VITE_AFF_KUCOIN || '' },
+  cryptocom: { param: 'ref', code: env.VITE_AFF_CRYPTOCOM || '' },
+  deribit: { param: 'ref', code: env.VITE_AFF_DERIBIT || '' },
 };
 
 /** Append the exchange's affiliate code to a URL, if configured. */
@@ -171,6 +174,12 @@ function buildBaseTradeUrl(exchange: string, pair: string, symbol: string, base:
       return pair ? `https://www.asterdex.com/futures/${pair}` : 'https://www.asterdex.com/futures';
     case 'bluefin':
       return pair ? `https://bluefin.io/trade/${pair}` : 'https://bluefin.io/trade';
+    case 'kucoin':
+      return symbol ? `https://futures.kucoin.com/trade/${symbol}` : 'https://futures.kucoin.com';
+    case 'cryptocom':
+      return symbol ? `https://crypto.com/exchange/trade/${symbol}` : 'https://crypto.com/exchange';
+    case 'deribit':
+      return symbol ? `https://www.deribit.com/main#/markets/${base}-USDT` : 'https://www.deribit.com';
     default:
       return symbol ? `https://www.binance.com/en/futures/${symbol}` : 'https://www.binance.com/en/futures';
   }

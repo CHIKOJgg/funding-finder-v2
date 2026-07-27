@@ -48,15 +48,10 @@ const api = axios.create({
 });
 
 let telegramInitData: string | null = null;
-let currentUserId: string | null = null;
 let authToken: string | null = localStorage.getItem('ff_auth_token') || null;
 
 export function setTelegramInitData(data: string | null) {
   telegramInitData = data;
-}
-
-export function setCurrentUserId(id: string | null) {
-  currentUserId = id;
 }
 
 export function setAuthToken(token: string | null) {
@@ -99,19 +94,6 @@ api.interceptors.request.use((config) => {
   // Telegram Mini App init data (used by the mini-app build).
   if (telegramInitData) {
     config.headers['x-telegram-init-data'] = telegramInitData;
-  }
-  if (currentUserId) {
-    if (config.method === 'get' || config.method === 'delete') {
-      config.params = { ...config.params, userId: currentUserId };
-    } else if (config.data) {
-      try {
-        const body = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
-        if (!body.userId) {
-          body.userId = currentUserId;
-          config.data = JSON.stringify(body);
-        }
-      } catch { /* ignore parse errors */ }
-    }
   }
   (config as any)._startedAt = Date.now();
   logger.debug('net', `${String(config.method || 'GET').toUpperCase()} ${config.url || ''}`, {
