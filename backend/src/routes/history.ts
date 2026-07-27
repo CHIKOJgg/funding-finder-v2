@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
@@ -40,7 +41,7 @@ router.get('/history/:exchange/:contract', async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error, exchange: req.params.exchange, contract: req.params.contract }, 'History fetch error');
-    res.status(500).json({ ok: false, error: error.message });
+    sendError(res, 500, 'Failed to fetch history', 'HISTORY_FETCH_ERROR');
   }
 });
 

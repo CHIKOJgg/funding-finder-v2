@@ -6,6 +6,8 @@
 // variant) and read back when the SPA fires in-app events, so
 // landing_view → app_open → scan_run → ... stays linked per browser.
 
+import { API_BASE } from '../api/client';
+
 export type TrackEvent =
   | 'landing_view'
   | 'app_open'
@@ -14,9 +16,6 @@ export type TrackEvent =
   | 'trial_start'
   | 'onboarding_complete'
   | 'paid';
-
-const API_URL = (import.meta.env.VITE_API_URL || 'https://funding-finder-api.onrender.com')
-  .replace(/\/$/, '');
 
 const SESSION_KEY = 'ff_analytics_session';
 const SRC_KEY = 'ff_src';
@@ -97,7 +96,7 @@ export function track(
       meta: meta || undefined,
     };
     // keepalive lets the ping survive navigation (e.g. landing → app CTA).
-    fetch(`${API_URL}/api/public/track`, {
+    fetch(`${API_BASE}/api/public/track`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

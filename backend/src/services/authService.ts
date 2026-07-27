@@ -142,6 +142,7 @@ export function parseSiweMessage(message: string): ParsedSiweMessage | null {
       notBefore: fields['Not Before'],
     };
   } catch {
+    // Malformed JWT — always returns null (safe default).
     return null;
   }
 }

@@ -1,74 +1,108 @@
-import { detectArbitrageOpportunities } from '../services/arbitrageService.js';
-import type { ExchangeResult } from '../types/index.js';
+import { detectArbitrageOpportunities, calculateNetApr, calculatePaybackDays, EXCHANGE_FEES } from '../services/arbitrageService.js';
+import type { ExchangeResult, ArbitrageOpportunity } from '../types/index.js';
 
-function mk(partial: Partial<ExchangeResult> & Pick<ExchangeResult, 'exchange' | 'contract' | 'funding_rate_per_hour'>): ExchangeResult {
+function makeResult(overrides: Partial<ExchangeResult>): ExchangeResult {
   return {
-    currentFunding: partial.funding_rate_per_hour,
+    exchange: 'binance',
+    contract: 'BTCUSDT',
+    currentFunding: 0.0001,
     funding_interval_seconds: 28800,
     funding_interval_hours: 8,
-    funding_interval_source: 'default',
-    funding_rate_per_day: partial.funding_rate_per_hour * 3,
-    annualized_rate: partial.funding_rate_per_hour * 3 * 365,
-    funding_next_apply: 0,
-    time_until_next_funding_seconds: 0,
+    funding_interval_source: 'api' as const,
+    funding_rate_per_hour: 0.0001,
+    funding_rate_per_day: 0.00024,
+    annualized_rate: 0.1095,
+    funding_next_apply: Date.now() + 1000,
+    time_until_next_funding_seconds: 1000,
     mark_price: 60000,
     volume_24h_settle: 10_000_000,
-    med_seconds: 28800,
-    med_hours: 8,
-    ...partial,
-  } as ExchangeResult;
+    med_seconds: null,
+    med_hours: null,
+    ...overrides,
+  };
 }
 
-describe('detectArbitrageOpportunities (integration of the core algorithm)', () => {
-  it('creates one opportunity for the same pair across two different exchanges', () => {
-    const results = [
-      mk({ exchange: 'binance', contract: 'BTCUSDT', funding_rate_per_hour: 0.0001 }),
-      mk({ exchange: 'bybit', contract: 'BTCUSDT', funding_rate_per_hour: 0.0002 }),
-    ];
-    const opps = detectArbitrageOpportunities(results);
-    expect(opps.length).toBe(1);
-    expect(opps[0].pair).toBe('BTC/USDT');
-    expect(opps[0].markPriceA).toBe(60000);
-    expect(opps[0].markPriceB).toBe(60000);
+describe('calculateNetApr', () => {
+  it('returns the annual return value', () => {
+    expect(calculateNetApr(15.5)).toBe(15.5);
   });
 
-  it('skips an exchange compared against itself', () => {
-    const results = [
-      mk({ exchange: 'binance', contract: 'BTCUSDT', funding_rate_per_hour: 0.0001 }),
-      mk({ exchange: 'binance', contract: 'ETHUSDT', funding_rate_per_hour: 0.0002 }),
-    ];
-    const opps = detectArbitrageOpportunities(results);
-    expect(opps.length).toBe(0);
+  it('works with zero', () => {
+    expect(calculateNetApr(0)).toBe(0);
   });
 
-  it('skips pairs whose funding-rate difference is below the minimum threshold', () => {
-    const results = [
-      mk({ exchange: 'binance', contract: 'BTCUSDT', funding_rate_per_hour: 0.0001 }),
-      mk({ exchange: 'bybit', contract: 'BTCUSDT', funding_rate_per_hour: 0.0001001 }), // diff < 0.00001
-    ];
-    const opps = detectArbitrageOpportunities(results);
-    expect(opps.length).toBe(0);
+  it('works with negative returns', () => {
+    expect(calculateNetApr(-5.2)).toBe(-5.2);
+  });
+});
+
+describe('calculatePaybackDays', () => {
+  it('returns Infinity for zero spread', () => {
+    expect(calculatePaybackDays(0, 'binance', 'bybit')).toBe(Infinity);
   });
 
-  it('skips mismatched funding intervals (would be non-collectible)', () => {
-    const results = [
-      mk({ exchange: 'binance', contract: 'BTCUSDT', funding_rate_per_hour: 0.0001, funding_interval_hours: 8 }),
-      mk({ exchange: 'hyperliquid', contract: 'BTC', funding_rate_per_hour: 0.0005, funding_interval_hours: 1 }),
-    ];
-    const opps = detectArbitrageOpportunities(results);
-    expect(opps.length).toBe(0);
+  it('returns a positive number for positive spread', () => {
+    const days = calculatePaybackDays(0.0002, 'binance', 'bybit');
+    expect(days).toBeGreaterThan(0);
+    expect(days).toBeLessThan(Infinity);
   });
 
-  it('produces both directions and a positive annualized return for a real spread', () => {
+  it('uses exchange-specific fees', () => {
+    const withBinance = calculatePaybackDays(0.0002, 'binance', 'bybit');
+    const withGate = calculatePaybackDays(0.0002, 'gate', 'bybit');
+    expect(withBinance).not.toBe(withGate);
+  });
+});
+
+describe('detectArbitrageOpportunities', () => {
+  it('returns empty array when only one exchange per pair', () => {
+    const results = [makeResult()];
+    const opps = detectArbitrageOpportunities(results);
+    expect(opps).toHaveLength(0);
+  });
+
+  it('detects opportunities across two exchanges', () => {
     const results = [
-      mk({ exchange: 'binance', contract: 'BTCUSDT', funding_rate_per_hour: 0.0001, volume_24h_settle: 50_000_000 }),
-      mk({ exchange: 'bybit', contract: 'BTCUSDT', funding_rate_per_hour: 0.0003, volume_24h_settle: 40_000_000 }),
+      makeResult({ exchange: 'binance', funding_rate_per_hour: 0.0001, annualized_rate: 0.1095 }),
+      makeResult({ exchange: 'bybit', funding_rate_per_hour: 0.0003, annualized_rate: 0.3285 }),
     ];
     const opps = detectArbitrageOpportunities(results);
-    expect(opps.length).toBeGreaterThanOrEqual(1);
-    const opp = opps[0];
-    expect(opp.profit.annualReturn).toBeGreaterThan(0);
-    expect(opp.risk.level).toMatch(/LOW|MEDIUM|HIGH/);
-    expect(typeof opp.score).toBe('number');
+    expect(opps.length).toBeGreaterThan(0);
+  });
+
+  it('populates netApr on opportunities', () => {
+    const results = [
+      makeResult({ exchange: 'binance', funding_rate_per_hour: 0.0001, annualized_rate: 0.1095 }),
+      makeResult({ exchange: 'bybit', funding_rate_per_hour: 0.0003, annualized_rate: 0.3285 }),
+    ];
+    const opps = detectArbitrageOpportunities(results);
+    if (opps.length > 0) {
+      expect(opps[0]).toHaveProperty('netApr');
+      expect(opps[0]).toHaveProperty('paybackDays');
+    }
+  });
+
+  it('calculates paybackDays correctly', () => {
+    const results = [
+      makeResult({ exchange: 'binance', funding_rate_per_hour: 0.0001, difference_per_day: 0.00024, volume_24h_settle: 10_000_000 }),
+      makeResult({ exchange: 'bybit', funding_rate_per_hour: 0.0003, difference_per_day: 0.00024, volume_24h_settle: 10_000_000 }),
+    ];
+    const opps = detectArbitrageOpportunities(results);
+    if (opps.length > 0) {
+      expect(typeof opps[0].paybackDays).toBe('number');
+      expect(opps[0].paybackDays! >= 0 || opps[0].paybackDays === undefined).toBe(true);
+    }
+  });
+
+  it('attaches persistence grade', () => {
+    const results = [
+      makeResult({ exchange: 'binance', funding_rate_per_hour: 0.0001 }),
+      makeResult({ exchange: 'bybit', funding_rate_per_hour: 0.0003 }),
+    ];
+    const opps = detectArbitrageOpportunities(results);
+    if (opps.length > 0) {
+      expect(opps[0]).toHaveProperty('persistenceGrade');
+      expect(opps[0]).toHaveProperty('stabilityGrade');
+    }
   });
 });

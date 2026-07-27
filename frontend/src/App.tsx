@@ -9,7 +9,7 @@ import { WebHeader } from './components/WebHeader';
 import { useTelegram } from './hooks/useTelegram';
 import { useIsWide } from './hooks/useIsWide';
 import { useWebSocket } from './hooks/useWebSocket';
-import { apiClient, getAuthToken } from './api/client';
+import { apiClient, getAuthToken, API_BASE } from './api/client';
 import { ALL_EXCHANGES } from './utils/exchanges';
 import { getPlanLimits, PlanLimits } from './utils/plans';
 import { LanguageProvider } from './i18n';
@@ -163,8 +163,7 @@ function DataProvider() {
   // Keep-alive ping: hit /api/public/ping every 10 min so the Render free-tier
   // API stays awake. Fire-and-forget, never blocks the UI.
   useEffect(() => {
-    const API = (import.meta.env.VITE_API_URL || 'https://funding-finder-api.onrender.com').replace(/\/$/, '');
-    const ping = () => fetch(`${API}/api/public/ping`, { keepalive: true }).catch(() => {});
+    const ping = () => fetch(`${API_BASE}/api/public/ping`, { keepalive: true }).catch(() => {});
     ping();
     const id = setInterval(ping, 10 * 60 * 1000);
     return () => clearInterval(id);

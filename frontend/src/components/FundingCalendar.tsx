@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '../api/client';
 import { FundingEvent } from '../types';
 import { useT } from '../i18n';
+import { CardSkeleton } from './Skeleton';
 
 function formatRemaining(t: (key: string, vars?: Record<string, string | number>) => string, seconds: number): string {
   if (seconds <= 0) return t('unit.now');
@@ -49,7 +50,7 @@ export function FundingCalendar({ exchanges, refreshSignal }: { exchanges?: stri
     return (
       <div className="card">
         <h2 className="text-lg font-semibold mb-3">{t('calendar.title')}</h2>
-        <div className="text-sm text-muted">{t('calendar.loading')}</div>
+        <CardSkeleton />
       </div>
     );
   }

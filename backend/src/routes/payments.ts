@@ -14,8 +14,10 @@ import {
   getUserBalance,
 } from '../services/paymentService.js';
 import { getNowPaymentsStatus, mapNowPaymentsStatus } from '../services/nowPaymentsService.js';
+import { prisma } from '../services/prisma.js';
 import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
@@ -45,7 +47,7 @@ router.post('/createOrder', validate(createOrderSchema), async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'CreateOrder error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    return sendError(res, 500, 'Failed to create order', 'ORDER_CREATE_ERROR');
   }
 });
 
@@ -76,7 +78,8 @@ router.get('/orderStatus/:orderId', async (req, res) => {
       const invoiceStatus = await getInvoiceStatus(order.invoiceId);
       if (invoiceStatus) {
         await updateOrderFromWebhook(order.invoiceId, invoiceStatus.status);
-        return res.json({ ok: true, order: { ...order, status: invoiceStatus.status }, invoice });
+        const updatedOrder = await getOrder(req.params.orderId);
+        return res.json({ ok: true, order: updatedOrder, invoice });
       }
     }
 
@@ -84,7 +87,7 @@ router.get('/orderStatus/:orderId', async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'OrderStatus error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    return sendError(res, 500, 'Failed to fetch order status', 'ORDER_STATUS_ERROR');
   }
 });
 
@@ -100,7 +103,7 @@ if (!config.isProduction) {
     } catch (e) {
       const error = e as Error;
       logger.error({ err: error }, 'Simulate payment error');
-      res.status(500).json({ ok: false, error: error.message });
+      return sendError(res, 500, 'Failed to simulate payment', 'SIMULATE_ERROR');
     }
   });
 }
@@ -110,8 +113,7 @@ router.post('/withdraw', validate(withdrawSchema), async (req, res) => {
     const userId = (req as AuthenticatedRequest).userId!;
     const { amount, currency, address, network } = req.body;
 
-    const { prisma } = await import('../services/prisma.js');
-    const result = await prisma.$transaction(async (tx: any) => {
+    const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({ where: { telegramId: userId } });
       if (!user || user.balance < amount) {
         throw new Error('Insufficient balance');
@@ -143,7 +145,8 @@ router.post('/withdraw', validate(withdrawSchema), async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Withdraw error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    const msg = error.message === 'Insufficient balance' ? 'Insufficient balance' : 'Failed to create withdrawal';
+    return sendError(res, error.message === 'Insufficient balance' ? 400 : 500, msg, 'WITHDRAW_ERROR');
   }
 });
 
@@ -157,7 +160,7 @@ router.get('/withdrawalHistory', async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'WithdrawalHistory error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    return sendError(res, 500, 'Failed to fetch withdrawal history', 'WITHDRAWAL_HISTORY_ERROR');
   }
 });
 
@@ -171,7 +174,7 @@ router.get('/paymentHistory', async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'PaymentHistory error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    return sendError(res, 500, 'Failed to fetch payment history', 'PAYMENT_HISTORY_ERROR');
   }
 });
 
@@ -183,7 +186,7 @@ router.get('/balance', async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Balance error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    return sendError(res, 500, 'Failed to fetch balance', 'BALANCE_ERROR');
   }
 });
 
@@ -195,7 +198,7 @@ router.get('/invoice/:orderId', async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'GetInvoice error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    return sendError(res, 500, 'Failed to fetch invoice', 'INVOICE_ERROR');
   }
 });
 

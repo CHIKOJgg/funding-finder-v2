@@ -6,6 +6,7 @@ import { ExchangeSelector } from '../components/ExchangeSelector';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { useT } from '../i18n';
 import { clsx } from 'clsx';
+import { CardSkeleton } from '../components/Skeleton';
 
 interface UserSettings {
   telegramNotifications: boolean;
@@ -94,6 +95,7 @@ function NotificationPreview({
 }: {
   settings: UserSettings;
 }) {
+  const t = useT();
   const enabledCount = [
     settings.telegramNotifications,
     settings.emailNotifications,
@@ -110,8 +112,8 @@ function NotificationPreview({
     <div className="rounded-xl p-3 mb-3" style={{ background: 'var(--surface-2)' }}>
       <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-muted)' }}>
         {enabledCount > 0
-          ? `${enabledCount} channel${enabledCount > 1 ? 's' : ''} active`
-          : 'No notification channels active'}
+          ? t('settings.channelsActive', { count: enabledCount })
+          : t('settings.noChannelsActive')}
       </p>
       <div className="flex gap-2">
         {features.map((f) => (
@@ -130,12 +132,12 @@ function NotificationPreview({
       </div>
       {settings.dailySummary && (
         <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-          Daily summary at 09:00
+          {t('settings.dailySummaryTime')}
         </p>
       )}
       {settings.spreadNotifications && (
         <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-          Alerts when spread &gt; {(settings.spreadMinThreshold * 100).toFixed(2)}%
+          {t('settings.spreadAlertHint', { threshold: (settings.spreadMinThreshold * 100).toFixed(2) })}
         </p>
       )}
     </div>
@@ -233,8 +235,9 @@ export function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="p-4">
-        <div className="card text-center py-8 text-gray-500" role="status">{t('common.loading')}</div>
+      <div className="p-4 space-y-3">
+        <CardSkeleton />
+        <CardSkeleton />
       </div>
     );
   }

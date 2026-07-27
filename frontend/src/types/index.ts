@@ -198,11 +198,16 @@ export interface User {
   telegramId: string;
   username?: string;
   firstName?: string;
+  email?: string;
+  walletAddress?: string;
+  authProvider?: string;
   subscription: string;
+  role?: string;
   balance: number;
   referralCode: string;
   referrals: string[];
   trialScans: number;
+  trialUsed?: boolean;
 }
 
 export interface PaymentHistory {
@@ -225,7 +230,7 @@ export interface Withdrawal {
   createdAt: string;
 }
 
-export type PlanId = 'basic' | 'pro' | 'promax';
+export type PlanId = 'pro' | 'proplus';
 
 export interface TrialStatus {
   active: boolean;

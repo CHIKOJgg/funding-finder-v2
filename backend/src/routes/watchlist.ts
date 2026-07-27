@@ -5,6 +5,7 @@ import { AuthenticatedRequest } from '../middleware/auth.js';
 import { getSubscriptionLimits } from '../middleware/subscription.js';
 import { validate } from '../middleware/validation.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
@@ -63,7 +64,7 @@ router.post('/watchlist', validate(addSchema), async (req: AuthenticatedRequest,
     return res.json({ ok: true, item });
   } catch (err) {
     logger.error({ err }, 'Watchlist add error');
-    return res.status(500).json({ ok: false, error: 'Failed to add to watchlist' });
+    return sendError(res, 500, 'Failed to add to watchlist', 'WATCHLIST_ADD_ERROR');
   }
 });
 
@@ -71,14 +72,14 @@ router.post('/watchlist', validate(addSchema), async (req: AuthenticatedRequest,
 router.delete('/watchlist', validate(addSchema), async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.userId;
-    if (!userId) return res.status(401).json({ ok: false, error: 'Authentication required' });
+    if (!userId) return sendError(res, 401, 'Authentication required', 'AUTH_REQUIRED');
 
     const { exchange, pair } = req.body;
     await prisma.watchlistItem.deleteMany({ where: { userId, exchange, pair } });
     return res.json({ ok: true });
   } catch (err) {
     logger.error({ err }, 'Watchlist delete error');
-    return res.status(500).json({ ok: false, error: 'Failed to remove from watchlist' });
+    return sendError(res, 500, 'Failed to remove from watchlist', 'WATCHLIST_DELETE_ERROR');
   }
 });
 

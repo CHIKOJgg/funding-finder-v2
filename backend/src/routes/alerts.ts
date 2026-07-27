@@ -10,6 +10,7 @@ import {
 } from '../services/alertService.js';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
@@ -46,7 +47,7 @@ router.post('/', validate(createAlertSchema), async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Create alert error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Failed to create alert', 'ALERTS_CREATE_ERROR');
   }
 });
 
@@ -59,7 +60,7 @@ router.get('/', async (req, res) => {
     res.json({ ok: true, ...result });
   } catch (e) {
     const error = e as Error;
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Failed to fetch alerts', 'ALERTS_LIST_ERROR');
   }
 });
 
@@ -86,7 +87,7 @@ router.post('/batch/toggle', validate(batchToggleSchema), async (req: Authentica
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Batch toggle error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Failed to toggle alerts', 'ALERTS_BATCH_TOGGLE_ERROR');
   }
 });
 
@@ -111,7 +112,7 @@ router.post('/batch/delete', validate(batchDeleteSchema), async (req: Authentica
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Batch delete error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Failed to delete alerts', 'ALERTS_BATCH_DELETE_ERROR');
   }
 });
 
@@ -127,7 +128,7 @@ router.delete('/:alertId', async (req, res) => {
     }
   } catch (e) {
     const error = e as Error;
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Failed to delete alert', 'ALERTS_DELETE_ERROR');
   }
 });
 
@@ -143,7 +144,7 @@ router.post('/:alertId/toggle', async (req, res) => {
     }
   } catch (e) {
     const error = e as Error;
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Failed to toggle alert', 'ALERTS_TOGGLE_ERROR');
   }
 });
 
@@ -172,7 +173,7 @@ router.get('/:alertId/history', async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Alert history error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Failed to fetch alert history', 'ALERTS_HISTORY_ERROR');
   }
 });
 

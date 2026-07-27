@@ -5,6 +5,7 @@ import { AuthenticatedRequest } from '../middleware/auth.js';
 import { prisma } from '../services/prisma.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
@@ -50,7 +51,7 @@ router.get('/settings', async (req: AuthenticatedRequest, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Get settings error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Failed to fetch settings', 'SETTINGS_FETCH_ERROR');
   }
 });
 
@@ -72,7 +73,7 @@ router.put('/settings', validate(updateSettingsSchema), async (req: Authenticate
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Update settings error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Failed to update settings', 'SETTINGS_UPDATE_ERROR');
   }
 });
 
@@ -111,7 +112,7 @@ router.post('/settings/reset', async (req: AuthenticatedRequest, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Reset settings error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Failed to reset settings', 'SETTINGS_RESET_ERROR');
   }
 });
 

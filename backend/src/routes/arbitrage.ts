@@ -426,23 +426,24 @@ router.get('/arbitrage/spot-futures', async (req, res) => {
 const LIVE_BATCH_MAX_EXCHANGES = 30;
 const LIVE_BATCH_MAX_SYMBOLS_PER_EXCHANGE = 50;
 
-router.post('/live/batch', async (req, res) => {
+const liveBatchSchema = z.object({
+  requests: z.array(z.object({
+    exchange: z.string().min(1),
+    symbols: z.array(z.string().min(1)).max(LIVE_BATCH_MAX_SYMBOLS_PER_EXCHANGE),
+  })).max(LIVE_BATCH_MAX_EXCHANGES),
+});
+
+router.post('/live/batch', validate(liveBatchSchema), async (req, res) => {
   try {
-    const requests = req.body?.requests;
-    if (!Array.isArray(requests)) {
-      return res.status(400).json({ ok: false, error: 'requests array required' });
-    }
-    const limited = requests.slice(0, LIVE_BATCH_MAX_EXCHANGES);
+    const requests = req.body.requests;
     const prices: Record<string, number> = {};
     const funding: Record<string, any> = {};
 
     await Promise.all(
-      limited.map(async (r: any) => {
-        const exchange = (r?.exchange as string) || '';
-        if (!exchange || !SUPPORTED_EXCHANGES.includes(exchange)) return;
-        const symbols = Array.isArray(r?.symbols)
-          ? r.symbols.map((s: any) => String(s).trim()).filter(Boolean).slice(0, LIVE_BATCH_MAX_SYMBOLS_PER_EXCHANGE)
-          : [];
+      requests.map(async (r: any) => {
+        const exchange = r.exchange;
+        if (!SUPPORTED_EXCHANGES.includes(exchange)) return;
+        const symbols = r.symbols.map((s: string) => s.trim()).filter(Boolean);
         if (symbols.length === 0) return;
 
         const [priceMap, fundingMap] = await Promise.all([

@@ -7,7 +7,7 @@ import { apiClient } from '../api/client';
 import { PortfolioPosition } from '../types';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { CountdownTimer } from '../components/CountdownTimer';
-import { useT } from '../i18n';
+import { useT, useI18n } from '../i18n';
 
 const EXCHANGES = ['binance', 'bybit', 'okx', 'gate', 'mexc', 'bitget', 'phemex', 'htx', 'hyperliquid', 'bingx', 'woo', 'coinex', 'weex', 'coinw', 'bitmart', 'blofin', 'apex', 'aster'] as const;
 const SIM_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'] as const;
@@ -175,8 +175,8 @@ export function PortfolioPage() {
             </div>
             <div className="grid grid-cols-3 gap-2 mb-3">
               <select value={side} onChange={(e) => setSide(e.target.value as 'long' | 'short')} className="input-field text-sm">
-                <option value="long">Long</option>
-                <option value="short">Short</option>
+                <option value="long">{t('portfolio.long')}</option>
+                <option value="short">{t('portfolio.short')}</option>
               </select>
               <label className="text-xs text-muted flex flex-col">
                 {t('portfolio.sizeLabel')}
@@ -290,6 +290,7 @@ const LiveTab = memo(function LiveTab({
 }) {
   const { showToast } = useToast();
   const t = useT();
+  const { lang } = useI18n();
   const [updatedAt, setUpdatedAt] = useState<number>(Date.now());
   const [exporting, setExporting] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
@@ -330,13 +331,25 @@ const LiveTab = memo(function LiveTab({
     }
   };
 
-  // Keep real positions fresh: poll every 30s while the live tab is mounted.
+  // Keep real positions fresh: poll every 30s while the live tab is mounted and visible.
   useEffect(() => {
     const id = setInterval(() => {
-      onRefresh();
-      setUpdatedAt(Date.now());
+      if (!document.hidden) {
+        onRefresh();
+        setUpdatedAt(Date.now());
+      }
     }, 30000);
-    return () => clearInterval(id);
+    const onVisible = () => {
+      if (!document.hidden) {
+        onRefresh();
+        setUpdatedAt(Date.now());
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [onRefresh]);
 
   const refresh = () => {
@@ -433,7 +446,7 @@ const LiveTab = memo(function LiveTab({
           <h2 className="text-base font-semibold">{t('portfolio.realPositions')}</h2>
           <div className="text-right">
             <div className="text-xs text-muted">
-              {loading ? t('portfolio.updating') : t('portfolio.updated', { time: new Date(updatedAt).toLocaleTimeString('ru-RU') })}
+              {loading ? t('portfolio.updating') : t('portfolio.updated', { time: new Date(updatedAt).toLocaleTimeString(lang) })}
             </div>
             <div className="flex gap-3 justify-end">
               <button onClick={handleExport} disabled={exporting} className="text-sm" style={{ color: 'var(--brand)' }}>⬇ CSV</button>
@@ -493,7 +506,7 @@ const LiveTab = memo(function LiveTab({
                       <div key={i} className="flex justify-between items-center text-sm">
                         <div>
                           <span className="font-medium">{p.symbol}</span>
-                          <span className="text-xs text-muted ml-1">{p.side === 'long' ? 'Long' : 'Short'} · {formatUsd(p.notional)} USDT · x{p.leverage}</span>
+                          <span className="text-xs text-muted ml-1">{p.side === 'long' ? t('portfolio.long') : t('portfolio.short')} · {formatUsd(p.notional)} USDT · x{p.leverage}</span>
                           <div className="text-xs text-muted">
                             <CountdownTimer intervalHours={p.fundingIntervalHours || 8} className="font-medium" /> {t('main.untilFunding')}
                           </div>
@@ -524,10 +537,10 @@ const LiveTab = memo(function LiveTab({
                   <div key={o.id} className="flex justify-between items-center text-sm rounded-lg p-2" style={{ background: 'var(--surface-2)' }}>
                     <div>
                       <span className="font-medium">{exchangeLabel(o.exchange)}: {o.symbol}</span>
-                      <span className="text-xs text-muted ml-1">{o.side === 'long' ? 'Long' : 'Short'} · {formatUsd(o.notionalUsd)} USDT</span>
+                      <span className="text-xs text-muted ml-1">{o.side === 'long' ? t('portfolio.long') : t('portfolio.short')} · {formatUsd(o.notionalUsd)} USDT</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted">{new Date(o.createdAt).toLocaleString('ru-RU')}</span>
+                      <span className="text-xs text-muted">{new Date(o.createdAt).toLocaleString(lang)}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${o.status === 'sent' || o.status === 'filled' ? 'chip-success' : o.status === 'failed' ? 'chip-danger' : 'chip'}`}>
                         {o.status === 'sent' || o.status === 'filled' ? t('profile.executed') : o.status === 'failed' ? t('profile.failed') : o.status}
                       </span>
@@ -612,7 +625,7 @@ const PortfolioRow = memo(function PortfolioRow({
         <div>
           <strong className="text-sm">{position.exchange.toUpperCase()}: {position.pair}</strong>
           <div className="text-xs text-gray-500">
-            {position.side === 'long' ? 'Long' : 'Short'} · {formatUsd(position.sizeUsd)} USDT · x{position.leverage}
+            {position.side === 'long' ? t('portfolio.long') : t('portfolio.short')} · {formatUsd(position.sizeUsd)} USDT · x{position.leverage}
           </div>
           {pnl && (
             <div className="text-xs text-gray-500">

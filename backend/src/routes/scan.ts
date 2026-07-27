@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validation.js';
-import { validateExchangeList } from '../middleware/auth.js';
+import { validateExchangeList, AuthenticatedRequest } from '../middleware/auth.js';
 import { requireSubscription, getSubscriptionLimits } from '../middleware/subscription.js';
 import { runScan, getCachedScan } from '../services/scanService.js';
 import { wsManager } from '../services/websocket.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 import { perUserLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
@@ -25,10 +26,10 @@ const scanSchema = z.object({
   exchanges: z.array(z.enum(SUPPORTED_EXCHANGES as [string, ...string[]])).min(1).max(25).default(['gate']),
 });
 
-router.post('/scan', requireSubscription('free'), validate(scanSchema), validateExchangeList, async (req, res) => {
+router.post('/scan', requireSubscription('free'), validate(scanSchema), validateExchangeList, async (req: AuthenticatedRequest, res) => {
   try {
     const { exchanges } = req.body;
-    const userId = (req as any).userId;
+    const userId = req.userId;
     if (userId) {
       const limits = await getSubscriptionLimits(userId);
       if (exchanges.length > limits.maxExchanges) {
@@ -70,7 +71,7 @@ router.post('/scan', requireSubscription('free'), validate(scanSchema), validate
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error, exchanges: req.body.exchanges }, 'Scan endpoint error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Scan failed', 'SCAN_ERROR');
   }
 });
 

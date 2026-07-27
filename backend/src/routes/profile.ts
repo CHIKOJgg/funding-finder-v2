@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../services/prisma.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
@@ -9,12 +10,12 @@ router.get('/profile', async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.userId;
     if (!userId) {
-      return res.status(401).json({ ok: false, error: 'Authentication required' });
+      return sendError(res, 401, 'Authentication required', 'AUTH_REQUIRED');
     }
 
     const user = await prisma.user.findUnique({ where: { telegramId: userId } });
     if (!user) {
-      return res.status(404).json({ ok: false, error: 'User not found' });
+      return sendError(res, 404, 'User not found', 'USER_NOT_FOUND');
     }
 
     return res.json({
@@ -28,7 +29,7 @@ router.get('/profile', async (req: AuthenticatedRequest, res) => {
     });
   } catch (err) {
     logger.error({ err }, 'Profile fetch error');
-    return res.status(500).json({ ok: false, error: 'Failed to fetch profile' });
+    return sendError(res, 500, 'Failed to fetch profile', 'PROFILE_FETCH_ERROR');
   }
 });
 

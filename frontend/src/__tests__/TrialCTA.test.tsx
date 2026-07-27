@@ -8,7 +8,7 @@ import { LanguageProvider } from '../i18n';
 const baseCtx = {
   user: { id: 'tg_1', firstName: 'Dev' },
   subscription: 'free',
-  planLimits: { maxExchanges: 1, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 3, portfolioEnabled: false, label: 'Free' },
+  planLimits: { maxExchanges: 1, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 10, portfolioEnabled: false, label: 'Free' },
   scanResults: null,
   setScanResults: () => {},
   scanLoading: false,
@@ -47,7 +47,7 @@ function renderCTA(ctx: any) {
 describe('TrialCTA', () => {
   it('shows the free-trial activation CTA when no trial yet', () => {
     renderCTA({ ...baseCtx, trialStatus: null });
-    expect(screen.getByText(/Активировать 3 дня/)).toBeInTheDocument();
+    expect(screen.getByText(/Активировать 7 дня/)).toBeInTheDocument();
   });
 
   it('shows active countdown when trial is active', () => {
@@ -58,7 +58,7 @@ describe('TrialCTA', () => {
   it('calls activateTrial when CTA clicked', () => {
     const activateTrial = vi.fn().mockResolvedValue(false);
     renderCTA({ ...baseCtx, activateTrial });
-    fireEvent.click(screen.getByText(/Активировать 3 дня/));
+    fireEvent.click(screen.getByText(/Активировать 7 дня/));
     expect(activateTrial).toHaveBeenCalledOnce();
   });
 

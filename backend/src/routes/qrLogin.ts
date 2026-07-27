@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from '../middleware/auth.js';
 import { prisma } from '../services/prisma.js';
 import { signAuthToken, verifyAuthToken } from '../services/authService.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 
 // Auth middleware for QR login request/status (accepts Bearer token only)
 function requireQrAuth(req: Request, res: Response, next: NextFunction) {
@@ -75,7 +76,7 @@ qrAuthRouter.post('/qr-login/request', requireQrAuth, async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'QR login token generation failed');
-    return res.status(500).json({ ok: false, error: error.message });
+    return sendError(res, 500, 'Failed to generate QR token', 'QR_TOKEN_ERROR');
   }
 });
 
@@ -142,7 +143,7 @@ qrAuthRouter.get('/qr-login/status', requireQrAuth, async (req, res) => {
     return res.json({ ok: true, consumed: false });
   } catch (e) {
     const error = e as Error;
-    return res.status(500).json({ ok: false, error: error.message });
+    return sendError(res, 500, 'Failed to check QR status', 'QR_STATUS_ERROR');
   }
 });
 
@@ -229,7 +230,7 @@ qrPublicRouter.post('/qr-login/verify', async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'QR login verification failed');
-    return res.status(500).json({ ok: false, error: error.message });
+    return sendError(res, 500, 'QR verification failed', 'QR_VERIFY_ERROR');
   }
 });
 

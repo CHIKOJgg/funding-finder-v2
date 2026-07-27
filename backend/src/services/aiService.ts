@@ -20,13 +20,18 @@ const MAX_MODEL_ATTEMPTS = 4;
 let freeModelsCache: { models: string[]; expiry: number } | null = null;
 
 function authHeaders(): Record<string, string> {
-  return {
-    Authorization: `Bearer ${config.ai.openrouterApiKey}`,
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     // Recommended by OpenRouter for attribution / higher rate limits.
     'HTTP-Referer': config.ai.appUrl,
     'X-Title': config.ai.appTitle,
   };
+  // Only add Authorization header when a key is configured. Sending
+  // "Bearer " (empty) produces a malformed header that OpenRouter rejects.
+  if (config.ai.openrouterApiKey) {
+    headers['Authorization'] = `Bearer ${config.ai.openrouterApiKey}`;
+  }
+  return headers;
 }
 
 function isFreePricing(pricing: any): boolean {

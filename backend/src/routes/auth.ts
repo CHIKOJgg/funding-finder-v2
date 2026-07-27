@@ -13,6 +13,7 @@ import {
 import { prisma } from '../services/prisma.js';
 import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 
 // ---------------------------------------------------------------------------
 // Email / password helpers (PBKDF2 via Node built-in crypto — no bcrypt dep)
@@ -108,7 +109,7 @@ router.get('/wallet/nonce', validate(nonceSchema, 'query'), async (req: Request,
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'SIWE nonce error');
-    res.status(500).json({ ok: false, error: error.message });
+    sendError(res, 500, 'Failed to generate nonce', 'AUTH_NONCE_ERROR');
   }
 });
 
@@ -142,7 +143,7 @@ router.post('/wallet/verify', validate(walletVerifySchema), async (req: Request,
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Wallet verify error');
-    res.status(500).json({ ok: false, error: error.message });
+    sendError(res, 500, 'Wallet verification failed', 'AUTH_WALLET_VERIFY_ERROR');
   }
 });
 
@@ -175,7 +176,7 @@ router.post('/google', validate(googleSchema), async (req: Request, res: Respons
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Google verify error');
-    res.status(500).json({ ok: false, error: error.message });
+    sendError(res, 500, 'Google authentication failed', 'AUTH_GOOGLE_VERIFY_ERROR');
   }
 });
 
@@ -189,7 +190,7 @@ router.get('/me', authenticate, async (req: AuthenticatedRequest, res: Response)
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Auth me error');
-    res.status(500).json({ ok: false, error: error.message });
+    sendError(res, 500, 'Failed to fetch user profile', 'AUTH_ME_ERROR');
   }
 });
 
@@ -219,7 +220,7 @@ if (!config.isProduction) {
     } catch (e) {
       const error = e as Error;
       logger.error({ err: error }, 'Dev guest error');
-      res.status(500).json({ ok: false, error: error.message });
+      sendError(res, 500, 'Dev guest session failed', 'AUTH_DEV_GUEST_ERROR');
     }
   });
 }
@@ -270,7 +271,7 @@ router.post('/register', validate(registerSchema), async (req: Request, res: Res
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Email register error');
-    res.status(500).json({ ok: false, error: error.message });
+    sendError(res, 500, 'Registration failed', 'AUTH_REGISTER_ERROR');
   }
 });
 
@@ -305,7 +306,7 @@ router.post('/login', validate(loginSchema), async (req: Request, res: Response)
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Email login error');
-    res.status(500).json({ ok: false, error: error.message });
+    sendError(res, 500, 'Login failed', 'AUTH_LOGIN_ERROR');
   }
 });
 

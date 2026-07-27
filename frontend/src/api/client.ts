@@ -33,8 +33,14 @@ async function throttled(fn: () => Promise<any>): Promise<any> {
   return fn();
 }
 
+// Shared API base URL. Used by keep-alive pings (App.tsx), analytics
+// (analytics.ts), and the axios client below. The fallback to
+// localhost avoids hardcoding a deployment URL in multiple places.
+export const API_BASE = (import.meta.env.VITE_API_URL || window.location.origin)
+  .replace(/\/$/, '');
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api',
+  baseURL: API_BASE ? `${API_BASE}/api` : '/api',
   timeout: 45000,
   headers: {
     'Content-Type': 'application/json',

@@ -53,11 +53,15 @@ export function Onboarding({ onComplete }: OnboardingProps) {
     try {
       await activateTrial();
       await refreshTrial();
-    } catch {}
+    } catch {
+      // Non-critical: trial may already be active or expired. Ignore.
+    }
 
     try {
       await runScan(selectedExchanges?.length ? selectedExchanges : exchanges);
-    } catch {}
+    } catch {
+      // Non-critical: scan failure during onboarding should not block the flow.
+    }
 
     setShowChecklist(true);
   }, [selectedExchanges, setSelectedExchanges, activateTrial, refreshTrial, runScan, experience, interest]);

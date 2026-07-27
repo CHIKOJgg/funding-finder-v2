@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
 import { useT } from '../i18n';
-import { formatPrice } from '../utils/formatters';
 import { exchangeLabel } from '../utils/exchanges';
 
 interface HeatmapEntry {
@@ -12,9 +11,11 @@ interface HeatmapEntry {
   mark_price: number;
   volume_24h_settle: number;
   funding_interval_hours: number;
+  net_annual?: number;
+  payback_days?: number;
 }
 
-type SortKey = 'rate_desc' | 'rate_asc' | 'volume' | 'exchange';
+type SortKey = 'spread' | 'rate_desc' | 'rate_asc' | 'volume' | 'exchange';
 
 const FAQ_ITEMS = [
   { q: 'public.faq1Q', a: 'public.faq1A' },
@@ -80,7 +81,7 @@ export function PublicPage() {
       case 'volume':
         return (b.volume_24h_settle || 0) - (a.volume_24h_settle || 0);
       case 'exchange':
-        return a.exchange.localeCompare(b.exchange) || Math.abs(b.funding_rate_per_hour) - Math.abs(a.funding_rate_per_hour);
+        return a.exchange.localeCompare(b.exchange);
       default:
         return 0;
     }
@@ -96,6 +97,8 @@ export function PublicPage() {
     const exCount = exchanges.length;
     return { totalVol, avgRate, exCount };
   }, [pairs, exchanges]);
+
+  const maxPayback = 30;
 
   return (
     <div className="px-3 py-4 sm:px-4">
@@ -208,12 +211,12 @@ export function PublicPage() {
                       <th className="pb-1 pr-2">{t('public.contract')}</th>
                       <th className="pb-1 pr-2 text-right">{t('public.ratePerHour')}</th>
                       <th className="pb-1 pr-2 text-right">{t('public.annualized')}</th>
-                      <th className="pb-1 pr-2 text-right">{t('public.price')}</th>
+                      <th className="pb-1 pr-2 text-right">{t('public.payback')}</th>
                       <th className="pb-1 text-right">{t('public.volume24h')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {positive.map((p, i) => (
+                    {positive.filter((p) => !(p.payback_days != null && p.payback_days > maxPayback)).map((p, i) => (
                       <HeatmapRow key={`${p.exchange}-${p.contract}-${i}`} entry={p} />
                     ))}
                   </tbody>
@@ -233,12 +236,12 @@ export function PublicPage() {
                       <th className="pb-1 pr-2">{t('public.contract')}</th>
                       <th className="pb-1 pr-2 text-right">{t('public.ratePerHour')}</th>
                       <th className="pb-1 pr-2 text-right">{t('public.annualized')}</th>
-                      <th className="pb-1 pr-2 text-right">{t('public.price')}</th>
+                      <th className="pb-1 pr-2 text-right">{t('public.payback')}</th>
                       <th className="pb-1 text-right">{t('public.volume24h')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {negative.map((p, i) => (
+                    {negative.filter((p) => !(p.payback_days != null && p.payback_days > maxPayback)).map((p, i) => (
                       <HeatmapRow key={`${p.exchange}-${p.contract}-${i}`} entry={p} />
                     ))}
                   </tbody>
@@ -312,13 +315,16 @@ export function PublicPage() {
 function HeatmapRow({ entry }: { entry: HeatmapEntry }) {
   const rate = entry.funding_rate_per_hour;
   const pctH = (rate * 100).toFixed(4);
-  const annPct = (entry.annualized_rate * 100).toFixed(1);
   const isPositive = rate > 0;
 
   const absRate = Math.abs(rate);
   let bgClass = '';
   if (absRate > 0.0005) bgClass = isPositive ? 'bg-green-100' : 'bg-red-100';
   else if (absRate > 0.0001) bgClass = isPositive ? 'bg-green-50' : 'bg-red-50';
+
+  const payback = entry.payback_days != null && entry.payback_days >= 0
+    ? (entry.payback_days < 1 ? '<1d' : `${entry.payback_days.toFixed(1)}d`)
+    : '—';
 
   return (
     <tr className={clsx('border-b border-[var(--border)]', bgClass)}>
@@ -327,10 +333,12 @@ function HeatmapRow({ entry }: { entry: HeatmapEntry }) {
       <td className={clsx('py-1.5 pr-2 text-right text-xs font-semibold', isPositive ? 'text-green-700' : 'text-red-700')}>
         {isPositive ? '+' : ''}{pctH}%/h
       </td>
-      <td className={clsx('py-1.5 pr-2 text-right text-xs', isPositive ? 'text-green-600' : 'text-red-600')}>
-        {isPositive ? '+' : ''}{annPct}%
+      <td className="py-1.5 pr-2 text-right text-xs text-[var(--text-muted)]">
+        {(entry.annualized_rate * 100).toFixed(1)}%
       </td>
-      <td className="py-1.5 pr-2 text-right text-xs">${formatPrice(entry.mark_price)}</td>
+      <td className={clsx('py-1.5 pr-2 text-right text-xs font-medium', entry.payback_days != null && entry.payback_days < 7 ? 'text-green-700' : entry.payback_days != null && entry.payback_days < 30 ? 'text-yellow-700' : 'text-[var(--text-muted)]')}>
+        {payback}
+      </td>
       <td className="py-1.5 text-right text-xs text-[var(--text-muted)]">
         {entry.volume_24h_settle >= 1_000_000
           ? `${(entry.volume_24h_settle / 1_000_000).toFixed(1)}M`

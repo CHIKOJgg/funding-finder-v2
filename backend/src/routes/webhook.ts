@@ -1,6 +1,7 @@
 import { Router, Request } from 'express';
 import crypto from 'crypto';
 import { z } from 'zod';
+import rateLimit from 'express-rate-limit';
 import { validate } from '../middleware/validation.js';
 import {
   updateOrderFromWebhook,
@@ -16,6 +17,16 @@ import { getRedis } from '../utils/redis.js';
 import { logger } from '../utils/logger.js';
 
 const webhookRouter = Router();
+
+// Protect webhook endpoints from spam/abuse. Payment providers retry
+// aggressively on failure, so allow generous headroom (100 req/15 min/IP).
+webhookRouter.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: 'Rate limited' },
+}));
 
 const redis = getRedis();
 
@@ -54,6 +65,7 @@ async function isWebhookProcessed(webhookId: string): Promise<boolean> {
     try {
       return (await redis.get(`wh:done:${webhookId}`)) !== null;
     } catch {
+      // Redis unavailable: fall back to local idempotency check.
       return isWebhookProcessedLocal(webhookId);
     }
   }
@@ -66,6 +78,7 @@ async function markWebhookProcessed(webhookId: string): Promise<void> {
       await redis.set(`wh:done:${webhookId}`, '1', 'PX', WEBHOOK_IDEMPOTENCY_TTL);
       return;
     } catch {
+      // Redis unavailable: fall back to local marking.
       /* fall through to local */
     }
   }
@@ -92,6 +105,7 @@ async function acquireWebhookLock(webhookId: string): Promise<boolean> {
       // Lock held by another instance (or our own). Treat as in-progress.
       return false;
     } catch {
+      // Redis unavailable: fall back to local lock check.
       /* fall through to local */
     }
   }
@@ -105,6 +119,7 @@ async function releaseWebhookLock(webhookId: string): Promise<void> {
     try {
       await redis.del(`wh:lock:${webhookId}`);
     } catch {
+      // Best effort: lock will expire via TTL if deletion fails.
       /* best effort */
     }
   }

@@ -3,6 +3,7 @@ import { prisma } from '../services/prisma.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { enforceTrialExpiry, TRIAL_DURATION_DAYS } from '../middleware/subscription.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
@@ -51,7 +52,7 @@ router.post('/trial/activate', async (req: AuthenticatedRequest, res) => {
       return res.status(409).json({ ok: false, error: 'Trial already used' });
     }
     logger.error({ err }, 'Trial activation error');
-    return res.status(500).json({ ok: false, error: err?.message || 'Internal error' });
+    return sendError(res, 500, 'Trial activation failed', 'TRIAL_ACTIVATE_ERROR');
   }
 });
 
@@ -90,7 +91,7 @@ router.get('/trial/status', async (req: AuthenticatedRequest, res) => {
   } catch (err) {
     const error = err as Error;
     logger.error({ err: error }, 'Trial status error');
-    return res.status(500).json({ ok: false, error: error.message });
+    return sendError(res, 500, 'Failed to fetch trial status', 'TRIAL_STATUS_ERROR');
   }
 });
 

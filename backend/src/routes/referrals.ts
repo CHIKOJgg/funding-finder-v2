@@ -5,6 +5,7 @@ import { AuthenticatedRequest } from '../middleware/auth.js';
 import { generateReferralLink, handleReferral, getUser } from '../services/paymentService.js';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
@@ -19,7 +20,7 @@ router.get('/referral/link', async (req, res) => {
     res.json({ ok: true, link });
   } catch (e) {
     const error = e as Error;
-    res.status(500).json({ ok: false, error: error.message });
+    sendError(res, 500, 'Failed to generate referral link', 'REFERRALS_LINK_ERROR');
   }
 });
 
@@ -42,7 +43,7 @@ router.get('/referral/list', async (req, res) => {
     });
   } catch (e) {
     const error = e as Error;
-    res.status(500).json({ ok: false, error: error.message });
+    sendError(res, 500, 'Failed to fetch referral list', 'REFERRALS_LIST_ERROR');
   }
 });
 
@@ -57,7 +58,7 @@ router.post('/referral/apply', validate(applyReferralSchema), async (req, res) =
     });
   } catch (e) {
     const error = e as Error;
-    res.status(500).json({ ok: false, error: error.message });
+    sendError(res, 500, 'Failed to apply referral', 'REFERRALS_APPLY_ERROR');
   }
 });
 

@@ -48,10 +48,10 @@ export function useWebSocket(auth: { initData?: string | null; token?: string | 
     let ws: WebSocket;
     try {
       const wsBase = resolveWsBase();
-      const wsUrl = initData
-        ? `${wsBase}/ws?initData=${encodeURIComponent(initData)}`
-        : `${wsBase}/ws?token=${encodeURIComponent(token!)}`;
-      ws = new WebSocket(wsUrl);
+      // Connect without auth tokens in URL to prevent leakage via server
+      // logs, Referer headers, or browser history. Auth is sent as the
+      // first message after the connection opens.
+      ws = new WebSocket(wsBase);
     } catch (err) {
       // Constructing a WebSocket can throw synchronously (e.g. insecure ws://
       // from an https page). Never let this crash the app — just retry later.
@@ -61,7 +61,19 @@ export function useWebSocket(auth: { initData?: string | null; token?: string | 
     }
 
     ws.onopen = () => {
-      console.log('[WS] Connected');
+      // Authenticate via the first message instead of URL query params.
+      try {
+        if (initData) {
+          ws.send(JSON.stringify({ type: 'auth', initData }));
+        } else if (token) {
+          ws.send(JSON.stringify({ type: 'auth', token }));
+        } else {
+          // Dev mode: send empty auth (server falls back to dev_ws_ id)
+          ws.send(JSON.stringify({ type: 'auth' }));
+        }
+      } catch {
+        // If sending auth fails, the server will close with 4001.
+      }
     };
 
     ws.onmessage = (event) => {
@@ -81,8 +93,9 @@ export function useWebSocket(auth: { initData?: string | null; token?: string | 
       }
     };
 
-    ws.onclose = () => {
-      console.log('[WS] Disconnected, reconnecting in 5s...');
+    ws.onclose = (event) => {
+      // Don't reconnect on auth failure — it won't fix itself.
+      if (event.code === 4001) return;
       reconnectTimer.current = setTimeout(connect, 5000);
     };
 

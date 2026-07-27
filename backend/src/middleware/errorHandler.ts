@@ -35,3 +35,13 @@ export function createError(message: string, statusCode: number = 500, code?: st
   error.code = code;
   return error;
 }
+
+/** Send a standardized error response. Logs the full error server-side and
+ *  returns only a safe user-facing message and optional code to the client. */
+export function sendError(res: Response, statusCode: number, userMessage: string, code?: string) {
+  return res.status(statusCode).json({
+    ok: false,
+    error: userMessage,
+    ...(code && { code }),
+  });
+}

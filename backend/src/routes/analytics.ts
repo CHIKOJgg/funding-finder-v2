@@ -3,6 +3,7 @@ import { prisma } from '../services/prisma.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { getPlanTier } from '../middleware/subscription.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
@@ -100,7 +101,7 @@ router.get('/analytics/apr', async (req: AuthenticatedRequest, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'APR analytics error');
-    res.status(500).json({ ok: false, error: error.message });
+    sendError(res, 500, 'Failed to compute APR', 'ANALYTICS_APR_ERROR');
   }
 });
 
@@ -173,7 +174,7 @@ router.get('/analytics/trends/:exchange/:contract', async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Trends analytics error');
-    res.status(500).json({ ok: false, error: error.message });
+    sendError(res, 500, 'Failed to fetch trends', 'ANALYTICS_TRENDS_ERROR');
   }
 });
 
@@ -237,7 +238,7 @@ router.get('/analytics/top-movers', async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Top movers analytics error');
-    res.status(500).json({ ok: false, error: error.message });
+    sendError(res, 500, 'Failed to fetch top movers', 'ANALYTICS_MOVERS_ERROR');
   }
 });
 
@@ -283,7 +284,7 @@ router.get('/analytics/exchange-stats', async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Exchange stats analytics error');
-    res.status(500).json({ ok: false, error: error.message });
+    sendError(res, 500, 'Failed to fetch exchange stats', 'ANALYTICS_STATS_ERROR');
   }
 });
 

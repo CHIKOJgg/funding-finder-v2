@@ -229,7 +229,7 @@ export async function getLivePriceBatch(exchange: string, symbols: string[]): Pr
         return map;
       }
     } catch {
-      // Fall through to individual fetching
+      // Bulk ticker fetch failed — fall through to individual price fetching.
     }
   }
 
@@ -282,6 +282,7 @@ async function fetchBulkTickers(exchange: string): Promise<Map<string, number> |
       }
     }
   } catch {
+    // Bulk ticker endpoint unreachable — return null to signal fallback.
     return null;
   }
 

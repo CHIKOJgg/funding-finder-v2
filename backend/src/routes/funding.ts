@@ -4,6 +4,7 @@ import { validate } from '../middleware/validation.js';
 import { getFundingCalendar } from '../services/fundingCalendar.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
@@ -26,7 +27,7 @@ router.get('/funding/schedule', validate(scheduleSchema), async (req, res) => {
   } catch (err) {
     const error = err as Error;
     logger.error({ err: error }, 'Funding schedule error');
-    return res.status(500).json({ ok: false, error: error.message });
+    return sendError(res, 500, 'Failed to fetch funding schedule', 'FUNDING_SCHEDULE_ERROR');
   }
 });
 

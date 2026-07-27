@@ -19,12 +19,45 @@ const LEVEL_MAP: Record<string, 'debug' | 'info' | 'warn' | 'error'> = {
   error: 'error',
 };
 
-// Server-side ring buffer of the most recent client log entries.
-const clientLogBuffer: any[] = [];
 const CLIENT_LOG_MAX = 2000;
+const MAX_DATA_SIZE = 1024;
+
+// Server-side ring buffer of the most recent client log entries.
+const clientLogBuffer: Array<{
+  t: number;
+  level: string;
+  sessionId: string;
+  userId: string;
+  msg: string;
+  data?: unknown;
+}> = [];
 
 export function getClientLogBuffer() {
   return clientLogBuffer.slice();
+}
+
+// Strip HTML-breaking characters to prevent stored XSS when admins view
+// client log entries via the debug UI.
+function sanitizeString(value: unknown): string {
+  return String(value ?? '')
+    .replace(/[<>]/g, '')
+    .slice(0, 2000);
+}
+
+// Truncate data payload to prevent memory exhaustion.
+function sanitizeData(data: unknown): unknown {
+  if (data === undefined || data === null) return undefined;
+  if (typeof data === 'string') return data.slice(0, MAX_DATA_SIZE);
+  if (typeof data === 'number' || typeof data === 'boolean') return data;
+  try {
+    const serialized = JSON.stringify(data);
+    if (serialized.length > MAX_DATA_SIZE) {
+      return JSON.parse(serialized.slice(0, MAX_DATA_SIZE) + '{}');
+    }
+    return data;
+  } catch {
+    return '[unserializable]';
+  }
 }
 
 const router = Router();
@@ -32,15 +65,15 @@ const router = Router();
 router.post('/log', (req, res) => {
   try {
     const body = req.body || {};
-    const sessionId = typeof body.sessionId === 'string' ? body.sessionId : 'unknown';
-    const userId = body.userId || 'unknown';
-    const appVersion = body.appVersion || 'unknown';
+    const sessionId = sanitizeString(body.sessionId || 'unknown');
+    const userId = sanitizeString(body.userId || 'unknown');
+    const appVersion = sanitizeString(body.appVersion || 'unknown');
     const entries = Array.isArray(body.entries) ? body.entries : [];
 
     for (const e of entries) {
       const level = LEVEL_MAP[e?.level] || 'info';
-      const msg = `[client ${sessionId} u:${userId} v:${appVersion}] ${e?.scope || '?'}: ${e?.msg || ''}`;
-      const data = e?.data;
+      const msg = `[client ${sessionId} u:${userId} v:${appVersion}] ${sanitizeString(e?.scope || '?')}: ${sanitizeString(e?.msg || '')}`;
+      const data = sanitizeData(e?.data);
       // Mirror into the server log stream.
       logger[level]({ clientSession: sessionId, clientUser: userId }, msg, data);
       clientLogBuffer.push({ t: e?.t || Date.now(), level, sessionId, userId, msg, data });
@@ -49,7 +82,7 @@ router.post('/log', (req, res) => {
       clientLogBuffer.splice(0, clientLogBuffer.length - CLIENT_LOG_MAX);
     }
     res.json({ ok: true });
-  } catch (err) {
+  } catch {
     // Never let a bad log payload break the app.
     res.status(400).json({ ok: false, error: 'bad payload' });
   }

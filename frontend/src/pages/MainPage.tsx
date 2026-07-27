@@ -87,7 +87,7 @@ export function MainPage() {
     // the user switches tabs; results are stored centrally.
     await runScan(selectedExchanges);
     setCalendarRefresh((n) => n + 1);
-  }, [selectedExchanges, runScan, showToast]);
+  }, [selectedExchanges, runScan, showToast, t]);
 
   const handleShareCard = useCallback(async () => {
     if (!scanResults) return;
@@ -131,7 +131,7 @@ export function MainPage() {
     } finally {
       setActionLoading(false);
     }
-  }, [scanResults]);
+  }, [scanResults, t]);
 
   const handleRecommendations = useCallback(async () => {
     if (!scanResults) return;
@@ -156,7 +156,7 @@ export function MainPage() {
     } finally {
       setActionLoading(false);
     }
-  }, [scanResults, capital]);
+  }, [scanResults, capital, t]);
 
   const handleCreateAlert = useCallback(async () => {
     if (!alertModal) return;
@@ -179,7 +179,7 @@ export function MainPage() {
     } finally {
       setAlertCreating(false);
     }
-  }, [alertModal, alertCondition, alertThreshold, showToast]);
+  }, [alertModal, alertCondition, alertThreshold, showToast, t]);
 
   const isPremium = planLimits.aiEnabled;
 
@@ -390,7 +390,7 @@ export function MainPage() {
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortKey)}
               className="input-field w-auto text-sm"
-              aria-label="Sort results"
+              aria-label={t('main.sortAriaLabel')}
             >
               <option value="rate">{t('main.sortRate')}</option>
               <option value="volume">{t('main.sortVolume')}</option>
@@ -593,7 +593,7 @@ export function MainPage() {
                 >
                   <option value="above">{t('main.above')}</option>
                   <option value="below">{t('main.below')}</option>
-                  <option value="flip">🔄 Direction flip</option>
+                  <option value="flip">{t('main.directionFlip')}</option>
                 </select>
               </div>
 
@@ -695,7 +695,9 @@ function useLivePrices(items: ExchangeResult[]): Record<string, number> {
       }
     };
     load();
-    const id = setInterval(load, 15_000);
+    const id = setInterval(() => {
+      if (!document.hidden) load();
+    }, 15_000);
     return () => {
       cancelled = true;
       clearInterval(id);

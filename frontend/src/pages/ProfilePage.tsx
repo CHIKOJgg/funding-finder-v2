@@ -9,6 +9,7 @@ import { apiClient } from '../api/client';
 import { useT } from '../i18n';
 import { PLAN_PRICES } from '../utils/plans';
 import { clsx } from 'clsx';
+import { CardSkeleton } from '../components/Skeleton';
 
 const SITE_URL = 'https://funding-finder-frontend.onrender.com';
 
@@ -173,8 +174,10 @@ export function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="px-3 py-4 sm:px-4">
-        <div className="card text-center py-8 text-gray-500" role="status">{t('common.loading')}</div>
+      <div className="px-3 py-4 sm:px-4 space-y-3">
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
       </div>
     );
   }

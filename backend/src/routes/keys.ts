@@ -85,9 +85,13 @@ router.delete('/keys/:id', requireSubscription('pro'), validate(deleteSchema), a
     const userId = req.userId;
     if (!userId) return res.status(401).json({ ok: false, error: 'Authentication required' });
 
-    await prisma.apiKey.deleteMany({
+    const result = await prisma.apiKey.deleteMany({
       where: { id: req.params.id, userId },
     });
+
+    if (result.count === 0) {
+      return res.status(404).json({ ok: false, error: 'API key not found' });
+    }
 
     res.json({ ok: true });
   } catch (err) {

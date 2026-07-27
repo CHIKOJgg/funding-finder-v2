@@ -1,7 +1,6 @@
 import { Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
-import { URL } from 'url';
 import { validateTelegramInitDataSync } from '../middleware/auth.js';
 import { verifyAuthToken } from '../services/authService.js';
 import { logger } from '../utils/logger.js';
@@ -14,6 +13,9 @@ export interface WSClient {
 }
 
 const VALID_CHANNELS = new Set(['scan', 'alerts', 'funding']);
+
+// New connections must authenticate within this window.
+const AUTH_TIMEOUT_MS = 5_000;
 
 class WebSocketManager {
   private wss: WebSocketServer | null = null;
@@ -43,75 +45,130 @@ class WebSocketManager {
 
   private handleConnection(ws: WebSocket, req: IncomingMessage): void {
     try {
-      const url = new URL(req.url || '/', `http://${req.headers.host}`);
-      const initData = url.searchParams.get('initData');
-      const token = url.searchParams.get('token');
+      let authenticated = false;
+      let userId: string | null = null;
 
-      let userId: string;
-      if (initData) {
-        const validated = validateTelegramInitDataSync(initData);
-        if (!validated) {
-          ws.close(4001, 'Invalid authentication');
-          return;
+      // Legacy path: allow auth via URL query params (backward compat with
+      // older clients). New clients should use message-based auth.
+      try {
+        const url = new URL(req.url || '/', `http://${req.headers.host}`);
+        const initData = url.searchParams.get('initData');
+        const token = url.searchParams.get('token');
+
+        if (initData) {
+          const validated = validateTelegramInitDataSync(initData);
+          if (validated) {
+            authenticated = true;
+            userId = validated.userId;
+          }
+        } else if (token) {
+          const payload = verifyAuthToken(token);
+          if (payload) {
+            authenticated = true;
+            userId = payload.sub;
+          }
         }
-        userId = validated.userId;
-      } else if (token) {
-        const payload = verifyAuthToken(token);
-        if (!payload) {
-          ws.close(4001, 'Invalid authentication');
-          return;
-        }
-        userId = payload.sub;
-      } else {
-        // Dev mode fallback
-        userId = `dev_ws_${Date.now()}`;
+      } catch { /* URL parsing failed — proceed to message-based auth */ }
+
+      if (authenticated && userId) {
+        this.registerClient(ws, userId);
+        return;
       }
 
-      const client: WSClient = {
-        ws,
-        userId,
-        subscriptions: new Set(['scan', 'alerts', 'funding']),
-        lastPong: Date.now(),
+      // Message-based auth: client sends { type: "auth", initData: "..." } or
+      // { type: "auth", token: "..." } as the first message within AUTH_TIMEOUT_MS.
+      const authTimer = setTimeout(() => {
+        if (!authenticated) {
+          ws.close(4001, 'Authentication timeout');
+        }
+      }, AUTH_TIMEOUT_MS);
+
+      const onFirstMessage = (data: Buffer) => {
+        ws.removeListener('message', onFirstMessage);
+        clearTimeout(authTimer);
+
+        try {
+          const msg = JSON.parse(data.toString());
+          if (msg.type !== 'auth') {
+            ws.close(4001, 'Expected auth message');
+            return;
+          }
+
+          if (msg.initData) {
+            const validated = validateTelegramInitDataSync(msg.initData);
+            if (!validated) {
+              ws.close(4001, 'Invalid authentication');
+              return;
+            }
+            userId = validated.userId;
+          } else if (msg.token) {
+            const payload = verifyAuthToken(msg.token);
+            if (!payload) {
+              ws.close(4001, 'Invalid authentication');
+              return;
+            }
+            userId = payload.sub;
+          } else {
+            // Dev mode fallback
+            userId = `dev_ws_${Date.now()}`;
+          }
+
+          authenticated = true;
+          this.registerClient(ws, userId);
+        } catch {
+          ws.close(4001, 'Invalid auth message');
+        }
       };
 
-      // Close existing connection for same user before replacing
-      const existing = this.clients.get(userId);
-      if (existing) {
-        logger.debug(`WebSocket replacing existing connection for ${userId}`);
-        existing.ws.terminate();
-      }
-
-      this.clients.set(userId, client);
-
-      ws.on('pong', () => {
-        client.lastPong = Date.now();
-      });
-
-      ws.on('message', (data) => {
-        this.handleMessage(client, data.toString());
-      });
-
-      ws.on('close', () => {
-        this.clients.delete(userId);
-        logger.debug(`WebSocket disconnected: ${userId}`);
-      });
-
-      ws.on('error', (err) => {
-        logger.error({ err, userId }, 'WebSocket error');
-        this.clients.delete(userId);
-      });
-
-      this.send(ws, {
-        type: 'connected',
-        userId,
-        subscriptions: Array.from(client.subscriptions),
-      });
-
-      logger.info(`WebSocket connected: ${userId}`);
+      ws.on('message', onFirstMessage);
     } catch (err) {
       logger.error({ err }, 'WebSocket connection error');
       ws.close(4002, 'Connection error');
     }
+  }
+
+  private registerClient(ws: WebSocket, userId: string): void {
+    const client: WSClient = {
+      ws,
+      userId,
+      subscriptions: new Set(['scan', 'alerts', 'funding']),
+      lastPong: Date.now(),
+    };
+
+    // Close existing connection for same user before replacing
+    const existing = this.clients.get(userId);
+    if (existing) {
+      logger.debug(`WebSocket replacing existing connection for ${userId}`);
+      existing.ws.terminate();
+    }
+
+    this.clients.set(userId, client);
+
+    ws.on('pong', () => {
+      client.lastPong = Date.now();
+    });
+
+    ws.on('message', (data) => {
+      this.handleMessage(client, data.toString());
+    });
+
+    ws.on('close', () => {
+      this.clients.delete(userId);
+      logger.debug(`WebSocket disconnected: ${userId}`);
+    });
+
+    ws.on('error', (err) => {
+      logger.error({ err, userId }, 'WebSocket error');
+      this.clients.delete(userId);
+    });
+
+    this.send(ws, {
+      type: 'connected',
+      userId,
+      subscriptions: Array.from(client.subscriptions),
+    });
+
+    logger.info(`WebSocket connected: ${userId}`);
   }
 
   private handleMessage(client: WSClient, raw: string): void {

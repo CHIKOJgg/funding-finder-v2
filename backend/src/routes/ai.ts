@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validation.js';
+import { AuthenticatedRequest } from '../middleware/auth.js';
 import { requireSubscription } from '../middleware/subscription.js';
 import { askAIForTop3 } from '../services/aiService.js';
 import { generateRecommendations } from '../utils/helpers.js';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 import { perUserLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
@@ -50,9 +52,9 @@ async function consumeFreeAiQuota(userId: string): Promise<boolean> {
   return true;
 }
 
-router.post('/ai', aiLimiter, validate(aiSchema), async (req, res) => {
+router.post('/ai', aiLimiter, validate(aiSchema), async (req: AuthenticatedRequest, res) => {
   try {
-    const userId = (req as any).userId as string;
+    const userId = req.userId!;
     const allowed = await consumeFreeAiQuota(userId);
     if (!allowed) {
       return res.status(402).json({
@@ -70,7 +72,7 @@ router.post('/ai', aiLimiter, validate(aiSchema), async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'AI analysis error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'AI analysis failed', 'AI_ANALYSIS_ERROR');
   }
 });
 
@@ -81,7 +83,7 @@ router.post('/recommend', recommendLimiter, validate(recommendSchema), (req, res
     res.json({ ok: true, text });
   } catch (e) {
     const error = e as Error;
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Recommendation generation failed', 'AI_RECOMMEND_ERROR');
   }
 });
 

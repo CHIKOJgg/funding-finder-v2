@@ -4,6 +4,7 @@ import { validate } from '../middleware/validation.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
@@ -27,7 +28,7 @@ router.get('/export/csv', validate(exportSchema, 'query'), async (req: Authentic
       return res.status(401).json({ ok: false, error: 'Authentication required' });
     }
 
-    const { exchange, days } = req.query as any;
+    const { exchange, days = 7 } = req.query as { exchange?: string; days?: number };
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     const where: Record<string, unknown> = {
@@ -79,7 +80,7 @@ router.get('/export/csv', validate(exportSchema, 'query'), async (req: Authentic
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'CSV export error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Failed to export CSV', 'EXPORT_CSV_ERROR');
   }
 });
 
