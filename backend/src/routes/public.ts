@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validation.js';
-import { detectArbitrageOpportunities } from '../services/arbitrageService.js';
+import { detectArbitrageOpportunities, EXCHANGE_FEES } from '../services/arbitrageService.js';
 import { getCachedScan, runScan } from '../services/scanService.js';
 import { getWarmupPromise } from '../services/fundingWarmup.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 import { computeTrackRecord } from '../services/trackRecordService.js';
 import { computeWeeklyReport } from '../services/weeklyReport.js';
 import { sendWaitlistWelcome } from '../services/emailNotify.js';
@@ -123,7 +124,17 @@ function publicOpportunity(opp: any) {
     difference_per_day: opp.difference_per_day,
     annualReturn: opp.profit?.annualReturn,
     netDaily: opp.profit?.netDaily,
+    netAnnual: opp.profit?.netAnnual,
+    score: opp.score,
     riskLevel: opp.risk?.level,
+    paybackDays: opp.paybackDays,
+    netApr: opp.netApr,
+    accumulated: {
+      d1: opp.profit?.netAnnual ? opp.profit.netAnnual / 365 : 0,
+      d7: opp.profit?.netAnnual ? (opp.profit.netAnnual / 365) * 7 : 0,
+      d30: opp.profit?.netAnnual ? (opp.profit.netAnnual / 365) * 30 : 0,
+      y1: opp.profit?.netAnnual ?? 0,
+    },
   };
 }
 
@@ -292,15 +303,27 @@ router.get('/heatmap', async (_req, res) => {
       ...scan.result.lowYield,
     ];
 
-    const pairs = allResults.map((r) => ({
-      exchange: r.exchange,
-      contract: r.contract,
-      funding_rate_per_hour: r.funding_rate_per_hour,
-      annualized_rate: r.annualized_rate,
-      mark_price: r.mark_price,
-      volume_24h_settle: r.volume_24h_settle,
-      funding_interval_hours: r.funding_interval_hours,
-    }));
+     const pairs = allResults.map((r) => {
+       const feeA = EXCHANGE_FEES[r.exchange]?.taker || 0.0005;
+       const feeB = 0.0005;
+       const roundTripFee = (feeA + feeB) * 2;
+       const netAnnual = r.annualized_rate - roundTripFee * (365 * 3) / (r.funding_interval_hours / 8);
+       const dailySpread = Math.abs(r.funding_rate_per_day || 0);
+       const paybackDays = dailySpread > 0 ? (roundTripFee / dailySpread) : -1;
+       const h = r.funding_rate_per_hour || 0;
+       return {
+         exchange: r.exchange,
+         contract: r.contract,
+         funding_rate_per_hour: h,
+         annualized_rate: r.annualized_rate,
+         net_annual: netAnnual,
+         payback_days: paybackDays,
+         accumulated: { d1: h * 24, d7: h * 24 * 7, d30: h * 24 * 30, y1: h * 24 * 365 },
+         mark_price: r.mark_price,
+         volume_24h_settle: r.volume_24h_settle,
+         funding_interval_hours: r.funding_interval_hours,
+       };
+     });
 
     // Sort by absolute hourly rate descending and take top 40
     pairs.sort((a, b) => Math.abs(b.funding_rate_per_hour) - Math.abs(a.funding_rate_per_hour));
@@ -389,7 +412,7 @@ router.get('/trackrecord', async (_req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Public track record error');
-    return res.status(500).json({ ok: false, error: error.message });
+    return sendError(res, 500, 'Failed to compute track record', 'PUBLIC_TRACKRECORD_ERROR');
   }
 });
 
@@ -439,7 +462,7 @@ router.get('/weekly-report', async (_req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Public weekly report error');
-    return res.status(500).json({ ok: false, error: error.message });
+    return sendError(res, 500, 'Failed to generate weekly report', 'PUBLIC_WEEKLY_REPORT_ERROR');
   }
 });
 
@@ -541,7 +564,7 @@ router.post('/waitlist', validate(waitlistSchema), async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Waitlist signup error');
-    return res.status(500).json({ ok: false, error: error.message });
+    return sendError(res, 500, 'Failed to process waitlist signup', 'PUBLIC_WAITLIST_ERROR');
   }
 });
 

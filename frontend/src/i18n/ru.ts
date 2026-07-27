@@ -160,6 +160,10 @@ export const ru: Record<string, string> = {
   'arb.fundingIncome': 'Доход фандинга:',
   'arb.oneTimeCosts': 'Разовые издержки (вход/выход):',
   'arb.netDaily': 'Чистыми за день:',
+  'arb.compositeScore': 'Композитвный балл:',
+  'arb.accumulated': 'Накопленный фандинг:',
+  'arb.accumulatedD1': '1D',
+  'arb.accumulatedD7': '7D',
   'arb.yearApy': 'Год (APY):',
   'arb.fees': 'Комиссии:',
   'arb.slippage': 'Проскальзывание:',
@@ -477,8 +481,8 @@ export const ru: Record<string, string> = {
   'portfolio.unsupported': 'Не поддерживается',
   'portfolio.tradeEnabled': 'Торговля вкл',
   'portfolio.readOnly': 'Только просмотр',
-  'portfolio.long': 'лонг',
-  'portfolio.short': 'шорт',
+  'portfolio.long': 'Лонг',
+  'portfolio.short': 'Шорт',
   'portfolio.autoTitle': '⧉ Авто-исполнение',
   'portfolio.autoDesc': 'Открыть {side} {symbol} на {exchange} через ваш trade-ключ.',
   'portfolio.sizeUsdt': 'Размер (USDT)',
@@ -862,6 +866,25 @@ export const ru: Record<string, string> = {
   'public.privacyLink': 'Конфиденциальность',
   'public.footerNote': 'Отслеживайте ставки фандинга на 25+ биржах',
 
+  // Heatmap
+  'heatmap.title': 'Тепловая карта фандинга',
+  'heatmap.updated': 'Обновлено',
+  'heatmap.sortLabel': 'Сортировка',
+  'heatmap.sortRate': 'Ставка фандинга',
+  'heatmap.sortVolume': 'Объём 24ч',
+  'heatmap.sortExchange': 'Биржа',
+  'heatmap.exchangeFilter': 'Фильтр по бирже',
+  'heatmap.allExchanges': 'Все биржи',
+  'heatmap.exchange': 'Биржа',
+  'heatmap.contract': 'Контракт',
+  'heatmap.ratePerHour': 'Ставка/ч',
+  'heatmap.annualized': 'Годовых',
+  'heatmap.accumulatedD1': '1Д накопл.',
+  'heatmap.accumulatedD7': '7Д накопл.',
+  'heatmap.volume24h': 'Объём 24ч',
+  'heatmap.noData': 'Нет данных тепловой карты',
+  'heatmap.loading': 'Загрузка тепловой карты…',
+
   // Arbitrage — NetAPR labels
   'arb.netApy': 'Net APY',
   'arb.grossLabel': 'Gross',
@@ -904,4 +927,19 @@ export const ru: Record<string, string> = {
   // Units — extra
   'unit.daysShort': 'дн',
   'unit.settlementCycles': 'циклов',
+
+  // Flip alerts
+  'alert.flip': '🔄 Смена направления',
+  'alert.flipDesc': 'Срабатывает при смене знака ставки фандинга (положительная ↔ отрицательная). Полезно для отслеживания смены настроения рынка.',
+  'alert.flipCreated': 'Оповещение о смене создано — уведомим при смене знака',
+
+  // Settings preview
+  'settings.channelsActive': '{count} канал(ов) активно',
+  'settings.noChannelsActive': 'Нет активных каналов уведомлений',
+  'settings.dailySummaryTime': 'Ежедневная сводка в 09:00',
+  'settings.spreadAlertHint': 'Оповещения при спреде > {threshold}%',
+
+   // Sort aria
+  'main.sortAriaLabel': 'Сортировка результатов',
+  'main.directionFlip': '🔄 Смена направления',
 };

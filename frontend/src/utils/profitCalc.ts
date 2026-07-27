@@ -41,14 +41,19 @@ export interface ClientProfit {
   netHourly: number;
   grossDaily: number;
   netDaily: number;
+  grossWeekly: number;
+  netWeekly: number;
+  grossAnnual: number;
+  netAnnual: number;
   fees: number;
   slippage: number;
   hourlyReturn: number;
   dailyReturn: number;
   weeklyReturn: number;
-  annualReturn: number;
-  netWeekly: number;
-  netAnnual: number;
+  netApr: number;
+  paybackDays: number;
+  score: number;
+  accumulated: { d1: number; d7: number; d30: number; y1: number };
 }
 
 export function profitCalcClient(
@@ -73,27 +78,48 @@ export function profitCalcClient(
   const grossDaily = grossHourly * 24;
   const netHourly = grossHourly - oneTime;
   const netDaily = grossDaily - oneTime;
+  const grossWeekly = grossDaily * 7;
   const netWeekly = grossDaily * 7 - oneTime;
+  const grossAnnual = grossDaily * 365;
   const netAnnual = grossDaily * 365 - oneTime;
 
+  const netApr = (netAnnual / capital) * 100;
+  const paybackDays = oneTime > 0 ? oneTime / (netDaily || 1) : Infinity;
+
+  const vol = Math.min(opp.volumeA || 0, opp.volumeB || 0);
+  const score = netApr * Math.min(1, vol / 1_000_000);
+  const accumulated = {
+    d1: netAnnual / 365,
+    d7: (netAnnual / 365) * 7,
+    d30: (netAnnual / 365) * 30,
+    y1: netAnnual,
+  };
   return {
     grossHourly,
     netHourly,
     grossDaily,
     netDaily,
+    grossWeekly,
+    netWeekly,
+    grossAnnual,
+    netAnnual,
     fees,
     slippage: slippageCost,
     hourlyReturn: (netHourly / capital) * 100,
     dailyReturn: (netDaily / capital) * 100,
     weeklyReturn: (netWeekly / capital) * 100,
-    annualReturn: (netAnnual / capital) * 100,
-    netWeekly,
-    netAnnual,
+    netApr,
+    paybackDays: paybackDays === Infinity ? -1 : paybackDays,
+    score,
+    accumulated,
   };
 }
 
 export function breakEvenDays(profit: ClientProfit): number {
-  const oneTime = profit.fees + profit.slippage;
-  const daily = profit.grossDaily;
-  return daily > 0 ? oneTime / daily : Infinity;
+  return profit.paybackDays;
+}
+
+export function getPaybackDays(profit: ClientProfit): number {
+  if (profit.paybackDays < 0) return Infinity;
+  return profit.paybackDays;
 }

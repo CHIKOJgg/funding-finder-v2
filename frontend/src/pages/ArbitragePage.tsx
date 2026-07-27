@@ -12,6 +12,7 @@ import { ExchangeSelect } from '../components/ExchangeSelect';
 import { FilterBar, FilterField, SegmentedControl } from '../components/FilterBar';
 import { useT } from '../i18n';
 import { SpotFuturesPanel } from '../components/SpotFuturesPanel';
+import { Heatmap } from '../components/Heatmap';
 import { profitCalcClient, breakEvenDays, type ClientProfit } from '../utils/profitCalc';
 import { LiquidationHeatmap } from '../components/LiquidationHeatmap';
 type ArbSortKey = 'apy' | 'daily' | 'hourly' | 'risk';
@@ -115,7 +116,7 @@ export function ArbitragePage() {
   const { user, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts, liveFundingAt, subscription } = useApp();
   const { showToast } = useToast();
   const t = useT();
-  const [activeTab, setActiveTab] = useState<'opportunities' | 'alerts' | 'spotfutures'>('opportunities');
+  const [activeTab, setActiveTab] = useState<'opportunities' | 'alerts' | 'spotfutures' | 'heatmap'>('opportunities');
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedOpportunity, setSelectedOpportunity] = useState<any>(null);
@@ -128,18 +129,6 @@ export function ArbitragePage() {
   const [pairQuery, setPairQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(15);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  // Spot-Futures panel is hidden from the UI until the backend feature is
-  // finished. The backend endpoint stays live for later completion; we only
-  // gate the frontend via the backend's feature flag so it can be toggled
-  // without a redeploy.
-  const [spotFuturesEnabled, setSpotFuturesEnabled] = useState(false);
-
-  useEffect(() => {
-    apiClient.getFeatureFlags().then((flags: any[]) => {
-      const f = flags.find((x) => x.name === 'spot_futures');
-      setSpotFuturesEnabled(!!f?.enabled);
-    });
-  }, []);
 
   useEffect(() => {
     // Cache-first: these only fetch if data isn't already loaded (or in-flight),
@@ -318,17 +307,23 @@ export function ArbitragePage() {
         >
           {t('arb.alerts')}
         </button>
-        {spotFuturesEnabled && (
-          <button
-            onClick={() => setActiveTab('spotfutures')}
-            className={clsx('flex-1 py-2.5 rounded-xl font-medium transition-all', activeTab === 'spotfutures' ? 'btn-primary' : 'btn-secondary')}
-            role="tab"
-            aria-selected={activeTab === 'spotfutures'}
-          >
-            {t('arb.spotFutures')}
-          </button>
-        )}
-      </div>
+        <button
+          onClick={() => setActiveTab('spotfutures')}
+          className={clsx('flex-1 py-2.5 rounded-xl font-medium transition-all', activeTab === 'spotfutures' ? 'btn-primary' : 'btn-secondary')}
+          role="tab"
+          aria-selected={activeTab === 'spotfutures'}
+        >
+          {t('arb.spotFutures')}
+        </button>
+        <button
+          onClick={() => setActiveTab('heatmap')}
+          className={clsx('flex-1 py-2.5 rounded-xl font-medium transition-all', activeTab === 'heatmap' ? 'btn-primary' : 'btn-secondary')}
+          role="tab"
+          aria-selected={activeTab === 'heatmap'}
+        >
+          {t('heatmap.title')}
+        </button>
+       </div>
 
       {activeTab === 'opportunities' && (
         <div className="card">
@@ -479,11 +474,15 @@ export function ArbitragePage() {
         </div>
       )}
 
-      {activeTab === 'spotfutures' && spotFuturesEnabled && (
-        <SpotFuturesPanel />
-      )}
+       {activeTab === 'spotfutures' && (
+         <SpotFuturesPanel />
+       )}
 
-      {activeTab === 'alerts' && (
+       {activeTab === 'heatmap' && (
+         <Heatmap />
+       )}
+
+       {activeTab === 'alerts' && (
         <div className="card">
           <h2 className="text-lg font-semibold mb-3">{t('arb.myAlerts')}</h2>
 
@@ -617,10 +616,20 @@ const OpportunityCard = memo(function OpportunityCard({
             </span>
             <span className="text-xs font-normal text-[var(--text-muted)]">{t('arb.netApy')}</span>
           </div>
+          {opp.score != null && (
+            <div className="text-xs text-[var(--text-muted)]">
+              {t('arb.compositeScore')} <span className="font-semibold text-[var(--text)]">{opp.score.toFixed(1)}</span>
+            </div>
+          )}
            <div className="text-xs text-[var(--text-muted)]" title={t('arb.dailySpreadTitle')}>
             {t('arb.grossLabel')}: {(opp.profit?.grossDaily != null ? (opp.profit.grossDaily / 1000 * 100).toFixed(1) : '—')}% · {t('arb.fees')}: {(opp.profit?.fees != null ? (opp.profit.fees / 1000 * 100).toFixed(2) : '—')}% · {t('arb.slippage')}: {(opp.profit?.slippage != null ? (opp.profit.slippage / 1000 * 100).toFixed(2) : '—')}%
-          </div>
-          <div className="text-[10px] text-[var(--text-muted)] mt-0.5" title={t('arb.oiSignalTitle')}>
+            </div>
+            {opp.accumulated && (
+              <div className="text-[10px] text-[var(--text-muted)]">
+                {t('arb.accumulated')} {t('arb.accumulatedD1')}:{(opp.accumulated.d1 * 100).toFixed(2)}% / {t('arb.accumulatedD7')}:{(opp.accumulated.d7 * 100).toFixed(2)}%
+              </div>
+            )}
+            <div className="text-[10px] text-[var(--text-muted)] mt-0.5" title={t('arb.oiSignalTitle')}>
             {(() => {
               const minVol = Math.min(opp.volumeA || 0, opp.volumeB || 0);
               const label = minVol > 10_000_000 ? t('arb.oiSignalHigh') : minVol > 1_000_000 ? t('arb.oiSignalMed') : minVol > 100_000 ? t('arb.oiSignalLow') : t('arb.oiSignalThin');
@@ -758,8 +767,8 @@ const OpportunityCard = memo(function OpportunityCard({
               ${calcProfit.netDaily.toFixed(2)}
             </div>
             <div className="text-[var(--text-muted)]">{t('arb.netApy')}</div>
-            <div className={clsx('font-bold text-right', calcProfit.annualReturn >= 0 ? 'text-green-600' : 'text-red-500')}>
-              {calcProfit.annualReturn.toFixed(1)}%
+            <div className={clsx('font-bold text-right', calcProfit.netApr >= 0 ? 'text-green-600' : 'text-red-500')}>
+              {calcProfit.netApr.toFixed(1)}%
             </div>
             <div className="text-[var(--text-muted)]">{t('arb.fees')}</div>
             <div className="text-right">${calcProfit.fees.toFixed(2)}</div>

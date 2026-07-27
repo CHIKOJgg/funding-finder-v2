@@ -160,6 +160,10 @@ export const en: Record<string, string> = {
   'arb.fundingIncome': 'Funding income:',
   'arb.oneTimeCosts': 'One-time costs (entry/exit):',
   'arb.netDaily': 'Net per day:',
+  'arb.compositeScore': 'Composite score:',
+  'arb.accumulated': 'Accumulated funding:',
+  'arb.accumulatedD1': '1D',
+  'arb.accumulatedD7': '7D',
   'arb.yearApy': 'Year (APY):',
   'arb.fees': 'Fees:',
   'arb.slippage': 'Slippage:',
@@ -499,8 +503,8 @@ export const en: Record<string, string> = {
   'portfolio.unsupported': 'Unsupported',
   'portfolio.tradeEnabled': 'Trading on',
   'portfolio.readOnly': 'Read-only',
-  'portfolio.long': 'long',
-  'portfolio.short': 'short',
+  'portfolio.long': 'Long',
+  'portfolio.short': 'Short',
   'portfolio.autoTitle': '⧉ Auto-execution',
   'portfolio.autoDesc': 'Open {side} {symbol} on {exchange} via your trade key.',
   'portfolio.sizeUsdt': 'Size (USDT)',
@@ -892,6 +896,25 @@ export const en: Record<string, string> = {
   'public.privacyLink': 'Privacy',
   'public.footerNote': 'Track crypto funding rates across 25+ exchanges',
 
+  // Heatmap
+  'heatmap.title': 'Funding Rate Heatmap',
+  'heatmap.updated': 'Updated',
+  'heatmap.sortLabel': 'Sort by',
+  'heatmap.sortRate': 'Funding Rate',
+  'heatmap.sortVolume': 'Volume 24h',
+  'heatmap.sortExchange': 'Exchange',
+  'heatmap.exchangeFilter': 'Filter by exchange',
+  'heatmap.allExchanges': 'All Exchanges',
+  'heatmap.exchange': 'Exchange',
+  'heatmap.contract': 'Contract',
+  'heatmap.ratePerHour': 'Rate/h',
+  'heatmap.annualized': 'Annualized',
+  'heatmap.accumulatedD1': '1D Acc.',
+  'heatmap.accumulatedD7': '7D Acc.',
+  'heatmap.volume24h': 'Vol 24h',
+  'heatmap.noData': 'No heatmap data available',
+  'heatmap.loading': 'Loading heatmap…',
+
   // Arbitrage — NetAPR labels
   'arb.netApy': 'Net APY',
   'arb.grossLabel': 'Gross',
@@ -939,4 +962,14 @@ export const en: Record<string, string> = {
   'alert.flip': '🔄 Direction flip',
   'alert.flipDesc': 'Triggers when funding rate changes sign (positive ↔ negative). Useful for detecting market sentiment shifts.',
   'alert.flipCreated': 'Flip alert created — we\'ll notify you when the sign changes',
+
+  // Settings preview
+  'settings.channelsActive': '{count} channel(s) active',
+  'settings.noChannelsActive': 'No notification channels active',
+  'settings.dailySummaryTime': 'Daily summary at 09:00',
+  'settings.spreadAlertHint': 'Alerts when spread > {threshold}%',
+
+   // Sort aria
+  'main.sortAriaLabel': 'Sort results',
+  'main.directionFlip': '🔄 Direction flip',
 };
