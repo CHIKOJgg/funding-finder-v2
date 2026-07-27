@@ -28,6 +28,10 @@ export const EXCHANGE_FUNDING_INTERVALS: Record<string, number> = {
   apex: 3600,        // 1h fixed
   aster: 28800,      // 8h default (per-market)
   bluefin: 28800,    // 8h fixed
+  // New exchanges (P1)
+  kucoin: 28800,        // 8h fixed
+  cryptocom: 28800,     // 8h fixed
+  deribit: 28800,       // 8h fixed
 };
 
 // Funding intervals commonly seen
@@ -63,6 +67,15 @@ export interface ExchangeResult {
   // Market data
   mark_price: number;
   volume_24h_settle: number;
+  
+  // Open Interest data (P0 - from exchanges)
+  openInterest?: number;                     // OI in USD
+  openInterestUsd?: number;                  // OI in USD (alias for compatibility)
+  
+  // Long/Short ratio (P0 - sentiment indicator)
+  longShortRatio?: number;                   // e.g. 0.65 = 65% long, 35% short
+  longAccountRatio?: number;                 // long share from exchange API
+  shortAccountRatio?: number;                // short share from exchange API
   
   // Legacy fields for backward compatibility
   med_seconds: number | null;

@@ -81,6 +81,15 @@ export interface ExchangeResult {
   mark_price: number;
   volume_24h_settle: number;
 
+  // Open Interest
+  openInterest?: number;
+  openInterestUsd?: number;
+
+  // Long/Short Ratio
+  longShortRatio?: number;
+  longAccountRatio?: number;
+  shortAccountRatio?: number;
+
   // Legacy fields
   med_seconds: number | null;
   med_hours: number | null;

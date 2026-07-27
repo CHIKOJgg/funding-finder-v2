@@ -6,6 +6,9 @@ export const EXCHANGE_LABELS: Record<string, string> = {
   gate: 'Gate.io',
   binance: 'Binance',
   bybit: 'Bybit',
+  kucoin: 'KuCoin',
+  cryptocom: 'Crypto.com',
+  deribit: 'Deribit',
   mexc: 'MEXC',
   okx: 'OKX',
   bitget: 'Bitget',
@@ -97,6 +100,7 @@ export const ALL_EXCHANGES = [
   'hyperliquid', 'dydx', 'paradex',
   'htx', 'coinex', 'blofin', 'bitmart', 'weex', 'coinw',
   'drift', 'helix', 'apex', 'aster', 'bluefin',
+  'kucoin', 'cryptocom', 'deribit',
 ];
 
 // Normalize any pair representation a caller might pass — "BTCUSDT",

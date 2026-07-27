@@ -16,6 +16,12 @@ export interface ExchangeResultInput {
   fundingNextApply: number; // ms timestamp (0 if unknown)
   markPrice: number;
   volume24hSettle: number;
+  // Open Interest
+  openInterestUsd?: number;
+  // Long/Short ratio
+  longShortRatio?: number;
+  longAccountRatio?: number;
+  shortAccountRatio?: number;
 }
 
 export function toExchangeResult(input: ExchangeResultInput): ExchangeResult {
@@ -39,6 +45,13 @@ export function toExchangeResult(input: ExchangeResultInput): ExchangeResult {
     time_until_next_funding_seconds: timeUntilNext ?? 0,
     mark_price: input.markPrice,
     volume_24h_settle: input.volume24hSettle,
+    // Open Interest
+    openInterest: input.openInterestUsd,
+    openInterestUsd: input.openInterestUsd,
+    // Long/Short ratio
+    longShortRatio: input.longShortRatio,
+    longAccountRatio: input.longAccountRatio,
+    shortAccountRatio: input.shortAccountRatio,
     // Legacy fields
     med_seconds: intervalSeconds,
     med_hours: intervalSeconds / 3600,

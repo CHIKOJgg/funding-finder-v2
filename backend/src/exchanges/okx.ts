@@ -2,11 +2,64 @@ import { ExchangeResult, KNOWN_INTERVALS } from '../types/index.js';
 import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest } from '../utils/exchangeClient.js';
 import { normalizeFundingRate } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
+import { upsertOpenInterest, upsertLongShortRatio } from '../services/marketDataService.js';
 import { logger } from '../utils/logger.js';
 
 const OKX_BASE = 'https://www.okx.com';
 const MAX_CONCURRENCY = 3;
 const OKX_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // OKX is always 8h
+
+// Fetch OI for a single symbol (OKX requires per-symbol call)
+async function fetchOkxOpenInterest(
+  client: ReturnType<typeof getOrCreateClient>,
+  symbol: string
+): Promise<number> {
+  try {
+    const res = await retry(() =>
+      client.get('/api/v5/public/open-interest', {
+        params: { instId: symbol },
+        timeout: 10000,
+      }),
+      2,
+      300
+    );
+    const data = res.data?.data?.[0];
+    return data ? parseFloat(data.openInterest) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+// Fetch Long/Short ratio for a symbol
+async function fetchOkxLongShortRatio(
+  client: ReturnType<typeof getOrCreateClient>,
+  symbol: string
+): Promise<{ longShortRatio: number; longAccountRatio: number; shortAccountRatio: number } | null> {
+  try {
+    const res = await retry(() =>
+      client.get('/api/v5/public/taker-long-short-account-ratio', {
+        params: { instId: symbol },
+        timeout: 10000,
+      }),
+      2,
+      300
+    );
+    const data = res.data?.data || [];
+    if (data.length === 0) return null;
+    const latest = data[0];
+    const longAcc = parseFloat(latest.longAccountRatio) || 0;
+    const shortAcc = parseFloat(latest.shortAccountRatio) || 0;
+    const total = longAcc + shortAcc;
+    if (total === 0) return null;
+    return {
+      longShortRatio: longAcc / total,
+      longAccountRatio: longAcc,
+      shortAccountRatio: shortAcc,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export async function scanOKX(): Promise<ExchangeResult[]> {
   try {
@@ -82,34 +135,61 @@ export async function scanOKX(): Promise<ExchangeResult[]> {
             ? new Date(ticker.nextFundingTime).getTime()
             : 0;
 
-          const mark = parseFloat(ticker.last) || 0;
-          const vol24 = parseFloat(ticker.volCcy24h) || parseFloat(ticker.vol24h) || 0;
+           const mark = parseFloat(ticker.last) || 0;
+           const vol24 = parseFloat(ticker.volCcy24h) || parseFloat(ticker.vol24h) || 0;
 
-          // OKX is always 8h
-          const normalized = normalizeFundingRate(currentFunding, OKX_INTERVAL);
+           // Fetch OI and Long/Short ratio (OKX requires per-symbol calls here)
+           let oiUsd = 0;
+           let longShortRatio: number | null = null;
+           let longAccountRatio: number | null = null;
+           let shortAccountRatio: number | null = null;
 
-          // Calculate time until next funding
-          const now = Date.now();
-          const timeUntilNext = nextFundingTime > now ? Math.floor((nextFundingTime - now) / 1000) : null;
+           try {
+             const oi = await fetchOkxOpenInterest(client, symbol);
+             oiUsd = oi;
+             upsertOpenInterest('okx', symbol, oi).catch(() => {});
+           } catch { /* OI not critical */ }
 
-          return {
-            exchange: 'okx',
-            contract: symbol,
-            currentFunding,
-            funding_interval_seconds: OKX_INTERVAL,
-            funding_interval_hours: OKX_INTERVAL / 3600,
-            funding_interval_source: 'default' as const,
-            funding_rate_per_hour: normalized.perHour,
-            funding_rate_per_day: normalized.perDay,
-            annualized_rate: normalized.annualized,
-            funding_next_apply: nextFundingTime,
-            time_until_next_funding_seconds: timeUntilNext,
-            mark_price: mark,
-            volume_24h_settle: vol24,
-            // Legacy fields
-            med_seconds: OKX_INTERVAL,
-            med_hours: OKX_INTERVAL / 3600,
-          };
+           try {
+             const lsr = await fetchOkxLongShortRatio(client, symbol);
+             if (lsr) {
+               longShortRatio = lsr.longShortRatio;
+               longAccountRatio = lsr.longAccountRatio;
+               shortAccountRatio = lsr.shortAccountRatio;
+               upsertLongShortRatio('okx', symbol, lsr.longShortRatio, lsr.longAccountRatio, lsr.shortAccountRatio).catch(() => {});
+             }
+           } catch { /* LSR not critical */ }
+
+           // OKX is always 8h
+           const normalized = normalizeFundingRate(currentFunding, OKX_INTERVAL);
+
+           // Calculate time until next funding
+           const now = Date.now();
+           const timeUntilNext = nextFundingTime > now ? Math.floor((nextFundingTime - now) / 1000) : null;
+
+           return {
+             exchange: 'okx',
+             contract: symbol,
+             currentFunding,
+             funding_interval_seconds: OKX_INTERVAL,
+             funding_interval_hours: OKX_INTERVAL / 3600,
+             funding_interval_source: 'default' as const,
+             funding_rate_per_hour: normalized.perHour,
+             funding_rate_per_day: normalized.perDay,
+             annualized_rate: normalized.annualized,
+             funding_next_apply: nextFundingTime,
+             time_until_next_funding_seconds: timeUntilNext,
+             mark_price: mark,
+             volume_24h_settle: vol24,
+             openInterest: oiUsd,
+             openInterestUsd: oiUsd,
+             longShortRatio,
+             longAccountRatio,
+             shortAccountRatio,
+             // Legacy fields
+             med_seconds: OKX_INTERVAL,
+             med_hours: OKX_INTERVAL / 3600,
+           };
         } catch (err) {
           logger.debug(`OKX: Error processing ${symbol} — ${(err as Error).message}`);
           return null;

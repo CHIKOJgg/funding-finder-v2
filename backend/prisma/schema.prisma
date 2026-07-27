@@ -69,7 +69,7 @@ model UserSettings {
   pushoverNotifications  Boolean  @default(false)
   pushoverKey            String?
   pushoverDevice         String?
-  defaultExchanges       String[] @default(["gate", "binance", "bybit", "mexc", "okx", "bitget", "bingx", "phemex", "woo", "hyperliquid", "dydx", "paradex", "htx", "coinex", "blofin", "bitmart", "weex", "coinw", "drift", "helix", "apex", "aster", "bluefin"])
+  defaultExchanges       String[] @default(["gate", "binance", "bybit", "kucoin", "cryptocom", "deribit", "mexc", "okx", "bitget", "bingx", "phemex", "woo", "hyperliquid", "dydx", "paradex", "htx", "coinex", "blofin", "bitmart", "weex", "coinw", "drift", "helix", "apex", "aster", "bluefin"])
   theme                  String   @default("auto")
   language               String   @default("ru")
   timezone               String   @default("Europe/Moscow")
@@ -221,6 +221,62 @@ model FundingRecord {
   funding           Float
 
   @@index([fundingHistoryId])
+  @@index([timestamp])
+}
+
+// Open Interest history (OI in USD per exchange:contract)
+model OpenInterestHistory {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  records      OpenInterestRecord[]
+
+  @@index([key])
+}
+
+model OpenInterestRecord {
+  id                   String @id @default(cuid())
+  openInterestHistoryId String
+  openInterestHistory   OpenInterestHistory @relation(fields: [openInterestHistoryId], references: [id])
+  timestamp           DateTime @default(now())
+  openInterestUsd     Float    // OI in USD
+
+  @@index([openInterestHistoryId])
+  @@index([timestamp])
+}
+
+// Long/Short ratio history
+model LongShortRatioHistory {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  records      LongShortRatioRecord[]
+
+  @@index([key])
+}
+
+model LongShortRatioRecord {
+  id                   String @id @default(cuid())
+  longShortRatioHistoryId String
+  longShortRatioHistory   LongShortRatioHistory @relation(fields: [longShortRatioHistoryId], references: [id])
+  timestamp           DateTime @default(now())
+  longShortRatio      Float    // e.g. 0.65 = 65% long, 35% short
+  longAccountRatio    Float?   // long share
+  shortAccountRatio   Float?   // short share
+
+  @@index([longShortRatioHistoryId])
+  @@index([timestamp])
+}
+
+// Liquidation data (real exchange-reported liquidations)
+model LiquidationSnapshot {
+  id          String   @id @default(cuid())
+  exchange    String
+  contract    String
+  timestamp   DateTime @default(now())
+  longVolUsd  Float    // long liquidation volume USD
+  shortVolUsd Float    // short liquidation volume USD
+  price       Float    // price at liquidation
+
+  @@index([exchange, contract])
   @@index([timestamp])
 }
 

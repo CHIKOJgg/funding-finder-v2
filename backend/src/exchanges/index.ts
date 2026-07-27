@@ -2,6 +2,9 @@ import { ExchangeResult } from '../types/index.js';
 import { scanGate } from './gate.js';
 import { scanBinance } from './binance.js';
 import { scanBybit } from './bybit.js';
+import { scanKuCoin } from './kucoin.js';
+import { scanCryptoCom } from './cryptocom.js';
+import { scanDeribit } from './deribit.js';
 import { scanMEXC } from './mexc.js';
 import { scanOKX } from './okx.js';
 import { scanBitget } from './bitget.js';
@@ -30,6 +33,9 @@ const EXCHANGE_SCANNERS: Record<string, () => Promise<ExchangeResult[]>> = {
   gate: scanGate,
   binance: scanBinance,
   bybit: scanBybit,
+  kucoin: scanKuCoin,
+  cryptocom: scanCryptoCom,
+  deribit: scanDeribit,
   mexc: scanMEXC,
   okx: scanOKX,
   // CEX additions (batch 1)
@@ -140,4 +146,4 @@ export function cleanup(): void {
   logger.info('Cleaned up all exchange connections');
 }
 
-export { scanGate, scanBinance, scanBybit, scanMEXC, scanOKX, scanBitget, scanBingX, scanPhemex, scanWOO, scanHyperliquid, scanDydx, scanParadex, scanHtx, scanCoinEx, scanBloFin, scanBitMart, scanWeex, scanCoinW, scanDrift, scanHelix, scanApex, scanAster, scanBluefin };
+export { scanGate, scanBinance, scanBybit, scanKuCoin, scanCryptoCom, scanDeribit, scanMEXC, scanOKX, scanBitget, scanBingX, scanPhemex, scanWOO, scanHyperliquid, scanDydx, scanParadex, scanHtx, scanCoinEx, scanBloFin, scanBitMart, scanWeex, scanCoinW, scanDrift, scanHelix, scanApex, scanAster, scanBluefin };

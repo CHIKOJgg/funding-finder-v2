@@ -560,4 +560,71 @@ export const apiClient = {
     const res = await retryRequest(() => api.post('/qr-login/verify', { token }));
     return (res as any).data;
   },
+
+  // ── Market Data (OI, LSR, Liquidations) ──────────────────────────────
+
+  async getLatestOpenInterest(exchange: string, contract: string) {
+    const res = await retryRequest(() =>
+      api.get(`/market/open-interest/${exchange}/${contract}`)
+    );
+    return (res as any).data;
+  },
+
+  async getOpenInterestHistory(
+    exchange: string,
+    contract: string,
+    hours: number = 168
+  ) {
+    const res = await retryRequest(() =>
+      api.get('/market/open-interest-history', {
+        params: { exchange, contract, hours },
+      })
+    );
+    return (res as any).data;
+  },
+
+  async getLongShortRatio(exchange: string, contract: string) {
+    const res = await retryRequest(() =>
+      api.get(`/market/long-short-ratio/${exchange}/${contract}`)
+    );
+    return (res as any).data;
+  },
+
+  async getLongShortRatioHistory(
+    exchange: string,
+    contract: string,
+    hours: number = 168
+  ) {
+    const res = await retryRequest(() =>
+      api.get('/market/long-short-ratio-history', {
+        params: { exchange, contract, hours },
+      })
+    );
+    return (res as any).data;
+  },
+
+  async getLiquidationSnapshots(
+    exchange: string,
+    contract: string,
+    hours: number = 24
+  ) {
+    const res = await retryRequest(() =>
+      api.get(`/market/liquidation-snapshots/${exchange}/${contract}`, {
+        params: { hours },
+      })
+    );
+    return (res as any).data;
+  },
+
+  async getOiWeightedRate(
+    contract: string,
+    exchanges: string[]
+  ) {
+    const res = await retryRequest(() =>
+      api.get('/market/oi-weighted-rate', {
+        params: { contract, exchanges: exchanges.join(',') },
+      })
+    );
+    return (res as any).data;
+  },
 };

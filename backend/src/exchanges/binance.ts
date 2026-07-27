@@ -2,12 +2,21 @@ import { ExchangeResult } from '../types/index.js';
 import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest } from '../utils/exchangeClient.js';
 import { normalizeFundingRate } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
+import { upsertOpenInterest, upsertLongShortRatio } from '../services/marketDataService.js';
 import { logger } from '../utils/logger.js';
 import { KNOWN_INTERVALS } from '../types/index.js';
 
 const BINANCE_BASE = 'https://fapi.binance.com';
 const CONCURRENCY = 3;
 const BINANCE_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // Binance is always 8h
+
+interface BinanceTicker extends Record<string, any> {
+  symbol: string;
+  lastPrice: string;
+  quoteVolume: string;
+  openInterest: string; // New: OI in USDT
+  longShortRatio?: string; // New: long/short ratio
+}
 
 // Fetch premium index for ALL symbols in a single request (vs N per-symbol
 // calls). Returns a Map keyed by symbol with { rate, nextApply }.
@@ -92,6 +101,16 @@ export async function scanBinance(): Promise<ExchangeResult[]> {
         const symbol = t.symbol;
         const vol24 = parseFloat(t.quoteVolume || t.volume || 0) || 0;
         const mark = parseFloat(t.lastPrice || t.last || 0) || 0;
+        const oiUsd = parseFloat(t.openInterest) || 0;
+        const longShortRatio = t.longShortRatio ? parseFloat(t.longShortRatio) : null;
+
+        // Persist OI & LSR data
+        if (oiUsd > 0) {
+          upsertOpenInterest('binance', symbol, oiUsd).catch(() => {});
+        }
+        if (longShortRatio !== null && longShortRatio > 0) {
+          upsertLongShortRatio('binance', symbol, longShortRatio).catch(() => {});
+        }
 
         let currentFunding = 0;
         let funding_next_apply = 0;
@@ -142,24 +161,27 @@ export async function scanBinance(): Promise<ExchangeResult[]> {
           }
         }
 
-        return {
-          exchange: 'binance',
-          contract: symbol,
-          currentFunding,
-          funding_interval_seconds: BINANCE_INTERVAL,
-          funding_interval_hours: BINANCE_INTERVAL / 3600,
-          funding_interval_source: 'default' as const,
-          funding_rate_per_hour: normalized.perHour,
-          funding_rate_per_day: normalized.perDay,
-          annualized_rate: normalized.annualized,
-          funding_next_apply,
-          time_until_next_funding_seconds: timeUntilNext,
-          mark_price: mark,
-          volume_24h_settle: vol24,
-          // Legacy fields
-          med_seconds: BINANCE_INTERVAL,
-          med_hours: BINANCE_INTERVAL / 3600,
-        };
+           return {
+           exchange: 'binance',
+           contract: symbol,
+           currentFunding,
+           funding_interval_seconds: BINANCE_INTERVAL,
+           funding_interval_hours: BINANCE_INTERVAL / 3600,
+           funding_interval_source: 'default' as const,
+           funding_rate_per_hour: normalized.perHour,
+           funding_rate_per_day: normalized.perDay,
+           annualized_rate: normalized.annualized,
+           funding_next_apply,
+           time_until_next_funding_seconds: timeUntilNext,
+           mark_price: mark,
+           volume_24h_settle: vol24,
+           openInterest: oiUsd,
+           openInterestUsd: oiUsd,
+           longShortRatio,
+           // Legacy fields
+           med_seconds: BINANCE_INTERVAL,
+           med_hours: BINANCE_INTERVAL / 3600,
+         };
       } catch (err) {
         logger.debug(`Binance: Error processing ${t.symbol} - ${(err as Error).message}`);
         return null;

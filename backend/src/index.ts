@@ -29,6 +29,8 @@ import { getArchiveStats } from './services/dataArchival.js';
 import { startTelegramBot, stopTelegramBot } from './services/bot/telegramBot.js';
 import { startPublicSignalChannel, stopPublicSignalChannel } from './services/publicSignalChannel.js';
 import { startWeeklyReport, stopWeeklyReport } from './services/weeklyReport.js';
+import { startMarketDataRefresh, stopMarketDataRefresh } from './services/marketDataRefresh.js';
+import marketDataRoutes from './routes/marketData.js';
 
 // Routes
 import scanRoutes from './routes/scan.js';
@@ -322,11 +324,27 @@ const publicLimiter = rateLimit({
   handler: rateLimitHandler('public'),
 });
 
+// Rate limit for market data endpoints (OI, LSR, liquidations) — public,
+// no auth needed, but tighter than global to prevent abuse.
+const marketDataLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: createRateLimitStore('market-data'),
+  message: { ok: false, error: 'Rate limited' },
+  handler: rateLimitHandler('market-data'),
+});
+
 // Public, unauthenticated marketing surfaces (landing live widget). Mounted
 // BEFORE the authenticated /api mounts so '/api/public/*' is NOT caught by the
 // global `authenticate` middleware. Cross-origin reads are allowed (no auth/
 // cookies); the landing page is hosted on a separate frontend origin.
 app.use('/api/public', cors({ origin: true }), publicLimiter, publicRoutes);
+
+// Market data routes (OI, LSR, liquidations) — public, no auth needed
+app.use('/api/market', marketDataLimiter, marketDataRoutes);
 
 // Public web-auth routes (wallet SIWE + Google + email). These ESTABLISH a
 // session, so they must NOT sit behind the global `authenticate` middleware.
@@ -567,6 +585,7 @@ const gracefulShutdown = async (signal: string) => {
   stopTelegramBot();
   stopPublicSignalChannel();
   stopWeeklyReport();
+  stopMarketDataRefresh();
   stopSelfPing();
   wsManager.close();
   await shutdownJobQueues();
