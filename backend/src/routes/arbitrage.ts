@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validation.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
@@ -19,6 +20,7 @@ import { getSubscriptionLimits } from '../middleware/subscription.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { sendError } from '../middleware/errorHandler.js';
 
 const router = Router();
 
@@ -97,7 +99,7 @@ router.post('/alerts/arbitrage', validate(createAlertSchema), async (req, res) =
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Create arbitrage alert error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Failed to create alert', 'ARBITRAGE_ALERT_CREATE_ERROR');
   }
 });
 
@@ -110,7 +112,7 @@ router.get('/alerts/arbitrage', async (req, res) => {
     res.json({ ok: true, ...result });
   } catch (e) {
     const error = e as Error;
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Failed to fetch alerts', 'ARBITRAGE_ALERT_FETCH_ERROR');
   }
 });
 
@@ -125,8 +127,7 @@ router.delete('/alerts/arbitrage/:alertId', async (req, res) => {
       res.status(404).json({ ok: false, error: 'Оповещение не найдено' });
     }
   } catch (e) {
-    const error = e as Error;
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Failed to delete alert', 'ARBITRAGE_ALERT_DELETE_ERROR');
   }
 });
 
@@ -141,8 +142,7 @@ router.post('/alerts/arbitrage/:alertId/toggle', async (req, res) => {
       res.status(404).json({ ok: false, error: 'Оповещение не найдено' });
     }
   } catch (e) {
-    const error = e as Error;
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Failed to toggle alert', 'ARBITRAGE_ALERT_TOGGLE_ERROR');
   }
 });
 
@@ -253,20 +253,30 @@ router.post('/arbitrage/calculate-profit', validate(calculateProfitSchema), asyn
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Profit calculation error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Profit calculation failed', 'PROFIT_CALC_ERROR');
   }
+});
+
+const backtestSchema = z.object({
+  pair: z.string().min(1),
+  exchangeA: z.string().min(1),
+  exchangeB: z.string().min(1),
+  days: z.coerce.number().min(7).max(90).optional().default(30),
+  capital: z.coerce.number().min(100).max(1_000_000).optional().default(1000),
 });
 
 // Pair-specific backtest: compute historical arbitrage returns for a specific
 // pair + exchange combination using the FundingHistory data the scanner stores.
 // GET /api/arbitrage/backtest?pair=BTC/USDT&exchangeA=binance&exchangeB=bybit&days=30&capital=1000
-router.get('/arbitrage/backtest', async (req, res) => {
+router.get('/arbitrage/backtest', validate(backtestSchema), async (req, res) => {
   try {
-    const pair = (req.query.pair as string) || '';
-    const exchangeA = (req.query.exchangeA as string) || '';
-    const exchangeB = (req.query.exchangeB as string) || '';
-    const days = Math.min(Math.max(parseInt(req.query.days as string) || 30, 7), 90);
-    const capital = Math.min(Math.max(parseFloat(req.query.capital as string) || 1000, 100), 1000000);
+    const { pair, exchangeA, exchangeB, days, capital } = req.query as {
+      pair: string;
+      exchangeA: string;
+      exchangeB: string;
+      days: number;
+      capital: number;
+    };
 
     if (!pair || !exchangeA || !exchangeB) {
       return res.status(400).json({ ok: false, error: 'pair, exchangeA, exchangeB are required' });
@@ -389,7 +399,7 @@ router.get('/arbitrage/backtest', async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Backtest error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Backtest failed', 'BACKTEST_ERROR');
   }
 });
 
@@ -405,7 +415,7 @@ router.get('/arbitrage/spot-futures', async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Spot-futures error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Spot-futures query failed', 'SPOT_FUTURES_ERROR');
   }
 });
 
@@ -433,7 +443,17 @@ const liveBatchSchema = z.object({
   })).max(LIVE_BATCH_MAX_EXCHANGES),
 });
 
-router.post('/live/batch', validate(liveBatchSchema), async (req, res) => {
+function validateLiveBatchExchanges(req: Request, res: Response, next: NextFunction) {
+  const requests = (req as any).body?.requests as Array<{ exchange: string; symbols: string[] }> | undefined;
+  if (!requests) return next();
+  const invalid = requests.filter((r) => !SUPPORTED_EXCHANGES.includes(r.exchange));
+  if (invalid.length > 0) {
+    return res.status(400).json({ ok: false, error: 'Invalid exchanges', invalid: invalid.map((r) => r.exchange) });
+  }
+  next();
+}
+
+router.post('/live/batch', validate(liveBatchSchema), validateLiveBatchExchanges, async (req, res) => {
   try {
     const requests = req.body.requests;
     const prices: Record<string, number> = {};
@@ -465,7 +485,7 @@ router.post('/live/batch', validate(liveBatchSchema), async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Live batch error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    sendError(res, 500, 'Live batch failed', 'LIVE_BATCH_ERROR');
   }
 });
 

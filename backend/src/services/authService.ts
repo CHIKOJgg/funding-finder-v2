@@ -153,6 +153,8 @@ export interface SiweVerifyResult {
   reason?: string;
 }
 
+const MAX_SIWE_MESSAGE_LENGTH = 4096;
+
 /**
  * Verify a SIWE signature. Recovers the signer address from the personal_sign
  * signature and checks it against the address in the message, the stored nonce,
@@ -162,6 +164,9 @@ export async function verifySiweSignature(
   message: string,
   signature: string
 ): Promise<SiweVerifyResult> {
+  if (message.length > MAX_SIWE_MESSAGE_LENGTH) {
+    return { ok: false, reason: 'Message too long' };
+  }
   const parsed = parseSiweMessage(message);
   if (!parsed) return { ok: false, reason: 'Malformed SIWE message' };
 

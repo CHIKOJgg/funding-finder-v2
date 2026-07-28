@@ -43,6 +43,12 @@ export async function enforceTrialExpiry(userId: string): Promise<boolean> {
       user.trialEndsAt &&
       user.trialEndsAt.getTime() <= Date.now()
     ) {
+      const paidOrder = await prisma.order.findFirst({
+        where: { userId: userId, status: 'paid' },
+        select: { id: true },
+        take: 1,
+      });
+      if (paidOrder) return false;
       await prisma.user.update({
         where: { telegramId: userId },
         data: { subscription: 'free', trialEndsAt: null },

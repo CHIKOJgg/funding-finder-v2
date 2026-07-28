@@ -556,18 +556,18 @@ async function start() {
     server.listen(config.port, () => {
       logger.info(`Funding Finder v2 listening at http://localhost:${config.port}`);
       logger.info(`Environment: ${config.nodeEnv}`);
-       wsManager.init(server);
-       initJobQueues();
-       startAlertEvaluator();
-       startDailySummary();
-       startDataArchival();
-       startFundingWarmup();
-        startNowPaymentsPolling();
-        startMarketDataRefresh();
-         startTelegramBot();
-          startPublicSignalChannel();
-          startWeeklyReport();
-          void startSelfPing();
+wsManager.init(server);
+  initJobQueues();
+  startAlertEvaluator();
+  startDailySummary();
+  startDataArchival();
+  startFundingWarmup();
+  startNowPaymentsPolling();
+  startMarketDataRefresh();
+  startTelegramBot();
+  startPublicSignalChannel();
+  startWeeklyReport();
+  void startSelfPing();
       });
   } catch (err) {
     logger.error('Failed to start server:', err);

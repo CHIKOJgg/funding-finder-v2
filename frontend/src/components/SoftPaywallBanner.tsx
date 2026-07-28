@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../App';
 import { TrialCTA } from './TrialCTA';
@@ -12,11 +12,25 @@ interface SoftPaywallBannerProps {
   onUpgrade?: () => void;
 }
 
+const DISMISS_KEY = 'soft_paywall_dismissed';
+
 export function SoftPaywallBanner({ used, total, featureLabel, onUpgrade }: SoftPaywallBannerProps) {
   const t = useT();
   const navigate = useNavigate();
   const { subscription } = useApp();
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(DISMISS_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (dismissed) {
+      try { localStorage.setItem(DISMISS_KEY, 'true'); } catch { /* ignore */ }
+    }
+  }, [dismissed]);
 
   if (dismissed || subscription !== 'free') return null;
 

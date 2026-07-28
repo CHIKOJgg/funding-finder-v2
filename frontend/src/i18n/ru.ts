@@ -303,7 +303,7 @@ export const ru: Record<string, string> = {
   'paywall.equivalentTo': 'Эквивалент ${price}/',
   'paywall.exitOffer': 'Подождите — специальное предложение для вас!',
   'paywall.exitOfferDesc': 'Получите скидку 10% на первый месяц по промокоду SAVE10',
-  'paywall.claimOffer': 'Получить скидку — ${price}/мес',
+  'paywall.claimOffer': 'Получить 10% скидку — используйте код SAVE10',
   'paywall.maybeLater': 'Может, позже',
 
   // Settings

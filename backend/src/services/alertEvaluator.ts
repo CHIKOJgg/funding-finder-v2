@@ -115,9 +115,9 @@ async function evaluateAllAlerts(): Promise<void> {
     triggeredAlerts.push(...arbitrageTriggered);
   }
 
-   if (triggeredAlerts.length === 0) return;
+  if (triggeredAlerts.length === 0) return;
 
-   // Batch update all triggered alerts
+  // Batch update all triggered alerts
   const now2 = new Date();
   const alertUpdates: Promise<any>[] = [];
   const triggerCreates: Promise<any>[] = [];
@@ -162,76 +162,64 @@ async function evaluateAllAlerts(): Promise<void> {
   for (const u of tgUsers) userMap.set(u.telegramId, u);
   for (const u of webUsers) userMap.set(u.id, u);
 
-  // Send notifications (Telegram + Email)
+  // Send notifications (Telegram + Email + Pushover)
   const notifications: Promise<any>[] = [];
   for (const triggered of triggeredAlerts) {
     const user = userMap.get(triggered.userId);
-    if (user) {
-      const chatId = parseInt(triggered.userId.replace('tg_', ''), 10);
-      if (chatId && !isNaN(chatId)) {
-        notifications.push(
-          sendAlertNotification(chatId, triggered.type, triggered.data).catch((err) =>
-            logger.error({ err, alertId: triggered.alertId }, 'Failed to send Telegram notification')
-          )
-        );
-      }
-      // Send email notification if user has email enabled
-      const sendEmailNotification = async () => {
-        try {
-          const settings = await prisma.userSettings.findUnique({ where: { userId: user.id } });
-          if (settings?.emailNotifications && settings?.emailAddress) {
-            await sendAlertEmail(settings.emailAddress, triggered.type, triggered.data);
-          }
-        } catch (err) {
-          logger.debug({ err, userId: user.id }, 'Failed to send email notification');
-        }
-      };
-      notifications.push(sendEmailNotification());
-
-      // Send Pushover notification if the user enabled it and supplied a key.
-      const sendPushoverNotification = async () => {
-        try {
-          const settings = await prisma.userSettings.findUnique({ where: { userId: user.id } });
-          if (settings?.pushoverNotifications && settings?.pushoverKey) {
-            await sendPushoverAlert(
-              settings.pushoverKey,
-              settings.pushoverDevice,
-              triggered.type,
-              triggered.data
-            );
-          }
-        } catch (err) {
-          logger.debug({ err, userId: user.id }, 'Failed to send Pushover notification');
-        }
-      };
-      notifications.push(sendPushoverNotification());
-
-      // Fire B2B webhooks for partners who subscribed to this event type
-      if (triggered.type === 'general' && triggered.data.currentRate !== undefined) {
-        notifications.push(
-          fireFundingRateWebhook({
-            pair: triggered.data.pair,
-            exchange: triggered.data.exchange || '',
-            currentRate: triggered.data.currentRate,
-            threshold: triggered.data.threshold || 0,
-            condition: triggered.data.condition || '',
-          }).catch((err) =>
-            logger.error({ err, alertId: triggered.alertId }, 'Failed to fire B2B funding rate webhook')
-          )
-        );
-      } else if (triggered.type === 'arbitrage' && triggered.data.difference !== undefined) {
-        notifications.push(
-          fireArbitrageWebhook({
-            pair: triggered.data.pair,
-            exchangeA: triggered.data.exchangeA || '',
-            exchangeB: triggered.data.exchangeB || '',
-            difference: triggered.data.difference,
-            threshold: triggered.data.threshold || 0,
-          }).catch((err) =>
-            logger.error({ err, alertId: triggered.alertId }, 'Failed to fire B2B arbitrage webhook')
-          )
-        );
-      }
+    if (!user) continue;
+    const settings = settingsMap.get(triggered.userId);
+    const chatId = parseInt(triggered.userId.replace('tg_', ''), 10);
+    if (chatId && !isNaN(chatId)) {
+      notifications.push(
+        sendAlertNotification(chatId, triggered.type, triggered.data).catch((err) =>
+          logger.error({ err, alertId: triggered.alertId }, 'Failed to send Telegram notification')
+        )
+      );
+    }
+    if (settings?.emailNotifications && settings?.emailAddress) {
+      notifications.push(
+        sendAlertEmail(settings.emailAddress, triggered.type, triggered.data).catch((err) =>
+          logger.debug({ err, userId: user.id }, 'Failed to send email notification')
+        )
+      );
+    }
+    if (settings?.pushoverNotifications && settings?.pushoverKey) {
+      notifications.push(
+        sendPushoverAlert(
+          settings.pushoverKey,
+          settings.pushoverDevice,
+          triggered.type,
+          triggered.data
+        ).catch((err) =>
+          logger.debug({ err, userId: user.id }, 'Failed to send Pushover notification')
+        )
+      );
+    }
+    // Fire B2B webhooks for partners who subscribed to this event type
+    if (triggered.type === 'general' && triggered.data.currentRate !== undefined) {
+      notifications.push(
+        fireFundingRateWebhook({
+          pair: triggered.data.pair,
+          exchange: triggered.data.exchange || '',
+          currentRate: triggered.data.currentRate,
+          threshold: triggered.data.threshold || 0,
+          condition: triggered.data.condition || '',
+        }).catch((err) =>
+          logger.error({ err, alertId: triggered.alertId }, 'Failed to fire B2B funding rate webhook')
+        )
+      );
+    } else if (triggered.type === 'arbitrage' && triggered.data.difference !== undefined) {
+      notifications.push(
+        fireArbitrageWebhook({
+          pair: triggered.data.pair,
+          exchangeA: triggered.data.exchangeA || '',
+          exchangeB: triggered.data.exchangeB || '',
+          difference: triggered.data.difference,
+          threshold: triggered.data.threshold || 0,
+        }).catch((err) =>
+          logger.error({ err, alertId: triggered.alertId }, 'Failed to fire B2B arbitrage webhook')
+        )
+      );
     }
   }
 

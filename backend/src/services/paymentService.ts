@@ -255,7 +255,7 @@ export async function createOrder(
       webAppInvoiceUrl: invoiceData.web_app_invoice_url,
     };
   } catch (err: any) {
-    logger.error(`Order creation failed: ${err.message}`);
+    logger.error({ err }, 'Order creation failed');
     return { ok: false, error: err.message, orderId };
   }
 }

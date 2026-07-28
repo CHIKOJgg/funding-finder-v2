@@ -16,11 +16,12 @@ import { config } from '../config/index.js';
  */
 export function createRateLimitStore(prefix: string): Options['store'] | undefined {
   const redis = getRedis();
-  if (!redis) return undefined;
+  if (!redis) {
+    logger.warn(`Redis unavailable — rate limiter for ${prefix} uses in-memory store (limits per-pod only)`);
+    return undefined;
+  }
   try {
     return new RedisStore({
-      // rate-limit-redis v4 talks to the store via a raw command sender; ioredis
-      // exposes exactly this shape via `call`.
       sendCommand: (...args: string[]) => (redis as any).call(...args),
       prefix: `rl:${prefix}:`,
     });

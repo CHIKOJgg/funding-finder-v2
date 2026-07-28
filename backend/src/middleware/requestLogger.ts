@@ -4,7 +4,6 @@ import { logger } from '../utils/logger.js';
 
 export function requestId(req: Request, _res: Response, next: NextFunction) {
   const id = req.headers['x-request-id'] as string || crypto.randomUUID();
-  req.headers['x-request-id'] = id;
   next();
 }
 

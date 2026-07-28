@@ -75,7 +75,7 @@ router.post('/log', (req, res) => {
       const msg = `[client ${sessionId} u:${userId} v:${appVersion}] ${sanitizeString(e?.scope || '?')}: ${sanitizeString(e?.msg || '')}`;
       const data = sanitizeData(e?.data);
       // Mirror into the server log stream.
-      logger[level]({ clientSession: sessionId, clientUser: userId }, msg, data);
+      logger[level]({ clientSession: sessionId, clientUser: userId, clientData: data }, msg);
       clientLogBuffer.push({ t: e?.t || Date.now(), level, sessionId, userId, msg, data });
     }
     if (clientLogBuffer.length > CLIENT_LOG_MAX) {

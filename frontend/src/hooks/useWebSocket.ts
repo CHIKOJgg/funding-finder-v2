@@ -94,8 +94,12 @@ export function useWebSocket(auth: { initData?: string | null; token?: string | 
     };
 
     ws.onclose = (event) => {
-      // Don't reconnect on auth failure — it won't fix itself.
-      if (event.code === 4001) return;
+      if (event.code === 4001) {
+        // Auth failure — attempt reconnection with fresh credentials
+        // after a short delay (token may have been refreshed).
+        reconnectTimer.current = setTimeout(connect, 5000);
+        return;
+      }
       reconnectTimer.current = setTimeout(connect, 5000);
     };
 

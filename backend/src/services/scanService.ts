@@ -136,18 +136,11 @@ export async function processScanResults(all: ExchangeResult[]): Promise<ScanRes
   const mediumYield: ExchangeResult[] = [];
   const lowYield: ExchangeResult[] = [];
 
-  // Also maintain legacy categories for backward compatibility
-  const TWELVE_HOUR_SEC = 43200;
-  const THIRTY_SIX_HOUR_SEC = 129600;
-  const hourly: ExchangeResult[] = [];
-  const twohour: ExchangeResult[] = [];
-  const fallback: ExchangeResult[] = [];
-
   // Calculate dynamic thresholds based on median hourly rate
   const hourlyRates = cleaned
     .map((x) => Math.abs(x.funding_rate_per_hour))
     .filter((rate) => rate > 0);
-  
+
   const medianHourlyRate = hourlyRates.length > 0
     ? hourlyRates.sort((a, b) => a - b)[Math.floor(hourlyRates.length / 2)]
     : 0.00001;
@@ -171,44 +164,15 @@ export async function processScanResults(all: ExchangeResult[]): Promise<ScanRes
     if (category === 'high') highYield.push(item);
     else if (category === 'medium') mediumYield.push(item);
     else lowYield.push(item);
-
-    // Legacy categorization (for backward compatibility)
-    if (item.funding_interval_seconds !== null) {
-      if (item.funding_interval_seconds <= TWELVE_HOUR_SEC) {
-        hourly.push(item);
-      } else if (item.funding_interval_seconds <= THIRTY_SIX_HOUR_SEC) {
-        twohour.push(item);
-      } else {
-        fallback.push(item);
-      }
-    } else {
-      fallback.push(item);
-    }
   }
-
-  // Sort all categories by absolute hourly rate (descending)
-  const sortByHourlyRate = (a: ExchangeResult, b: ExchangeResult) => 
-    Math.abs(b.funding_rate_per_hour) - Math.abs(a.funding_rate_per_hour);
-  
-  highYield.sort(sortByHourlyRate);
-  mediumYield.sort(sortByHourlyRate);
-  lowYield.sort(sortByHourlyRate);
-  hourly.sort(sortByHourlyRate);
-  twohour.sort(sortByHourlyRate);
-  fallback.sort(sortByHourlyRate);
-
-  logger.info(`High yield (>0.01%/h): ${highYield.length}`);
-  logger.info(`Medium yield (0.001-0.01%/h): ${mediumYield.length}`);
-  logger.info(`Low yield (<0.001%/h): ${lowYield.length}`);
-  logger.info(`Legacy hourly: ${hourly.length}, twohour: ${twohour.length}, fallback: ${fallback.length}`);
 
   const result: ScanResult = {
     highYield: highYield.slice(0, 50),
     mediumYield: mediumYield.slice(0, 50),
     lowYield: lowYield.slice(0, 50),
-    hourly: hourly.slice(0, 50),
-    twohour: twohour.slice(0, 50),
-    fallback: fallback.slice(0, 50),
+    hourly: [],
+    twohour: [],
+    fallback: [],
     scanned: cleaned.length,
     metrics: {
       minFundingUsed: dynamicMinHourly,

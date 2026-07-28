@@ -29,7 +29,7 @@ export const QrLoginModal = memo(function QrLoginModal({ onClose }: Props) {
         setCountdown(Math.ceil((res.expiresAt - Date.now()) / 1000));
 
         // Generate QR code as data URL
-        const scanUrl = `${SCAN_URL_BASE}?token=${res.token}`;
+       const scanUrl = `${SCAN_URL_BASE}#token=${res.token}`;
         const dataUrl = await QRCode.toDataURL(scanUrl, {
           width: 256,
           margin: 2,
@@ -93,7 +93,7 @@ export const QrLoginModal = memo(function QrLoginModal({ onClose }: Props) {
       setToken(res.token);
       setExpiresAt(res.expiresAt);
       setCountdown(Math.ceil((res.expiresAt - Date.now()) / 1000));
-      const scanUrl = `${SCAN_URL_BASE}?token=${res.token}`;
+       const scanUrl = `${SCAN_URL_BASE}#token=${res.token}`;
       const dataUrl = await QRCode.toDataURL(scanUrl, {
         width: 256, margin: 2,
         color: { dark: '#0f172a', light: '#ffffff' },

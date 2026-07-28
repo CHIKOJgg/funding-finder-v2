@@ -325,7 +325,7 @@ export const en: Record<string, string> = {
   'paywall.equivalentTo': 'Equivalent to ${price}/',
   'paywall.exitOffer': 'Wait — special offer just for you!',
   'paywall.exitOfferDesc': 'Get 10% off your first month with code SAVE10',
-  'paywall.claimOffer': 'Claim offer — ${price}/mo',
+  'paywall.claimOffer': 'Claim 10% off — use code SAVE10',
   'paywall.maybeLater': 'Maybe later',
 
   // Settings

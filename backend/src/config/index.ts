@@ -95,6 +95,23 @@ const prodSchema = baseSchema.extend({
   ENCRYPTION_KEY: z.string().min(32, 'ENCRYPTION_KEY must be at least 32 characters in production (used to encrypt exchange API keys)'),
 });
 
+const DEV_WEAK_SECRETS = new Set([
+  'dev-secret-change-in-production',
+  'changeme',
+  'change-me-to-random-64-chars',
+  'change-me-to-random-32-chars-min',
+]);
+
+function validateSecret(key: string, value: string, minLen: number, desc: string): string | null {
+  if (DEV_WEAK_SECRETS.has(value)) {
+    return `${key} is using a default/weak value ("${value}"). ${minLen > 0 ? `Set a strong ${desc} (>=${minLen} chars).` : 'Set a strong secret key.'}`;
+  }
+  if (minLen > 0 && value.length < minLen) {
+    return `${key} must be at least ${minLen} characters (${desc})`;
+  }
+  return null;
+}
+
 function validateEnv(): z.infer<typeof baseSchema> & {
   DATABASE_URL: string;
   TELEGRAM_BOT_TOKEN: string;
@@ -111,7 +128,16 @@ function validateEnv(): z.infer<typeof baseSchema> & {
     }).join('; ');
     throw new Error(`Environment validation failed: ${errors}`);
   }
-  return parsed.data as any;
+  const data = parsed.data as any;
+  if (isProduction) {
+    const weakJwt = validateSecret('JWT_SECRET', data.JWT_SECRET || '', 32, 'JWT signing secret');
+    const weakWebhook = validateSecret('WEBHOOK_SECRET', data.WEBHOOK_SECRET || '', 32, 'webhook signing secret');
+    const warnings = [weakJwt, weakWebhook].filter(Boolean) as string[];
+    if (warnings.length > 0) {
+      throw new Error(`Security validation failed: ${warnings.join('; ')}. Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`);
+    }
+  }
+  return data;
 }
 
 const env = validateEnv();

@@ -31,19 +31,24 @@ async function trackActivity(userId: string, authProvider: AuthProvider = 'teleg
     const tgId = userId.replace('tg_', '');
     const isAdmin = config.admin.telegramIds.includes(tgId);
     const isDevUltimate = DEV_ULTIMATE_TELEGRAM_IDS.has(tgId);
+    const now = new Date();
+    const trialEndsAt = isDevUltimate ? null : undefined;
+    const subscription = isDevUltimate ? 'proplus' : 'free';
     await prisma.user.upsert({
       where: { telegramId: userId },
       create: {
         telegramId: userId,
-        lastActive: new Date(),
+        lastActive: now,
         role: isAdmin ? 'admin' : 'user',
         authProvider,
-        subscription: isDevUltimate ? 'proplus' : 'free',
+        subscription,
+        ...(trialEndsAt ? { trialEndsAt } : {}),
       },
       update: {
-        lastActive: new Date(),
+        lastActive: now,
         role: isAdmin ? 'admin' : undefined,
         ...(isDevUltimate ? { subscription: 'proplus' } : {}),
+        ...(trialEndsAt ? { trialEndsAt } : {}),
       },
     });
     // Revert trial-derived Pro once the window has elapsed (skip for dev proplus).
@@ -171,12 +176,11 @@ function verifyInitDataHash(urlParams: URLSearchParams, hash: string): boolean {
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) {
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  } catch {
     return false;
   }
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  return crypto.timingSafeEqual(bufA, bufB);
 }
 
 export function validateExchangeList(req: Request, res: Response, next: NextFunction) {

@@ -68,32 +68,7 @@ const PLAN_COMPARE: { tier: PlanTier; labelKey: string; features: string[] }[] =
   },
 ];
 
-/**
- * Seeded random based on current day so the "upgrade count" stays stable
- * throughout a single day but drifts day-to-day, avoiding the suspicious
- * pattern of a different random number on every modal open.
- */
-function dailyUpgradeCount(): number {
-  const today = new Date();
-  const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
-  const x = Math.sin(seed) * 10000;
-  return Math.floor((x - Math.floor(x)) * 62) + 118; // 118–179
-}
 
-/**
- * Remaining spots countdown: shows a decreasing number to create urgency.
- * Resets daily; starts at ~30 and decreases based on time of day.
- */
-function remainingSpots(): number {
-  const now = new Date();
-  const hour = now.getHours();
-  const minute = now.getMinutes();
-  const elapsed = hour * 60 + minute;
-  const total = 24 * 60;
-  const startSpots = 30;
-  const spots = Math.max(3, Math.round(startSpots * (1 - elapsed / total)));
-  return spots;
-}
 
 export function PaywallModal({
   open,
@@ -111,8 +86,11 @@ export function PaywallModal({
   const [exitAttempt, setExitAttempt] = useState(false);
   const closeCountRef = useRef(0);
 
-  const upgradeCount = useMemo(() => dailyUpgradeCount(), []);
-  const spotsLeft = useMemo(() => remainingSpots(), []);
+  const [viewId] = useState(() => crypto.randomUUID());
+  const upgradeRate = useMemo(() => {
+    const base = 72 + Math.floor(Math.random() * 20);
+    return base;
+  }, [viewId]);
 
   useEffect(() => {
     if (open) track('paywall_view', { feature, billingCycle });
@@ -195,23 +173,14 @@ export function PaywallModal({
           </button>
         </div>
 
-        {/* Social proof — daily-stable count */}
-        <div
-          className="rounded-xl p-3 mb-4 flex items-center gap-2 text-sm font-semibold"
-          style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}
-        >
-          <span>💎</span>
-          <span>{t('paywall.socialProof', { count: upgradeCount })}</span>
-        </div>
-
-        {/* Urgency — remaining spots */}
+        {/* Urgency — show dynamic upgrade rate */}
         <div
           className="rounded-xl p-3 mb-4 flex items-center justify-between text-sm"
           style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.02))', border: '1px solid rgba(239,68,68,0.2)' }}
         >
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
-            <span style={{ color: '#dc2626' }} className="font-semibold">{t('paywall.urgencySpots', { count: spotsLeft })}</span>
+            <span style={{ color: '#dc2626' }} className="font-semibold">{t('paywall.upgradeRate')} — {upgradeRate}%</span>
           </div>
           <UrgencyTimer />
         </div>
@@ -335,7 +304,7 @@ export function PaywallModal({
         <div className="mb-4">
           <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
             <span>{t('paywall.upgradeRate')}</span>
-            <span>78%</span>
+            <span>{upgradeRate}%</span>
           </div>
           <div
             className="h-2 rounded-full overflow-hidden"
@@ -343,7 +312,7 @@ export function PaywallModal({
           >
             <div
               className="h-full rounded-full"
-              style={{ width: '78%', background: 'var(--brand)', transition: 'width 0.8s ease' }}
+              style={{ width: `${upgradeRate}%`, background: 'var(--brand)', transition: 'width 0.8s ease' }}
             />
           </div>
         </div>
@@ -374,7 +343,7 @@ export function PaywallModal({
           {isPro
             ? t('paywall.manageSubscription')
             : exitAttempt
-              ? t('paywall.claimOffer', { price: billingCycle === 'annual' ? PLAN_PRICES.pro.annual : PLAN_PRICES.pro.monthly })
+              ? t('paywall.claimOffer')
               : t('paywall.subscribe', { price: selectedPrice })}
         </button>
 

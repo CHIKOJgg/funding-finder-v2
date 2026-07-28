@@ -385,7 +385,21 @@ router.delete('/users/:id', async (req: AuthenticatedRequest, res: Response) => 
       return res.status(404).json({ ok: false, error: 'User not found' });
     }
 
+    const generalAlerts = await prisma.generalAlert.findMany({
+      where: { userId: id },
+      select: { id: true },
+    });
+    const arbitrageAlerts = await prisma.arbitrageAlert.findMany({
+      where: { userId: id },
+      select: { id: true },
+    });
+    const alertIds = [
+      ...generalAlerts.map((a) => a.id),
+      ...arbitrageAlerts.map((a) => a.id),
+    ];
+
     await prisma.$transaction([
+      alertIds.length > 0 ? prisma.alertTrigger.deleteMany({ where: { alertId: { in: alertIds } } }) : null,
       prisma.generalAlert.deleteMany({ where: { userId: id } }),
       prisma.arbitrageAlert.deleteMany({ where: { userId: id } }),
       prisma.order.deleteMany({ where: { userId: id } }),
@@ -393,7 +407,7 @@ router.delete('/users/:id', async (req: AuthenticatedRequest, res: Response) => 
       prisma.paymentHistory.deleteMany({ where: { userId: id } }),
       prisma.userSettings.deleteMany({ where: { userId: id } }),
       prisma.user.delete({ where: { telegramId: id } }),
-    ]);
+    ].filter(Boolean) as any[]);
 
     logger.info({ adminId: req.userId, targetId: id }, 'Admin deleted user');
     res.json({ ok: true, message: 'User deleted' });
