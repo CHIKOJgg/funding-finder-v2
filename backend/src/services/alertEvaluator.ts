@@ -167,7 +167,7 @@ async function evaluateAllAlerts(): Promise<void> {
   for (const triggered of triggeredAlerts) {
     const user = userMap.get(triggered.userId);
     if (!user) continue;
-    const settings = settingsMap.get(triggered.userId);
+    const settings = user;
     const chatId = parseInt(triggered.userId.replace('tg_', ''), 10);
     if (chatId && !isNaN(chatId)) {
       notifications.push(

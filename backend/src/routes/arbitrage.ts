@@ -270,7 +270,7 @@ const backtestSchema = z.object({
 // GET /api/arbitrage/backtest?pair=BTC/USDT&exchangeA=binance&exchangeB=bybit&days=30&capital=1000
 router.get('/arbitrage/backtest', validate(backtestSchema), async (req, res) => {
   try {
-    const { pair, exchangeA, exchangeB, days, capital } = req.query as {
+    const { pair, exchangeA, exchangeB, days, capital } = req.query as unknown as {
       pair: string;
       exchangeA: string;
       exchangeB: string;
