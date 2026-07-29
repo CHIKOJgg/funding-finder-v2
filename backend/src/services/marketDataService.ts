@@ -11,6 +11,7 @@ export async function upsertOpenInterest(
   openInterestUsd: number,
   timestamp: number = Date.now()
 ): Promise<void> {
+  if (typeof openInterestUsd !== 'number' || !isFinite(openInterestUsd)) return;
   const key = `${exchange}:${contract}`;
   const last = lastOiValues.get(key);
   // Skip if value hasn't changed meaningfully and last record was < 5 min ago
@@ -56,6 +57,7 @@ export async function upsertLongShortRatio(
   shortAccountRatio: number | null = null,
   timestamp: number = Date.now()
 ): Promise<void> {
+  if (typeof longShortRatio !== 'number' || !isFinite(longShortRatio)) return;
   const key = `${exchange}:${contract}`;
   const last = lastLsrValues.get(key);
   if (last && Math.abs(last.value - longShortRatio) < 0.001 && timestamp - last.timestamp < 300_000) {
@@ -111,6 +113,7 @@ export async function recordLiquidation(
   price: number,
   timestamp: number = Date.now()
 ): Promise<void> {
+  if (!isFinite(longVolUsd) || !isFinite(shortVolUsd) || !isFinite(price)) return;
   try {
     await prisma.liquidationSnapshot.create({
       data: {
