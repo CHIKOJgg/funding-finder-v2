@@ -14,7 +14,8 @@ export function LanguageSwitcher({ className = '', onChange }: { className?: str
 
   return (
     <div
-      className={`inline-flex rounded-full border border-gray-300 overflow-hidden text-xs font-medium ${className}`}
+      className={`inline-flex rounded-xl overflow-hidden text-xs font-semibold ${className}`}
+      style={{ background: 'var(--card)', border: '1px solid var(--border-2)', gap: 4, padding: 4 }}
       role="group"
       aria-label="Language"
     >
@@ -24,10 +25,11 @@ export function LanguageSwitcher({ className = '', onChange }: { className?: str
           type="button"
           onClick={() => handle(l.code)}
           aria-pressed={lang === l.code}
-          className={
+          className="min-w-[44px] py-2 px-3 rounded-lg transition-colors"
+          style={
             lang === l.code
-              ? 'px-3 py-1 bg-[var(--brand)] text-white'
-              : 'px-3 py-1 text-gray-600 hover:bg-gray-100'
+              ? { background: 'var(--cobalt)', color: 'var(--on-brand)' }
+              : { background: 'transparent', color: 'var(--text3)' }
           }
         >
           {l.label}

@@ -8,6 +8,7 @@ import { PortfolioPosition } from '../types';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { useT, useI18n } from '../i18n';
+import { IconWallet, IconChartLine, IconLink2, IconDownload, IconExternalLink, IconAlertTriangle, IconCopy } from '../components/icons';
 
 const EXCHANGES = ['binance', 'bybit', 'okx', 'gate', 'mexc', 'bitget', 'phemex', 'htx', 'hyperliquid', 'bingx', 'woo', 'coinex', 'weex', 'coinw', 'bitmart', 'blofin', 'apex', 'aster'] as const;
 const SIM_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'] as const;
@@ -123,7 +124,7 @@ export function PortfolioPage() {
       <div className="p-4">
         <h1 className="text-xl font-bold mb-1 text-[var(--text)]">{t('portfolio.title')}</h1>
         <div className="card text-center py-8 mt-4">
-          <div className="text-4xl mb-3" aria-hidden="true">💼</div>
+          <IconWallet size={40} className="block mx-auto mb-3 text-[var(--text3)]" aria-hidden />
           <p className="text-muted mb-3">{t('portfolio.lockedDesc')}</p>
           <button onClick={() => setPaywall('portfolio')} className="btn btn-primary">
             {t('portfolio.openPro')}
@@ -139,22 +140,22 @@ export function PortfolioPage() {
         <h1 className="text-xl font-bold mb-1 text-[var(--text)]">{t('portfolio.title')}</h1>
 
       <div className="flex gap-2 my-4" role="tablist">
-        <button
-          onClick={() => setTab('sim')}
-          className={tab === 'sim' ? 'btn btn-primary flex-1 text-sm py-2.5' : 'btn btn-secondary flex-1 text-sm py-2.5'}
-          role="tab"
-          aria-selected={tab === 'sim'}
-        >
-          📊 {t('portfolio.simTab')}
-        </button>
-        <button
-          onClick={() => setTab('live')}
-          className={tab === 'live' ? 'btn btn-primary flex-1 text-sm py-2.5' : 'btn btn-secondary flex-1 text-sm py-2.5'}
-          role="tab"
-          aria-selected={tab === 'live'}
-        >
-          🔗 {t('portfolio.liveTab')}
-        </button>
+          <button
+            onClick={() => setTab('sim')}
+            className={tab === 'sim' ? 'btn btn-primary flex-1 text-sm py-2.5 gap-1.5' : 'btn btn-secondary flex-1 text-sm py-2.5 gap-1.5'}
+            role="tab"
+            aria-selected={tab === 'sim'}
+          >
+            <IconChartLine className="w-4 h-4" aria-hidden /> {t('portfolio.simTab')}
+          </button>
+          <button
+            onClick={() => setTab('live')}
+            className={tab === 'live' ? 'btn btn-primary flex-1 text-sm py-2.5 gap-1.5' : 'btn btn-secondary flex-1 text-sm py-2.5 gap-1.5'}
+            role="tab"
+            aria-selected={tab === 'live'}
+          >
+            <IconLink2 className="w-4 h-4" aria-hidden /> {t('portfolio.liveTab')}
+          </button>
       </div>
 
       {tab === 'sim' ? (
@@ -197,7 +198,7 @@ export function PortfolioPage() {
               <h2 className="text-base font-semibold">{t('portfolio.positions')}</h2>
               <div className="text-right">
                 <div className="text-xs text-muted">{t('portfolio.simulatedIncome')}</div>
-                <div className={`font-bold stat ${totalIncome >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                <div className={`font-bold stat ${totalIncome >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]'}`}>
                   {totalIncome >= 0 ? '+' : ''}{formatUsd(totalIncome)} USDT
                 </div>
               </div>
@@ -386,8 +387,8 @@ const LiveTab = memo(function LiveTab({
     <>
       <div className="card mb-4">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-base font-semibold">🔗 {t('portfolio.liveExchanges')}</h2>
-          <button onClick={() => setShowKeyForm(!showKeyForm)} className="text-sm" style={{ color: 'var(--brand)' }}>
+          <h2 className="text-base font-semibold flex items-center gap-1.5"><IconLink2 className="w-4 h-4" aria-hidden /> {t('portfolio.liveExchanges')}</h2>
+          <button onClick={() => setShowKeyForm(!showKeyForm)} className="text-sm" style={{ color: 'var(--cobalt)' }}>
               {showKeyForm ? t('common.cancel') : t('portfolio.addKey')}
           </button>
         </div>
@@ -434,7 +435,7 @@ const LiveTab = memo(function LiveTab({
                     {k.permissions === 'trade' ? t('portfolio.permTradeLabel') : t('portfolio.permReadLabel')}
                   </span>
                 </div>
-                <button onClick={() => onDeleteKey(k.id)} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>
+                <button onClick={() => onDeleteKey(k.id)} className="text-xs text-[var(--red)] hover:underline">{t('common.delete')}</button>
               </div>
             ))}
           </div>
@@ -449,7 +450,9 @@ const LiveTab = memo(function LiveTab({
               {loading ? t('portfolio.updating') : t('portfolio.updated', { time: new Date(updatedAt).toLocaleTimeString(lang) })}
             </div>
             <div className="flex gap-3 justify-end">
-              <button onClick={handleExport} disabled={exporting} className="text-sm" style={{ color: 'var(--brand)' }}>⬇ CSV</button>
+              <button onClick={handleExport} disabled={exporting} className="text-sm flex items-center gap-1" style={{ color: 'var(--cobalt)' }}>
+                <IconDownload className="w-3.5 h-3.5" aria-hidden /> CSV
+              </button>
               <button onClick={refresh} disabled={loading} className="btn btn-refresh text-sm py-1.5 px-3 w-auto">{t('portfolio.refresh')}</button>
             </div>
           </div>
@@ -464,19 +467,19 @@ const LiveTab = memo(function LiveTab({
         ) : (
           <>
             <div className="grid grid-cols-3 gap-2 mb-4 text-center">
-              <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
-                <div className="text-xs text-muted">{t('portfolio.positionsCount')}</div>
-                <div className="text-lg font-bold stat">{live.totals.positions}</div>
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5">
+                <div className="text-[11px] text-[var(--text3)] leading-tight">{t('portfolio.positionsCount')}</div>
+                <div className="font-mono font-bold text-[19px] leading-snug text-[var(--text)]">{live.totals.positions}</div>
               </div>
-              <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
-                <div className="text-xs text-muted">PnL</div>
-                <div className={`text-lg font-bold stat ${live.totals.unrealized >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5">
+                <div className="text-[11px] text-[var(--text3)] leading-tight">PnL</div>
+                <div className={`font-mono font-bold text-[19px] leading-snug ${live.totals.unrealized >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]'}`}>
                   {live.totals.unrealized >= 0 ? '+' : ''}{formatUsd(live.totals.unrealized)} USDT
                 </div>
               </div>
-              <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
-                <div className="text-xs text-muted">{t('portfolio.funding')}</div>
-                <div className="text-lg font-bold stat text-green-700">+{formatUsd(live.totals.funding)} USDT</div>
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5">
+                <div className="text-[11px] text-[var(--text3)] leading-tight">{t('portfolio.funding')}</div>
+                <div className="font-mono font-bold text-[19px] leading-snug text-[var(--green)]">+{formatUsd(live.totals.funding)} USDT</div>
               </div>
             </div>
 
@@ -486,18 +489,20 @@ const LiveTab = memo(function LiveTab({
                   <strong>{exchangeLabel(ex.exchange)}{ex.label ? ` · ${ex.label}` : ''}</strong>
                   <div className="flex items-center gap-2">
                     {ex.supported === false && (
-                      <span className="text-xs chip" style={{ background: 'rgba(220,38,38,0.12)', color: '#dc2626' }}>{t('portfolio.unsupported')}</span>
+                      <span className="text-xs chip" style={{ background: 'var(--red-soft)', color: 'var(--red)' }}>{t('portfolio.unsupported')}</span>
                     )}
                     {ex.supportsTrading ? (
-                      <span className="text-xs chip" style={{ background: 'rgba(22,163,74,0.12)', color: '#16a34a' }}>{t('portfolio.tradeEnabled')}</span>
+                      <span className="text-xs chip" style={{ background: 'var(--green-soft)', color: 'var(--green)' }}>{t('portfolio.tradeEnabled')}</span>
                     ) : (
-                      <span className="text-xs chip" style={{ background: 'rgba(100,116,139,0.12)', color: '#64748b' }}>{t('portfolio.readOnly')}</span>
+                      <span className="text-xs chip" style={{ background: 'var(--bg1)', color: 'var(--text2)' }}>{t('portfolio.readOnly')}</span>
                     )}
-                    <button onClick={() => openExchange(ex.exchange, '')} className="text-xs" style={{ color: 'var(--brand)' }}              >↗ {t('portfolio.exchangeBtn')}</button>
+                    <button onClick={() => openExchange(ex.exchange, '')} className="text-xs flex items-center gap-1" style={{ color: 'var(--cobalt)' }}>
+                      <IconExternalLink className="w-3.5 h-3.5" aria-hidden /> {t('portfolio.exchangeBtn')}
+                    </button>
                   </div>
                 </div>
                 {ex.error ? (
-                  <div className="text-xs text-red-500">⚠️ {ex.error}</div>
+                  <div className="text-xs text-[var(--red)] flex items-center gap-1"><IconAlertTriangle className="w-3.5 h-3.5" aria-hidden /> {ex.error}</div>
                 ) : ex.positions.length === 0 ? (
                   <div className="text-xs text-muted">{t('portfolio.noOpenPositionsEx')}</div>
                 ) : (
@@ -512,15 +517,15 @@ const LiveTab = memo(function LiveTab({
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`font-bold ${p.unrealizedPnl >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                          <span className={`font-bold ${p.unrealizedPnl >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]'}`}>
                             {p.unrealizedPnl >= 0 ? '+' : ''}{formatUsd(p.unrealizedPnl)} USDT
                           </span>
                           {ex.permissions === 'trade' && ex.supportsTrading && (
                             <button
                               onClick={() => onAuto({ exchange: ex.exchange, symbol: p.symbol, side: p.side, notional: p.notional })}
-                              className="text-xs text-[var(--brand)] hover:underline"
+                              className="text-xs text-[var(--cobalt)] flex items-center gap-1"
                               title={t('portfolio.mirrorTitle')}
-                            >⧉ {t('portfolio.openCopy')}</button>
+                            ><IconCopy className="w-3.5 h-3.5" aria-hidden /> {t('portfolio.openCopy')}</button>
                           )}
                         </div>
                       </div>
@@ -588,7 +593,7 @@ const AutoExecuteDialog = memo(function AutoExecuteDialog({
           <p className="text-sm text-muted mb-3">
             {t('portfolio.autoDesc', { side: target.side === 'long' ? t('portfolio.long') : t('portfolio.short'), symbol: target.symbol, exchange: exchangeLabel(target.exchange) })}
           </p>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('portfolio.sizeUsdt')}</label>
+              <label className="block text-sm font-medium text-[var(--text2)] mb-1">{t('portfolio.sizeUsdt')}</label>
           <input
             type="number"
             min={1}
@@ -602,7 +607,7 @@ const AutoExecuteDialog = memo(function AutoExecuteDialog({
               {busy ? t('portfolio.opening') : t('portfolio.openConfirm')}
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-2">{t('portfolio.autoWarn')}</p>
+          <p className="text-xs text-[var(--text2)] mt-2">{t('portfolio.autoWarn')}</p>
         </div>
       </div>
     </div>
@@ -620,21 +625,21 @@ const PortfolioRow = memo(function PortfolioRow({
   const t = useT();
   const income = pnl?.fundingIncome || 0;
   return (
-    <div className="border-b border-gray-100 pb-2">
+    <div className="border-b border-[var(--border)] pb-2">
       <div className="flex justify-between items-start">
         <div>
           <strong className="text-sm">{position.exchange.toUpperCase()}: {position.pair}</strong>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-[var(--text2)]">
             {position.side === 'long' ? t('portfolio.long') : t('portfolio.short')} · {formatUsd(position.sizeUsd)} USDT · x{position.leverage}
           </div>
           {pnl && (
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-[var(--text2)]">
               ~{(pnl.hoursHeld).toFixed(1)} {t('portfolio.holdHours')}
             </div>
           )}
         </div>
         <div className="text-right">
-          <div className={`font-bold ${(income >= 0 ? 'text-green-700' : 'text-red-700')}`}>
+          <div className={`font-bold ${(income >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}`}>
             {income >= 0 ? '+' : ''}{formatUsd(income)} USDT
           </div>
           {pnl && (
@@ -642,7 +647,7 @@ const PortfolioRow = memo(function PortfolioRow({
               ≈ {(pnl.annualizedPct).toFixed(2)}{t('unit.pctPerYear')}
             </div>
           )}
-            <button onClick={onRemove} className="text-xs text-red-500 hover:underline mt-1">{t('common.delete')}</button>
+            <button onClick={onRemove} className="text-xs text-[var(--red)] hover:underline mt-1">{t('common.delete')}</button>
         </div>
       </div>
     </div>

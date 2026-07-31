@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useApp } from '../App';
 import { useT } from '../i18n';
+import { IconCalendarDays, IconCheck, IconChevronRight, IconFlame, IconLightbulb, IconPartyPopper, IconRocket, IconX } from './icons';
 
 const STEPS = [
   { key: 'exchanges', signal: 'exchanges' },
@@ -83,30 +84,38 @@ export function ActivationChecklist() {
   const pct = (total / STEPS.length) * 100;
 
   return (
-    <div className="card" style={{ borderColor: 'var(--brand)', borderWidth: 1.5 }}>
+    <div className="card" style={{ borderColor: 'var(--brand)', borderWidth: 1 }}>
       <div className="flex items-center justify-between mb-2">
-        <div className="text-sm font-bold" style={{ color: 'var(--brand)' }}>
-          {allDone ? '🎉 ' + t('activation.done') : '🚀 ' + t('activation.title')}
+        <div className="text-sm font-bold flex items-center gap-1.5" style={{ color: 'var(--brand)' }}>
+          {allDone ? (
+            <>
+              <IconPartyPopper size={16} className="shrink-0" /> {t('activation.done')}
+            </>
+          ) : (
+            <>
+              <IconRocket size={16} className="shrink-0" /> {t('activation.title')}
+            </>
+          )}
         </div>
         <button
           onClick={() => {
             try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* ignore */ }
             setDismissed(true);
           }}
-          className="text-xs text-[var(--text-muted)] px-1"
+          className="text-xs text-[var(--text-muted)] px-1 flex items-center justify-center w-8 h-8"
           aria-label="Dismiss"
         >
-          ✕
+          <IconX size={14} />
         </button>
       </div>
 
-      {/* Gamification: fire emoji + count */}
+      {/* Gamification: streak badge + count */}
       {!allDone && (
         <div
           className="rounded-lg p-2 mb-2 text-xs font-semibold flex items-center gap-1.5"
-          style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}
+          style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}
         >
-          <span>🔥</span>
+          <IconFlame size={14} className="shrink-0" />
           <span>{total}/{STEPS.length} done — {STEPS.length - total} remaining</span>
         </div>
       )}
@@ -138,10 +147,16 @@ export function ActivationChecklist() {
               className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all"
               style={{
                 background: done[i] ? 'var(--green)' : i === nextStepIdx ? 'var(--brand)' : 'var(--surface-2)',
-                color: done[i] ? '#fff' : i === nextStepIdx ? '#fff' : 'var(--text-muted)',
+                color: done[i] ? 'var(--on-success)' : i === nextStepIdx ? 'var(--on-brand)' : 'var(--text-muted)',
               }}
             >
-              {done[i] ? '✓' : i === nextStepIdx ? '→' : i + 1}
+              {done[i] ? (
+                <IconCheck size={10} />
+              ) : i === nextStepIdx ? (
+                <IconChevronRight size={10} />
+              ) : (
+                i + 1
+              )}
             </span>
             <div className={done[i] ? 'line-through text-[var(--text-muted)]' : ''}>
               <div className="font-medium leading-tight">{stepTitles[i]}</div>
@@ -153,17 +168,18 @@ export function ActivationChecklist() {
       {/* Next step hint */}
       {!allDone && nextStepIdx >= 0 && (
         <p className="text-xs mt-2 flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-          <span>💡</span>
+          <IconLightbulb size={14} className="shrink-0" />
           <span>{stepSub[nextStepIdx]}</span>
         </p>
       )}
 
       {/* Retention hint */}
       {daysSinceOpen >= 1 && !allDone && (
-        <p className="text-xs mt-2 text-center" style={{ color: 'var(--amber)' }}>
+        <p className="text-xs mt-2 text-center flex items-center justify-center gap-1" style={{ color: 'var(--amber)' }}>
+          <IconCalendarDays size={14} className="shrink-0" />
           {daysSinceOpen >= 7
-            ? '📆 Day ' + daysSinceOpen + ' — complete activation to unlock full potential'
-            : '📆 ' + daysSinceOpen + 'd since start — finish setup'}
+            ? 'Day ' + daysSinceOpen + ' — complete activation to see everything'
+            : daysSinceOpen + 'd since start — finish setup'}
         </p>
       )}
     </div>

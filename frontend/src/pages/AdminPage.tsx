@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { IconChevronLeft, IconChevronRight } from '../components/icons';
 import { apiClient } from '../api/client';
 import { useT } from '../i18n';
 
@@ -78,6 +80,26 @@ interface Funnel {
     appToTrialPct: number;
   }>;
   totalLandingViews: number;
+}
+
+type StatTone = 'cobalt' | 'green' | 'amber' | 'red' | 'neutral';
+
+const STAT_TONES: Record<StatTone, { bg: string; fg: string; label: string }> = {
+  cobalt: { bg: 'var(--cobalt-soft)', fg: 'var(--cobalt-text)', label: 'var(--text2)' },
+  green: { bg: 'var(--green-soft)', fg: 'var(--green)', label: 'var(--text2)' },
+  amber: { bg: 'var(--amber-soft)', fg: 'var(--amber)', label: 'var(--text2)' },
+  red: { bg: 'var(--red-soft)', fg: 'var(--red)', label: 'var(--text2)' },
+  neutral: { bg: 'var(--surface-2)', fg: 'var(--text)', label: 'var(--text3)' },
+};
+
+function StatCard({ value, label, tone = 'neutral', size = 'lg' }: { value: ReactNode; label: string; tone?: StatTone; size?: 'lg' | 'md' }) {
+  const c = STAT_TONES[tone];
+  return (
+    <div className="p-3 rounded-lg" style={{ background: c.bg }}>
+      <div className={`font-bold font-mono ${size === 'lg' ? 'text-2xl' : ''}`} style={{ color: c.fg }}>{value}</div>
+      <div className="text-sm" style={{ color: c.label }}>{label}</div>
+    </div>
+  );
 }
 
 export function AdminPage() {
@@ -192,36 +214,36 @@ export function AdminPage() {
   };
 
   if (!user) {
-    return       <div className="p-4 text-center text-gray-500">{t('admin.loginRequired')}</div>;
+    return       <div className="p-4 text-center text-[var(--text3)]">{t('admin.loginRequired')}</div>;
   }
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
       <div className="card">
         <h1 className="text-xl font-bold mb-2 text-[var(--text)]">Admin Panel</h1>
-          <p className="text-sm text-gray-600 mb-4">{t('admin.subtitle')}</p>
+          <p className="text-sm text-[var(--text2)] mb-4">{t('admin.subtitle')}</p>
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setTab('stats')}
-            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'stats' ? 'bg-[var(--brand)] text-white' : 'bg-gray-200 text-[var(--text-muted)]'}`}
+            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'stats' ? 'bg-[var(--cobalt)] text-[var(--on-brand)]' : 'bg-[var(--surface-2)] text-[var(--text3)]'}`}
           >
             {t('admin.stats')}
           </button>
           <button
             onClick={() => setTab('users')}
-            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'users' ? 'bg-[var(--brand)] text-white' : 'bg-gray-200 text-[var(--text-muted)]'}`}
+            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'users' ? 'bg-[var(--cobalt)] text-[var(--on-brand)]' : 'bg-[var(--surface-2)] text-[var(--text3)]'}`}
           >
             {t('admin.users')}
           </button>
           <button
             onClick={() => setTab('metrics')}
-            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'metrics' ? 'bg-[var(--brand)] text-white' : 'bg-gray-200 text-[var(--text-muted)]'}`}
+            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'metrics' ? 'bg-[var(--cobalt)] text-[var(--on-brand)]' : 'bg-[var(--surface-2)] text-[var(--text3)]'}`}
           >
             {t('admin.metrics')}
           </button>
           <button
             onClick={() => setTab('funnel')}
-            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'funnel' ? 'bg-[var(--brand)] text-white' : 'bg-gray-200 text-[var(--text-muted)]'}`}
+            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'funnel' ? 'bg-[var(--cobalt)] text-[var(--on-brand)]' : 'bg-[var(--surface-2)] text-[var(--text3)]'}`}
           >
             {t('admin.funnel')}
           </button>
@@ -233,29 +255,17 @@ export function AdminPage() {
           <div className="card">
             <h2 className="text-lg font-semibold mb-3">{t('admin.usersSection')}</h2>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-700">{stats.users.total}</div>
-                <div className="text-blue-600">{t('admin.total')}</div>
-              </div>
-              <div className="p-3 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-700">{stats.users.today}</div>
-                <div className="text-green-600">{t('admin.today')}</div>
-              </div>
-              <div className="p-3 bg-yellow-50 rounded-lg">
-                <div className="text-2xl font-bold text-yellow-700">{stats.users.activeWeek}</div>
-                <div className="text-yellow-600">{t('admin.active7')}</div>
-              </div>
-              <div className="p-3 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-700">{stats.users.activeMonth}</div>
-                <div className="text-purple-600">{t('admin.active30')}</div>
-              </div>
+              <StatCard value={stats.users.total} label={t('admin.total')} tone="cobalt" />
+              <StatCard value={stats.users.today} label={t('admin.today')} tone="green" />
+              <StatCard value={stats.users.activeWeek} label={t('admin.active7')} tone="amber" />
+              <StatCard value={stats.users.activeMonth} label={t('admin.active30')} tone="cobalt" />
             </div>
             {Object.keys(stats.users.bySubscription).length > 0 && (
               <div className="mt-3">
                 <p className="text-sm font-medium mb-1">{t('admin.bySubscription')}</p>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(stats.users.bySubscription).map(([plan, count]) => (
-                    <span key={plan} className="text-xs bg-gray-100 px-2 py-1 rounded">{plan}: {String(count)}</span>
+                    <span key={plan} className="text-xs bg-[var(--surface-2)] text-[var(--text2)] px-2 py-1 rounded">{plan}: {String(count)}</span>
                   ))}
                 </div>
               </div>
@@ -265,56 +275,23 @@ export function AdminPage() {
           <div className="card">
             <h2 className="text-lg font-semibold mb-3">{t('admin.finance')}</h2>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="p-3 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-700">{stats.orders.revenue.toFixed(2)} USDT</div>
-                <div className="text-green-600">{t('admin.totalRevenue')}</div>
-              </div>
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-700">{stats.orders.revenueToday.toFixed(2)} USDT</div>
-                <div className="text-blue-600">{t('admin.revenueToday')}</div>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="text-2xl font-bold">{stats.orders.total}</div>
-                <div className="text-gray-600">{t('admin.totalOrders')}</div>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="text-2xl font-bold">{stats.orders.today}</div>
-                <div className="text-gray-600">{t('admin.ordersToday')}</div>
-              </div>
+              <StatCard value={`${stats.orders.revenue.toFixed(2)} USDT`} label={t('admin.totalRevenue')} tone="green" />
+              <StatCard value={`${stats.orders.revenueToday.toFixed(2)} USDT`} label={t('admin.revenueToday')} tone="cobalt" />
+              <StatCard value={stats.orders.total} label={t('admin.totalOrders')} />
+              <StatCard value={stats.orders.today} label={t('admin.ordersToday')} />
             </div>
           </div>
 
           <div className="card">
             <h2 className="text-lg font-semibold mb-3">{t('admin.system')}</h2>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="font-bold">{formatUptime(stats.system.uptime)}</div>
-                <div className="text-gray-600">{t('admin.uptime')}</div>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="font-bold">{stats.system.memory.heapUsed} MB</div>
-                <div className="text-gray-600">Heap Used</div>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="font-bold">{stats.system.memory.rss} MB</div>
-                <div className="text-gray-600">RSS</div>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="font-bold">{stats.system.websocket.connected}</div>
-                <div className="text-gray-600">WebSocket</div>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="font-bold">{stats.system.cacheSize}</div>
-                <div className="text-gray-600">{t('admin.cache')}</div>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="font-bold">{stats.alerts.total}</div>
-                <div className="text-gray-600">{t('admin.alerts')}</div>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="font-bold">{stats.scans.totalRecords.toLocaleString()}</div>
-                <div className="text-gray-600">{t('admin.scanRecords')}</div>
-              </div>
+              <StatCard value={formatUptime(stats.system.uptime)} label={t('admin.uptime')} size="md" />
+              <StatCard value={`${stats.system.memory.heapUsed} MB`} label="Heap Used" size="md" />
+              <StatCard value={`${stats.system.memory.rss} MB`} label="RSS" size="md" />
+              <StatCard value={stats.system.websocket.connected} label="WebSocket" size="md" />
+              <StatCard value={stats.system.cacheSize} label={t('admin.cache')} size="md" />
+              <StatCard value={stats.alerts.total} label={t('admin.alerts')} size="md" />
+              <StatCard value={stats.scans.totalRecords.toLocaleString()} label={t('admin.scanRecords')} size="md" />
             </div>
           </div>
         </>
@@ -325,80 +302,38 @@ export function AdminPage() {
           <div className="card">
             <h2 className="text-lg font-semibold mb-3">{t('admin.metrics.acquisition')}</h2>
             <div className="grid grid-cols-3 gap-3 text-sm">
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-700">{metrics.acquisition.newUsersToday}</div>
-                <div className="text-blue-600">{t('admin.newUsersToday')}</div>
-              </div>
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-700">{metrics.acquisition.newUsers7d}</div>
-                <div className="text-blue-600">{t('admin.newUsers7d')}</div>
-              </div>
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-700">{metrics.acquisition.newUsers30d}</div>
-                <div className="text-blue-600">{t('admin.newUsers30d')}</div>
-              </div>
+              <StatCard value={metrics.acquisition.newUsersToday} label={t('admin.newUsersToday')} tone="cobalt" />
+              <StatCard value={metrics.acquisition.newUsers7d} label={t('admin.newUsers7d')} tone="cobalt" />
+              <StatCard value={metrics.acquisition.newUsers30d} label={t('admin.newUsers30d')} tone="cobalt" />
             </div>
           </div>
 
           <div className="card">
             <h2 className="text-lg font-semibold mb-3">{t('admin.metrics.funnel')}</h2>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="p-3 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-700">{metrics.funnel.paidBase}</div>
-                <div className="text-green-600">{t('admin.paidBase')}</div>
-              </div>
-              <div className="p-3 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-700">{metrics.funnel.trialActivated}</div>
-                <div className="text-purple-600">{t('admin.trialActivated')}</div>
-              </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="text-2xl font-bold">{metrics.funnel.paidOrders}</div>
-                <div className="text-gray-600">{t('admin.paidOrders')}</div>
-              </div>
-              <div className="p-3 bg-yellow-50 rounded-lg">
-                <div className="text-2xl font-bold text-yellow-700">{metrics.funnel.trialToPaidPct}%</div>
-                <div className="text-yellow-600">{t('admin.trialToPaid')}</div>
-              </div>
-              <div className="p-3 bg-indigo-50 rounded-lg">
-                <div className="text-2xl font-bold text-indigo-700">{metrics.funnel.arppu.toFixed(2)} USDT</div>
-                <div className="text-indigo-600">{t('admin.arppu')}</div>
-              </div>
-              <div className="p-3 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-700">{metrics.funnel.totalRevenue.toFixed(2)} USDT</div>
-                <div className="text-green-600">{t('admin.totalRevenue')}</div>
-              </div>
+              <StatCard value={metrics.funnel.paidBase} label={t('admin.paidBase')} tone="green" />
+              <StatCard value={metrics.funnel.trialActivated} label={t('admin.trialActivated')} tone="cobalt" />
+              <StatCard value={metrics.funnel.paidOrders} label={t('admin.paidOrders')} />
+              <StatCard value={`${metrics.funnel.trialToPaidPct}%`} label={t('admin.trialToPaid')} tone="amber" />
+              <StatCard value={`${metrics.funnel.arppu.toFixed(2)} USDT`} label={t('admin.arppu')} tone="cobalt" />
+              <StatCard value={`${metrics.funnel.totalRevenue.toFixed(2)} USDT`} label={t('admin.totalRevenue')} tone="green" />
             </div>
           </div>
 
           <div className="card">
             <h2 className="text-lg font-semibold mb-3">{t('admin.metrics.retention')}</h2>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="p-3 bg-teal-50 rounded-lg">
-                <div className="text-2xl font-bold text-teal-700">{metrics.retention.d7Pct}%</div>
-                <div className="text-teal-600">{t('admin.retentionD7')}</div>
-              </div>
-              <div className="p-3 bg-teal-50 rounded-lg">
-                <div className="text-2xl font-bold text-teal-700">{metrics.retention.d30Pct}%</div>
-                <div className="text-teal-600">{t('admin.retentionD30')}</div>
-              </div>
+              <StatCard value={`${metrics.retention.d7Pct}%`} label={t('admin.retentionD7')} tone="green" />
+              <StatCard value={`${metrics.retention.d30Pct}%`} label={t('admin.retentionD30')} tone="green" />
             </div>
           </div>
 
           <div className="card">
             <h2 className="text-lg font-semibold mb-3">{t('admin.metrics.referrals')}</h2>
             <div className="grid grid-cols-3 gap-3 text-sm">
-              <div className="p-3 bg-orange-50 rounded-lg">
-                <div className="text-2xl font-bold text-orange-700">{metrics.referrals.referredUsers}</div>
-                <div className="text-orange-600">{t('admin.referredUsers')}</div>
-              </div>
-              <div className="p-3 bg-orange-50 rounded-lg">
-                <div className="text-2xl font-bold text-orange-700">{metrics.referrals.referredPaid}</div>
-                <div className="text-orange-600">{t('admin.referredPaid')}</div>
-              </div>
-              <div className="p-3 bg-orange-50 rounded-lg">
-                <div className="text-2xl font-bold text-orange-700">{metrics.referrals.conversionPct}%</div>
-                <div className="text-orange-600">{t('admin.refConversion')}</div>
-              </div>
+              <StatCard value={metrics.referrals.referredUsers} label={t('admin.referredUsers')} tone="amber" />
+              <StatCard value={metrics.referrals.referredPaid} label={t('admin.referredPaid')} tone="amber" />
+              <StatCard value={`${metrics.referrals.conversionPct}%`} label={t('admin.refConversion')} tone="amber" />
             </div>
           </div>
 
@@ -406,7 +341,7 @@ export function AdminPage() {
             <h2 className="text-lg font-semibold mb-3">{t('admin.metrics.source')}</h2>
             <div className="flex flex-wrap gap-2">
               {Object.entries(metrics.acquisitionBySource).map(([src, count]) => (
-                <span key={src} className="text-xs bg-gray-100 px-2 py-1 rounded">{src}: {String(count)}</span>
+                <span key={src} className="text-xs bg-[var(--surface-2)] text-[var(--text2)] px-2 py-1 rounded">{src}: {String(count)}</span>
               ))}
             </div>
           </div>
@@ -464,7 +399,7 @@ export function AdminPage() {
                 {funnel.variantComparison.map((v) => (
                   <button
                     key={v.variant}
-                    className="text-xs px-3 py-1.5 rounded bg-[var(--brand)] text-white hover:opacity-90"
+                    className="text-xs px-3 py-1.5 rounded bg-[var(--cobalt)] text-[var(--on-brand)] active:opacity-80"
                     onClick={async () => {
                       await apiClient.post('/admin/ab/promote', { variant: v.variant });
                       showToast(`Variant ${v.variant} promoted as winner`, 'success');
@@ -474,7 +409,7 @@ export function AdminPage() {
                   </button>
                 ))}
                 <button
-                  className="text-xs px-3 py-1.5 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  className="text-xs px-3 py-1.5 rounded bg-[var(--surface-2)] text-[var(--text2)] active:opacity-80"
                   onClick={async () => {
                     await apiClient.post('/admin/ab/promote', { variant: null });
                     showToast('A/B test reset — random split restored', 'success');
@@ -491,7 +426,7 @@ export function AdminPage() {
               <h2 className="text-lg font-semibold mb-3">{t('admin.funnel.bySource')}</h2>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(funnel.sourceBreakdown).map(([src, count]) => (
-                  <span key={src} className="text-xs bg-gray-100 px-2 py-1 rounded">{src}: {String(count)}</span>
+                  <span key={src} className="text-xs bg-[var(--surface-2)] text-[var(--text2)] px-2 py-1 rounded">{src}: {String(count)}</span>
                 ))}
               </div>
             </div>
@@ -512,50 +447,50 @@ export function AdminPage() {
           </div>
 
           {loading ? (
-            <div className="text-center py-8 text-gray-500">{t('common.loading')}</div>
+            <div className="text-center py-8 text-[var(--text3)]">{t('common.loading')}</div>
           ) : users.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">{t('admin.noUsers')}</div>
+            <div className="text-center py-8 text-[var(--text3)]">{t('admin.noUsers')}</div>
           ) : (
             <div className="space-y-2">
               {users.map((u) => (
-                <div key={u.telegramId} className="p-3 border border-gray-200 rounded-lg text-sm">
+                <div key={u.telegramId} className="p-3 border border-[var(--border)] rounded-lg text-sm">
                   <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">
                         {u.firstName || u.username || u.telegramId}
-                        {u.role === 'admin' && <span className="ml-1 text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">admin</span>}
+                        {u.role === 'admin' && <span className="ml-1 text-xs bg-[var(--red-soft)] text-[var(--red)] px-1.5 py-0.5 rounded">admin</span>}
                       </div>
-                      <div className="text-xs text-gray-500 truncate">
+                      <div className="text-xs text-[var(--text3)] truncate">
                         ID: {u.telegramId} · {u.username ? `@${u.username}` : ''}
                       </div>
-                      <div className="text-xs text-gray-400 mt-1">
+                      <div className="text-xs text-[var(--text3)] mt-1">
                         {t('admin.created', { created: new Date(u.createdAt).toLocaleDateString(), active: new Date(u.lastActive).toLocaleDateString() })}
                       </div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-[var(--text3)]">
                         {t('admin.counts', { orders: u._count.orders, alerts: u._count.generalAlerts + u._count.arbitrageAlerts, referrals: u._count.referrals })}
                       </div>
                     </div>
                     <div className="text-right ml-2 flex-shrink-0">
                       <div className="font-semibold">{u.subscription}</div>
-                      <div className="text-xs text-gray-500">{u.balance} USDT</div>
+                      <div className="text-xs text-[var(--text3)]">{u.balance} USDT</div>
                     </div>
                   </div>
                   <div className="flex gap-1 mt-2">
                     <button
                       onClick={() => setEditUser({ id: u.telegramId, field: 'subscription', value: u.subscription })}
-                      className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded hover:bg-blue-100"
+                      className="text-xs bg-[var(--cobalt-soft)] text-[var(--cobalt-text)] px-2 py-1 rounded active:opacity-80"
                     >
                       {t('admin.changeSubscription')}
                     </button>
                     <button
                       onClick={() => setEditUser({ id: u.telegramId, field: 'balance', value: String(u.balance) })}
-                      className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded hover:bg-green-100"
+                      className="text-xs bg-[var(--green-soft)] text-[var(--green)] px-2 py-1 rounded active:opacity-80"
                     >
                       {t('admin.changeBalance')}
                     </button>
                     <button
                       onClick={() => setDeleteConfirm(u.telegramId)}
-                      className="text-xs bg-red-50 text-red-700 px-2 py-1 rounded hover:bg-red-100 ml-auto"
+                      className="text-xs bg-[var(--red-soft)] text-[var(--red)] px-2 py-1 rounded active:opacity-80 ml-auto"
                     >
                       {t('common.delete')}
                     </button>
@@ -572,15 +507,15 @@ export function AdminPage() {
                 disabled={page <= 1}
                 className="btn text-sm py-1 px-3 w-auto"
               >
-                ← {t('admin.prev')}
+                <IconChevronLeft size={14} /> {t('admin.prev')}
               </button>
-               <span className="py-1 text-sm text-gray-600">{t('admin.page', { page, total: totalPages })}</span>
+               <span className="py-1 text-sm text-[var(--text2)]">{t('admin.page', { page, total: totalPages })}</span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
                 className="btn text-sm py-1 px-3 w-auto"
               >
-                {t('admin.next')}
+                {t('admin.next')} <IconChevronRight size={14} />
               </button>
             </div>
           )}
@@ -588,7 +523,7 @@ export function AdminPage() {
       )}
 
       {editUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-surface rounded-xl max-w-md w-full" style={{ color: 'var(--text)' }}>
             <div className="card">
               <h2 className="text-lg font-semibold mb-4">

@@ -23,14 +23,17 @@ export function WebHeader({ user, onLogout }: WebHeaderProps) {
     t('header.user');
 
   return (
-    <header
-      className="web-header"
-      style={{ background: 'var(--nav-bg)', borderColor: 'var(--border)' }}
-    >
+    <header className="web-header">
       <div className="web-header-inner">
         <div className="flex items-center gap-2">
-          <span className="text-xl" aria-hidden="true">💰</span>
-          <span className="font-bold text-[var(--text)]">Funding Finder</span>
+          <span
+            className="flex items-center justify-center font-mono text-[13px] font-extrabold"
+            style={{ width: 26, height: 26, borderRadius: 7, background: 'var(--cobalt)', color: '#FFFFFF' }}
+            aria-hidden="true"
+          >
+            ff
+          </span>
+          <span className="font-extrabold text-[17px] text-[var(--text)]">Funding Finder</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm truncate max-w-[40vw]" style={{ color: 'var(--text-muted)' }}>

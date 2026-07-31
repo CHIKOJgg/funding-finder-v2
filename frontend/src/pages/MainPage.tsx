@@ -23,8 +23,17 @@ import { InstallBanner } from '../components/InstallBanner';
 import { PullToRefresh } from '../components/PullToRefresh';
 import { ExchangeResult } from '../types';
 import { useT, useI18n } from '../i18n';
+import { IconShare2, IconArrowLeftRight, IconStar, IconBell, IconChartLine, IconLock, IconExternalLink } from '../components/icons';
 
 type SortKey = 'rate' | 'volume' | 'interval';
+
+function haptic(kind: 'light' | 'success' | 'error') {
+  try {
+    const tg = (window as any).Telegram?.WebApp;
+    if (kind === 'light') tg?.HapticFeedback?.impactOccurred?.('light');
+    else tg?.HapticFeedback?.notificationOccurred?.(kind);
+  } catch { /* no haptics available */ }
+}
 
 export function MainPage() {
   const { scanResults, scanLoading, scanStatus, runScan, selectedExchanges, setSelectedExchanges, planLimits, watchlist, user } = useApp();
@@ -64,6 +73,19 @@ export function MainPage() {
   });
   const t = useT();
   const { lang } = useI18n();
+  const [lastScanMs, setLastScanMs] = useState<number | null>(null);
+  const manualScan = useRef(false);
+  const prevScanLoading = useRef(scanLoading);
+
+  useEffect(() => {
+    if (prevScanLoading.current && !scanLoading) {
+      if (manualScan.current) {
+        manualScan.current = false;
+        haptic(scanResults ? 'success' : 'error');
+      }
+    }
+    prevScanLoading.current = scanLoading;
+  }, [scanLoading, scanResults]);
 
   // Sync state to URL search params
   useEffect(() => {
@@ -79,13 +101,17 @@ export function MainPage() {
   const handleScan = useCallback(async () => {
     if (selectedExchanges.length === 0) {
       showToast(t('main.selectExchangeError'), 'error');
+      haptic('error');
       return;
     }
     setShowAi(false);
     setShowRecommendations(false);
     // Fire-and-continue: the scan runs in shared state and keeps going even if
     // the user switches tabs; results are stored centrally.
+    manualScan.current = true;
+    const start = performance.now();
     await runScan(selectedExchanges);
+    setLastScanMs(performance.now() - start);
     setCalendarRefresh((n) => n + 1);
   }, [selectedExchanges, runScan, showToast, t]);
 
@@ -217,7 +243,10 @@ export function MainPage() {
   }, [scanLoading, scanResults]);
 
   const handleRefresh = useCallback(async () => {
+    manualScan.current = true;
+    const start = performance.now();
     await runScan(selectedExchanges);
+    setLastScanMs(performance.now() - start);
     setCalendarRefresh((n) => n + 1);
   }, [selectedExchanges, runScan]);
 
@@ -237,15 +266,38 @@ export function MainPage() {
     <div className="px-3 py-4 sm:px-4">
       <div className="flex items-center gap-3 mb-4">
         <div
-          className="w-11 h-11 rounded-2xl flex items-center justify-center text-lg font-black text-white shrink-0"
-          style={{ background: 'linear-gradient(135deg, #3390ec, #1f4fb0)' }}
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-[13px] font-extrabold text-white shrink-0 font-mono"
+          style={{ background: 'var(--cobalt)' }}
         >
-          FF
+          ff
         </div>
         <div>
           <h1 className="text-xl font-bold leading-tight text-[var(--text)]">Funding Finder</h1>
           <p className="text-sm text-muted leading-tight">{t('main.subtitle')}</p>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+        {[
+          {
+            label: t('main.kpiExchanges'),
+            value: scanResults?.metrics?.exchanges?.length ? String(scanResults.metrics.exchanges.length) : String(selectedExchanges.length),
+          },
+          {
+            label: t('main.kpiPairs'),
+            value: scanResults ? formatNumber(scanResults.scanned) : '—',
+          },
+          { label: t('main.kpiFee'), value: '0%' },
+          {
+            label: t('main.kpiTime'),
+            value: lastScanMs == null ? '—' : lastScanMs < 1000 ? '<1s' : `${(lastScanMs / 1000).toFixed(1)}s`,
+          },
+        ].map((kpi) => (
+          <div key={kpi.label} className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5">
+            <div className="text-[11px] text-[var(--text3)] leading-tight">{kpi.label}</div>
+            <div className="font-mono font-bold text-[19px] leading-snug text-[var(--text)]">{kpi.value}</div>
+          </div>
+        ))}
       </div>
 
       <InstallBanner />
@@ -254,7 +306,7 @@ export function MainPage() {
 
       {!planLimits.aiEnabled && <ActivationChecklist />}
 
-<div className="card" style={scanResults ? { position: 'sticky', top: '0', zIndex: 30, background: 'var(--surface)' } : undefined}>
+<div className="card" style={scanResults ? { position: 'sticky', top: '0', zIndex: 30, background: 'var(--surface)', paddingTop: 'var(--safe-top, 0px)' } : undefined}>
         <ExchangeSelector
           value={selectedExchanges}
           onChange={setSelectedExchanges}
@@ -327,17 +379,17 @@ export function MainPage() {
             <div className="flex gap-2">
               <button
                 onClick={handleShareCard}
-                className="btn btn-secondary text-sm py-1.5 px-3"
+                className="btn btn-secondary text-sm py-1.5 px-3 flex items-center gap-1.5"
                 title={t('main.shareCardTitle')}
               >
-                🖼 {t('main.shareCard')}
+                <IconShare2 size={14} aria-hidden /> {t('main.shareCard')}
               </button>
               <button
                 onClick={() => navigate('/arbitrage')}
-                className="btn btn-secondary text-sm py-1.5 px-3"
+                className="btn btn-secondary text-sm py-1.5 px-3 flex items-center gap-1.5"
                 title={t('main.arbSpreadsTitle')}
               >
-                ↔ {t('main.arbitrage')}
+                <IconArrowLeftRight size={14} aria-hidden /> {t('main.arbitrage')}
               </button>
             </div>
           </div>
@@ -345,22 +397,22 @@ export function MainPage() {
           {topPick && (
             <div
               className="rounded-xl p-4 mb-4 relative overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand-hover) 100%)' }}
+              style={{ background: 'var(--cobalt-soft)', border: '1px solid var(--cobalt)' }}
             >
-              <div className="text-xs font-semibold uppercase tracking-wide text-white opacity-95" title={t('main.bestOpportunityTitle')}>{t('main.bestOpportunity')}</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-[var(--cobalt-text)]" title={t('main.bestOpportunityTitle')}>{t('main.bestOpportunity')}</div>
               <div className="flex items-end justify-between mt-1">
                 <div>
-                  <div className="text-xl font-bold text-white">{topPick.exchange.toUpperCase()}: {topPick.contract}</div>
-                  <div className="text-white text-sm">
+                  <div className="text-xl font-bold text-[var(--text)]">{topPick.exchange.toUpperCase()}: {topPick.contract}</div>
+                  <div className="text-[var(--text2)] text-sm font-mono">
                     {t('main.topRateLine', { h: ((topPick.funding_rate_per_hour ?? 0) * 100).toFixed(6), d: ((topPick.funding_rate_per_day ?? 0) * 100).toFixed(4) })}
                   </div>
                 </div>
                 <button
-                  onClick={() => openExchange(topPick.exchange, topPick.contract)}
-                  className="btn text-sm py-2 px-4 shrink-0"
-                  style={{ background: '#ffffff', color: 'var(--brand)' }}
+                  onClick={() => { haptic('light'); openExchange(topPick.exchange, topPick.contract); }}
+                  className="btn text-sm py-2 px-4 shrink-0 flex items-center gap-1.5"
+                  style={{ background: 'var(--cobalt)', color: 'var(--on-brand)' }}
                 >
-                  ↗ {t('main.openPositionBtn')}
+                  <IconExternalLink size={14} aria-hidden /> {t('main.openPositionBtn')}
                 </button>
               </div>
             </div>
@@ -379,12 +431,12 @@ export function MainPage() {
               aria-label="Search results"
             />
             <button
-              onClick={() => setShowWatchlistOnly((v) => !v)}
-              className={clsx('btn text-sm py-2 w-auto px-3', showWatchlistOnly ? 'btn-primary' : 'btn-secondary')}
+              onClick={() => { haptic('light'); setShowWatchlistOnly((v) => !v); }}
+              className={clsx('btn text-sm py-2 w-auto px-3 flex items-center gap-1.5', showWatchlistOnly ? 'btn-primary' : 'btn-secondary')}
               aria-pressed={showWatchlistOnly}
               title={t('main.watchlistOnlyTitle')}
             >
-              ⭐ {watchlist.length}
+              <IconStar size={14} aria-hidden className={showWatchlistOnly ? 'fill-current' : ''} /> {watchlist.length}
             </button>
             <select
               value={sortBy}
@@ -405,11 +457,12 @@ export function MainPage() {
             {(['all', 'high', 'medium', 'low'] as const).map((key) => (
               <button
                 key={key}
-                onClick={() => setYieldFilter(key)}
-                className="text-xs px-3 py-1.5 rounded-full font-semibold whitespace-nowrap transition-all"
+                onClick={() => { haptic('light'); setYieldFilter(key); }}
+                className="text-xs px-3 py-2 rounded-full font-semibold whitespace-nowrap border transition-colors active:opacity-80"
                 style={{
-                  background: yieldFilter === key ? 'var(--brand)' : 'var(--surface-2)',
-                  color: yieldFilter === key ? '#fff' : 'var(--text-muted)',
+                  background: yieldFilter === key ? 'var(--cobalt)' : 'var(--surface-2)',
+                  color: yieldFilter === key ? 'var(--on-brand)' : 'var(--text-muted)',
+                  borderColor: yieldFilter === key ? 'var(--cobalt)' : 'var(--border)',
                 }}
               >
                 {key === 'all' && t('common.all')}
@@ -421,16 +474,16 @@ export function MainPage() {
           </div>
 
           {scanResults.metrics?.intervalDistribution && (
-            <div className="mb-4 p-3 rounded-xl" style={{ background: 'var(--brand-soft)' }}>
-                <p className="text-sm font-medium mb-1" style={{ color: 'var(--brand)' }} title={t('main.intervalDistTitle')}>{t('main.intervalDist')}</p>
+            <div className="mb-4 p-3 rounded-xl" style={{ background: 'var(--cobalt-soft)' }}>
+                <p className="text-sm font-medium mb-1" style={{ color: 'var(--cobalt-text)' }} title={t('main.intervalDistTitle')}>{t('main.intervalDist')}</p>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(scanResults.metrics.intervalDistribution).map(([interval, count]) => (
-                  <span key={interval} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--surface)', color: 'var(--text)' }}>
+                  <span key={interval} className="text-xs px-2 py-1 rounded font-mono" style={{ background: 'var(--surface)', color: 'var(--text)' }}>
                     {interval}: {String(count)}
                   </span>
                 ))}
               </div>
-                <p className="text-xs mt-1" style={{ color: 'var(--brand)' }}>
+                <p className="text-xs mt-1" style={{ color: 'var(--cobalt-text)' }}>
                   {t('main.avgInterval', { x: scanResults.metrics.averageIntervalHours?.toFixed(1) || '8' })}
                 </p>
             </div>
@@ -442,7 +495,7 @@ export function MainPage() {
               count={scanResults.highYield.length}
               items={scanResults.highYield.slice(0, 10)}
               limit={10}
-              colorClass="text-green-700"
+              colorClass="text-[var(--green)]"
               onHistory={setHistoryModal}
               onAlert={setAlertModal}
               searchQuery={searchQuery}
@@ -461,7 +514,7 @@ export function MainPage() {
               count={scanResults.mediumYield.length}
               items={scanResults.mediumYield.slice(0, 10)}
               limit={10}
-              colorClass="text-yellow-700"
+              colorClass="text-[var(--amber)]"
               onHistory={setHistoryModal}
               onAlert={setAlertModal}
               searchQuery={searchQuery}
@@ -480,7 +533,7 @@ export function MainPage() {
               count={scanResults.lowYield.length}
               items={scanResults.lowYield.slice(0, 5)}
               limit={5}
-              colorClass="text-gray-700"
+              colorClass="text-[var(--text2)]"
               onHistory={setHistoryModal}
               onAlert={setAlertModal}
               searchQuery={searchQuery}
@@ -507,14 +560,14 @@ export function MainPage() {
               disabled={actionLoading || scanLoading}
               className="btn btn-secondary flex-1"
             >
-               {t('main.aiAnalysis')} {!planLimits.aiEnabled && <span className="ml-1" aria-hidden="true">🔒</span>}
+               {t('main.aiAnalysis')} {!planLimits.aiEnabled && <span className="ml-1" aria-hidden="true"><IconLock size={14} className="inline" /></span>}
             </button>
             <button
               onClick={() => planLimits.recommendationsEnabled ? handleRecommendations() : setPaywallFeature('recommendations')}
               disabled={actionLoading || scanLoading}
               className="btn btn-success flex-1"
             >
-               {t('main.recommendations')} {!planLimits.recommendationsEnabled && <span className="ml-1" aria-hidden="true">🔒</span>}
+               {t('main.recommendations')} {!planLimits.recommendationsEnabled && <span className="ml-1" aria-hidden="true"><IconLock size={14} className="inline" /></span>}
             </button>
           </div>
           <button
@@ -853,42 +906,43 @@ const ResultItem = memo(function ResultItem({
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
-            <span className={clsx('inline-block w-2 h-2 rounded-full shrink-0', isHealthy ? 'bg-green-500' : 'bg-red-400')} aria-hidden="true" title={isHealthy ? 'Exchange responding' : 'Stale data'} />
-            <strong className="text-sm break-words">{item.exchange.toUpperCase()}: {item.contract}</strong>
+            <span className={clsx('inline-block w-2 h-2 rounded-full shrink-0', isHealthy ? 'bg-[var(--green)]' : 'bg-[var(--red)]')} aria-hidden="true" title={isHealthy ? 'Exchange responding' : 'Stale data'} />
+            <strong className="text-sm break-words font-mono">{item.exchange.toUpperCase()}: {item.contract}</strong>
             {sparklineData && <FundingSparkline data={sparklineData} width={48} height={16} />}
           </div>
           <div className="text-xs text-[var(--text-muted)]">
             {t('main.volume', { v: formatNumber(item.volume_24h_settle) })}
           </div>
           <div className="text-xs flex items-center gap-1">
-            <span className={clsx('inline-block w-2 h-2 rounded-full shrink-0', livePrice != null ? 'bg-green-500 animate-pulse' : 'bg-gray-400')} aria-hidden="true" />
-            <span className="text-[var(--text)] font-semibold">${formatPrice(price)}</span>
+            <span className={clsx('inline-block w-2 h-2 rounded-full shrink-0', livePrice != null ? 'bg-[var(--green)] animate-pulse' : 'bg-[var(--text3)]')} aria-hidden="true" />
+            <span className="text-[var(--text)] font-semibold font-mono">${formatPrice(price)}</span>
             <span className="text-[var(--text-muted)]">{t('arb.live')}</span>
           </div>
-          <div className="text-xs text-[var(--text-muted)]">
+          <div className="text-xs text-[var(--text-muted)] font-mono">
             {t('main.realRate', { r: ((item.currentFunding ?? 0) * 100).toFixed(4) })}
           </div>
-          <div className="text-xs text-[var(--text-muted)]">
+          <div className="text-xs text-[var(--text-muted)] font-mono">
             {t('main.interval', { h: item.funding_interval_hours, s: item.funding_interval_source })}
           </div>
-          <div className="text-xs text-[var(--text-muted)]">
+          <div className="text-xs text-[var(--text-muted)] font-mono">
             <CountdownTimer intervalHours={item.funding_interval_hours} className="font-medium" />
             <span className="ml-1">{t('main.untilFunding')}</span>
           </div>
         </div>
         <div className="sm:text-right">
-          <div className={clsx('font-bold break-words', getFundingColor(item.funding_rate_per_hour))}>
+          <div className={clsx('font-bold break-words font-mono', getFundingColor(item.funding_rate_per_hour))}>
             {t('main.ratePerHour', { value: ((item.funding_rate_per_hour ?? 0) * 100).toFixed(4) })}
           </div>
-          <div className="text-xs text-[var(--text-muted)]">
+          <div className="text-xs text-[var(--text-muted)] font-mono">
             {t('main.ratePerDay', { value: ((item.funding_rate_per_day ?? 0) * 100).toFixed(4) })}
           </div>
-          <div className="text-xs text-[var(--text-muted)]">
+          <div className="text-xs text-[var(--text-muted)] font-mono">
             {t('main.ratePerYear', { value: (item.annualized_rate * 100)?.toFixed(2) })}
           </div>
           <div className="flex flex-wrap gap-1.5 justify-start sm:justify-end mt-1.5">
             <button
               onClick={() => {
+                haptic('light');
                 if (!starred && planLimits.watchlistLimit >= 0 && watchlistCount >= planLimits.watchlistLimit) {
                   onWatchlistLimit();
                   return;
@@ -896,33 +950,33 @@ const ResultItem = memo(function ResultItem({
                 toggleWatchlist(item.exchange, item.contract);
               }}
               className={clsx(
-                'w-8 h-8 rounded-lg flex items-center justify-center transition-all shrink-0',
+                'w-11 h-11 rounded-lg flex items-center justify-center transition-all shrink-0 active:opacity-80',
                 starred
-                  ? 'bg-yellow-100 text-yellow-600 border border-yellow-300'
-                  : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-yellow-50 hover:text-yellow-500'
+                  ? 'bg-[var(--amber-soft)] text-[var(--amber)] border border-[var(--amber)]'
+                  : 'bg-[var(--bg1)] text-[var(--text3)] border border-[var(--border)] active:text-[var(--amber)] active:border-[var(--amber)]'
               )}
               aria-label={`${starred ? 'Remove from' : 'Add to'} watchlist ${item.exchange} ${item.contract}`}
               aria-pressed={starred}
             >
-              {starred ? '⭐' : '☆'}
+              <IconStar size={18} aria-hidden className={starred ? 'fill-current' : ''} />
             </button>
             <button
-              onClick={() => onAlert({ exchange: item.exchange, contract: item.contract })}
-              className="w-8 h-8 rounded-lg flex items-center justify-center bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-all shrink-0"
+              onClick={() => { haptic('light'); onAlert({ exchange: item.exchange, contract: item.contract }); }}
+              className="w-11 h-11 rounded-lg flex items-center justify-center bg-[var(--bg1)] text-[var(--text2)] border border-[var(--border)] active:text-[var(--cobalt-text)] active:border-[var(--cobalt)] transition-all shrink-0"
               aria-label={`Create alert for ${item.exchange} ${item.contract}`}
             >
-              🔔
+              <IconBell size={18} aria-hidden />
             </button>
             <button
-              onClick={() => onHistory({ exchange: item.exchange, contract: item.contract })}
-              className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-all shrink-0"
+              onClick={() => { haptic('light'); onHistory({ exchange: item.exchange, contract: item.contract }); }}
+              className="w-11 h-11 rounded-lg flex items-center justify-center bg-[var(--bg1)] text-[var(--text2)] border border-[var(--border)] active:text-[var(--cobalt-text)] active:border-[var(--cobalt)] transition-all shrink-0"
               aria-label={`View history for ${item.exchange} ${item.contract}`}
             >
-              📊
+              <IconChartLine size={18} aria-hidden />
             </button>
             <button
-              onClick={() => openExchange(item.exchange, item.contract)}
-                className="h-8 px-3 sm:h-9 sm:px-4 rounded-lg flex items-center justify-center bg-green-600 text-white border border-green-600 hover:bg-green-700 transition-all text-xs font-semibold shrink-0"
+              onClick={() => { haptic('light'); openExchange(item.exchange, item.contract); }}
+                className="h-11 px-3 sm:h-11 sm:px-4 rounded-lg flex items-center justify-center bg-[var(--green)] text-white border border-[var(--green)] active:opacity-80 transition-all text-xs font-semibold shrink-0"
               aria-label={`Open ${item.exchange} ${item.contract} on exchange`}
               title={t('main.openOnExchange', { contract: item.contract, exchange: exchangeLabel(item.exchange) })}
             >
@@ -947,7 +1001,7 @@ function FundingSparkline({ data, width = 60, height = 20 }: { data: number[]; w
     return `${x},${y}`;
   });
   const d = `M${pts.join(' L')}`;
-  const color = data[data.length - 1] >= data[0] ? 'var(--green, #16a34a)' : 'var(--red, #ef4444)';
+  const color = data[data.length - 1] >= data[0] ? 'var(--green)' : 'var(--red)';
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="shrink-0" aria-hidden="true">
       <path d={d} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />

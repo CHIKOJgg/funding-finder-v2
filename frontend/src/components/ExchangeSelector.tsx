@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { clsx } from 'clsx';
 import { ALL_EXCHANGES, exchangeLabel } from '../utils/exchanges';
 import { useT } from '../i18n';
+import { IconX } from './icons';
 
 interface ExchangeSelectorProps {
   value: string[];
@@ -119,9 +120,7 @@ export function ExchangeSelector({
                 aria-label={t('exchangeSelect.removeAria', { exchange: exchangeLabel(exchange) })}
               >
                 {exchangeLabel(exchange)}
-                <span className="chip-x" aria-hidden>
-                  ×
-                </span>
+                <IconX size={12} className="chip-x" aria-hidden />
               </span>
             ))}
           </div>

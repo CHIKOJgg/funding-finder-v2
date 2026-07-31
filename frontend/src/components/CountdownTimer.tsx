@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getNextFundingTime, formatCountdown } from '../utils/funding';
 import { useT } from '../i18n';
-import { clsx } from 'clsx';
 
 interface CountdownTimerProps {
   intervalHours: number;
@@ -12,7 +11,7 @@ interface CountdownTimerProps {
 
 // Live "time until next funding" badge. Re-renders every second so the user
 // knows exactly when to close the position and collect the rate.
-export function CountdownTimer({ intervalHours, className, showLabel = true, showProgress = false }: CountdownTimerProps) {
+export function CountdownTimer({ intervalHours, className, showProgress = false }: CountdownTimerProps) {
   const [now, setNow] = useState(() => Date.now());
   const t = useT();
 
@@ -31,12 +30,13 @@ export function CountdownTimer({ intervalHours, className, showLabel = true, sho
 
   return (
     <span className={className} title={t('main.fundingIn', { time: formatCountdown(remaining) })}>
-      {showLabel && <span aria-hidden="true">⏱ </span>}
-      {formatCountdown(remaining)}
+      <span className="font-mono tabular-nums">
+        {formatCountdown(remaining)}
+      </span>
       {showProgress && (
         <span className="inline-block ml-1.5 align-middle w-16 h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
           <span
-            className={clsx('block h-full rounded-full transition-all duration-1000', pct < 70 ? 'bg-blue-500' : 'bg-amber-500')}
+            className="block h-full rounded-full transition-all duration-1000 bg-[var(--cobalt)]"
             style={{ width: `${pct}%` }}
           />
         </span>

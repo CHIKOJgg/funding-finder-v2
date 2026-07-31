@@ -81,16 +81,16 @@ describe('getRiskColor', () => {
     expect(getRiskColor('HIGH')).toContain('red');
   });
 
-  it('returns yellow for MEDIUM', () => {
-    expect(getRiskColor('MEDIUM')).toContain('yellow');
+  it('returns amber for MEDIUM', () => {
+    expect(getRiskColor('MEDIUM')).toContain('amber');
   });
 
   it('returns green for LOW', () => {
     expect(getRiskColor('LOW')).toContain('green');
   });
 
-  it('returns gray for unknown', () => {
-    expect(getRiskColor('UNKNOWN')).toContain('gray');
+  it('returns neutral for unknown', () => {
+    expect(getRiskColor('UNKNOWN')).toContain('text2');
   });
 });
 
@@ -103,7 +103,7 @@ describe('getFundingColor', () => {
     expect(getFundingColor(-0.01)).toContain('red');
   });
 
-  it('returns gray for zero', () => {
-    expect(getFundingColor(0)).toContain('gray');
+  it('returns neutral for zero', () => {
+    expect(getFundingColor(0)).toContain('text2');
   });
 });

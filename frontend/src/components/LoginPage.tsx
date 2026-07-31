@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { apiClient } from '../api/client';
 import { useToast } from './Toast';
 import { useT } from '../i18n';
+import { IconCircleDollarSign, IconEye, IconEyeOff } from './icons';
 
 interface LoginProps {
   onAuthenticated: (token: string, user: any) => void;
@@ -214,9 +215,15 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--bg)' }}>
-      <div className="w-full max-w-sm rounded-2xl p-6 shadow-lg" style={{ background: 'var(--surface)', color: 'var(--text)' }}>
+      <div className="w-full max-w-sm rounded-2xl p-6" style={{ background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--text)' }}>
         <div className="text-center mb-6">
-          <div className="text-4xl mb-2" aria-hidden="true">💰</div>
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-2"
+            style={{ background: 'var(--cobalt)', color: 'var(--on-brand)' }}
+            aria-hidden="true"
+          >
+            <IconCircleDollarSign size={26} />
+          </div>
           <h1 className="text-xl font-bold text-[var(--text)]">Funding Finder</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
             {t('login.subtitle')}
@@ -225,14 +232,14 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
 
         {/* Email / password form */}
         <form onSubmit={handleEmailSubmit} className="mb-4">
-          <div className="flex gap-2 mb-3 rounded-lg overflow-hidden" style={{ border: '1px solid var(--border, #e5e7eb)' }}>
+          <div className="flex gap-2 mb-3 rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-2)' }}>
             <button
               type="button"
               onClick={() => setMode('login')}
-              className="flex-1 py-2 text-sm font-medium transition-colors"
+              className="flex-1 py-2 text-sm font-medium transition-colors min-h-[44px]"
               style={{
-                background: mode === 'login' ? 'var(--brand, #3390ec)' : 'transparent',
-                color: mode === 'login' ? '#fff' : 'var(--text)',
+                background: mode === 'login' ? 'var(--cobalt)' : 'transparent',
+                color: mode === 'login' ? 'var(--on-brand)' : 'var(--text)',
               }}
             >
               {t('login.login')}
@@ -240,10 +247,10 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
             <button
               type="button"
               onClick={() => setMode('register')}
-              className="flex-1 py-2 text-sm font-medium transition-colors"
+              className="flex-1 py-2 text-sm font-medium transition-colors min-h-[44px]"
               style={{
-                background: mode === 'register' ? 'var(--brand, #3390ec)' : 'transparent',
-                color: mode === 'register' ? '#fff' : 'var(--text)',
+                background: mode === 'register' ? 'var(--cobalt)' : 'transparent',
+                color: mode === 'register' ? 'var(--on-brand)' : 'var(--text)',
               }}
             >
               {t('login.register')}
@@ -257,7 +264,7 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
               onChange={(e) => setFirstName(e.target.value)}
               placeholder={t('login.namePlaceholder')}
               className="w-full mb-2 px-3 py-2.5 rounded-lg text-sm"
-              style={{ background: 'var(--input-bg, #f3f4f6)', color: 'var(--text)', border: '1px solid var(--border, #e5e7eb)' }}
+              style={{ background: 'var(--bg1)', color: 'var(--text)', border: '1px solid var(--border-2)' }}
             />
           )}
 
@@ -269,7 +276,7 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
             required
             autoComplete="email"
             className="w-full mb-2 px-3 py-2.5 rounded-lg text-sm"
-            style={{ background: 'var(--input-bg, #f3f4f6)', color: 'var(--text)', border: '1px solid var(--border, #e5e7eb)' }}
+            style={{ background: 'var(--bg1)', color: 'var(--text)', border: '1px solid var(--border-2)' }}
           />
 
           <div className="relative">
@@ -281,17 +288,17 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
               required
               minLength={8}
               autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-              className="w-full px-3 py-2.5 rounded-lg text-sm pr-10"
-              style={{ background: 'var(--input-bg, #f3f4f6)', color: 'var(--text)', border: '1px solid var(--border, #e5e7eb)' }}
+              className="w-full px-3 py-2.5 rounded-lg text-sm pr-12"
+              style={{ background: 'var(--bg1)', color: 'var(--text)', border: '1px solid var(--border-2)' }}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-xs opacity-50 hover:opacity-100"
+              className="absolute right-1 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center rounded-lg"
               style={{ color: 'var(--text-muted)' }}
               tabIndex={-1}
             >
-              {showPassword ? '🙈' : '👁'}
+              {showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
             </button>
           </div>
 
@@ -309,9 +316,9 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
         </form>
 
         <div className="flex items-center gap-2 mb-4">
-          <div className="flex-1 h-px" style={{ background: 'var(--border, #e5e7eb)' }} />
+          <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('login.orEmail')}</span>
-          <div className="flex-1 h-px" style={{ background: 'var(--border, #e5e7eb)' }} />
+          <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
         </div>
 
         {config.googleEnabled ? (

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, memo } from 'react';
 import QRCode from 'qrcode';
 import { apiClient } from '../api/client';
 import { useToast } from './Toast';
+import { IconCheckCircle2, IconLoader2, IconSmartphone, IconX } from './icons';
 
 interface Props {
   onClose: () => void;
@@ -108,31 +109,51 @@ export const QrLoginModal = memo(function QrLoginModal({ onClose }: Props) {
   const expired = countdown <= 0;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 380, textAlign: 'center' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h3 style={{ margin: 0 }}>📱 QR Login</h3>
-          <button onClick={onClose} className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: 14 }}>✕</button>
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl p-5 animate-slide-in"
+        style={{ background: 'var(--surface)', color: 'var(--text)', maxWidth: 380, textAlign: 'center' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold flex items-center gap-2">
+            <IconSmartphone size={20} style={{ color: 'var(--brand)' }} /> QR Login
+          </h3>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ color: 'var(--text-muted)', background: 'var(--surface-2)' }}
+            aria-label="Close"
+          >
+            <IconX size={16} />
+          </button>
         </div>
 
         {status === 'loading' && (
           <div style={{ padding: 40 }}>
-            <div className="spinner" style={{ width: 32, height: 32, margin: '0 auto' }} />
-            <p className="text-muted mt-2">Generating QR code...</p>
+            <div className="flex justify-center">
+              <IconLoader2 size={32} className="animate-spin" style={{ color: 'var(--brand)' }} />
+            </div>
+            <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>Generating QR code...</p>
           </div>
         )}
 
         {status === 'waiting' && qrDataUrl && (
           <>
-            <p className="text-sm text-muted mb-3">Scan this QR code with your desktop browser to log in</p>
+            <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>Scan this QR code with your desktop browser to log in</p>
             <div style={{ background: '#fff', display: 'inline-block', padding: 12, borderRadius: 12 }}>
               <img src={qrDataUrl} alt="QR Login" style={{ width: 256, height: 256, display: 'block' }} />
             </div>
-            <p className="text-xs text-muted mt-2">
+            <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
               {expired ? (
-                <span style={{ color: 'var(--danger)' }}>QR code expired</span>
+                <span style={{ color: 'var(--red)' }}>QR code expired</span>
               ) : (
-                <>Expires in <strong>{countdown}s</strong></>
+                <>Expires in <strong className="font-mono tabular-nums" style={{ color: 'var(--brand)' }}>{countdown}s</strong></>
               )}
             </p>
             {expired && (
@@ -145,22 +166,24 @@ export const QrLoginModal = memo(function QrLoginModal({ onClose }: Props) {
 
         {status === 'scanned' && (
           <div style={{ padding: 40 }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+            <div className="flex justify-center mb-3">
+              <IconCheckCircle2 size={48} style={{ color: 'var(--green)' }} />
+            </div>
             <p className="font-bold">Desktop browser logged in!</p>
-            <p className="text-sm text-muted">You can close this modal</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>You can close this modal</p>
           </div>
         )}
 
         {status === 'error' && (
           <div style={{ padding: 40 }}>
-            <p className="text-muted">Failed to generate QR code</p>
+            <p style={{ color: 'var(--text-muted)' }}>Failed to generate QR code</p>
             <button onClick={handleRefresh} className="btn btn-primary mt-2" style={{ width: '100%' }}>
               Try again
             </button>
           </div>
         )}
 
-        <p className="text-xs text-muted mt-3">
+        <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
           Open the QR scan page on your desktop: <strong>/qr-scan</strong>
         </p>
       </div>

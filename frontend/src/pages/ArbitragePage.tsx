@@ -15,8 +15,30 @@ import { SpotFuturesPanel } from '../components/SpotFuturesPanel';
 import { Heatmap } from '../components/Heatmap';
 import { profitCalcClient, breakEvenDays, type ClientProfit } from '../utils/profitCalc';
 import { LiquidationHeatmap } from '../components/LiquidationHeatmap';
+import {
+  IconAlertTriangle,
+  IconBell,
+  IconBellOff,
+  IconCalculator,
+  IconChartLine,
+  IconChevronDown,
+  IconChevronRight,
+  IconClock,
+  IconLightbulb,
+  IconSearch,
+  IconTrash2,
+  IconTrendingUp,
+} from '../components/icons';
 type ArbSortKey = 'apy' | 'daily' | 'hourly' | 'risk';
 type RiskFilter = 'ALL' | 'LOW' | 'MEDIUM' | 'HIGH';
+
+function haptic(kind: 'light' | 'success' | 'error') {
+  try {
+    const tg = (window as any).Telegram?.WebApp;
+    if (kind === 'light') tg?.HapticFeedback?.impactOccurred?.('light');
+    else tg?.HapticFeedback?.notificationOccurred?.(kind);
+  } catch { /* no haptics available */ }
+}
 
 // Key used to store/lookup a live price for a (exchange, symbol) pair.
 function livePriceKey(exchange: string, pair: string): string {
@@ -275,18 +297,18 @@ export function ArbitragePage() {
     <div className="px-3 py-4 sm:px-4">
       <div className="flex items-center gap-3 mb-4">
         <div
-          className="w-11 h-11 rounded-2xl flex items-center justify-center text-lg font-black text-white shrink-0"
-          style={{ background: 'linear-gradient(135deg, #3390ec, #1f4fb0)' }}
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-[13px] font-extrabold text-white shrink-0 font-mono"
+          style={{ background: 'var(--cobalt)' }}
         >
-          FF
+          ff
         </div>
         <div>
           <h1 className="text-xl font-bold leading-tight text-[var(--text)]">{t('arb.title')}</h1>
           <p className="text-sm text-muted leading-tight">{t('arb.subtitle')}</p>
         </div>
         <div className="flex items-center gap-1.5 text-xs shrink-0" title={lastUpdated ? t('arb.liveUpdated', { time: new Date(lastUpdated).toLocaleTimeString() }) : undefined}>
-          <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" aria-hidden="true" />
-          <span className="text-green-600 font-medium">{t('arb.live')}</span>
+          <span className="inline-block w-2 h-2 rounded-full bg-[var(--green)] animate-pulse" aria-hidden="true" />
+          <span className="text-[var(--green)] font-medium">{t('arb.live')}</span>
         </div>
       </div>
 
@@ -341,19 +363,19 @@ export function ArbitragePage() {
           {arbLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="p-3 rounded-lg border-l-4 border-gray-300 animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-1/3 mb-2" />
-                  <div className="h-3 bg-gray-200 rounded w-1/2 mb-2" />
+                <div key={i} className="p-3 rounded-lg border border-[var(--border)] bg-[var(--card)] animate-pulse">
+                  <div className="h-4 bg-[var(--bg2)] rounded w-1/3 mb-2" />
+                  <div className="h-3 bg-[var(--bg2)] rounded w-1/2 mb-2" />
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="h-12 bg-gray-200 rounded" />
-                    <div className="h-12 bg-gray-200 rounded" />
+                    <div className="h-12 bg-[var(--bg2)] rounded" />
+                    <div className="h-12 bg-[var(--bg2)] rounded" />
                   </div>
                 </div>
               ))}
             </div>
           ) : arbOpportunities.length === 0 ? (
             <div className="text-center py-10 text-[var(--text-muted)]">
-              <div className="text-4xl mb-3">🔍</div>
+              <IconSearch size={40} className="mx-auto mb-3 text-[var(--text3)]" aria-hidden />
               <p className="font-medium">{t('arb.noOpportunities')}</p>
               <p className="text-xs mt-1">{t('arb.noOpportunitiesHint')}</p>
             </div>
@@ -422,7 +444,7 @@ export function ArbitragePage() {
 
               {filteredOpportunities.length === 0 ? (
                   <div className="text-center py-8 text-[var(--text-muted)]">
-                    <div className="text-3xl mb-2">⏳</div>
+                    <IconClock size={32} className="mx-auto mb-2 text-[var(--text3)]" aria-hidden />
                     <p>{t('arb.noFiltered')}</p>
                     <button onClick={resetFilters} className="btn btn-secondary text-xs mt-2 py-1.5 px-3">
                       {t('common.resetFilters')}
@@ -493,10 +515,10 @@ export function ArbitragePage() {
           ) : (
             <div className="space-y-2">
               {arbAlerts.map((alert) => (
-                <div key={alert.id} className={clsx('p-3 rounded-lg border-l-4', alert.isActive ? 'border-green-500 bg-green-50' : 'border-gray-400 bg-gray-50 opacity-70')}>
+                <div key={alert.id} className={clsx('p-3 rounded-lg border bg-[var(--card)]', alert.isActive ? 'border-[var(--green)] bg-[var(--green-soft)]' : 'border-[var(--border)] opacity-70')}>
                   <div className="flex justify-between items-start">
                     <div>
-                      <strong>{alert.pair} ({alert.exchangeA} vs {alert.exchangeB})</strong>
+                      <strong className="font-mono">{alert.pair} ({alert.exchangeA} vs {alert.exchangeB})</strong>
                   <div className="text-sm text-[var(--text-muted)]">
                         {t('arb.conditionDiff', { threshold: alert.threshold })}
                       </div>
@@ -506,18 +528,20 @@ export function ArbitragePage() {
                     </div>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleToggleAlert(alert.id)}
-                        className="w-9 h-9 rounded-lg flex items-center justify-center bg-[var(--surface-2)] border border-[var(--border)] hover:bg-[var(--border)] transition-all text-base"
+                        onClick={() => { haptic('light'); handleToggleAlert(alert.id); }}
+                        className="w-11 h-11 rounded-lg flex items-center justify-center bg-[var(--bg1)] border border-[var(--border)] active:opacity-80 transition-all"
                         aria-label={alert.isActive ? 'Disable alert' : 'Enable alert'}
                       >
-                        {alert.isActive ? '🔕' : '🔔'}
+                        {alert.isActive
+                          ? <IconBellOff size={18} className="text-[var(--text2)]" aria-hidden />
+                          : <IconBell size={18} className="text-[var(--text2)]" aria-hidden />}
                       </button>
                       <button
-                        onClick={() => setDeleteConfirm(alert.id)}
-                        className="w-9 h-9 rounded-lg flex items-center justify-center bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-all text-base"
+                        onClick={() => { haptic('light'); setDeleteConfirm(alert.id); }}
+                        className="w-11 h-11 rounded-lg flex items-center justify-center bg-[var(--red-soft)] text-[var(--red)] border border-[var(--red)] active:opacity-80 transition-all"
                         aria-label="Delete alert"
                       >
-                        🗑️
+                        <IconTrash2 size={18} aria-hidden />
                       </button>
                     </div>
                   </div>
@@ -587,45 +611,44 @@ const OpportunityCard = memo(function OpportunityCard({
   const intervalA = fundA ? fundA.intervalHours : opp.intervalA_hours;
   const intervalB = fundB ? fundB.intervalHours : opp.intervalB_hours;
   return (
-    <div className={clsx('p-3 rounded-lg border-l-4', getRiskColor(opp.risk?.level))}>
+    <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--card)]">
       <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-start mb-2">
         <div className="min-w-0">
-          <strong className="break-words">{opp.pair}</strong>
+          <strong className="break-words font-mono">{opp.pair}</strong>
           <span className={clsx('ml-2 text-xs px-2 py-0.5 rounded-full', getRiskColor(opp.risk?.level))} title={t('arb.riskLevelTitle')}>
             {opp.risk?.level}
           </span>
           {opp.persistenceGrade && (
             <span className={clsx('ml-1 text-xs px-1.5 py-0.5 rounded-full font-bold', {
-              'bg-green-100 text-green-700': opp.persistenceGrade === 'A',
-              'bg-blue-100 text-blue-700': opp.persistenceGrade === 'B',
-              'bg-yellow-100 text-yellow-700': opp.persistenceGrade === 'C',
-              'bg-orange-100 text-orange-700': opp.persistenceGrade === 'D',
-              'bg-red-100 text-red-700': opp.persistenceGrade === 'F',
+              'bg-[var(--green-soft)] text-[var(--green)]': opp.persistenceGrade === 'A',
+              'bg-[var(--cobalt-soft)] text-[var(--cobalt-text)]': opp.persistenceGrade === 'B',
+              'bg-[var(--amber-soft)] text-[var(--amber)]': opp.persistenceGrade === 'C' || opp.persistenceGrade === 'D',
+              'bg-[var(--red-soft)] text-[var(--red)]': opp.persistenceGrade === 'F',
             })} title={t('arb.persistenceTitle')}>
               {t('arb.persistenceGrade', { grade: opp.persistenceGrade })}
             </span>
           )}
-           <div className="text-xs text-[var(--text-muted)] mt-0.5" title={t('arb.untilFundingTitle')}>
+           <div className="text-xs text-[var(--text-muted)] mt-0.5 font-mono" title={t('arb.untilFundingTitle')}>
               <CountdownTimer intervalHours={opp.intervalA_hours} className="font-medium" showProgress /> {t('arb.untilFundingEx', { ex: opp.exchangeA })}
           </div>
         </div>
         <div className="sm:text-right">
           <div className="flex items-baseline gap-1 justify-end">
-            <span className="text-lg font-bold text-[var(--success)]" title={t('arb.apyTitle')}>
+            <span className="text-lg font-bold font-mono text-[var(--green)]" title={t('arb.apyTitle')}>
               {opp.profit?.annualReturn?.toFixed(1)}%
             </span>
             <span className="text-xs font-normal text-[var(--text-muted)]">{t('arb.netApy')}</span>
           </div>
           {opp.score != null && (
-            <div className="text-xs text-[var(--text-muted)]">
+            <div className="text-xs text-[var(--text-muted)] font-mono">
               {t('arb.compositeScore')} <span className="font-semibold text-[var(--text)]">{opp.score.toFixed(1)}</span>
             </div>
           )}
-           <div className="text-xs text-[var(--text-muted)]" title={t('arb.dailySpreadTitle')}>
+           <div className="text-xs text-[var(--text-muted)] font-mono" title={t('arb.dailySpreadTitle')}>
             {t('arb.grossLabel')}: {(opp.profit?.grossDaily != null ? (opp.profit.grossDaily / 1000 * 100).toFixed(1) : '—')}% · {t('arb.fees')}: {(opp.profit?.fees != null ? (opp.profit.fees / 1000 * 100).toFixed(2) : '—')}% · {t('arb.slippage')}: {(opp.profit?.slippage != null ? (opp.profit.slippage / 1000 * 100).toFixed(2) : '—')}%
             </div>
             {opp.accumulated && (
-              <div className="text-[10px] text-[var(--text-muted)]">
+              <div className="text-[10px] text-[var(--text-muted)] font-mono">
                 {t('arb.accumulated')} {t('arb.accumulatedD1')}:{(opp.accumulated.d1 * 100).toFixed(2)}% / {t('arb.accumulatedD7')}:{(opp.accumulated.d7 * 100).toFixed(2)}%
               </div>
             )}
@@ -633,8 +656,8 @@ const OpportunityCard = memo(function OpportunityCard({
             {(() => {
               const minVol = Math.min(opp.volumeA || 0, opp.volumeB || 0);
               const label = minVol > 10_000_000 ? t('arb.oiSignalHigh') : minVol > 1_000_000 ? t('arb.oiSignalMed') : minVol > 100_000 ? t('arb.oiSignalLow') : t('arb.oiSignalThin');
-              const color = minVol > 10_000_000 ? 'text-green-600' : minVol > 1_000_000 ? 'text-blue-600' : minVol > 100_000 ? 'text-yellow-600' : 'text-red-500';
-              return <span className={color}>● {t('arb.oiSignal')}: {label} (${minVol > 1_000_000 ? `${(minVol / 1_000_000).toFixed(1)}M` : `${(minVol / 1_000).toFixed(0)}K`})</span>;
+              const color = minVol > 10_000_000 ? 'bg-[var(--green)]' : minVol > 1_000_000 ? 'bg-[var(--cobalt-text)]' : minVol > 100_000 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]';
+              return <span className="flex items-center gap-1"><span className={clsx('inline-block w-1.5 h-1.5 rounded-full shrink-0', color)} aria-hidden="true" />{t('arb.oiSignal')}: {label} (${minVol > 1_000_000 ? `${(minVol / 1_000_000).toFixed(1)}M` : `${(minVol / 1000).toFixed(0)}K`})</span>;
             })()}
           </div>
         </div>
@@ -662,16 +685,16 @@ const OpportunityCard = memo(function OpportunityCard({
       </div>
 
       {opp.intervalMismatch && (
-        <div className="text-xs text-orange-600 mb-2 bg-orange-50 p-2 rounded">
+        <div className="text-xs text-[var(--amber)] bg-[var(--amber-soft)] p-2 rounded-lg mb-2 font-mono">
           {t('arb.intervalMismatch', { a: opp.intervalA_hours, b: opp.intervalB_hours })}
         </div>
       )}
 
-      <div className="text-sm mb-2">
+      <div className="text-sm mb-2 font-mono">
           <div>{t('arb.fundingIncome')} +${opp.profit?.grossHourly?.toFixed(4)} {t('unit.usdtPerHour')} · +${opp.profit?.grossDaily?.toFixed(2)} {t('unit.usdtPerDay')}</div>
           <div>{t('arb.oneTimeCosts')} ${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)} USDT</div>
         <div>
-           {t('arb.netDaily')} <span className={clsx((opp.profit?.netDaily ?? 0) >= 0 ? 'text-green-600' : 'text-red-500')}>
+           {t('arb.netDaily')} <span className={clsx('font-mono', (opp.profit?.netDaily ?? 0) >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
             {(opp.profit?.netDaily ?? 0) >= 0 ? '+' : ''}${opp.profit?.netDaily?.toFixed(2)} USDT
           </span>
         </div>
@@ -684,7 +707,7 @@ const OpportunityCard = memo(function OpportunityCard({
           const cycles = Math.ceil(breakEven * 24 / intervalHours);
           return (
             <div className="text-xs text-[var(--text-muted)]">
-              {t('arb.breakEven')}: <strong className={breakEven <= 30 ? 'text-green-600' : 'text-yellow-600'}>
+              {t('arb.breakEven')}: <strong className={breakEven <= 30 ? 'text-[var(--green)]' : 'text-[var(--amber)]'}>
                 ~{breakEven.toFixed(1)} {t('unit.daysShort')} · {cycles} {t('unit.settlementCycles')}
               </strong>
             </div>
@@ -692,27 +715,26 @@ const OpportunityCard = memo(function OpportunityCard({
         })()}
       </div>
 
-      <div className="text-xs text-[var(--text-muted)] mb-2">
+      <div className="text-xs text-[var(--text-muted)] mb-2 font-mono">
           {t('arb.fees')} ${opp.profit?.fees?.toFixed(2)} USDT | {t('arb.slippage')} ${opp.profit?.slippage?.toFixed(2)} USDT
       </div>
 
-      <div className="text-sm bg-blue-50 p-2 rounded mb-2">
+      <div className="text-sm bg-[var(--cobalt-soft)] border border-[var(--cobalt)] rounded-lg p-2 mb-2">
          <strong>{t('arb.strategy')}</strong> {opp.opportunity}
       </div>
 
       {opp.risk?.reasons?.length > 0 && (
-        <div className="text-xs text-yellow-600 mb-2">
+        <div className="text-xs text-[var(--amber)] mb-2">
           {opp.risk.reasons.map((r: string, i: number) => (
-            <div key={i}>⚠️ {r}</div>
+            <div key={i} className="flex items-center gap-1">
+              <IconAlertTriangle size={12} aria-hidden className="shrink-0" /> {r}
+            </div>
           ))}
         </div>
       )}
 
       <button
-        onClick={() => {
-          openExchange(opp.exchangeA, opp.pair);
-          setTimeout(() => openExchange(opp.exchangeB, opp.pair), 400);
-        }}
+        onClick={() => { haptic('light'); openExchange(opp.exchangeA, opp.pair); setTimeout(() => openExchange(opp.exchangeB, opp.pair), 400); }}
         className="btn btn-primary text-sm py-2 w-full mb-2"
         title={t('arb.openBothTitle', { pair: opp.pair, a: exchangeLabel(opp.exchangeA), b: exchangeLabel(opp.exchangeB) })}
       >
@@ -721,26 +743,26 @@ const OpportunityCard = memo(function OpportunityCard({
 
       <div className="flex flex-wrap gap-2">
         <button
-          onClick={() => setShowCalc(!showCalc)}
+          onClick={() => { haptic('light'); setShowCalc(!showCalc); }}
           className="btn btn-success text-sm py-2 flex-[1.4]"
         >
-          💰 {showCalc ? t('arb.hideCalc') : t('arb.calculate')}
+          <IconCalculator size={16} className="inline mr-1" aria-hidden /> {showCalc ? t('arb.hideCalc') : t('arb.calculate')}
         </button>
         <button
           onClick={onCalculate}
           className="btn btn-secondary text-sm py-2 flex-1"
         >
-          📊 {t('arb.fullCalc')}
+          <IconChartLine size={16} className="inline mr-1" aria-hidden /> {t('arb.fullCalc')}
         </button>
         <button
-          onClick={() => openExchange(opp.exchangeA, opp.pair)}
+          onClick={() => { haptic('light'); openExchange(opp.exchangeA, opp.pair); }}
           className="btn btn-secondary text-sm py-2 flex-1"
           title={t('arb.openOnExchange', { pair: opp.pair, ex: exchangeLabel(opp.exchangeA) })}
       >
           {t('arb.openEx', { ex: exchangeLabel(opp.exchangeA) })}
         </button>
         <button
-          onClick={() => openExchange(opp.exchangeB, opp.pair)}
+          onClick={() => { haptic('light'); openExchange(opp.exchangeB, opp.pair); }}
           className="btn btn-secondary text-sm py-2 flex-1"
           title={t('arb.openOnExchange', { pair: opp.pair, ex: exchangeLabel(opp.exchangeB) })}
       >
@@ -763,23 +785,23 @@ const OpportunityCard = memo(function OpportunityCard({
           </div>
           <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
             <div className="text-[var(--text-muted)]">{t('arb.netDaily')}</div>
-            <div className={clsx('font-bold text-right', calcProfit.netDaily >= 0 ? 'text-green-600' : 'text-red-500')}>
+            <div className={clsx('font-bold text-right font-mono', calcProfit.netDaily >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
               ${calcProfit.netDaily.toFixed(2)}
             </div>
             <div className="text-[var(--text-muted)]">{t('arb.netApy')}</div>
-            <div className={clsx('font-bold text-right', calcProfit.netApr >= 0 ? 'text-green-600' : 'text-red-500')}>
+            <div className={clsx('font-bold text-right font-mono', calcProfit.netApr >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
               {calcProfit.netApr.toFixed(1)}%
             </div>
             <div className="text-[var(--text-muted)]">{t('arb.fees')}</div>
-            <div className="text-right">${calcProfit.fees.toFixed(2)}</div>
+            <div className="text-right font-mono">${calcProfit.fees.toFixed(2)}</div>
             <div className="text-[var(--text-muted)]">{t('arb.slippage')}</div>
-            <div className="text-right">${calcProfit.slippage.toFixed(2)}</div>
+            <div className="text-right font-mono">${calcProfit.slippage.toFixed(2)}</div>
             <div className="text-[var(--text-muted)]">{t('arb.breakEven')}</div>
-            <div className="text-right">
+            <div className="text-right font-mono">
               {(() => {
                 const be = breakEvenDays(calcProfit);
                 return (
-                  <span className={be <= 30 ? 'text-green-600' : 'text-yellow-600'}>
+                  <span className={be <= 30 ? 'text-[var(--green)]' : 'text-[var(--amber)]'}>
                     ~{be === Infinity ? '∞' : be.toFixed(1)} {t('unit.daysShort')}
                   </span>
                 );
@@ -791,10 +813,10 @@ const OpportunityCard = memo(function OpportunityCard({
 
       {priceA.value > 0 && (
         <button
-          onClick={() => setShowLiq(!showLiq)}
-          className="btn btn-secondary text-xs py-1.5 w-full mt-1"
+          onClick={() => { haptic('light'); setShowLiq(!showLiq); }}
+          className="btn btn-secondary text-xs py-2 w-full mt-1 min-h-[44px]"
         >
-          {showLiq ? '▾' : '▸'} {t('arb.liqHeatmap')}
+          {showLiq ? <IconChevronDown size={14} className="inline mr-1" aria-hidden /> : <IconChevronRight size={14} className="inline mr-1" aria-hidden />} {t('arb.liqHeatmap')}
         </button>
       )}
 
@@ -802,8 +824,8 @@ const OpportunityCard = memo(function OpportunityCard({
         <LiquidationHeatmap price={priceA.value} className="mt-1" />
       )}
 
-      <p className="text-xs text-[var(--text-muted)] mt-2 text-center">
-        💡 {t('arb.hint', { pair: opp.pair })}
+      <p className="text-xs text-[var(--text-muted)] mt-2 text-center flex items-center justify-center gap-1">
+        <IconLightbulb size={12} aria-hidden /> {t('arb.hint', { pair: opp.pair })}
       </p>
     </div>
   );
@@ -828,21 +850,21 @@ function ExchangePriceCell({
 }) {
   const t = useT();
   const valid = isFinite(price.value) && price.value > 0;
-  const fundingColor = funding > 0 ? 'text-green-600' : funding < 0 ? 'text-red-600' : 'text-gray-600';
+  const fundingColor = funding > 0 ? 'text-[var(--green)]' : funding < 0 ? 'text-[var(--red)]' : 'text-[var(--text2)]';
   return (
     <div className="rounded-lg bg-surface-2 px-3 py-2 border border-[var(--border)]">
       <div className="flex items-center justify-between gap-1">
         <span className="text-xs font-medium text-[var(--text-muted)] truncate" title={exchangeLabel(exchange)}>{exchangeLabel(exchange)}</span>
         <span className="flex items-center gap-1.5 shrink-0">
-          <span className={clsx('inline-block w-2 h-2 rounded-full', price.live ? 'bg-green-500 animate-pulse' : 'bg-gray-400')} aria-hidden="true" />
-          <span className="text-sm font-semibold text-[var(--text)]">${valid ? formatPrice(price.value) : '—'}</span>
+          <span className={clsx('inline-block w-2 h-2 rounded-full', price.live ? 'bg-[var(--green)] animate-pulse' : 'bg-[var(--text3)]')} aria-hidden="true" />
+          <span className="text-sm font-semibold font-mono text-[var(--text)]">${valid ? formatPrice(price.value) : '—'}</span>
         </span>
       </div>
       <div className="flex items-center justify-between mt-1.5 gap-1">
         <span className="text-xs text-[var(--text-muted)]">{t('arb.fundingRate')}</span>
         <span className="flex items-center gap-1.5 shrink-0">
-          <span className={clsx('inline-block w-2 h-2 rounded-full', live ? 'bg-green-500 animate-pulse' : 'bg-gray-400')} aria-hidden="true" />
-          <span className={clsx('text-xs font-semibold truncate max-w-full', fundingColor)} title={`${(funding * 100).toFixed(4)}%/${t('unit.hoursShort', { h: interval })}`}>
+          <span className={clsx('inline-block w-2 h-2 rounded-full', live ? 'bg-[var(--green)] animate-pulse' : 'bg-[var(--text3)]')} aria-hidden="true" />
+          <span className={clsx('text-xs font-semibold font-mono truncate max-w-full', fundingColor)} title={`${(funding * 100).toFixed(4)}%/${t('unit.hoursShort', { h: interval })}`}>
             {(funding * 100).toFixed(4)}{t('unit.pctPerHour')} ({t('unit.hoursShort', { h: interval })})
           </span>
         </span>
@@ -921,11 +943,11 @@ function ProfitCalculator({
         <div className="card">
           <h2 id="calculator-title" className="text-lg font-semibold mb-2">{t('arb.profitCalc')}</h2>
           <div className="text-center mb-4">
-            <div className="font-bold">{opportunity.pair}</div>
-            <div className="text-sm text-[var(--text-muted)]">{opportunity.exchangeA} vs {opportunity.exchangeB}</div>
-            <div className="text-[var(--success)] font-bold">{(opportunity.difference_per_day * 100).toFixed(4)}{t('unit.pctPerDay')}</div>
+            <div className="font-bold font-mono">{opportunity.pair}</div>
+            <div className="text-sm text-[var(--text-muted)] font-mono">{opportunity.exchangeA} vs {opportunity.exchangeB}</div>
+            <div className="text-[var(--green)] font-bold font-mono">{(opportunity.difference_per_day * 100).toFixed(4)}{t('unit.pctPerDay')}</div>
             {opportunity.intervalMismatch && (
-               <div className="text-xs text-[var(--warning)]">{t('arb.intervalMismatchShort')}</div>
+               <div className="text-xs text-[var(--amber)]">{t('arb.intervalMismatchShort')}</div>
             )}
           </div>
 
@@ -952,7 +974,7 @@ function ProfitCalculator({
           </button>
 
           <button onClick={handleBacktest} disabled={backtestLoading} className="btn btn-secondary mb-4 w-full text-sm">
-            {backtestLoading ? t('arb.calculating') : `📈 ${t('arb.backtest')}`}
+            {backtestLoading ? t('arb.calculating') : <span className="inline-flex items-center gap-1.5"><IconTrendingUp size={14} aria-hidden /> {t('arb.backtest')}</span>}
           </button>
 
           {result && (
@@ -960,20 +982,20 @@ function ProfitCalculator({
               <div className="text-xs text-[var(--text-muted)] mb-2">
                 {t('arb.netProfitNote')}
               </div>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>{t('arb.perHour')}</div>
-                <div className={clsx('font-bold', result.profit.netHourly >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>{result.profit.netHourly.toFixed(4)} USDT</div>
-                <div>{t('arb.perDay')}</div>
-                <div className={clsx('font-bold', result.profit.netDaily >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>{result.profit.netDaily.toFixed(2)} USDT</div>
-                <div>{t('arb.perWeek')}</div>
-                <div className={clsx('font-bold', result.profit.netWeekly >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>{result.profit.netWeekly.toFixed(2)} USDT</div>
-                <div>{t('arb.perYear')}</div>
-                <div className={clsx('font-bold', result.profit.netAnnual >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>{result.profit.netAnnual.toFixed(2)} USDT</div>
+              <div className="grid grid-cols-2 gap-2 text-sm font-mono">
+                <div className="font-sans">{t('arb.perHour')}</div>
+                <div className={clsx('font-bold', result.profit.netHourly >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>{result.profit.netHourly.toFixed(4)} USDT</div>
+                <div className="font-sans">{t('arb.perDay')}</div>
+                <div className={clsx('font-bold', result.profit.netDaily >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>{result.profit.netDaily.toFixed(2)} USDT</div>
+                <div className="font-sans">{t('arb.perWeek')}</div>
+                <div className={clsx('font-bold', result.profit.netWeekly >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>{result.profit.netWeekly.toFixed(2)} USDT</div>
+                <div className="font-sans">{t('arb.perYear')}</div>
+                <div className={clsx('font-bold', result.profit.netAnnual >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>{result.profit.netAnnual.toFixed(2)} USDT</div>
               </div>
-              <div className="mt-2 pt-2 border-t border-[var(--border)]">
+              <div className="mt-2 pt-2 border-t border-[var(--border)] font-mono">
                 <div className="flex justify-between">
-                  <span>{t('arb.annualReturn')}</span>
-                  <strong className={clsx(result.profit.annualReturn >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]')}>{result.profit.annualReturn.toFixed(2)}%</strong>
+                  <span className="font-sans">{t('arb.annualReturn')}</span>
+                  <strong className={result.profit.annualReturn >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]'}>{result.profit.annualReturn.toFixed(2)}%</strong>
                 </div>
               </div>
               <div className="mt-2 pt-2 border-t border-[var(--border)]">
@@ -984,9 +1006,9 @@ function ProfitCalculator({
                   const intervalHours = opportunity.intervalA_hours || 8;
                   const cycles = Math.ceil(breakEven * 24 / intervalHours);
                   return (
-                    <div className="flex justify-between text-sm">
-                      <span>{t('arb.breakEven')}</span>
-                      <strong className={breakEven > 0 && breakEven <= 30 ? 'text-green-600' : 'text-yellow-600'}>
+                    <div className="flex justify-between text-sm font-mono">
+                      <span className="font-sans">{t('arb.breakEven')}</span>
+                      <strong className={breakEven > 0 && breakEven <= 30 ? 'text-[var(--green)]' : 'text-[var(--amber)]'}>
                         {t('arb.breakEvenValue', { days: breakEven.toFixed(1), cycles })}
                       </strong>
                     </div>
@@ -998,26 +1020,26 @@ function ProfitCalculator({
 
           {backtest && backtest.available && (
             <div className="bg-[var(--surface-2)] p-3 rounded-lg mb-3">
-              <div className="text-sm font-semibold mb-2">{t('arb.backtest')} ({backtest.days}d)</div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="text-[var(--text-muted)]">{t('arb.backtestDays')}</div>
+              <div className="text-sm font-semibold mb-2 font-mono">{t('arb.backtest')} ({backtest.days}d)</div>
+              <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                <div className="text-[var(--text-muted)] font-sans">{t('arb.backtestDays')}</div>
                 <div className="text-right">{backtest.daysWithSpread} / {backtest.totalDays}</div>
-                <div className="text-[var(--text-muted)]">{t('arb.backtestWinRate')}</div>
-                <div className={clsx('text-right font-bold', backtest.winRate >= 50 ? 'text-green-600' : 'text-yellow-600')}>
+                <div className="text-[var(--text-muted)] font-sans">{t('arb.backtestWinRate')}</div>
+                <div className={clsx('text-right font-bold', backtest.winRate >= 50 ? 'text-[var(--green)]' : 'text-[var(--amber)]')}>
                   {backtest.winRate.toFixed(0)}%
                 </div>
-                <div className="text-[var(--text-muted)]">{t('arb.backtestCumulative')}</div>
+                <div className="text-[var(--text-muted)] font-sans">{t('arb.backtestCumulative')}</div>
                 <div className="text-right font-bold">{backtest.cumulativePct.toFixed(2)}%</div>
-                <div className="text-[var(--text-muted)]">{t('arb.backtestAnnualized')}</div>
-                <div className={clsx('text-right font-bold', backtest.annualizedPct >= 0 ? 'text-green-600' : 'text-red-500')}>
+                <div className="text-[var(--text-muted)] font-sans">{t('arb.backtestAnnualized')}</div>
+                <div className={clsx('text-right font-bold', backtest.annualizedPct >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
                   {backtest.annualizedPct.toFixed(1)}%
                 </div>
-                <div className="text-[var(--text-muted)]">{t('arb.backtestProfit')}</div>
-                <div className={clsx('text-right font-bold', backtest.totalProfit >= 0 ? 'text-green-600' : 'text-red-500')}>
+                <div className="text-[var(--text-muted)] font-sans">{t('arb.backtestProfit')}</div>
+                <div className={clsx('text-right font-bold', backtest.totalProfit >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
                   ${backtest.totalProfit.toFixed(2)}
                 </div>
-                <div className="text-[var(--text-muted)]">{t('arb.backtestMaxDD')}</div>
-                <div className="text-right text-red-500">${backtest.maxDrawdown.toFixed(2)}</div>
+                <div className="text-[var(--text-muted)] font-sans">{t('arb.backtestMaxDD')}</div>
+                <div className="text-right text-[var(--red)]">${backtest.maxDrawdown.toFixed(2)}</div>
               </div>
               {backtest.daily && backtest.daily.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-[var(--border)]">
@@ -1029,7 +1051,7 @@ function ProfitCalculator({
                       return (
                         <div
                           key={i}
-                          className={clsx('flex-1 rounded-t', d.profitUsd >= 0 ? 'bg-green-400' : 'bg-red-400')}
+                          className={clsx('flex-1 rounded-t', d.profitUsd >= 0 ? 'bg-[var(--green)]' : 'bg-[var(--red)]')}
                           style={{ height: `${Math.max(4, h)}%` }}
                           title={`${d.date}: $${d.profitUsd.toFixed(2)}`}
                         />

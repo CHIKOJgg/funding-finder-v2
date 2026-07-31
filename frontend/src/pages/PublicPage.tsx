@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { clsx } from 'clsx';
 import { useT } from '../i18n';
 import { exchangeLabel } from '../utils/exchanges';
+import { IconPlus } from '../components/icons';
 
 interface HeatmapEntry {
   exchange: string;
@@ -103,11 +103,14 @@ export function PublicPage() {
   return (
     <div className="px-3 py-4 sm:px-4">
       {/* Hero Section */}
-      <div className="text-center mb-6">
+      <div
+        className="rounded-2xl p-5 mb-6 text-center"
+        style={{ background: 'var(--bg1)', border: '1px solid var(--border)' }}
+      >
         <div className="inline-flex items-center gap-2 mb-3">
           <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black text-white"
-            style={{ background: 'linear-gradient(135deg, #3390ec, #1f4fb0)' }}
+            className="w-12 h-12 rounded-2xl flex items-center justify-center font-mono text-lg font-black"
+            style={{ background: 'var(--cobalt)', color: 'var(--on-brand)' }}
           >
             FF
           </div>
@@ -123,15 +126,15 @@ export function PublicPage() {
         {stats && (
           <div className="flex justify-center gap-4 sm:gap-8 mb-4 text-center">
             <div>
-              <div className="text-lg sm:text-xl font-bold text-[var(--text)]">{scanned}+</div>
+              <div className="text-lg sm:text-xl font-bold font-mono text-[var(--text)]">{scanned}+</div>
               <div className="text-xs text-[var(--text-muted)]">{t('public.statPairs')}</div>
             </div>
             <div>
-              <div className="text-lg sm:text-xl font-bold text-[var(--text)]">{stats.exCount}+</div>
+              <div className="text-lg sm:text-xl font-bold font-mono text-[var(--text)]">{stats.exCount}+</div>
               <div className="text-xs text-[var(--text-muted)]">{t('public.statExchanges')}</div>
             </div>
             <div>
-              <div className="text-lg sm:text-xl font-bold text-[var(--text)]">
+              <div className="text-lg sm:text-xl font-bold font-mono text-[var(--text)]">
                 ${(stats.totalVol / 1_000_000_000).toFixed(1)}B
               </div>
               <div className="text-xs text-[var(--text-muted)]">{t('public.statVolume')}</div>
@@ -166,11 +169,14 @@ export function PublicPage() {
 
       {loading ? (
         <div className="text-center py-12 text-[var(--text-muted)]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-3"></div>
+          <div
+            className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-3"
+            style={{ borderBottomColor: 'var(--cobalt)' }}
+          ></div>
           {t('common.loading')}
         </div>
       ) : error ? (
-        <div className="text-center py-12 text-red-500">{error}</div>
+        <div className="text-center py-12" style={{ color: 'var(--red)' }}>{error}</div>
       ) : pairs.length === 0 ? (
         <div className="text-center py-12 text-[var(--text-muted)]">{t('public.noData')}</div>
       ) : (
@@ -202,7 +208,7 @@ export function PublicPage() {
 
           {positive.length > 0 && (
             <div className="mb-4">
-              <h2 className="text-sm font-semibold text-green-700 mb-2">{t('public.positiveRates')}</h2>
+              <h2 className="text-sm font-semibold mb-2" style={{ color: 'var(--green)' }}>{t('public.positiveRates')}</h2>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -227,7 +233,7 @@ export function PublicPage() {
 
           {negative.length > 0 && (
             <div className="mb-4">
-              <h2 className="text-sm font-semibold text-red-700 mb-2">{t('public.negativeRates')}</h2>
+              <h2 className="text-sm font-semibold mb-2" style={{ color: 'var(--red)' }}>{t('public.negativeRates')}</h2>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -253,8 +259,8 @@ export function PublicPage() {
       )}
 
       {/* Bottom CTA */}
-      <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-center">
-        <p className="text-sm font-medium text-blue-900 mb-2">{t('public.cta')}</p>
+      <div className="mt-6 p-4 rounded-xl text-center" style={{ background: 'var(--cobalt-soft)', border: '1px solid var(--cobalt)' }}>
+        <p className="text-sm font-medium mb-2" style={{ color: 'var(--text)' }}>{t('public.cta')}</p>
         <div className="flex justify-center gap-3">
           <a
             href="https://t.me/FundingFinderBot"
@@ -282,10 +288,10 @@ export function PublicPage() {
               >
                 <span className="text-sm font-semibold text-[var(--text)]">{t(item.q)}</span>
                 <span
-                  className="text-lg shrink-0 transition-transform"
+                  className="shrink-0 transition-transform duration-200 flex items-center justify-center w-8 h-8"
                   style={{ color: 'var(--text-muted)', transform: openFaq === idx ? 'rotate(45deg)' : 'rotate(0deg)' }}
                 >
-                  +
+                  <IconPlus size={16} />
                 </span>
               </button>
               {openFaq === idx && (
@@ -318,28 +324,43 @@ function HeatmapRow({ entry }: { entry: HeatmapEntry }) {
   const isPositive = rate > 0;
 
   const absRate = Math.abs(rate);
-  let bgClass = '';
-  if (absRate > 0.0005) bgClass = isPositive ? 'bg-green-100' : 'bg-red-100';
-  else if (absRate > 0.0001) bgClass = isPositive ? 'bg-green-50' : 'bg-red-50';
+  let rowStyle: React.CSSProperties | undefined;
+  if (absRate > 0.0005) {
+    rowStyle = { background: isPositive ? 'var(--green-soft)' : 'var(--red-soft)' };
+  } else if (absRate > 0.0001) {
+    rowStyle = { background: isPositive ? 'var(--green-soft)' : 'var(--red-soft)', opacity: 0.55 };
+  }
 
   const payback = entry.payback_days != null && entry.payback_days >= 0
     ? (entry.payback_days < 1 ? '<1d' : `${entry.payback_days.toFixed(1)}d`)
     : '—';
 
   return (
-    <tr className={clsx('border-b border-[var(--border)]', bgClass)}>
+    <tr className="border-b" style={{ borderColor: 'var(--border)', ...rowStyle }}>
       <td className="py-1.5 pr-2 font-medium text-xs">{exchangeLabel(entry.exchange)}</td>
       <td className="py-1.5 pr-2 text-xs">{entry.contract}</td>
-      <td className={clsx('py-1.5 pr-2 text-right text-xs font-semibold', isPositive ? 'text-green-700' : 'text-red-700')}>
+      <td
+        className="py-1.5 pr-2 text-right text-xs font-semibold font-mono"
+        style={{ color: isPositive ? 'var(--green)' : 'var(--red)' }}
+      >
         {isPositive ? '+' : ''}{pctH}%/h
       </td>
-      <td className="py-1.5 pr-2 text-right text-xs text-[var(--text-muted)]">
+      <td className="py-1.5 pr-2 text-right text-xs font-mono text-[var(--text-muted)]">
         {(entry.annualized_rate * 100).toFixed(1)}%
       </td>
-      <td className={clsx('py-1.5 pr-2 text-right text-xs font-medium', entry.payback_days != null && entry.payback_days < 7 ? 'text-green-700' : entry.payback_days != null && entry.payback_days < 30 ? 'text-yellow-700' : 'text-[var(--text-muted)]')}>
+      <td
+        className="py-1.5 pr-2 text-right text-xs font-medium font-mono"
+        style={
+          entry.payback_days != null && entry.payback_days < 7
+            ? { color: 'var(--green)' }
+            : entry.payback_days != null && entry.payback_days < 30
+              ? { color: 'var(--amber)' }
+              : { color: 'var(--text-muted)' }
+        }
+      >
         {payback}
       </td>
-      <td className="py-1.5 text-right text-xs text-[var(--text-muted)]">
+      <td className="py-1.5 text-right text-xs font-mono text-[var(--text-muted)]">
         {entry.volume_24h_settle >= 1_000_000
           ? `${(entry.volume_24h_settle / 1_000_000).toFixed(1)}M`
           : entry.volume_24h_settle >= 1_000

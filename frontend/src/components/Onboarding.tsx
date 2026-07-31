@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../App';
 import { useT } from '../i18n';
 import { track } from '../utils/analytics';
+import { Icon, IconCheck, IconGift, IconZap, type IconName } from './icons';
 
 const PRESELECT_EXCHANGES = ['binance', 'bybit', 'okx', 'gate', 'mexc', 'bitget', 'kucoin', 'bingx'];
 const ADVANCED_EXCHANGES = [...PRESELECT_EXCHANGES, 'deribit', 'dydx', 'bitmex', 'bybit'];
@@ -72,31 +73,31 @@ export function Onboarding({ onComplete }: OnboardingProps) {
 
   const STEPS = [
     {
-      emoji: '🚀',
+      icon: 'Rocket',
       title: t('onboarding.step1Title'),
       desc: t('onboarding.step1Desc'),
     },
     {
-      emoji: '👤',
+      icon: 'User',
       title: t('onboarding.experienceTitle'),
       desc: t('onboarding.experienceDesc'),
     },
     {
-      emoji: '🎯',
+      icon: 'Target',
       title: t('onboarding.interestTitle'),
       desc: t('onboarding.interestDesc'),
     },
     {
-      emoji: '📊',
+      icon: 'ChartLine',
       title: t('onboarding.step3Title'),
       desc: t('onboarding.step3Desc'),
     },
     {
-      emoji: '💎',
+      icon: 'Gem',
       title: t('onboarding.step4Title'),
       desc: t('onboarding.step4Desc'),
     },
-  ];
+  ] as { icon: IconName; title: string; desc: string }[];
 
   if (showChecklist) {
     return <PostOnboardingChecklist onComplete={handleChecklistDone} />;
@@ -105,7 +106,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   const current = STEPS[step];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label={t('onboarding.title')}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label={t('onboarding.title')}>
       <div className="bg-surface rounded-2xl max-w-md w-full overflow-hidden" style={{ color: 'var(--text)' }}>
         {/* Skip button */}
         <div className="flex justify-end pt-3 pr-3">
@@ -119,7 +120,9 @@ export function Onboarding({ onComplete }: OnboardingProps) {
         </div>
 
         <div className="text-center p-4 sm:p-6 pt-2">
-          <div className="text-6xl mb-4">{current.emoji}</div>
+          <div className="flex justify-center mb-4" aria-hidden="true">
+            <Icon name={current.icon} size={48} style={{ color: 'var(--brand)' }} />
+          </div>
           <h2 className="text-xl font-bold mb-3">{current.title}</h2>
           <p className="text-sm text-muted mb-6">{current.desc}</p>
 
@@ -143,21 +146,21 @@ export function Onboarding({ onComplete }: OnboardingProps) {
           {step === 1 && (
             <div className="space-y-2 mb-4">
               {([
-                { level: 'beginner' as const, emoji: '🌱', label: t('onboarding.expBeginner'), desc: t('onboarding.expBeginnerDesc') },
-                { level: 'intermediate' as const, emoji: '📈', label: t('onboarding.expIntermediate'), desc: t('onboarding.expIntermediateDesc') },
-                { level: 'advanced' as const, emoji: '🚀', label: t('onboarding.expAdvanced'), desc: t('onboarding.expAdvancedDesc') },
-              ]).map((opt) => (
+                { level: 'beginner' as const, icon: 'Sprout', label: t('onboarding.expBeginner'), desc: t('onboarding.expBeginnerDesc') },
+                { level: 'intermediate' as const, icon: 'TrendingUp', label: t('onboarding.expIntermediate'), desc: t('onboarding.expIntermediateDesc') },
+                { level: 'advanced' as const, icon: 'Rocket', label: t('onboarding.expAdvanced'), desc: t('onboarding.expAdvancedDesc') },
+              ] as { level: ExperienceLevel; icon: IconName; label: string; desc: string }[]).map((opt) => (
                 <button
                   key={opt.level}
                   onClick={() => setExperience(opt.level)}
                   className="w-full p-3 rounded-xl text-left transition-all"
                   style={{
                     background: experience === opt.level ? 'var(--brand-soft)' : 'var(--surface-2)',
-                    border: experience === opt.level ? '2px solid var(--brand)' : '2px solid transparent',
+                    border: experience === opt.level ? '1px solid var(--brand)' : '1px solid transparent',
                   }}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">{opt.emoji}</span>
+                    <Icon name={opt.icon} size={20} className="shrink-0" style={{ color: 'var(--brand)' }} />
                     <div>
                       <div className="text-sm font-semibold">{opt.label}</div>
                       <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{opt.desc}</div>
@@ -172,21 +175,21 @@ export function Onboarding({ onComplete }: OnboardingProps) {
           {step === 2 && (
             <div className="space-y-2 mb-4">
               {([
-                { value: 'funding' as const, emoji: '💰', label: t('onboarding.interestFunding'), desc: t('onboarding.interestFundingDesc') },
-                { value: 'arbitrage' as const, emoji: '🔄', label: t('onboarding.interestArbitrage'), desc: t('onboarding.interestArbitrageDesc') },
-                { value: 'both' as const, emoji: '🎯', label: t('onboarding.interestBoth'), desc: t('onboarding.interestBothDesc') },
-              ]).map((opt) => (
+                { value: 'funding' as const, icon: 'CircleDollarSign', label: t('onboarding.interestFunding'), desc: t('onboarding.interestFundingDesc') },
+                { value: 'arbitrage' as const, icon: 'RefreshCw', label: t('onboarding.interestArbitrage'), desc: t('onboarding.interestArbitrageDesc') },
+                { value: 'both' as const, icon: 'Target', label: t('onboarding.interestBoth'), desc: t('onboarding.interestBothDesc') },
+              ] as { value: Interest; icon: IconName; label: string; desc: string }[]).map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setInterest(opt.value)}
                   className="w-full p-3 rounded-xl text-left transition-all"
                   style={{
                     background: interest === opt.value ? 'var(--brand-soft)' : 'var(--surface-2)',
-                    border: interest === opt.value ? '2px solid var(--brand)' : '2px solid transparent',
+                    border: interest === opt.value ? '1px solid var(--brand)' : '1px solid transparent',
                   }}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">{opt.emoji}</span>
+                    <Icon name={opt.icon} size={20} className="shrink-0" style={{ color: 'var(--brand)' }} />
                     <div>
                       <div className="text-sm font-semibold">{opt.label}</div>
                       <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{opt.desc}</div>
@@ -199,8 +202,8 @@ export function Onboarding({ onComplete }: OnboardingProps) {
 
           {/* Step 4: Scan preview */}
           {step === 3 && (
-            <div className="rounded-xl p-3 mb-4 text-sm" style={{ background: 'var(--surface-2)' }}>
-              <span className="font-semibold" style={{ color: 'var(--green)' }}>⚡ </span>
+            <div className="rounded-xl p-3 mb-4 text-sm flex items-center justify-center gap-1.5" style={{ background: 'var(--surface-2)' }}>
+              <IconZap size={14} className="shrink-0" style={{ color: 'var(--green)' }} />
               {t('onboarding.scanHint') || 'Auto-scan 8 top exchanges with one click'}
             </div>
           )}
@@ -208,10 +211,11 @@ export function Onboarding({ onComplete }: OnboardingProps) {
           {/* Step 5: Trial preview */}
           {step === 4 && (
             <div
-              className="rounded-xl p-3 mb-4 text-sm"
+              className="rounded-xl p-3 mb-4 text-sm flex items-center justify-center gap-1.5"
               style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}
             >
-              🎁 {t('onboarding.trialHint') || '7 days free — all Pro features included'}
+              <IconGift size={14} className="shrink-0" />
+              {t('onboarding.trialHint') || '7 days free — all Pro features included'}
             </div>
           )}
 
@@ -220,7 +224,11 @@ export function Onboarding({ onComplete }: OnboardingProps) {
             {STEPS.map((_, idx) => (
               <div
                 key={idx}
-                className={`h-2 rounded-full transition-all duration-200 ${idx === step ? 'w-4 bg-[var(--brand)]' : idx < step ? 'w-2 bg-green-400' : 'w-2 bg-gray-300'}`}
+                className="h-2 rounded-full transition-all duration-200"
+                style={{
+                  width: idx === step ? 16 : 8,
+                  background: idx === step ? 'var(--brand)' : idx < step ? 'var(--green)' : 'var(--surface-2)',
+                }}
               />
             ))}
           </div>
@@ -244,20 +252,22 @@ function PostOnboardingChecklist({ onComplete }: { onComplete: () => void }) {
   });
 
   const items = [
-    { key: 'scan', emoji: '📊', label: t('onboarding.checkScan'), done: checked.scan },
-    { key: 'watchlist', emoji: '⭐', label: t('onboarding.checkWatchlist'), done: checked.watchlist },
-    { key: 'alert', emoji: '🔔', label: t('onboarding.checkAlert'), done: checked.alert },
-    { key: 'profile', emoji: '👤', label: t('onboarding.checkProfile'), done: checked.profile },
-  ];
+    { key: 'scan', icon: 'ChartLine', label: t('onboarding.checkScan'), done: checked.scan },
+    { key: 'watchlist', icon: 'Star', label: t('onboarding.checkWatchlist'), done: checked.watchlist },
+    { key: 'alert', icon: 'Bell', label: t('onboarding.checkAlert'), done: checked.alert },
+    { key: 'profile', icon: 'User', label: t('onboarding.checkProfile'), done: checked.profile },
+  ] as { key: string; icon: IconName; label: string; done: boolean }[];
 
   const allDone = Object.values(checked).every(Boolean);
   const completedCount = Object.values(checked).filter(Boolean).length;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label={t('onboarding.checklistTitle')}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label={t('onboarding.checklistTitle')}>
       <div className="bg-surface rounded-2xl max-w-md w-full overflow-hidden p-5 sm:p-6" style={{ color: 'var(--text)' }}>
         <div className="text-center mb-4">
-          <div className="text-4xl mb-2">🎉</div>
+          <div className="flex justify-center mb-2" aria-hidden="true">
+            <Icon name="PartyPopper" size={40} style={{ color: 'var(--brand)' }} />
+          </div>
           <h2 className="text-xl font-bold">{t('onboarding.checklistTitle')}</h2>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
             {t('onboarding.checklistDesc')}
@@ -275,7 +285,7 @@ function PostOnboardingChecklist({ onComplete }: { onComplete: () => void }) {
               className="h-full rounded-full transition-all duration-500"
               style={{
                 width: `${(completedCount / items.length) * 100}%`,
-                background: allDone ? '#16a34a' : 'var(--brand)',
+                background: allDone ? 'var(--green)' : 'var(--brand)',
               }}
             />
           </div>
@@ -289,20 +299,20 @@ function PostOnboardingChecklist({ onComplete }: { onComplete: () => void }) {
               onClick={() => setChecked((prev) => ({ ...prev, [item.key]: !prev[item.key] }))}
               className="w-full p-3 rounded-xl text-left flex items-center gap-3 transition-all"
               style={{
-                background: item.done ? 'rgba(34,197,94,0.08)' : 'var(--surface-2)',
-                border: item.done ? '1px solid rgba(34,197,94,0.3)' : '1px solid transparent',
+                background: item.done ? 'var(--green-soft)' : 'var(--surface-2)',
+                border: item.done ? '1px solid var(--green)' : '1px solid transparent',
               }}
             >
-              <span className="text-xl">{item.emoji}</span>
+              <Icon name={item.icon} size={20} className="shrink-0" style={{ color: item.done ? 'var(--green)' : 'var(--text-muted)' }} />
               <span className="flex-1 text-sm font-medium">{item.label}</span>
               <span
-                className="w-6 h-6 rounded-full flex items-center justify-center text-sm"
+                className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
                 style={{
-                  background: item.done ? '#16a34a' : 'var(--surface)',
-                  color: item.done ? '#fff' : 'var(--text-muted)',
+                  background: item.done ? 'var(--green)' : 'var(--surface)',
+                  color: item.done ? 'var(--on-success)' : 'var(--text-muted)',
                 }}
               >
-                {item.done ? '✓' : ''}
+                {item.done ? <IconCheck size={12} /> : null}
               </span>
             </button>
           ))}

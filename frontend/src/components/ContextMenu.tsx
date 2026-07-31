@@ -4,6 +4,7 @@ import { hapticImpact, hapticSelection } from '../utils/haptic';
 import { ExchangeResult } from '../types';
 import { openExchange } from '../utils/exchanges';
 import { useApp } from '../App';
+import { Icon, IconMoreHorizontal, type IconName } from './icons';
 
 interface ContextMenuProps {
   item: ExchangeResult;
@@ -15,7 +16,7 @@ interface ContextMenuProps {
 
 interface MenuItem {
   key: string;
-  icon: string;
+  icon: IconName;
   label: string;
   action: () => void;
   destructive?: boolean;
@@ -67,7 +68,7 @@ export function ContextMenu({
   const items: MenuItem[] = [
     {
       key: 'open',
-      icon: '↗',
+      icon: 'ExternalLink',
       label: t('contextMenu.open') || 'Open',
       action: () => {
         hapticSelection();
@@ -77,7 +78,7 @@ export function ContextMenu({
     },
     {
       key: 'alert',
-      icon: '🔔',
+      icon: 'Bell',
       label: t('contextMenu.alert') || 'Set alert',
       action: () => {
         hapticSelection();
@@ -87,7 +88,7 @@ export function ContextMenu({
     },
     {
       key: 'history',
-      icon: '📈',
+      icon: 'ChartLine',
       label: t('contextMenu.history') || 'History',
       action: () => {
         hapticSelection();
@@ -97,7 +98,7 @@ export function ContextMenu({
     },
     {
       key: 'watch',
-      icon: isWatchlisted ? '⭐' : '☆',
+      icon: 'Star',
       label: isWatchlisted
         ? (t('contextMenu.unwatch') || 'Remove from watchlist')
         : (t('contextMenu.watch') || 'Add to watchlist'),
@@ -109,7 +110,7 @@ export function ContextMenu({
     },
     {
       key: 'share',
-      icon: '🔗',
+      icon: 'Link2',
       label: t('contextMenu.share') || 'Share',
       action: () => {
         hapticSelection();
@@ -172,13 +173,13 @@ export function ContextMenu({
         <div
           ref={ref}
           role="menu"
-          className="fixed z-50 rounded-xl shadow-2xl py-1"
+          className="fixed z-50 rounded-xl py-1"
           style={{
             top: pos.y,
             left: pos.x,
             width: 220,
             background: 'var(--surface)',
-            border: '1px solid var(--line)',
+            border: '1px solid var(--border)',
             color: 'var(--text)',
           }}
         >
@@ -191,13 +192,15 @@ export function ContextMenu({
                 it.action();
               }}
               className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-[var(--surface-2)] transition-colors"
-              style={{ color: it.destructive ? '#ef4444' : 'var(--text)' }}
+              style={{ color: it.destructive ? 'var(--red)' : 'var(--text)' }}
             >
-              <span className="w-5 text-center" aria-hidden="true">{it.icon}</span>
+              <span className="w-5 flex justify-center shrink-0" aria-hidden="true">
+                <Icon name={it.icon} size={16} fill={it.key === 'watch' && isWatchlisted ? 'currentColor' : undefined} />
+              </span>
               <span>{it.label}</span>
             </button>
           ))}
-          <div className="px-3 py-1 text-[10px] border-t" style={{ color: 'var(--text-muted)', borderColor: 'var(--line)' }}>
+          <div className="px-3 py-1 text-[10px] border-t" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
             {t('contextMenu.hint') || 'Long-press to open menu'}
           </div>
         </div>
@@ -208,11 +211,11 @@ export function ContextMenu({
           e.stopPropagation();
           handleOpen(e.currentTarget.getBoundingClientRect().left, e.currentTarget.getBoundingClientRect().bottom);
         }}
-        className="absolute right-1 top-1/2 -translate-y-1/2 text-xs px-1.5 py-0.5 rounded z-10"
+        className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded z-10"
         style={{ color: 'var(--text-muted)' }}
         aria-label="More actions"
       >
-        ⋯
+        <IconMoreHorizontal size={16} />
       </button>
     </>
   );

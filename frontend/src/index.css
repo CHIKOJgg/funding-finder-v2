@@ -4,82 +4,73 @@
 
 /* ============================================================
    Design tokens
-   - Driven by Telegram themeParams when present (native, perfect
-     contrast) with hand-tuned light/dark fallbacks.
-   - All component classes below read these variables, so a single
-     switch keeps the whole app high-contrast in any theme.
+   - Canonical values taken verbatim from funding-finder-landing.html.
+   - Funding Finder is deliberately THEME-INDEPENDENT: always dark /
+     cobalt. We never bind to Telegram themeParams and never switch
+     to a light scheme, regardless of the device theme.
+   - All component classes read these variables.
    ============================================================ */
 :root {
-  /* Primary (blue) — Material Design 3 */
-  --brand: #1565C0;
-  --brand-hover: #0D47A1;
-  --brand-soft: #E3F2FD; /* primary container */
-  --on-brand: #FFFFFF;   /* on-primary */
+  /* Canvas & surfaces */
+  --bg: #05070C;
+  --bg1: #0B0F17;
+  --bg2: #10141F;
+  --card: #12161F;
 
-  /* Semantic colors — MD3 (AA contrast with their on-color) */
-  --success: #1B7A3D;
-  --success-soft: #DCF3E4;
+  /* Borders */
+  --border: #1E2430;
+  --border-2: #2A3140;
+
+  /* Text */
+  --text: #EDEFF5;
+  --text2: #8891A3;
+  --text3: #5B6272;
+
+  /* Brand */
+  --cobalt: #3D63FF;
+  --cobalt-soft: #16204A;
+  --cobalt-text: #8FA5FF;
+
+  /* Semantic — exactly 3 states */
+  --green: #34D399;
+  --green-soft: #0F2A21;
+  --red: #F87171;
+  --red-soft: #2E1518;
+  --amber: #FBBF24;
+  --amber-soft: #2B2210;
+
+  /* Type */
+  --radius: 16px;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Safe areas — Telegram injects real values via JS on load */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* ---- Legacy aliases (components migrate to the names above) ---- */
+  --brand: var(--cobalt);
+  --brand-hover: #4E71FF;
+  --brand-soft: var(--cobalt-soft);
+  --on-brand: #FFFFFF;
+  --button: var(--cobalt);
+  --button-text: #FFFFFF;
+  --success: var(--green);
+  --success-soft: var(--green-soft);
   --on-success: #FFFFFF;
-  --danger: #C62828;
-  --danger-soft: #FBE4E4;
+  --danger: var(--red);
+  --danger-soft: var(--red-soft);
   --on-danger: #FFFFFF;
-  --warning: #A8650B;
-  --warning-soft: #FBEFD6;
+  --warning: var(--amber);
+  --warning-soft: var(--amber-soft);
   --on-warning: #FFFFFF;
-
-  /* Neutral surfaces & text — MD3 light */
-  --bg: #FCFCFF;
-  --surface: #FFFFFF;
-  --surface-2: #F1F3F9; /* surface-variant */
-  --text: #1A1C1E;      /* on-surface */
-  --text-muted: #44474E; /* on-surface-variant */
-  --border: #C7CBD3;    /* outline */
-  --border-strong: #9AA0AA;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.12);
-  --nav-bg: #FFFFFF;
-}
-
-.dark {
-  --bg: #111318;
-  --surface: #1C1F26;
-  --surface-2: #2A2E37;
-  --text: #ECEEF2;
-  --text-muted: #B6BBC6;
-  --border: #3A3F4B;
-  --border-strong: #4C525E;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.55);
-  --nav-bg: #1C1F26;
-
-  /* MD3 dark: primary lightens, on-primary becomes dark for contrast */
-  --brand: #82B1FF;
-  --brand-hover: #A8C9FF;
-  --brand-soft: #16335A;
-  --on-brand: #06294F;
-
-  --success: #6DD58F;
-  --success-soft: #0F2E1C;
-  --on-success: #00210C;
-  --danger: #FF8A80;
-  --danger-soft: #3A1414;
-  --on-danger: #2A0808;
-  --warning: #F0B85A;
-  --warning-soft: #33240E;
-  --on-warning: #2A1C00;
-}
-
-/* Native Telegram theme params (set from JS) — overrides above */
-:root.has-tg-theme {
-  --bg: var(--tg-bg, var(--bg));
-  --text: var(--tg-text, var(--text));
-  --text-muted: var(--tg-hint, var(--text-muted));
-  --brand: var(--tg-link, var(--brand));
-  --surface: var(--tg-secondary-bg, var(--surface));
-  --surface-2: var(--tg-secondary-bg, var(--surface-2));
-  --button: var(--tg-button, var(--brand));
-  --button-text: var(--tg-button-text, #ffffff);
-  --nav-bg: var(--tg-secondary-bg, var(--nav-bg));
+  --surface: var(--card);
+  --surface-2: var(--bg1);
+  --text-muted: var(--text2);
+  --border-strong: var(--border-2);
+  --nav-bg: var(--bg1);
+  --line: var(--border);
+  --input-bg: var(--bg1);
 }
 
 @layer base {
@@ -87,11 +78,14 @@
     background: var(--bg);
     width: 100%;
     height: 100%;
+    color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
     background: var(--bg);
     color: var(--text);
+    font-family: var(--sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     width: 100%;
@@ -103,131 +97,90 @@
     min-height: 100vh;
   }
 
-  /* Keep muted text readable in dark mode (was the contrast bug) */
-  .dark .text-gray-400,
-  .dark .text-gray-500,
-  .dark .text-gray-600,
-  .dark .text-gray-700 {
-    color: var(--text-muted) !important;
+  /* Focus is always visible on this canvas (keyboard + accessibility) */
+  :focus-visible {
+    outline: 3px solid var(--cobalt);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 
-  .dark .text-gray-300 {
-    color: var(--text) !important;
-  }
-
-  /* Hard-coded light surfaces that aren't remapped above — without these,
-     white modals/cards (onboarding, dropdowns, dialogs) stay white on a dark
-     background and read as "broken". Map them to the themed tokens. */
-  .dark .bg-white {
-    background: var(--surface) !important;
-  }
-
-  .dark .bg-gray-100 {
-    background: var(--surface-2) !important;
-  }
-
-  .dark .bg-gray-200 {
-    background: var(--surface-2) !important;
-  }
-
-  .dark .bg-gray-300 {
-    background: var(--border) !important;
-  }
-
-  .dark .bg-gray-50 {
-    background: var(--surface-2) !important;
-  }
-
-  .dark .bg-blue-50 {
-    background: var(--brand-soft) !important;
-  }
-
-  .dark .bg-green-50 {
-    background: var(--success-soft) !important;
-  }
-
-  .dark .bg-yellow-50 {
-    background: var(--warning-soft) !important;
-  }
-
-  .dark .bg-red-50 {
-    background: var(--danger-soft) !important;
-  }
-
-  .dark .bg-purple-50 {
-    background: rgba(147, 51, 234, 0.16) !important;
-  }
-
-  .dark .border-gray-100,
-  .dark .border-gray-200 {
-    border-color: var(--border) !important;
-  }
-
-  .dark .exchange-btn {
-    background: var(--surface-2);
-    border-color: var(--border);
+  /* ---- Custom form controls — never raw browser defaults ---- */
+  input,
+  select,
+  textarea {
+    width: 100%;
+    padding: 11px 13px;
+    border-radius: 10px;
+    border: 1px solid var(--border-2);
+    font-size: 14px;
+    font-family: var(--sans);
+    background: var(--card);
     color: var(--text);
   }
 
-  .dark .exchange-btn.active {
-    background: var(--brand);
-    border-color: var(--brand);
-    color: var(--on-brand);
+  textarea {
+    min-height: 76px;
+    resize: vertical;
   }
 
-  /* ============================================================
-     Light theme contrast fixes
-     - Raw Tailwind grays and bright 500-shades are too faint on a
-       white surface, which made prices and hint text hard to read.
-       Remap them to accessible, high-contrast values (light only —
-       dark mode keeps the tuned rules above).
-     ============================================================ */
-  :root:not(.dark) .text-gray-300,
-  :root:not(.dark) .text-gray-400,
-  :root:not(.dark) .text-gray-500,
-  :root:not(.dark) .text-gray-600,
-  :root:not(.dark) .text-gray-700 {
-    color: var(--text-muted);
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238891A3' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    cursor: pointer;
   }
 
-  :root:not(.dark) .text-gray-800 {
-    color: var(--text);
+  input[type='checkbox'],
+  input[type='radio'] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0;
+    margin: 0;
+    border: 1px solid var(--border-2);
+    border-radius: 5px;
+    background: var(--bg2);
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
   }
 
-  /* Prices / values: default green & red 500 fail WCAG on white */
-  :root:not(.dark) .text-green-400,
-  :root:not(.dark) .text-green-500,
-  :root:not(.dark) .text-green-600 {
-    color: #158140;
+  input[type='radio'] {
+    border-radius: 50%;
   }
 
-  :root:not(.dark) .text-red-400,
-  :root:not(.dark) .text-red-500,
-  :root:not(.dark) .text-red-600 {
-    color: #d32f2f;
+  input[type='checkbox']:checked,
+  input[type='radio']:checked {
+    background: var(--cobalt);
+    border-color: var(--cobalt);
   }
 
-  :root:not(.dark) .text-blue-500,
-  :root:not(.dark) .text-blue-600 {
-    color: #1d4ed8;
+  input[type='checkbox']:checked::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 5px;
+    height: 10px;
+    border: solid #ffffff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(40deg);
   }
 
-  :root:not(.dark) .text-orange-500,
-  :root:not(.dark) .text-orange-600 {
-    color: #c2410c;
-  }
-
-  :root:not(.dark) .text-yellow-600 {
-    color: #a16207;
-  }
-
-  :root:not(.dark) .bg-gray-50 {
-    background: var(--surface-2) !important;
-  }
-
-  :root:not(.dark) .border-gray-100,
-  :root:not(.dark) .border-gray-200 {
-    border-color: var(--border) !important;
+  input[type='radio']:checked::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 4px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ffffff;
   }
 }
 
@@ -237,7 +190,6 @@
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 16px;
-    box-shadow: var(--shadow);
     padding: 12px;
     margin-bottom: 16px;
   }
@@ -253,15 +205,28 @@
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 16px;
-    box-shadow: var(--shadow);
   }
 
+  /* Buttons: full-width by app convention, flat + bordered like the landing
+     (no shadows, no gradients). Press feedback on :active — never hover-only. */
   .btn {
     width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
     padding: 12px 16px;
     border-radius: 12px;
+    border: 1px solid transparent;
     font-weight: 600;
-    transition: all 0.18s ease;
+    font-size: 14.5px;
+    cursor: pointer;
+    transition: filter 0.12s ease, background 0.12s ease;
+  }
+
+  .btn:active {
+    filter: brightness(1.12);
   }
 
   .btn:disabled {
@@ -270,12 +235,8 @@
   }
 
   .btn-primary {
-    background: var(--button, var(--brand));
-    color: var(--button-text, var(--on-brand));
-  }
-
-  .btn-primary:hover {
-    filter: brightness(0.95);
+    background: var(--button, var(--cobalt));
+    color: var(--button-text, #ffffff);
   }
 
   .btn-secondary {
@@ -284,7 +245,7 @@
     border: 1px solid var(--border);
   }
 
-  .btn-secondary:hover {
+  .btn-secondary:active {
     background: var(--border);
   }
 
@@ -296,7 +257,7 @@
     border: 1px solid var(--brand);
   }
 
-  .btn-refresh:hover {
+  .btn-refresh:active {
     background: var(--brand-soft);
   }
 
@@ -313,17 +274,17 @@
   .input-field {
     width: 100%;
     padding: 12px 16px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-2);
     border-radius: 12px;
-    background: var(--surface-2);
+    background: var(--card);
     color: var(--text);
-    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    transition: border-color 0.15s ease;
   }
 
   .input-field:focus {
     outline: none;
-    border-color: var(--brand);
-    box-shadow: 0 0 0 3px var(--brand-soft);
+    border-color: var(--cobalt);
+    box-shadow: 0 0 0 3px var(--cobalt-soft);
   }
 
   .input-field::placeholder {
@@ -332,22 +293,24 @@
 
   .exchange-btn {
     padding: 8px 12px;
+    min-height: 38px;
     border: 1px solid var(--border);
     border-radius: 12px;
     background: var(--surface);
     color: var(--text);
-    transition: all 0.18s ease;
+    transition: background 0.15s ease;
     font-size: 0.875rem;
+    cursor: pointer;
   }
 
-  .exchange-btn:hover {
+  .exchange-btn:active {
     background: var(--surface-2);
   }
 
   .exchange-btn.active {
-    background: var(--brand);
-    border-color: var(--brand);
-    color: var(--on-brand);
+    background: var(--cobalt);
+    border-color: var(--cobalt);
+    color: #ffffff;
   }
 
   .chip {
@@ -369,7 +332,7 @@
 
   .chip-brand {
     background: var(--brand-soft);
-    color: var(--brand);
+    color: var(--cobalt-text);
   }
 
   .chip-danger {
@@ -395,10 +358,10 @@
   .chip-removable {
     cursor: pointer;
     user-select: none;
-    transition: all 0.15s ease;
+    transition: background 0.15s ease, color 0.15s ease;
   }
 
-  .chip-removable:hover {
+  .chip-removable:active {
     background: var(--danger-soft);
     color: var(--danger);
   }
@@ -409,7 +372,9 @@
     opacity: 0.7;
   }
 
+  /* Numeric values: monospace + tabular so they read as data */
   .stat {
+    font-family: var(--mono);
     font-variant-numeric: tabular-nums;
   }
 }
@@ -508,8 +473,9 @@
   left: 0;
   right: 0;
   z-index: 50;
+  background: var(--nav-bg);
   border-top: 1px solid var(--border);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: var(--safe-bottom);
 }
 
 .web-shell .web-nav {
@@ -536,21 +502,23 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2px;
+  min-height: 44px;
   padding: 8px 4px;
   background: transparent;
   border: none;
   cursor: pointer;
   font-size: 0.75rem;
-  transition: color 0.18s ease;
-  color: var(--text-muted);
+  transition: color 0.15s ease;
+  color: var(--text3);
 }
 
 .web-nav-item.active {
-  color: var(--brand);
+  color: var(--cobalt-text);
 }
 
-.web-nav-item:hover {
+.web-nav-item:active {
   color: var(--text);
 }
 
@@ -567,8 +535,9 @@
   position: sticky;
   top: 0;
   z-index: 40;
+  background: rgba(5, 7, 12, 0.85);
   border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(10px);
 }
 
 .web-header-inner {

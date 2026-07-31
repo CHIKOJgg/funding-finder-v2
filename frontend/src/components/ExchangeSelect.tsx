@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { ALL_EXCHANGES, exchangeLabel } from '../utils/exchanges';
 import { useT } from '../i18n';
+import { IconCheck, IconChevronDown, IconX } from './icons';
 
 interface Props {
   selected: string[];          // selected ids (empty = all)
@@ -42,11 +43,11 @@ export function ExchangeSelect({ selected, onChange, exchanges = ALL_EXCHANGES, 
   return (
     <div className="relative" ref={ref}>
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-sm font-medium text-gray-700">{resolvedLabel}</span>
+        <span className="text-sm font-medium text-[var(--text2)]">{resolvedLabel}</span>
         {selected.length > 0 && (
           <button
             onClick={() => onChange([])}
-            className="text-xs text-[var(--brand)] hover:underline"
+            className="text-xs text-[var(--cobalt-text)] active:brightness-150"
             aria-label={t('exchangeSelect.reset')}
           >
             {t('exchangeSelect.reset')}
@@ -61,10 +62,13 @@ export function ExchangeSelect({ selected, onChange, exchanges = ALL_EXCHANGES, 
         aria-expanded={open}
         aria-label={resolvedLabel}
       >
-        <span className={clsx(selected.length === 0 && 'text-gray-400')}>
+        <span className={clsx(selected.length === 0 && 'text-[var(--text3)]')}>
           {selected.length === 0 ? t('exchangeSelect.all') : t('exchangeSelect.selected', { count: selected.length })}
         </span>
-        <span className="ml-2 text-gray-400">{open ? '▴' : '▾'}</span>
+        <IconChevronDown
+          size={18}
+          className={clsx('ml-2 text-[var(--text3)] transition-transform', open && 'rotate-180')}
+        />
       </button>
 
       {selected.length > 0 && (
@@ -82,16 +86,14 @@ export function ExchangeSelect({ selected, onChange, exchanges = ALL_EXCHANGES, 
               aria-label={`${t('exchangeSelect.remove')} ${exchangeLabel(id)}`}
             >
               {exchangeLabel(id)}
-              <span className="chip-x" aria-hidden>
-                ×
-              </span>
+              <IconX size={12} className="chip-x" aria-hidden />
             </span>
           ))}
         </div>
       )}
 
       {open && (
-        <div className="absolute z-20 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg p-2">
+        <div className="absolute z-20 mt-1 w-full rounded-xl border border-[var(--border-2)] bg-[var(--bg1)] p-2">
           <input
             autoFocus
             value={query}
@@ -102,17 +104,18 @@ export function ExchangeSelect({ selected, onChange, exchanges = ALL_EXCHANGES, 
           />
           <div className="overflow-y-auto" style={{ maxHeight: 220 }}>
             {filtered.length === 0 && (
-              <div className="text-sm text-gray-400 p-2">{t('exchangeSelect.none')}</div>
+              <div className="text-sm text-[var(--text3)] p-2">{t('exchangeSelect.none')}</div>
             )}
             {filtered.map((id) => {
               const active = selected.includes(id);
               return (
                 <label
                   key={id}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 cursor-pointer text-sm"
+                  className="flex items-center gap-2 px-2 py-2 rounded-lg bg-[var(--bg1)] active:bg-[var(--card)] cursor-pointer text-sm min-h-[44px]"
                 >
                   <input type="checkbox" checked={active} onChange={() => toggle(id)} />
-                  <span>{exchangeLabel(id)}</span>
+                  <span className={clsx(active && 'text-[var(--cobalt-text)]')}>{exchangeLabel(id)}</span>
+                  {active && <IconCheck size={16} className="ml-auto text-[var(--cobalt)]" aria-hidden />}
                 </label>
               );
             })}

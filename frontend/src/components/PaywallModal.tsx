@@ -1,48 +1,49 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PaywallFeature, PLAN_PRICES, ANNUAL_DISCOUNT_PCT, PlanTier } from '../utils/plans';
 import { TrialCTA } from './TrialCTA';
 import { useT } from '../i18n';
 import { useApp } from '../App';
 import { track } from '../utils/analytics';
+import { Icon, IconCheck, IconFlame, IconStar, IconX, type IconName } from './icons';
 
 const FEATURE_INFO: Record<PaywallFeature, {
-  icon: string;
+  icon: IconName;
   title: string;
   desc: string;
   bestPlan: PlanTier;
   highlightIndex?: number;
 }> = {
   exchanges: {
-    icon: '🔁',
+    icon: 'ArrowLeftRight',
     title: 'paywall.exchangesTitle',
     desc: 'paywall.exchangesDesc',
     bestPlan: 'pro',
     highlightIndex: 0,
   },
   ai: {
-    icon: '🧠',
+    icon: 'Sparkles',
     title: 'paywall.aiTitle',
     desc: 'paywall.aiDesc',
     bestPlan: 'pro',
     highlightIndex: 1,
   },
   recommendations: {
-    icon: '🤖',
+    icon: 'Bot',
     title: 'paywall.recommendationsTitle',
     desc: 'paywall.recommendationsDesc',
     bestPlan: 'pro',
     highlightIndex: 2,
   },
   portfolio: {
-    icon: '💼',
+    icon: 'Wallet',
     title: 'paywall.portfolioTitle',
     desc: 'paywall.portfolioDesc',
     bestPlan: 'pro',
     highlightIndex: 3,
   },
   watchlist: {
-    icon: '⭐',
+    icon: 'Star',
     title: 'paywall.watchlistTitle',
     desc: 'paywall.watchlistDesc',
     bestPlan: 'pro',
@@ -83,14 +84,6 @@ export function PaywallModal({
   const t = useT();
   const { subscription, trialStatus } = useApp();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
-  const [exitAttempt, setExitAttempt] = useState(false);
-  const closeCountRef = useRef(0);
-
-  const [viewId] = useState(() => crypto.randomUUID());
-  const upgradeRate = useMemo(() => {
-    const base = 72 + Math.floor(Math.random() * 20);
-    return base;
-  }, [viewId]);
 
   useEffect(() => {
     if (open) track('paywall_view', { feature, billingCycle });
@@ -100,15 +93,6 @@ export function PaywallModal({
     onClose();
     navigate('/profile#subscription');
   }, [onClose, navigate]);
-
-  const handleClose = useCallback(() => {
-    closeCountRef.current += 1;
-    if (closeCountRef.current >= 2 && !exitAttempt) {
-      setExitAttempt(true);
-      return;
-    }
-    onClose();
-  }, [onClose, exitAttempt]);
 
   if (!open) return null;
 
@@ -134,55 +118,30 @@ export function PaywallModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="paywall-title"
-      onClick={handleClose}
+      onClick={onClose}
     >
       <div
         className="w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 animate-slide-in overflow-y-auto max-h-[90vh]"
         style={{ background: 'var(--surface)', color: 'var(--text)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Exit-intent soft offer */}
-        {exitAttempt && (
-          <div
-            className="rounded-xl p-3 mb-4 text-center"
-            style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.12), rgba(234,179,8,0.04))', border: '1px solid rgba(234,179,8,0.3)' }}
-          >
-            <p className="text-sm font-semibold" style={{ color: '#b45309' }}>
-              {t('paywall.exitOffer')}
-            </p>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              {t('paywall.exitOfferDesc')}
-            </p>
-          </div>
-        )}
-
         {/* Header */}
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-3xl" aria-hidden="true">{info.icon}</span>
+          <span className="flex items-center justify-center w-11 h-11 rounded-xl shrink-0" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }} aria-hidden="true">
+            <Icon name={info.icon} size={22} />
+          </span>
           <div className="flex-1">
             <h2 id="paywall-title" className="text-lg font-bold">{t(info.title)}</h2>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('paywall.planOnly', { plan: 'Pro' })}</p>
           </div>
           <button
-            onClick={handleClose}
+            onClick={onClose}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
             style={{ color: 'var(--text-muted)', background: 'var(--surface-2)' }}
             aria-label={t('paywall.notNow')}
           >
-            ✕
+            <IconX size={16} />
           </button>
-        </div>
-
-        {/* Urgency — show dynamic upgrade rate */}
-        <div
-          className="rounded-xl p-3 mb-4 flex items-center justify-between text-sm"
-          style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.02))', border: '1px solid rgba(239,68,68,0.2)' }}
-        >
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" aria-hidden="true" />
-            <span style={{ color: '#dc2626' }} className="font-semibold">{t('paywall.upgradeRate')} — {upgradeRate}%</span>
-          </div>
-          <UrgencyTimer />
         </div>
 
         {/* Billing cycle toggle */}
@@ -193,7 +152,7 @@ export function PaywallModal({
               className="flex-1 py-2.5 text-sm font-semibold transition-all"
               style={{
                 background: billingCycle === 'monthly' ? 'var(--brand)' : 'transparent',
-                color: billingCycle === 'monthly' ? '#fff' : 'var(--text)',
+                color: billingCycle === 'monthly' ? 'var(--on-brand)' : 'var(--text)',
               }}
             >
               {t('paywall.monthly')}
@@ -203,20 +162,20 @@ export function PaywallModal({
               className="flex-1 py-2.5 text-sm font-semibold transition-all relative"
               style={{
                 background: billingCycle === 'annual' ? 'var(--brand)' : 'transparent',
-                color: billingCycle === 'annual' ? '#fff' : 'var(--text)',
+                color: billingCycle === 'annual' ? 'var(--on-brand)' : 'var(--text)',
               }}
             >
               {t('paywall.annual')}
               <span
                 className="absolute -top-2 right-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                style={{ background: '#16a34a', color: '#fff' }}
+                style={{ background: 'var(--green)', color: 'var(--on-success)' }}
               >
                 -{ANNUAL_DISCOUNT_PCT}%
               </span>
             </button>
           </div>
           {billingCycle === 'annual' && savings > 0 && (
-            <p className="text-xs text-center mt-2 font-semibold" style={{ color: '#16a34a' }}>
+            <p className="text-xs text-center mt-2 font-semibold" style={{ color: 'var(--green)' }}>
               {t('paywall.annualSavings', { amount: savings })}
             </p>
           )}
@@ -235,13 +194,13 @@ export function PaywallModal({
                   className="rounded-xl p-3 text-center text-xs relative"
                   style={{
                     background: isCurrent ? 'var(--brand-soft)' : 'var(--surface-2)',
-                    border: isCurrent ? '1px solid var(--brand)' : '1px solid transparent',
+                    border: isCurrent ? '1px solid var(--brand)' : isRecommended ? '1px solid var(--brand)' : '1px solid transparent',
                   }}
                 >
                   {isRecommended && (
                     <div
-                      className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white whitespace-nowrap"
-                      style={{ background: 'var(--brand)' }}
+                      className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap"
+                      style={{ background: 'var(--brand)', color: 'var(--on-brand)' }}
                     >
                       {t('paywall.recommended')}
                     </div>
@@ -261,17 +220,26 @@ export function PaywallModal({
                     <div className="text-lg font-bold" style={{ color: 'var(--green)' }}>{t('paywall.freePrice')}</div>
                   )}
                   <ul className="mt-2 space-y-1">
-                    {plan.features.map((fk, idx) => (
-                      <li
-                        key={fk}
-                        style={{
-                          color: info.highlightIndex === idx && isRecommended ? 'var(--brand)' : 'var(--text-muted)',
-                          fontWeight: info.highlightIndex === idx && isRecommended ? 600 : 400,
-                        }}
-                      >
-                        {info.highlightIndex === idx && isRecommended ? '★' : '✓'} {t(fk)}
-                      </li>
-                    ))}
+                    {plan.features.map((fk, idx) => {
+                      const highlighted = info.highlightIndex === idx && isRecommended;
+                      return (
+                        <li
+                          key={fk}
+                          className="flex items-center justify-center gap-1"
+                          style={{
+                            color: highlighted ? 'var(--brand)' : 'var(--text-muted)',
+                            fontWeight: highlighted ? 600 : 400,
+                          }}
+                        >
+                          {highlighted ? (
+                            <IconStar size={11} fill="currentColor" className="shrink-0" />
+                          ) : (
+                            <IconCheck size={11} className="shrink-0" />
+                          )}
+                          <span>{t(fk)}</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                   {isCurrent && (
                     <div className="text-xs font-semibold mt-2" style={{ color: 'var(--brand)' }}>
@@ -291,7 +259,7 @@ export function PaywallModal({
             style={{ background: 'var(--surface-2)' }}
           >
             <div className="flex items-center gap-2 text-sm">
-              <span>🔥</span>
+              <IconFlame size={16} className="shrink-0" style={{ color: 'var(--brand)' }} />
               <span className="font-semibold">{t('paywall.trialEnds')}</span>
             </div>
             <div className="text-sm font-bold" style={{ color: 'var(--brand)' }}>
@@ -299,23 +267,6 @@ export function PaywallModal({
             </div>
           </div>
         )}
-
-        {/* Progress bar — personalized upgrade rate */}
-        <div className="mb-4">
-          <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
-            <span>{t('paywall.upgradeRate')}</span>
-            <span>{upgradeRate}%</span>
-          </div>
-          <div
-            className="h-2 rounded-full overflow-hidden"
-            style={{ background: 'var(--surface-2)' }}
-          >
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${upgradeRate}%`, background: 'var(--brand)', transition: 'width 0.8s ease' }}
-            />
-          </div>
-        </div>
 
         {/* CTAs */}
         {!isPro && !trialActive && (
@@ -342,13 +293,11 @@ export function PaywallModal({
         <button onClick={handleSubscribe} className="btn btn-primary w-full">
           {isPro
             ? t('paywall.manageSubscription')
-            : exitAttempt
-              ? t('paywall.claimOffer')
-              : t('paywall.subscribe', { price: selectedPrice })}
+            : t('paywall.subscribe', { price: selectedPrice })}
         </button>
 
-        <button onClick={handleClose} className="btn btn-secondary w-full mt-2">
-          {exitAttempt ? t('paywall.maybeLater') : t('paywall.notNow')}
+        <button onClick={onClose} className="btn btn-secondary w-full mt-2">
+          {t('paywall.notNow')}
         </button>
 
         {/* Footer */}
@@ -357,25 +306,6 @@ export function PaywallModal({
         </p>
       </div>
     </div>
-  );
-}
-
-/** Live urgency countdown — shows time remaining until end of day. */
-function UrgencyTimer() {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  const endOfDay = new Date();
-  endOfDay.setHours(23, 59, 59, 999);
-  const diff = Math.max(0, endOfDay.getTime() - now);
-  const h = Math.floor(diff / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  return (
-    <span className="text-xs font-bold tabular-nums" style={{ color: '#dc2626' }} aria-live="polite">
-      {h}h {m}m
-    </span>
   );
 }
 
@@ -389,5 +319,9 @@ function TrialCountdown({ endsAt }: { endsAt: string }) {
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
   const s = Math.floor((diff % 60000) / 1000);
-  return <span aria-live="polite">{h}h {m}m {s}s</span>;
+  return (
+    <span className="font-mono tabular-nums" aria-live="polite">
+      {h}h {m}m {s}s
+    </span>
+  );
 }

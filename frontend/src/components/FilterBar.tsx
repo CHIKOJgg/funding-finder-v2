@@ -1,6 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { clsx } from 'clsx';
 import { useT } from '../i18n';
+import { IconChevronDown, IconSlidersHorizontal } from './icons';
 
 interface Props {
   activeCount: number;
@@ -24,22 +25,26 @@ export function FilterBar({ activeCount, children, defaultOpen, title }: Props) 
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between"
+        className="w-full flex items-center justify-between min-h-[44px] active:opacity-80"
         aria-expanded={open}
       >
         <span className="flex items-center gap-2 font-medium text-[var(--text)]">
-          <span aria-hidden>🔧</span>
+          <IconSlidersHorizontal size={18} aria-hidden />
           {label}
           {activeCount > 0 && (
             <span
-              className="text-xs px-2 py-0.5 rounded-full bg-[var(--brand)] text-white"
+              className="text-xs px-2 py-0.5 rounded-full bg-[var(--cobalt)] text-white"
               aria-label={`${t('filter.activeCount', { count: activeCount })}`}
             >
               {activeCount}
             </span>
           )}
         </span>
-        <span className="text-[var(--text-muted)]">{open ? '▴' : '▾'}</span>
+        <IconChevronDown
+          size={18}
+          className={clsx('text-[var(--text3)] transition-transform', open && 'rotate-180')}
+          aria-hidden
+        />
       </button>
 
       {open && <div className="mt-3 space-y-3">{children}</div>}
@@ -75,10 +80,10 @@ export function SegmentedControl<T extends string>({
           type="button"
           onClick={() => onChange(opt.value)}
           className={clsx(
-            'text-xs px-3 py-1.5 rounded-full border transition',
+            'text-xs px-3 min-h-[44px] flex items-center rounded-full border transition-colors active:opacity-80',
             value === opt.value
-              ? 'bg-[var(--brand)] text-white border-[var(--brand)]'
-              : 'bg-transparent text-[var(--text-muted)] border-gray-300'
+              ? 'bg-[var(--cobalt)] text-white border-[var(--cobalt)]'
+              : 'bg-transparent text-[var(--text-muted)] border-[var(--border)] active:border-[var(--border-2)]'
           )}
           aria-pressed={value === opt.value}
         >

@@ -13,17 +13,46 @@ export interface TelegramWebApp {
   enableClosingConfirmation?: () => void;
   openLink?: (url: string) => void;
   close?: () => void;
+  ready?: () => void;
+  setBackgroundColor?: (color: string) => void;
+  setHeaderColor?: (color: string | { color: string }) => void;
+  version?: string;
+  viewportStableHeight?: number;
+  safeAreaInset?: { top: number; bottom: number; left: number; right: number };
+  contentSafeAreaInset?: { top: number; bottom: number; left: number; right: number };
   BackButton?: {
     show: () => void;
     hide: () => void;
     onClick: (callback: () => void) => void;
+    offClick?: (callback: () => void) => void;
   };
   MainButton?: {
     setText: (text: string) => void;
+    setParams?: (params: {
+      color?: string;
+      text_color?: string;
+      text?: string;
+      is_active?: boolean;
+      is_visible?: boolean;
+      is_progress_visible?: boolean;
+    }) => void;
     show: () => void;
     hide: () => void;
     onClick: (callback: () => void) => void;
     offClick: (callback: () => void) => void;
+  };
+  SecondaryButton?: {
+    setParams?: (params: {
+      color?: string;
+      text_color?: string;
+      text?: string;
+      is_visible?: boolean;
+      is_active?: boolean;
+    }) => void;
+    show?: () => void;
+    hide?: () => void;
+    onClick?: (callback: () => void) => void;
+    offClick?: (callback: () => void) => void;
   };
   colorScheme?: string;
   themeParams?: {

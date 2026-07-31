@@ -72,20 +72,20 @@ export function FundingCalendar({ exchanges, refreshSignal }: { exchanges?: stri
           const remaining = Math.max(0, Math.floor((e.nextApply - now) / 1000));
           const positive = e.ratePerHour >= 0;
           return (
-            <div key={`${e.exchange}:${e.pair}`} className="flex justify-between items-center border-b border-gray-100 pb-2">
+            <div key={`${e.exchange}:${e.pair}`} className="flex justify-between items-center border-b border-[var(--border)] pb-2">
               <div>
                 <div className="text-sm font-medium">
                   {e.exchange.toUpperCase()}: {e.pair}
                 </div>
                 <div className="text-xs text-muted">
                   {positive ? t('calendar.receive') : t('calendar.pay')}
-                  <span className={positive ? 'text-green-700' : 'text-red-700'}>
+                  <span className={`font-mono ${positive ? 'text-[var(--green)]' : 'text-[var(--red)]'}`}>
                     {(Math.abs(e.ratePerHour) * 100).toFixed(4)}{t('unit.pctPerHour')}
                   </span>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-bold tabular-nums" style={{ color: 'var(--brand)' }}>
+                <div className="text-sm font-bold font-mono tabular-nums text-[var(--cobalt-text)]">
                   {formatRemaining(t, remaining)}
                 </div>
                 <div className="text-xs text-muted">{t('calendar.untilPayout')}</div>

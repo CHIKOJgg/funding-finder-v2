@@ -74,11 +74,11 @@ function copyFor(lang?: string): ShareCopy {
   return COPY[(lang as ShareLang)] || COPY.en;
 }
 
-const BRAND = '#3390ec';
-const DARK = '#0f172a';
-const GREEN = '#22c55e';
+const BRAND = '#3D63FF';
+const DARK = '#05070C';
+const GREEN = '#34D399';
 const WHITE = '#ffffff';
-const MUTED = '#94a3b8';
+const MUTED = '#8891A3';
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
@@ -106,10 +106,10 @@ export function buildShareCard(opps: ShareOpportunity[], opts?: { username?: str
 
   // Header
   ctx.fillStyle = BRAND;
-  ctx.font = '800 44px sans-serif';
+  ctx.font = "800 44px 'JetBrains Mono', monospace";
   ctx.fillText('Funding Finder', 60, 80);
   ctx.fillStyle = WHITE;
-  ctx.font = '600 30px sans-serif';
+  ctx.font = "600 30px Inter, sans-serif";
   ctx.fillText(copy.subtitle, 60, 124);
 
   // Divider
@@ -130,17 +130,17 @@ export function buildShareCard(opps: ShareOpportunity[], opts?: { username?: str
     ctx.fill();
 
     ctx.fillStyle = WHITE;
-    ctx.font = '700 34px sans-serif';
+    ctx.font = "700 34px 'JetBrains Mono', monospace";
     ctx.fillText(o.pair, 90, y + 42);
 
     ctx.fillStyle = MUTED;
-    ctx.font = '500 24px sans-serif';
+    ctx.font = "500 24px Inter, sans-serif";
     ctx.fillText(`${o.exchangeA} ↔ ${o.exchangeB}`, 90, y + 74);
 
     // Annual return (right)
     const annual = o.annualReturn ?? 0;
     ctx.fillStyle = GREEN;
-    ctx.font = '800 38px sans-serif';
+    ctx.font = "800 38px 'JetBrains Mono', monospace";
     ctx.textAlign = 'right';
     ctx.fillText(copy.perYear(`${(annual * 100).toFixed(1)}%`), W - 90, y + 56);
     ctx.textAlign = 'left';
@@ -151,10 +151,10 @@ export function buildShareCard(opps: ShareOpportunity[], opts?: { username?: str
   // Footer: brand handle + the site URL so the card is self-promoting even
   // when reshared as a bare image (viral attribution / SEO awareness).
   ctx.fillStyle = BRAND;
-  ctx.font = '700 26px sans-serif';
+  ctx.font = "700 26px Inter, sans-serif";
   ctx.fillText('@fundinganalyzerbot', 60, H - 40);
   ctx.fillStyle = MUTED;
-  ctx.font = '500 22px sans-serif';
+  ctx.font = "500 22px Inter, sans-serif";
   ctx.textAlign = 'right';
   ctx.fillText(opts?.username ? copy.from(opts.username) : copy.tagline, W - 60, H - 40);
   ctx.textAlign = 'left';

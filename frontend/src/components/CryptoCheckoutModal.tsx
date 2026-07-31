@@ -3,6 +3,7 @@ import { apiClient } from '../api/client';
 import { useToast } from './Toast';
 import { useT } from '../i18n';
 import { track } from '../utils/analytics';
+import { IconCheckCircle2, IconClock, IconXCircle } from './icons';
 
 interface CryptoCheckoutModalProps {
   open: boolean;
@@ -14,13 +15,13 @@ interface CryptoCheckoutModalProps {
 }
 
 const CURRENCIES = [
-  { code: 'usdterc20', label: 'USDT (ERC-20)', icon: '🔷' },
-  { code: 'usdttrc20', label: 'USDT (TRC-20)', icon: '🔶' },
-  { code: 'usdtbsc', label: 'USDT (BEP-20)', icon: '🟡' },
-  { code: 'usdc', label: 'USDC', icon: '💠' },
-  { code: 'eth', label: 'ETH', icon: '⬡' },
-  { code: 'btc', label: 'BTC', icon: '₿' },
-  { code: 'sol', label: 'SOL', icon: '◎' },
+  { code: 'usdterc20', label: 'USDT (ERC-20)', letter: 'U' },
+  { code: 'usdttrc20', label: 'USDT (TRC-20)', letter: 'U' },
+  { code: 'usdtbsc', label: 'USDT (BEP-20)', letter: 'U' },
+  { code: 'usdc', label: 'USDC', letter: 'C' },
+  { code: 'eth', label: 'ETH', letter: 'E' },
+  { code: 'btc', label: 'BTC', letter: 'B' },
+  { code: 'sol', label: 'SOL', letter: 'S' },
 ];
 
 const STATUS_LABEL: Record<string, string> = {
@@ -186,7 +187,12 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
                     color: currency === c.code ? 'var(--brand)' : 'var(--text)',
                   }}
                 >
-                  <span className="text-lg">{c.icon}</span>
+                  <span
+                    className="w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs font-bold shrink-0"
+                    style={{ background: currency === c.code ? 'var(--brand)' : 'var(--surface-2)', color: currency === c.code ? 'var(--on-brand)' : 'var(--text-muted)' }}
+                  >
+                    {c.letter}
+                  </span>
                   <span>{c.label}</span>
                 </button>
               ))}
@@ -205,7 +211,7 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
                     className="h-full rounded-full transition-all duration-700 ease-out"
                     style={{
                       width: `${progressPct}%`,
-                      background: isPaid ? 'var(--green, #16a34a)' : isFailed ? '#ef4444' : 'var(--brand)',
+                      background: isPaid ? 'var(--green)' : isFailed ? 'var(--red)' : 'var(--brand)',
                       animation: isWaiting ? 'pulse 1.5s ease-in-out infinite' : 'none',
                     }}
                   />
@@ -215,17 +221,17 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
 
             {/* Status badge */}
             <div
-              className="rounded-xl p-3 text-center text-sm font-semibold"
+              className="rounded-xl p-3 text-center text-sm font-semibold flex items-center justify-center gap-2"
               style={{
-                background: isPaid ? 'var(--success-soft, #dcfce7)' : isFailed ? '#fee2e2' : 'var(--surface-2)',
-                color: isPaid ? 'var(--success, #15803d)' : isFailed ? '#b91c1c' : 'var(--text)',
+                background: isPaid ? 'var(--green-soft)' : isFailed ? 'var(--red-soft)' : 'var(--surface-2)',
+                color: isPaid ? 'var(--green)' : isFailed ? 'var(--red)' : 'var(--text)',
               }}
             >
               {isWaiting && (
-                <span className="inline-block mr-2 animate-pulse">⏳</span>
+                <span className="animate-pulse"><IconClock size={16} /></span>
               )}
-              {isPaid && <span className="inline-block mr-2">✅</span>}
-              {isFailed && <span className="inline-block mr-2">❌</span>}
+              {isPaid && <IconCheckCircle2 size={16} />}
+              {isFailed && <IconXCircle size={16} />}
               {t(STATUS_LABEL[status] || 'crypto.statusProcessing')}
             </div>
 
@@ -255,7 +261,7 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
                 <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
                   {t('crypto.depositAddress', { currency: order.payCurrency })}
                 </div>
-                <div className="font-mono text-sm break-all select-all bg-white dark:bg-gray-800 rounded-lg p-2 mb-2">
+                <div className="font-mono text-sm break-all select-all rounded-lg p-2 mb-2" style={{ background: 'var(--surface-2)' }}>
                   {order.payAddress}
                 </div>
                 <div className="flex gap-2">

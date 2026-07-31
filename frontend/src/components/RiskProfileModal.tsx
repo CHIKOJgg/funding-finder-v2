@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { exchangeLabel, openExchange } from '../utils/exchanges';
 import { useT } from '../i18n';
+import { IconExternalLink, IconShieldAlert } from './icons';
 
 interface RiskProfileModalProps {
   open: boolean;
@@ -11,10 +12,10 @@ interface RiskProfileModalProps {
 
 type RiskLevel = 'low' | 'medium' | 'high';
 
-const RISK_PRESETS: Record<RiskLevel, { label: string; perPositionPct: number; leverage: number; count: number; color: string }> = {
-  low: { label: 'risk.low', perPositionPct: 0.05, leverage: 2, count: 3, color: 'var(--success)' },
-  medium: { label: 'risk.medium', perPositionPct: 0.1, leverage: 3, count: 5, color: 'var(--warning)' },
-  high: { label: 'risk.high', perPositionPct: 0.2, leverage: 5, count: 8, color: 'var(--danger)' },
+const RISK_PRESETS: Record<RiskLevel, { label: string; perPositionPct: number; leverage: number; count: number; color: string; soft: string }> = {
+  low: { label: 'risk.low', perPositionPct: 0.05, leverage: 2, count: 3, color: 'var(--success)', soft: 'var(--success-soft)' },
+  medium: { label: 'risk.medium', perPositionPct: 0.1, leverage: 3, count: 5, color: 'var(--warning)', soft: 'var(--warning-soft)' },
+  high: { label: 'risk.high', perPositionPct: 0.2, leverage: 5, count: 8, color: 'var(--danger)', soft: 'var(--danger-soft)' },
 };
 
 // Builds a ready-to-open basket of funding positions from the current scan,
@@ -50,7 +51,7 @@ export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }:
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4" role="dialog" aria-modal="true">
       <div className="rounded-xl max-w-md w-full max-h-[90vh] overflow-auto" style={{ background: 'var(--bg)' }}>
         <div className="card">
           <h2 className="text-lg font-semibold mb-1">{t('risk.title')}</h2>
@@ -71,9 +72,14 @@ export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }:
               <button
                 key={lvl}
                 onClick={() => setRisk(lvl)}
-                className={`flex-1 py-2 rounded-xl text-sm font-medium border ${risk === lvl ? 'border-2' : 'border'}`}
-                style={risk === lvl ? { borderColor: RISK_PRESETS[lvl].color, color: RISK_PRESETS[lvl].color } : { color: 'var(--text-muted)' }}
+                className="flex-1 py-2 rounded-xl text-sm font-medium border flex items-center justify-center gap-1.5"
+                style={
+                  risk === lvl
+                    ? { background: RISK_PRESETS[lvl].soft, borderColor: RISK_PRESETS[lvl].color, color: RISK_PRESETS[lvl].color }
+                    : { background: 'var(--surface-2)', borderColor: 'transparent', color: 'var(--text-muted)' }
+                }
               >
+                <IconShieldAlert size={15} className="shrink-0" />
                 {t('risk.' + lvl)}
               </button>
             ))}
@@ -96,12 +102,14 @@ export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }:
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-green-700">+{formatUsd(b.daily)} {t('unit.usdtPerDay')}</span>
+                    <span className="font-bold" style={{ color: 'var(--success)' }}>+{formatUsd(b.daily)} {t('unit.usdtPerDay')}</span>
                     <button
                       onClick={() => openExchange(b.exchange, b.contract)}
-                      className="text-xs text-[var(--brand)] hover:underline"
+                      className="text-xs text-[var(--brand)] hover:underline flex items-center justify-center w-6 h-6"
                       title={t('main.openOnExchange', { contract: b.contract, exchange: exchangeLabel(b.exchange) })}
-                    >↗</button>
+                    >
+                      <IconExternalLink size={13} />
+                    </button>
                   </div>
                 </div>
               ))
@@ -111,7 +119,7 @@ export function RiskProfileModal({ open, onClose, scanResults, defaultCapital }:
           <div className="rounded-xl p-3 mb-4" style={{ background: 'var(--brand-soft)' }}>
             <div className="flex justify-between text-sm">
               <span style={{ color: 'var(--brand)' }}>{t('risk.expectedIncome')}</span>
-              <strong className="text-green-700">+{formatUsd(totalDaily)} {t('unit.usdtPerDay')}</strong>
+              <strong style={{ color: 'var(--success)' }}>+{formatUsd(totalDaily)} {t('unit.usdtPerDay')}</strong>
             </div>
             <div className="flex justify-between text-xs text-muted mt-1">
               <span>≈ {formatUsd(totalDaily * 30)} {t('unit.usdtPerMonth')}</span>

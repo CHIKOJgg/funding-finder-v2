@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useT } from '../i18n';
+import { IconZap } from './icons';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -40,10 +41,10 @@ export function InstallBanner() {
       }}
     >
       <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
-        style={{ background: 'var(--brand)' }}
+        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+        style={{ background: 'var(--brand)', color: 'var(--on-brand)' }}
       >
-        ⚡
+        <IconZap size={18} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold">{t('install.title')}</p>

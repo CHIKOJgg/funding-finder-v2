@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useT } from '../i18n';
 import { hapticSuccess } from '../utils/haptic';
+import { IconArrowDown } from './icons';
 
 interface PullToRefreshProps {
   onRefresh: () => Promise<void> | void;
@@ -115,20 +116,22 @@ export function PullToRefresh({
             width: 40,
             height: 40,
             background: 'var(--surface)',
-            border: '1px solid var(--brand-soft)',
-            boxShadow: '0 4px 10px rgba(0,0,0,0.08)',
+            border: '1px solid var(--border-2)',
           }}
         >
           {refreshing ? (
             <span className="block w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
-              style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }} />
+              style={{ borderColor: 'var(--cobalt)', borderTopColor: 'transparent' }} />
           ) : (
-            <span style={{
-              display: 'inline-block',
-              transform: `rotate(${rotation}deg)`,
-              color: progress >= 1 ? 'var(--brand)' : 'var(--text-muted)',
-              fontSize: 18,
-            }}>↓</span>
+            <span
+              className="flex items-center justify-center transition-transform"
+              style={{
+                transform: `rotate(${rotation}deg)`,
+                color: progress >= 1 ? 'var(--cobalt)' : 'var(--text-muted)',
+              }}
+            >
+              <IconArrowDown size={18} aria-hidden />
+            </span>
           )}
         </div>
       </div>

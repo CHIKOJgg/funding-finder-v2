@@ -10,6 +10,21 @@ import { useT } from '../i18n';
 import { PLAN_PRICES } from '../utils/plans';
 import { clsx } from 'clsx';
 import { CardSkeleton } from '../components/Skeleton';
+import {
+  IconBot,
+  IconChartLine,
+  IconCheck,
+  IconGift,
+  IconLink2,
+  IconMedal,
+  IconMessageCircle,
+  IconSend,
+  IconShare2,
+  IconSmartphone,
+  IconStar,
+  Icon,
+  type IconName,
+} from '../components/icons';
 
 const SITE_URL = 'https://funding-finder-frontend.onrender.com';
 
@@ -20,14 +35,14 @@ interface UserStats {
 }
 
 const ACHIEVEMENTS = [
-  { id: 'first_scan', icon: '🔍', key: 'profile.achFirstScan', condition: (s: UserStats) => s.totalScans >= 1 },
-  { id: 'scanner', icon: '🤖', key: 'profile.achScanner', condition: (s: UserStats) => s.totalScans >= 10 },
-  { id: 'master_scanner', icon: '🏆', key: 'profile.achMasterScanner', condition: (s: UserStats) => s.totalScans >= 100 },
-  { id: 'alert_setter', icon: '🔔', key: 'profile.achAlertSetter', condition: (s: UserStats) => s.totalAlerts >= 1 },
-  { id: 'referral', icon: '🤝', key: 'profile.achReferral', condition: (_s: UserStats, r: number) => r >= 1 },
-  { id: 'pro_user', icon: '⭐', key: 'profile.achProUser', condition: (_s: UserStats, _r: number, sub: string) => sub === 'pro' || sub === 'proplus' },
-  { id: 'diversified', icon: '🌐', key: 'profile.achDiversified', condition: (s: UserStats) => s.uniqueExchanges >= 3 },
-];
+  { id: 'first_scan', icon: 'ScanLine', key: 'profile.achFirstScan', condition: (s: UserStats) => s.totalScans >= 1 },
+  { id: 'scanner', icon: 'Bot', key: 'profile.achScanner', condition: (s: UserStats) => s.totalScans >= 10 },
+  { id: 'master_scanner', icon: 'Trophy', key: 'profile.achMasterScanner', condition: (s: UserStats) => s.totalScans >= 100 },
+  { id: 'alert_setter', icon: 'Bell', key: 'profile.achAlertSetter', condition: (s: UserStats) => s.totalAlerts >= 1 },
+  { id: 'referral', icon: 'Users', key: 'profile.achReferral', condition: (_s: UserStats, r: number) => r >= 1 },
+  { id: 'pro_user', icon: 'Star', key: 'profile.achProUser', condition: (_s: UserStats, _r: number, sub: string) => sub === 'pro' || sub === 'proplus' },
+  { id: 'diversified', icon: 'Globe', key: 'profile.achDiversified', condition: (s: UserStats) => s.uniqueExchanges >= 3 },
+] as { id: string; icon: IconName; key: string; condition: (s: UserStats, r: number, sub: string) => boolean }[];
 
 export function ProfilePage() {
   const { user, subscription: ctxSubscription, isWeb, refreshSubscription } = useApp();
@@ -187,8 +202,8 @@ export function ProfilePage() {
       <div className="card">
         <div className="flex items-center gap-3 mb-4">
           <div
-            className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white shrink-0"
-            style={{ background: 'linear-gradient(135deg, #3390ec, #1f4fb0)' }}
+            className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
+            style={{ background: 'var(--brand)', color: 'var(--on-brand)' }}
           >
             {(user?.firstName || 'U').charAt(0).toUpperCase()}
           </div>
@@ -211,7 +226,9 @@ export function ProfilePage() {
 
       {/* Usage Dashboard */}
       <div className="card">
-        <h2 className="text-base font-semibold mb-3">📊 {t('profile.dashboard')}</h2>
+        <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
+          <IconChartLine size={18} style={{ color: 'var(--brand)' }} /> {t('profile.dashboard')}
+        </h2>
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded-xl p-3 text-center" style={{ background: 'var(--surface-2)' }}>
             <div className="text-xs text-muted">{t('profile.scansCount')}</div>
@@ -230,7 +247,9 @@ export function ProfilePage() {
 
       {/* Achievements */}
       <div className="card">
-        <h2 className="text-base font-semibold mb-3">🏅 {t('profile.achievements')}</h2>
+        <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
+          <IconMedal size={18} style={{ color: 'var(--brand)' }} /> {t('profile.achievements')}
+        </h2>
         <div className="grid grid-cols-4 gap-2">
           {ACHIEVEMENTS.map((ach) => {
             const unlocked = ach.condition(userStats, referralStats.referrals, subscription);
@@ -239,11 +258,14 @@ export function ProfilePage() {
                 key={ach.id}
                 className={clsx(
                   'flex flex-col items-center p-2 rounded-xl text-center transition-all',
-                  unlocked ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'opacity-40 grayscale'
+                  !unlocked && 'opacity-40 grayscale'
                 )}
+                style={{ background: unlocked ? 'var(--amber-soft)' : 'transparent' }}
                 title={t(ach.key)}
               >
-                <span className="text-2xl">{ach.icon}</span>
+                <span style={{ color: unlocked ? 'var(--amber)' : 'var(--text-muted)' }}>
+                  <Icon name={ach.icon} size={22} />
+                </span>
                 <span className="text-[10px] mt-1 leading-tight">{t(ach.key)}</span>
               </div>
             );
@@ -258,13 +280,17 @@ export function ProfilePage() {
       </div>
 
       <div className="card">
-          <h2 className="text-base font-semibold mb-1 text-[var(--text)]">🎁 {t('profile.trialTitle')}</h2>
+          <h2 className="text-base font-semibold mb-1 text-[var(--text)] flex items-center gap-2">
+            <IconGift size={18} style={{ color: 'var(--brand)' }} /> {t('profile.trialTitle')}
+          </h2>
           <p className="text-sm text-muted mb-3">{t('profile.trialDesc')}</p>
         <TrialCTA />
       </div>
 
       <div className="card">
-          <h2 className="text-base font-semibold mb-1 text-[var(--text)]">🎁 {t('profile.referralTitle')}</h2>
+          <h2 className="text-base font-semibold mb-1 text-[var(--text)] flex items-center gap-2">
+            <IconGift size={18} style={{ color: 'var(--brand)' }} /> {t('profile.referralTitle')}
+          </h2>
           <p className="text-sm text-muted mb-3">{t('profile.referralDesc', { rate: Math.round((referralStats.bonusRate || 0.2) * 100) })}</p>
 
         <div className="grid grid-cols-3 gap-2 mb-3">
@@ -304,9 +330,9 @@ export function ProfilePage() {
             navigator.clipboard.writeText(referralLink);
             showToast(t('profile.linkCopied'), 'success');
           }}
-          className="btn btn-secondary text-sm py-2 w-full"
+          className="btn btn-secondary text-sm py-2 w-full flex items-center justify-center gap-2"
         >
-            🔗 {t('profile.copyLink')}
+          <IconLink2 size={16} /> {t('profile.copyLink')}
         </button>
         <div className="flex gap-2 mt-2">
           <button
@@ -314,9 +340,9 @@ export function ProfilePage() {
               const bot = import.meta.env.VITE_BOT_USERNAME || 'FundingFinderBot';
               window.open(`https://t.me/${bot}`, '_blank', 'noopener');
             }}
-            className="btn btn-secondary text-sm py-2 flex-1"
+            className="btn btn-secondary text-sm py-2 flex-1 flex items-center justify-center gap-1.5"
           >
-            🤖 {t('profile.openBot')}
+            <IconBot size={16} /> {t('profile.openBot')}
           </button>
           <button
             onClick={async () => {
@@ -332,9 +358,9 @@ export function ProfilePage() {
                 showToast(t('profile.linkCopied'), 'success');
               }
             }}
-            className="btn btn-secondary text-sm py-2 flex-1"
+            className="btn btn-secondary text-sm py-2 flex-1 flex items-center justify-center gap-1.5"
           >
-            📤 {t('profile.share')}
+            <IconShare2 size={16} /> {t('profile.share')}
           </button>
         </div>
         <div className="flex gap-1.5 mt-2">
@@ -344,10 +370,10 @@ export function ProfilePage() {
               const payload = { text: t('profile.shareText'), url: referralLink || SITE_URL, referralCode: user?.referralCode, utm: { source: 'miniapp', medium: 'share', campaign: 'referral_telegram' } };
               window.open(telegramShareUrl(payload), '_blank', 'noopener');
             }}
-            className="btn btn-secondary text-xs py-1.5 flex-1"
+            className="btn btn-secondary text-xs py-1.5 flex-1 flex items-center justify-center gap-1"
             title={t('profile.shareTelegram')}
           >
-            ✈️ {t('profile.shareTelegram')}
+            <IconSend size={14} /> {t('profile.shareTelegram')}
           </button>
           <button
             onClick={async () => {
@@ -358,7 +384,7 @@ export function ProfilePage() {
             className="btn btn-secondary text-xs py-1.5 flex-1"
             title={t('profile.shareX')}
           >
-            𝕏 {t('profile.shareX')}
+            {t('profile.shareX')}
           </button>
           <button
             onClick={async () => {
@@ -366,10 +392,10 @@ export function ProfilePage() {
               const payload = { text: t('profile.shareText'), url: referralLink || SITE_URL, referralCode: user?.referralCode, utm: { source: 'miniapp', medium: 'share', campaign: 'referral_whatsapp' } };
               window.open(whatsappShareUrl(payload), '_blank', 'noopener');
             }}
-            className="btn btn-secondary text-xs py-1.5 flex-1"
+            className="btn btn-secondary text-xs py-1.5 flex-1 flex items-center justify-center gap-1"
             title={t('profile.shareWhatsApp')}
           >
-            💬 {t('profile.shareWhatsApp')}
+            <IconMessageCircle size={14} /> {t('profile.shareWhatsApp')}
           </button>
         </div>
         {referralLink && (
@@ -380,7 +406,7 @@ export function ProfilePage() {
 
       <div className="rounded-2xl p-4 mb-4" style={{ background: 'var(--surface)' }}>
         <div className="flex items-center gap-3">
-          <div style={{ fontSize: 28 }}>📱</div>
+          <IconSmartphone size={28} style={{ color: 'var(--brand)' }} />
           <div className="flex-1">
             <div className="font-semibold text-sm">{t('profile.qrLoginTitle')}</div>
             <div className="text-xs text-muted">{t('profile.qrLoginDesc')}</div>
@@ -396,8 +422,8 @@ export function ProfilePage() {
 
       <div id="subscription" className="scroll-mt-4">
         <div className="mb-4">
-          <div className="rounded-2xl p-5 text-white relative overflow-hidden"
-                style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand-hover) 100%)' }}>
+          <div className="rounded-2xl p-5 relative overflow-hidden"
+                style={{ background: 'var(--brand)', color: 'var(--on-brand)' }}>
             <div className="text-xs font-semibold uppercase tracking-wide opacity-80">{t('profile.yourPlan')}</div>
             <div className="text-2xl font-bold mt-1 capitalize">{planLabel(subscription)}</div>
             <p className="text-sm opacity-90 mt-2">
@@ -544,15 +570,15 @@ const PlanCard = memo(function PlanCard({
     <div
       className={`relative rounded-2xl p-5 transition-all duration-200 ${
         featured
-          ? 'mt-4 border-2 border-[var(--brand)] shadow-[var(--shadow-lg)]'
+          ? 'mt-4 border border-[var(--brand)]'
           : 'border border-[var(--border)]'
       }`}
       style={{ background: 'var(--surface)', color: 'var(--text)' }}
     >
       {featured && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold text-white"
-             style={{ background: 'var(--brand)' }}>
-          ⭐ {t('profile.popular')}
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"
+             style={{ background: 'var(--brand)', color: 'var(--on-brand)' }}>
+          <IconStar size={12} fill="currentColor" /> {t('profile.popular')}
         </div>
       )}
 
@@ -571,7 +597,7 @@ const PlanCard = memo(function PlanCard({
       <ul className="space-y-2 mb-4">
         {features.map((feature, idx) => (
           <li key={idx} className="flex items-start gap-2 text-sm text-[var(--text)]">
-            <span className="mt-0.5 text-[var(--success)] font-bold shrink-0" aria-hidden="true">✓</span>
+            <IconCheck size={14} className="mt-0.5 shrink-0" style={{ color: 'var(--green)' }} />
               <span>{t(feature)}</span>
           </li>
         ))}
@@ -580,10 +606,10 @@ const PlanCard = memo(function PlanCard({
       {isCurrent ? (
         <button
           disabled
-          className="btn text-sm py-2.5 w-full cursor-not-allowed"
+          className="btn text-sm py-2.5 w-full cursor-not-allowed flex items-center justify-center gap-1.5"
           style={{ background: 'var(--surface-2)', color: 'var(--text)' }}
         >
-          ✓ {t('profile.currentPlan')}
+          <IconCheck size={14} /> {t('profile.currentPlan')}
         </button>
       ) : (
         <button

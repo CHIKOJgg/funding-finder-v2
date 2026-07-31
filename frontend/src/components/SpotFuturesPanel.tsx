@@ -14,6 +14,7 @@ import {
   Legend,
 } from 'chart.js';
 import { openExchange } from '../utils/exchanges';
+import { IconLightbulb, IconPause, IconPlay } from './icons';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -90,8 +91,8 @@ export function SpotFuturesPanel() {
       {
         label: t('sf.basis'),
         data: (data?.series || []).map((s: any) => s.basis),
-        borderColor: 'rgb(168, 85, 247)',
-        backgroundColor: 'rgba(168, 85, 247, 0.2)',
+        borderColor: 'rgb(61, 99, 255)',
+        backgroundColor: 'rgba(61, 99, 255, 0.15)',
         fill: true,
         tension: 0.25,
         pointRadius: 0,
@@ -105,7 +106,7 @@ export function SpotFuturesPanel() {
     plugins: { legend: { display: false } },
     scales: {
       x: { ticks: { maxTicksLimit: 5 }, grid: { display: false } },
-      y: { ticks: { callback: (v: any) => `${v}%` }, grid: { color: 'rgba(0,0,0,0.05)' } },
+      y: { ticks: { callback: (v: any) => `${v}%` }, grid: { color: 'rgba(255,255,255,0.06)' } },
     },
   }), []);
 
@@ -115,8 +116,8 @@ export function SpotFuturesPanel() {
       {
         label: t('sf.fundingRate'),
         data: history.map((h) => h.funding * 100),
-        borderColor: 'rgb(34, 197, 94)',
-        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+        borderColor: 'rgb(52, 211, 153)',
+        backgroundColor: 'rgba(52, 211, 153, 0.15)',
         fill: true,
         tension: 0.1,
         pointRadius: 0,
@@ -129,8 +130,8 @@ export function SpotFuturesPanel() {
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-lg font-semibold">{t('sf.title')}</h2>
         <div className="flex items-center gap-1.5 text-xs">
-          <span className={clsx('inline-block w-2 h-2 rounded-full', paused ? 'bg-gray-400' : 'bg-green-500 animate-pulse')} aria-hidden="true" />
-          <span className="text-green-600 font-medium">{t('oi.live')}</span>
+          <span className={clsx('inline-block w-2 h-2 rounded-full', paused ? 'bg-[var(--text3)]' : 'bg-[var(--green)] animate-pulse')} aria-hidden="true" />
+          <span className="text-[var(--green)] font-medium">{t('oi.live')}</span>
         </div>
       </div>
       <p className="text-sm text-muted mb-3">{t('sf.subtitle')}</p>
@@ -167,7 +168,7 @@ export function SpotFuturesPanel() {
                 onClick={() => setPair(p)}
                 className={clsx(
                   'text-xs px-2 py-1 rounded-full border',
-                  pair === p ? 'border-[var(--brand)] text-[var(--brand)] bg-blue-50' : 'border-gray-300 text-gray-600'
+                  pair === p ? 'border-[var(--brand)] text-[var(--brand)] bg-[var(--cobalt-soft)]' : 'border-[var(--border)] text-[var(--text2)]'
                 )}
               >
                 {p}
@@ -176,54 +177,56 @@ export function SpotFuturesPanel() {
           </div>
         </div>
 
-        <button onClick={() => setPaused((p) => !p)} className="btn btn-secondary text-sm py-2">
-          {paused ? `▶ ${t('oi.resume')}` : `⏸ ${t('oi.pause')}`}
+        <button onClick={() => setPaused((p) => !p)} className="btn btn-secondary text-sm py-2 gap-1.5">
+          {paused ? <IconPlay className="w-4 h-4 shrink-0" /> : <IconPause className="w-4 h-4 shrink-0" />}
+          <span>{paused ? t('oi.resume') : t('oi.pause')}</span>
         </button>
       </div>
 
       {!data?.supported && (
-        <div className="text-sm text-yellow-700 bg-yellow-50 p-3 rounded mb-4">
+        <div className="text-sm text-[var(--amber)] bg-[var(--amber-soft)] p-3 rounded-lg mb-4">
           {t('sf.notSupported', { exchange })}
         </div>
       )}
 
       {loading && !data ? (
-        <div className="text-center py-6 text-gray-500" role="status">{t('common.loading')}</div>
+        <div className="text-center py-6 text-[var(--text-muted)]" role="status">{t('common.loading')}</div>
       ) : data?.supported ? (
         <>
           {lastUpdated && (
-            <div className="text-xs text-gray-500 mb-2">{t('oi.updated', { time: new Date(lastUpdated).toLocaleTimeString() })}</div>
+            <div className="text-xs text-[var(--text-muted)] mb-2">{t('oi.updated', { time: new Date(lastUpdated).toLocaleTimeString() })}</div>
           )}
 
           {data?.strategy && (
-            <div className="text-sm bg-purple-50 text-purple-700 p-2 rounded mb-3">
-              💡 {data.strategy}
+            <div className="flex items-start gap-2 text-sm bg-[var(--cobalt-soft)] text-[var(--cobalt)] p-2.5 rounded-lg mb-3">
+              <IconLightbulb className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{data.strategy}</span>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3 mb-3">
-            <div className="p-3 rounded-lg bg-gray-50">
-              <div className="text-xs text-gray-500">{t('sf.spotPrice')}</div>
+            <div className="p-3 rounded-lg bg-[var(--surface-2)]">
+              <div className="text-xs text-[var(--text-muted)]">{t('sf.spotPrice')}</div>
               <div className="text-lg font-bold stat">${formatNum(data?.spotPrice)}</div>
             </div>
-            <div className="p-3 rounded-lg bg-gray-50">
-              <div className="text-xs text-gray-500">{t('sf.perpMark')}</div>
+            <div className="p-3 rounded-lg bg-[var(--surface-2)]">
+              <div className="text-xs text-[var(--text-muted)]">{t('sf.perpMark')}</div>
               <div className="text-lg font-bold stat">${formatNum(data?.perpMark)}</div>
             </div>
-            <div className="p-3 rounded-lg bg-purple-50">
-              <div className="text-xs text-gray-500">{t('sf.basis')}</div>
-              <div className={clsx('text-lg font-bold stat', (data?.basisPct ?? 0) >= 0 ? 'text-green-600' : 'text-red-500')}>
+            <div className="p-3 rounded-lg bg-[var(--cobalt-soft)]">
+              <div className="text-xs text-[var(--text-muted)]">{t('sf.basis')}</div>
+              <div className={clsx('text-lg font-bold stat', (data?.basisPct ?? 0) >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
                 {formatPct(data?.basisPct)}
               </div>
             </div>
-            <div className="p-3 rounded-lg bg-blue-50">
-              <div className="text-xs text-gray-500">{t('sf.fundingRate')}</div>
+            <div className="p-3 rounded-lg bg-[var(--cobalt-soft)]">
+              <div className="text-xs text-[var(--text-muted)]">{t('sf.fundingRate')}</div>
               <div className="text-lg font-bold stat">{formatPct((data?.fundingRate ?? 0) * 100, 4)}</div>
             </div>
-            <div className="p-3 rounded-lg bg-green-50 col-span-2">
-              <div className="text-xs text-gray-500">{t('sf.fundingApy')}</div>
-              <div className="text-xl font-bold stat text-green-600">{formatPct(data?.fundingApy, 1)}</div>
-              <div className="text-xs text-gray-500 mt-1">{t('sf.netApy')}: {formatPct(data?.netApy, 1)}</div>
+            <div className="p-3 rounded-lg bg-[var(--green-soft)] col-span-2">
+              <div className="text-xs text-[var(--text-muted)]">{t('sf.fundingApy')}</div>
+              <div className="text-xl font-bold stat text-[var(--green)]">{formatPct(data?.fundingApy, 1)}</div>
+              <div className="text-xs text-[var(--text-muted)] mt-1">{t('sf.netApy')}: {formatPct(data?.netApy, 1)}</div>
             </div>
           </div>
 
@@ -231,7 +234,7 @@ export function SpotFuturesPanel() {
             {data?.series?.length > 1 ? (
               <Line data={basisChartData} options={basisChartOptions} />
             ) : (
-              <div className="text-center py-8 text-gray-400 text-sm">{t('oi.collecting')}</div>
+              <div className="text-center py-8 text-[var(--text-muted)] text-sm">{t('oi.collecting')}</div>
             )}
           </div>
 
@@ -251,7 +254,7 @@ export function SpotFuturesPanel() {
                 <Line data={fundingChartData} options={basisChartOptions} />
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-400 text-sm">{t('oi.noHistory')}</div>
+              <div className="text-center py-8 text-[var(--text-muted)] text-sm">{t('oi.noHistory')}</div>
             )}
           </div>
         </>

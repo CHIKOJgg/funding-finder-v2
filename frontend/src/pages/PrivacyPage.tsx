@@ -6,7 +6,7 @@ export function PrivacyPage() {
     <div className="px-3 py-4 sm:px-4 sm:max-w-2xl mx-auto">
       <div className="card">
         <h1 className="text-xl font-bold mb-4 text-[var(--text)]">{t('privacy.title')}</h1>
-        <div className="text-sm text-gray-700 space-y-3">
+        <div className="text-sm space-y-3" style={{ color: 'var(--text2)' }}>
           <p>{t('privacy.intro')}</p>
 
           <h2 className="font-semibold text-base mt-4">{t('privacy.s1')}</h2>
@@ -35,7 +35,7 @@ export function PrivacyPage() {
           <h2 className="font-semibold text-base mt-4">{t('privacy.s6')}</h2>
           <p>{t('privacy.s6p1')}</p>
 
-          <p className="mt-4 text-gray-500">{t('privacy.updated')}</p>
+          <p className="mt-4 text-sm" style={{ color: 'var(--text3)' }}>{t('privacy.updated')}</p>
         </div>
       </div>
     </div>

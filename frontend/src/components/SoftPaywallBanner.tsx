@@ -4,6 +4,7 @@ import { useApp } from '../App';
 import { TrialCTA } from './TrialCTA';
 import { TRIAL_DURATION_DAYS } from '../utils/plans';
 import { useT } from '../i18n';
+import { IconLock, IconX } from './icons';
 
 interface SoftPaywallBannerProps {
   used: number;
@@ -48,12 +49,12 @@ export function SoftPaywallBanner({ used, total, featureLabel, onUpgrade }: Soft
     <div
       className="rounded-xl p-4 mb-3 border"
       style={{
-        background: 'linear-gradient(135deg, rgba(51,144,236,0.08), rgba(31,79,176,0.04))',
-        borderColor: 'var(--brand-soft)',
+        background: 'var(--cobalt-soft)',
+        borderColor: 'var(--border)',
       }}
     >
       <div className="flex items-start gap-3">
-        <span className="text-xl mt-0.5" aria-hidden="true">🔒</span>
+        <IconLock size={20} className="shrink-0 mt-0.5" style={{ color: 'var(--brand)' }} />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text)' }}>
             {t('softPaywall.title', { used, total, feature: featureLabel })}
@@ -68,7 +69,7 @@ export function SoftPaywallBanner({ used, total, featureLabel, onUpgrade }: Soft
                 className="h-full rounded-full"
                 style={{
                   width: `${Math.min(pct, 100)}%`,
-                  background: pct >= 100 ? 'var(--red, #ef4444)' : 'var(--brand)',
+                  background: pct >= 100 ? 'var(--red)' : 'var(--brand)',
                   transition: 'width 0.5s ease',
                 }}
               />
@@ -87,11 +88,11 @@ export function SoftPaywallBanner({ used, total, featureLabel, onUpgrade }: Soft
         </div>
         <button
           onClick={() => setDismissed(true)}
-          className="text-sm px-1.5 py-0.5 rounded"
+          className="flex items-center justify-center w-8 h-8 rounded shrink-0"
           style={{ color: 'var(--text-muted)' }}
           aria-label={t('common.close')}
         >
-          ✕
+          <IconX size={14} />
         </button>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { clsx } from 'clsx';
 import { useT } from '../i18n';
+import { IconCheck, IconX } from './icons';
 
 interface QuickStartProps {
   hasScanResults: boolean;
@@ -70,11 +71,11 @@ export function QuickStart({ hasScanResults, selectedCount }: QuickStartProps) {
           </h2>
           <button
             onClick={dismiss}
-            className="text-xs"
+            className="flex items-center justify-center w-8 h-8"
             style={{ color: 'var(--text-muted)' }}
             aria-label={t('quickstart.closeAria')}
           >
-          ✕
+          <IconX size={14} />
         </button>
       </div>
       <ol className="space-y-1.5">
@@ -82,11 +83,14 @@ export function QuickStart({ hasScanResults, selectedCount }: QuickStartProps) {
           <li key={step.key} className="flex items-start gap-2 text-sm">
             <span
               className={clsx(
-                'mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-white'
+                'mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0'
               )}
-              style={{ background: done[step.key] ? 'var(--success)' : 'var(--brand)' }}
+              style={{
+                background: done[step.key] ? 'var(--success)' : 'var(--brand)',
+                color: done[step.key] ? 'var(--on-success)' : 'var(--on-brand)',
+              }}
             >
-              {done[step.key] ? '✓' : idx + 1}
+              {done[step.key] ? <IconCheck size={10} /> : idx + 1}
             </span>
             <span className={clsx(done[step.key] && 'line-through')} style={{ color: 'var(--text)' }}>
               {t(step.label)}
@@ -95,8 +99,8 @@ export function QuickStart({ hasScanResults, selectedCount }: QuickStartProps) {
         ))}
       </ol>
       {allDone && (
-        <p className="text-xs mt-2" style={{ color: 'var(--success)' }}>
-          ✓ {t('quickstart.done')}
+        <p className="text-xs mt-2 flex items-center gap-1" style={{ color: 'var(--success)' }}>
+          <IconCheck size={12} /> {t('quickstart.done')}
         </p>
       )}
     </div>

@@ -26,19 +26,19 @@ interface HeatmapData {
 function rateToColor(rate: number): string {
   const abs = Math.abs(rate);
   if (abs > 0.001) {
-    return rate > 0 ? 'bg-red-500' : 'bg-green-500';
+    return rate > 0 ? 'bg-[var(--red)]/70' : 'bg-[var(--green)]/70';
   }
   if (abs > 0.0003) {
-    return rate > 0 ? 'bg-red-400' : 'bg-green-400';
+    return rate > 0 ? 'bg-[var(--red)]/45' : 'bg-[var(--green)]/45';
   }
   if (abs > 0.0001) {
-    return rate > 0 ? 'bg-red-300' : 'bg-green-300';
+    return rate > 0 ? 'bg-[var(--red)]/20' : 'bg-[var(--green)]/20';
   }
-  return 'bg-gray-200';
+  return 'bg-[var(--surface-2)]';
 }
 
 function rateTextColor(rate: number): string {
-  return rate > 0 ? 'text-red-700' : rate < 0 ? 'text-green-700' : 'text-gray-500';
+  return rate > 0 ? 'text-[var(--red)]' : rate < 0 ? 'text-[var(--green)]' : 'text-[var(--text-muted)]';
 }
 
 export function Heatmap() {
@@ -134,11 +134,11 @@ export function Heatmap() {
 
       {loading ? (
         <div className="text-center py-8 text-[var(--text-muted)]" role="status">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2" />
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--cobalt)] mx-auto mb-2" />
           {t('common.loading')}
         </div>
       ) : error ? (
-        <div className="text-center py-8 text-red-500 text-sm">{error}</div>
+        <div className="text-center py-8 text-[var(--red)] text-sm">{error}</div>
       ) : sortedPairs.length === 0 ? (
         <div className="text-center py-8 text-[var(--text-muted)] text-sm">{t('heatmap.noData')}</div>
       ) : (

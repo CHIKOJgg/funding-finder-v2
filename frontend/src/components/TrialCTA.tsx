@@ -5,6 +5,7 @@ import { useToast } from './Toast';
 import { TRIAL_DURATION_DAYS } from '../utils/plans';
 import { useT } from '../i18n';
 import { track } from '../utils/analytics';
+import { IconAlertTriangle, IconChartLine, IconClock, IconGift, IconSparkles, IconZap } from './icons';
 
 interface TrialCTAProps {
   compact?: boolean;
@@ -67,25 +68,25 @@ export function TrialCTA({ compact = false, showTimer = false, source }: TrialCT
 
   if (active) {
     const urgencyBg = urgency === 'critical'
-      ? 'linear-gradient(135deg, rgba(239,68,68,0.12), rgba(239,68,68,0.04))'
+      ? 'var(--red-soft)'
       : urgency === 'warning'
-        ? 'linear-gradient(135deg, rgba(234,179,8,0.12), rgba(234,179,8,0.04))'
+        ? 'var(--amber-soft)'
         : 'var(--brand-soft)';
     const urgencyBorder = urgency === 'critical'
-      ? '1px solid rgba(239,68,68,0.3)'
+      ? '1px solid var(--red)'
       : urgency === 'warning'
-        ? '1px solid rgba(234,179,8,0.3)'
+        ? '1px solid var(--amber)'
         : 'none';
-    const urgencyColor = urgency === 'critical' ? '#dc2626' : urgency === 'warning' ? '#b45309' : 'var(--brand)';
+    const urgencyColor = urgency === 'critical' ? 'var(--red)' : urgency === 'warning' ? 'var(--amber)' : 'var(--brand)';
 
     return (
       <div
         className="rounded-xl p-3 text-center"
         style={{ background: urgencyBg, border: urgencyBorder, color: urgencyColor }}
       >
-        <div className="text-sm font-semibold">
-          {urgency === 'critical' && '⚠️ '}
-          {urgency === 'warning' && '⏰ '}
+        <div className="text-sm font-semibold flex items-center justify-center gap-1.5">
+          {urgency === 'critical' && <IconAlertTriangle size={16} className="shrink-0" />}
+          {urgency === 'warning' && <IconClock size={16} className="shrink-0" />}
           {t('trial.activeTitle')}
         </div>
         {endsAt && (
@@ -94,7 +95,7 @@ export function TrialCTA({ compact = false, showTimer = false, source }: TrialCT
           </div>
         )}
         {urgency === 'critical' && (
-          <p className="text-xs mt-2 font-semibold" style={{ color: '#dc2626' }}>
+          <p className="text-xs mt-2 font-semibold" style={{ color: 'var(--red)' }}>
             {t('trial.endingSoon')}
           </p>
         )}
@@ -115,7 +116,9 @@ export function TrialCTA({ compact = false, showTimer = false, source }: TrialCT
   if (usedUp) {
     return (
       <div className="rounded-xl p-4 text-center" style={{ background: 'var(--surface-2)' }}>
-        <div className="text-2xl mb-2" aria-hidden="true">⏰</div>
+        <div className="flex justify-center mb-2" aria-hidden="true">
+          <IconClock size={28} style={{ color: 'var(--text-muted)' }} />
+        </div>
         <div className="text-sm font-medium mb-1">{t('trial.endedTitle')}</div>
         <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
           {t('trial.endedNote')}
@@ -125,9 +128,9 @@ export function TrialCTA({ compact = false, showTimer = false, source }: TrialCT
         </button>
         <div
           className="mt-3 rounded-xl p-3"
-          style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(34,197,94,0.02))', border: '1px solid rgba(34,197,94,0.2)' }}
+          style={{ background: 'var(--green-soft)', border: '1px solid var(--green)' }}
         >
-          <p className="text-xs font-semibold" style={{ color: '#16a34a' }}>
+          <p className="text-xs font-semibold" style={{ color: 'var(--green)' }}>
             {t('trial.specialOffer')}
           </p>
           <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
@@ -147,23 +150,31 @@ export function TrialCTA({ compact = false, showTimer = false, source }: TrialCT
   }
 
   return (
-    <div className="rounded-2xl p-4 text-center text-white relative overflow-hidden"
-         style={{ background: 'linear-gradient(135deg, #3390ec 0%, #2b6fd6 60%, #1f4fb0 100%)' }}>
-      <div className="text-2xl mb-1" aria-hidden="true">🎁</div>
+    <div className="rounded-2xl p-4 text-center relative overflow-hidden"
+         style={{ background: 'var(--brand)', color: 'var(--on-brand)' }}>
+      <div className="flex justify-center mb-1" aria-hidden="true">
+        <IconGift size={28} />
+      </div>
       <div className="font-bold text-lg">{t('trial.title')}</div>
       <p className="text-sm opacity-90 mt-1 mb-3">
         {t('trial.desc', { days: TRIAL_DURATION_DAYS })}
       </p>
       <div className="flex flex-wrap justify-center gap-2 mb-3 text-xs opacity-90">
-        <span className="px-2 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.15)' }}>🧠 AI Analysis</span>
-        <span className="px-2 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.15)' }}>📊 Portfolio</span>
-        <span className="px-2 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.15)' }}>⚡ 20 Exchanges</span>
+        <span className="px-2 py-1 rounded-full flex items-center gap-1" style={{ background: 'rgba(255,255,255,0.15)' }}>
+          <IconSparkles size={12} /> AI Analysis
+        </span>
+        <span className="px-2 py-1 rounded-full flex items-center gap-1" style={{ background: 'rgba(255,255,255,0.15)' }}>
+          <IconChartLine size={12} /> Portfolio
+        </span>
+        <span className="px-2 py-1 rounded-full flex items-center gap-1" style={{ background: 'rgba(255,255,255,0.15)' }}>
+          <IconZap size={12} /> 20 Exchanges
+        </span>
       </div>
       <button
         onClick={handleActivate}
         disabled={activating}
         className="btn w-full font-bold"
-        style={{ background: '#fff', color: '#1f4fb0' }}
+        style={{ background: 'var(--on-brand)', color: 'var(--brand)' }}
       >
         {activating ? t('trial.activating') : t('trial.activate', { days: TRIAL_DURATION_DAYS })}
       </button>
@@ -182,12 +193,12 @@ function TrialCountdownTimer({ endsAt, urgency }: { endsAt: string; urgency?: 'c
   const m = Math.floor((diff % 3600000) / 60000);
   const s = Math.floor((diff % 60000) / 1000);
 
-  const color = urgency === 'critical' ? '#dc2626' : urgency === 'warning' ? '#b45309' : 'var(--brand)';
+  const color = urgency === 'critical' ? 'var(--red)' : urgency === 'warning' ? 'var(--amber)' : 'var(--brand)';
 
   return (
     <div
       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg font-mono text-sm font-bold"
-      style={{ background: 'rgba(0,0,0,0.06)', color }}
+      style={{ background: 'var(--surface-2)', color }}
       aria-live="polite"
     >
       <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ background: color }} />

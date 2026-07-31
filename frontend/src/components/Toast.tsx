@@ -16,6 +16,13 @@ export function useToast() {
   return useContext(ToastContext);
 }
 
+const TOAST_STYLES: Record<Toast['type'], { bg: string; fg: string; border: string }> = {
+  success: { bg: 'var(--green-soft)', fg: 'var(--green)', border: 'var(--border)' },
+  error: { bg: 'var(--red-soft)', fg: 'var(--red)', border: 'var(--border)' },
+  spread: { bg: 'var(--cobalt-soft)', fg: 'var(--cobalt-text)', border: 'var(--border)' },
+  info: { bg: 'var(--bg1)', fg: 'var(--text2)', border: 'var(--border)' },
+};
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -52,24 +59,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            role={toast.type === 'error' ? 'alert' : 'status'}
-            aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
-            className={`px-4 py-3 rounded-lg shadow-lg text-white text-sm animate-slide-in ${
-              toast.type === 'success' ? 'bg-green-700' :
-              toast.type === 'error' ? 'bg-red-600' :
-              toast.type === 'spread' ? 'bg-amber-800' :
-              'bg-blue-600'
-            }`}
-          >
-            {toast.message}
-          </div>
-        ))}
+      <div className="fixed top-4 right-4 z-50 space-y-2 max-w-[min(92vw,420px)]">
+        {toasts.map((toast) => {
+          const s = TOAST_STYLES[toast.type];
+          return (
+            <div
+              key={toast.id}
+              role={toast.type === 'error' ? 'alert' : 'status'}
+              aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
+              className="px-4 py-3 rounded-lg border text-sm animate-slide-in"
+              style={{ background: s.bg, color: s.fg, borderColor: s.border }}
+            >
+              {toast.message}
+            </div>
+          );
+        })}
       </div>
     </ToastContext.Provider>
   );
 }
-

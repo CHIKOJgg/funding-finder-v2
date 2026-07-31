@@ -78,10 +78,10 @@ export default function MarketDataTable({ exchange, contract }: MarketDataTableP
     return (
       <div className="market-data-table">
         <div className="animate-pulse space-y-2">
-          <div className="h-4 bg-gray-700 rounded w-1/4" />
-          <div className="h-8 bg-gray-700 rounded" />
-          <div className="h-8 bg-gray-700 rounded" />
-          <div className="h-8 bg-gray-700 rounded" />
+          <div className="h-4 bg-[var(--bg2)] rounded w-1/4" />
+          <div className="h-8 bg-[var(--bg2)] rounded" />
+          <div className="h-8 bg-[var(--bg2)] rounded" />
+          <div className="h-8 bg-[var(--bg2)] rounded" />
         </div>
       </div>
     );
@@ -95,18 +95,18 @@ export default function MarketDataTable({ exchange, contract }: MarketDataTableP
   const liqTotal = liqLong + liqShort;
 
   return (
-    <div className="market-data-table bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+    <div className="market-data-table bg-[var(--bg1)] rounded-lg p-4 border border-[var(--border)]">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-300">Market Depth</h3>
+        <h3 className="text-sm font-semibold text-[var(--text)]">Market Depth</h3>
         <div className="flex gap-1">
           {(['oi', 'lsr', 'liq'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-2 py-1 text-xs rounded ${
+              className={`px-2.5 min-h-[44px] text-xs rounded-lg border transition-colors active:opacity-80 ${
                 activeTab === tab
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                  ? 'bg-[var(--cobalt)] text-white border-[var(--cobalt)]'
+                  : 'bg-[var(--bg1)] text-[var(--text2)] border-[var(--border)] active:border-[var(--border-2)]'
               }`}
             >
               {tab === 'oi' ? 'OI' : tab === 'lsr' ? 'L/S' : 'Liq'}
@@ -118,17 +118,17 @@ export default function MarketDataTable({ exchange, contract }: MarketDataTableP
       {activeTab === 'oi' && (
         <div className="space-y-2">
           <div className="flex justify-between text-xs">
-            <span className="text-gray-400">Open Interest</span>
-            <span className="text-white font-mono">
+            <span className="text-[var(--text2)]">Open Interest</span>
+            <span className="text-[var(--text)] font-mono">
               {oi ? formatNumber(oi.openInterestUsd) : 'N/A'}
             </span>
           </div>
           {oi && oi.openInterestUsd > 0 && (
-            <div className="w-full bg-gray-700 rounded-full h-2">
-              <div className="bg-blue-500 h-2 rounded-full" style={{ width: '100%' }} />
+            <div className="w-full bg-[var(--bg2)] rounded-full h-2">
+              <div className="bg-[var(--cobalt)] h-2 rounded-full" style={{ width: '100%' }} />
             </div>
           )}
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-[var(--text3)] mt-1">
             OI snapshot for {exchange}:{contract}
           </div>
         </div>
@@ -137,21 +137,21 @@ export default function MarketDataTable({ exchange, contract }: MarketDataTableP
       {activeTab === 'lsr' && (
         <div className="space-y-2">
           <div className="flex justify-between text-xs">
-            <span className="text-gray-400">Long/Short Ratio</span>
-            <span className="text-white font-mono">
+            <span className="text-[var(--text2)]">Long/Short Ratio</span>
+            <span className="text-[var(--text)] font-mono">
               {lsr ? `${((lsr?.longShortRatio ?? 0.5) * 100).toFixed(1)}% long` : 'N/A'}
             </span>
           </div>
           {lsr && (
             <>
               <div className="flex gap-2 text-xs">
-                <div className="flex-1 bg-gray-700 rounded-full h-3 relative overflow-hidden">
+                <div className="flex-1 bg-[var(--bg2)] rounded-full h-3 relative overflow-hidden">
                   <div
-                    className="bg-green-500 h-full absolute left-0 top-0"
+                    className="bg-[var(--green)] h-full absolute left-0 top-0"
                     style={{ width: `${((lsr?.longShortRatio ?? 0.5) * 100)}%` }}
                   />
                   <div
-                    className="bg-red-500 h-full absolute top-0"
+                    className="bg-[var(--red)] h-full absolute top-0"
                     style={{
                       width: `${((1 - (lsr?.longShortRatio ?? 0.5)) * 100)}%`,
                       left: `${((lsr?.longShortRatio ?? 0.5) * 100)}%`,
@@ -159,19 +159,19 @@ export default function MarketDataTable({ exchange, contract }: MarketDataTableP
                   />
                 </div>
               </div>
-              <div className="flex justify-between text-xs text-gray-400">
+              <div className="flex justify-between text-xs text-[var(--text2)]">
                 <span>Long: {((lsr?.longAccountRatio ?? (lsr?.longShortRatio ?? 0.5)) * 100).toFixed(1)}%</span>
                 <span>Short: {((lsr?.shortAccountRatio ?? (1 - (lsr?.longShortRatio ?? 0.5))) * 100).toFixed(1)}%</span>
               </div>
             </>
           )}
           {(lsr?.longShortRatio ?? 0) > 0.7 && (
-            <div className="text-xs text-yellow-400 mt-1">
+            <div className="text-xs text-[var(--amber)] mt-1">
               Crowded long — potential squeeze risk
             </div>
           )}
           {(lsr?.longShortRatio ?? 1) < 0.3 && (
-            <div className="text-xs text-yellow-400 mt-1">
+            <div className="text-xs text-[var(--amber)] mt-1">
               Crowded short — potential squeeze risk
             </div>
           )}
@@ -181,25 +181,25 @@ export default function MarketDataTable({ exchange, contract }: MarketDataTableP
       {activeTab === 'liq' && (
         <div className="space-y-2">
           <div className="grid grid-cols-3 gap-2 text-xs">
-            <div className="bg-gray-700/50 rounded p-2">
-              <div className="text-gray-400">Long Liq</div>
-              <div className="text-green-400 font-mono">{formatNumber(liqLong)}</div>
+            <div className="bg-[var(--card)] rounded p-2">
+              <div className="text-[var(--text2)]">Long Liq</div>
+              <div className="text-[var(--green)] font-mono">{formatNumber(liqLong)}</div>
             </div>
-            <div className="bg-gray-700/50 rounded p-2">
-              <div className="text-gray-400">Short Liq</div>
-              <div className="text-red-400 font-mono">{formatNumber(liqShort)}</div>
+            <div className="bg-[var(--card)] rounded p-2">
+              <div className="text-[var(--text2)]">Short Liq</div>
+              <div className="text-[var(--red)] font-mono">{formatNumber(liqShort)}</div>
             </div>
-            <div className="bg-gray-700/50 rounded p-2">
-              <div className="text-gray-400">Total</div>
-              <div className="text-white font-mono">{formatNumber(liqTotal)}</div>
+            <div className="bg-[var(--card)] rounded p-2">
+              <div className="text-[var(--text2)]">Total</div>
+              <div className="text-[var(--text)] font-mono">{formatNumber(liqTotal)}</div>
             </div>
           </div>
           {liqs.length > 0 && (
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-[var(--text3)]">
               Last: {liqs[0].longVolUsd > liqs[0].shortVolUsd ? 'Long dominant' : 'Short dominant'}
             </div>
           )}
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-[var(--text3)] mt-1">
             {liqs.length} liquidation events in 24h
           </div>
         </div>

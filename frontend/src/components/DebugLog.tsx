@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { logger } from '../utils/logger';
+import { IconBug, IconX } from './icons';
 
 /**
  * On-device log viewer for the Telegram Mini App (no DevTools / F12 there).
@@ -52,10 +53,10 @@ export function DebugLog({ open, onClose }: { open: boolean; onClose: () => void
   if (!open) return null;
 
   const colors: Record<string, string> = {
-    debug: '#888',
-    info: '#4ade80',
-    warn: '#fbbf24',
-    error: '#f87171',
+    debug: 'var(--text3)',
+    info: 'var(--green)',
+    warn: 'var(--amber)',
+    error: 'var(--red)',
   };
 
   return (
@@ -63,8 +64,8 @@ export function DebugLog({ open, onClose }: { open: boolean; onClose: () => void
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.92)',
-        color: '#e5e7eb',
+        background: 'var(--bg)',
+        color: 'var(--text)',
         zIndex: 9999,
         display: 'flex',
         flexDirection: 'column',
@@ -73,27 +74,29 @@ export function DebugLog({ open, onClose }: { open: boolean; onClose: () => void
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <div style={{ display: 'flex', gap: 8, padding: 8, borderBottom: '1px solid #333', alignItems: 'center' }}>
-        <strong style={{ color: '#60a5fa' }}>Debug Log ({entries.length})</strong>
+      <div style={{ display: 'flex', gap: 8, padding: 8, borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
+        <strong style={{ color: 'var(--cobalt-text)' }}>Debug Log ({entries.length})</strong>
         <button style={btn} onClick={copy}>Copy</button>
-        <button style={btn} onClick={send}>Send↗</button>
+        <button style={btn} onClick={send}>Send</button>
         <button style={btn} onClick={() => logger.clear()}>Clear</button>
         <label style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center' }}>
-          <input type="checkbox" checked={autoscroll} onChange={(e) => setAutoscroll(e.target.checked)} />
+          <input type="checkbox" checked={autoscroll} onChange={(e) => setAutoscroll(e.target.checked)} style={{ accentColor: 'var(--cobalt)' }} />
           auto
         </label>
-        <button style={{ ...btn, color: '#f87171' }} onClick={onClose}>✕</button>
+        <button style={{ ...btn, color: 'var(--red)', padding: 4 }} onClick={onClose} aria-label="Close debug log">
+          <IconX size={12} />
+        </button>
       </div>
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 8, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-        {entries.length === 0 && <div style={{ color: '#666' }}>No logs yet.</div>}
+        {entries.length === 0 && <div style={{ color: 'var(--text3)' }}>No logs yet.</div>}
         {entries.map((e, i) => (
           <div key={i} style={{ marginBottom: 2 }}>
-            <span style={{ color: '#666' }}>{new Date(e.t).toLocaleTimeString()}</span>{' '}
-            <span style={{ color: colors[e.level] || '#ccc' }}>[{e.level}]</span>{' '}
-            <span style={{ color: '#93c5fd' }}>{e.scope}</span>{' '}
+            <span style={{ color: 'var(--text3)' }}>{new Date(e.t).toLocaleTimeString()}</span>{' '}
+            <span style={{ color: colors[e.level] || 'var(--text2)' }}>[{e.level}]</span>{' '}
+            <span style={{ color: 'var(--cobalt-text)' }}>{e.scope}</span>{' '}
             <span>{e.msg}</span>
             {e.data !== undefined && (
-              <span style={{ color: '#9ca3af' }}> {JSON.stringify(e.data)}</span>
+              <span style={{ color: 'var(--text2)' }}> {JSON.stringify(e.data)}</span>
             )}
           </div>
         ))}
@@ -103,9 +106,9 @@ export function DebugLog({ open, onClose }: { open: boolean; onClose: () => void
 }
 
 const btn: CSSProperties = {
-  background: '#1f2937',
-  color: '#e5e7eb',
-  border: '1px solid #374151',
+  background: 'var(--card)',
+  color: 'var(--text)',
+  border: '1px solid var(--border-2)',
   borderRadius: 6,
   padding: '4px 8px',
   fontSize: 11,
@@ -126,14 +129,16 @@ export function DebugToggle({ onOpen }: { onOpen: () => void }) {
         width: 34,
         height: 34,
         borderRadius: '50%',
-        background: 'rgba(31,41,55,0.85)',
-        color: '#fbbf24',
-        border: '1px solid #374151',
-        fontSize: 16,
+        background: 'var(--bg1)',
+        color: 'var(--amber)',
+        border: '1px solid var(--border-2)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         cursor: 'pointer',
       }}
     >
-      🐞
+      <IconBug size={18} />
     </button>
   );
 }

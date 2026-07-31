@@ -49,11 +49,11 @@ export function LiquidationHeatmap({ price, className }: Props) {
               <span className="w-6 text-right text-[var(--text-muted)]">{z.leverage}x</span>
               <div className="flex-1 h-2.5 bg-[var(--border)] rounded-full overflow-hidden relative">
                 <div
-                  className="absolute right-0 top-0 h-full rounded-full bg-green-500/70"
+                  className="absolute right-0 top-0 h-full rounded-full bg-[var(--green)]/70"
                   style={{ width: `${(z.longDist / maxDist) * 100}%` }}
                 />
               </div>
-              <span className="w-16 text-right tabular-nums text-green-600">
+              <span className="w-16 text-right tabular-nums text-[var(--green)]">
                 ${z.longLiq < 1 ? z.longLiq.toFixed(4) : z.longLiq.toFixed(z.longLiq > 100 ? 0 : 2)}
               </span>
               <span className="w-8 text-right text-[var(--text-muted)]">-{z.longDist.toFixed(1)}%</span>
@@ -64,7 +64,7 @@ export function LiquidationHeatmap({ price, className }: Props) {
 
       {/* Current price marker */}
       <div className="flex items-center justify-center gap-1 text-[10px] font-bold py-0.5 text-[var(--text)]">
-        <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500" />
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--cobalt)]" />
         {t('arb.liqCurrentPrice')}: ${price > 100 ? price.toFixed(0) : price.toFixed(4)}
       </div>
 
@@ -77,11 +77,11 @@ export function LiquidationHeatmap({ price, className }: Props) {
               <span className="w-6 text-right text-[var(--text-muted)]">{z.leverage}x</span>
               <div className="flex-1 h-2.5 bg-[var(--border)] rounded-full overflow-hidden relative">
                 <div
-                  className="absolute left-0 top-0 h-full rounded-full bg-red-500/70"
+                  className="absolute left-0 top-0 h-full rounded-full bg-[var(--red)]/70"
                   style={{ width: `${(z.shortDist / maxDist) * 100}%` }}
                 />
               </div>
-              <span className="w-16 text-right tabular-nums text-red-500">
+              <span className="w-16 text-right tabular-nums text-[var(--red)]">
                 ${z.shortLiq > 1000 ? z.shortLiq.toFixed(0) : z.shortLiq.toFixed(2)}
               </span>
               <span className="w-8 text-right text-[var(--text-muted)]">+{z.shortDist.toFixed(1)}%</span>

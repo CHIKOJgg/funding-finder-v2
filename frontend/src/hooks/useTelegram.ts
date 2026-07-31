@@ -67,13 +67,45 @@ export function useTelegram() {
       };
 
       try {
-        // Expand to fill the available viewport (critical on Telegram
-        // desktop, where mini-apps otherwise open in a small side panel).
+        // Signal to Telegram that we're ready, then expand to fill the
+        // available viewport (critical on Telegram desktop, where mini-apps
+        // otherwise open in a small side panel).
+        webApp.ready?.();
         expandNow();
         webApp.enableClosingConfirmation?.();
+
+        // Funding Finder is always dark/cobalt — paint the native surfaces to
+        // match the canvas so nothing flashes light or shows system chrome.
+        webApp.setBackgroundColor?.('#05070C');
+        webApp.setHeaderColor?.('#05070C');
+
+        // Native buttons get the brand color on load (per-screen text/state is
+        // set where those buttons are used).
+        webApp.MainButton?.setParams?.({ color: '#3D63FF', text_color: '#FFFFFF' });
+        webApp.SecondaryButton?.setParams?.({ color: '#3D63FF', text_color: '#FFFFFF' });
       } catch (e) {
         console.warn('Telegram WebApp API error:', e);
       }
+
+      // Mirror the platform safe-area insets into CSS vars so fixed UI (nav,
+      // scan card, modals) clears the notch / home indicator. Sum of screen +
+      // content insets, like Telegram docs recommend for mini apps.
+      const applySafeArea = () => {
+        try {
+          const s = webApp.safeAreaInset || { top: 0, bottom: 0, left: 0, right: 0 };
+          const c = webApp.contentSafeAreaInset || { top: 0, bottom: 0, left: 0, right: 0 };
+          const style = document.documentElement.style;
+          style.setProperty('--safe-top', `${s.top + c.top}px`);
+          style.setProperty('--safe-bottom', `${s.bottom + c.bottom}px`);
+          style.setProperty('--safe-left', `${s.left + c.left}px`);
+          style.setProperty('--safe-right', `${s.right + c.right}px`);
+        } catch (e) {
+          console.warn('Telegram WebApp API error:', e);
+        }
+      };
+      applySafeArea();
+      webApp.onEvent?.('safeAreaChanged', applySafeArea);
+      webApp.onEvent?.('contentSafeAreaChanged', applySafeArea);
 
       // Re-expand whenever the viewport changes (e.g. Telegram desktop
       // finishes laying out the window, or the user resizes it).

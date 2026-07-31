@@ -3,23 +3,24 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { useT } from '../i18n';
 import { useApp } from '../App';
+import { Icon, type IconName } from './icons';
 
 interface TabDef {
   path: string;
   key: string;
-  icon: string;
+  icon: IconName;
   ariaLabel: string;
   badge?: (ctx: ReturnType<typeof useApp>) => number | undefined;
 }
 
 const tabs: TabDef[] = [
-  { path: '/', key: 'nav.main', icon: '📊', ariaLabel: 'Main page - scan funding rates' },
-  { path: '/arbitrage', key: 'nav.arbitrage', icon: '🔄', ariaLabel: 'Arbitrage opportunities', badge: (ctx) => {
+  { path: '/', key: 'nav.main', icon: 'Gauge', ariaLabel: 'Main page - scan funding rates' },
+  { path: '/arbitrage', key: 'nav.arbitrage', icon: 'ArrowLeftRight', ariaLabel: 'Arbitrage opportunities', badge: (ctx) => {
     const count = ctx.arbAlerts?.filter((a: any) => a.isActive).length;
     return count && count > 0 ? count : undefined;
   }},
-  { path: '/portfolio', key: 'nav.portfolio', icon: '💼', ariaLabel: 'Portfolio simulator (Pro)' },
-  { path: '/profile', key: 'nav.profile', icon: '👤', ariaLabel: 'User profile and subscriptions' },
+  { path: '/portfolio', key: 'nav.portfolio', icon: 'Wallet', ariaLabel: 'Portfolio simulator (Pro)' },
+  { path: '/profile', key: 'nav.profile', icon: 'User', ariaLabel: 'User profile and subscriptions' },
 ];
 
 export const Navigation = memo(function Navigation() {
@@ -31,7 +32,6 @@ export const Navigation = memo(function Navigation() {
   return (
       <nav
         className="web-nav"
-        style={{ background: 'var(--nav-bg)', borderColor: 'var(--border)' }}
         role="navigation"
         aria-label="Main navigation"
       >
@@ -44,21 +44,21 @@ export const Navigation = memo(function Navigation() {
               key={tab.path}
               onClick={() => navigate(tab.path)}
               className={clsx(
-                'web-nav-item',
+                'web-nav-item relative',
                 isActive ? 'active' : ''
               )}
               aria-label={tab.ariaLabel}
               aria-current={isActive ? 'page' : undefined}
             >
-              <span className="web-nav-icon" aria-hidden="true">{tab.icon}</span>
+              <span className="web-nav-icon" aria-hidden="true"><Icon name={tab.icon} /></span>
               {count !== undefined && count > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 leading-none">
+                <span className="absolute top-0 right-2 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-[var(--red-soft)] text-[var(--red)] text-[10px] font-bold px-1 leading-none">
                   {count > 99 ? '99+' : count}
                 </span>
               )}
               <span className="web-nav-label">{t(tab.key)}</span>
               {isActive && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--brand)]" />
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--cobalt-text)]" />
               )}
             </button>
           );
@@ -67,4 +67,3 @@ export const Navigation = memo(function Navigation() {
     </nav>
   );
 });
-
