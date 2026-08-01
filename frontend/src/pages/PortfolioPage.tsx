@@ -160,7 +160,7 @@ export function PortfolioPage() {
 
       {tab === 'sim' ? (
         <>
-          <div className="card mb-4" id="add-position-form">
+          <div className="card mb-4">
             <h2 className="text-base font-semibold mb-3">{t('portfolio.addPosition')}</h2>
             <div className="grid grid-cols-2 gap-2 mb-2">
               <select value={exchange} onChange={(e) => setExchange(e.target.value)} className="input-field text-sm">
@@ -207,17 +207,7 @@ export function PortfolioPage() {
             {loading ? (
               <div className="text-center py-6 text-muted" role="status">{t('common.loading')}</div>
             ) : positions.length === 0 ? (
-              <div className="text-center py-8">
-                <IconWallet size={36} className="block mx-auto mb-3 text-[var(--text3)]" aria-hidden />
-                <p className="text-muted mb-1">{t('portfolio.noPositions')}</p>
-                <p className="text-xs text-[var(--text3)] mb-4">{t('portfolio.noPositionsHint')}</p>
-                <button
-                  onClick={() => document.getElementById('add-position-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                  className="btn btn-primary text-sm py-2.5 w-auto mx-auto px-5"
-                >
-                  {t('portfolio.addPositionBtn')}
-                </button>
-              </div>
+              <div className="text-center py-6 text-muted">{t('portfolio.noPositions')}</div>
             ) : (
               <div className="space-y-2">
                 {positions.map((p) => (

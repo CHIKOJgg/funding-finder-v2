@@ -17,8 +17,6 @@ import { profitCalcClient, breakEvenDays, type ClientProfit } from '../utils/pro
 import { LiquidationHeatmap } from '../components/LiquidationHeatmap';
 import {
   IconAlertTriangle,
-  IconArrowDown,
-  IconArrowUp,
   IconBell,
   IconBellOff,
   IconCalculator,
@@ -307,9 +305,6 @@ export function ArbitragePage() {
         <div>
           <h1 className="text-xl font-bold leading-tight text-[var(--text)]">{t('arb.title')}</h1>
           <p className="text-sm text-muted leading-tight">{t('arb.subtitle')}</p>
-          {visibleOpportunities[0]?.pair && (
-            <span className="chip chip-brand mt-1" title={t('arb.arbOpportunities')}>{visibleOpportunities[0].pair}</span>
-          )}
         </div>
         <div className="flex items-center gap-1.5 text-xs shrink-0" title={lastUpdated ? t('arb.liveUpdated', { time: new Date(lastUpdated).toLocaleTimeString() }) : undefined}>
           <span className="inline-block w-2 h-2 rounded-full bg-[var(--green)] animate-pulse" aria-hidden="true" />
@@ -580,19 +575,6 @@ export function ArbitragePage() {
   );
 }
 
-// Decomposes the backend strategy string ("LONG on gate, SHORT on binance")
-// into the two legs. Tolerant regex: if either side can't be parsed we return
-// null for it and the card falls back to plain-text rendering (never a crash).
-function parseStrategy(text: string | undefined): { long: string | null; short: string | null } {
-  if (!text) return { long: null, short: null };
-  const long = text.match(/LONG\s+on\s+([A-Za-z0-9_.-]+)/i);
-  const short = text.match(/SHORT\s+on\s+([A-Za-z0-9_.-]+)/i);
-  return {
-    long: long ? long[1].toLowerCase() : null,
-    short: short ? short[1].toLowerCase() : null,
-  };
-}
-
 const OpportunityCard = memo(function OpportunityCard({
   opportunity: opp,
   priceMap,
@@ -628,13 +610,8 @@ const OpportunityCard = memo(function OpportunityCard({
   const fundingB = fundB ? fundB.ratePerHour : opp.fundingB_per_hour;
   const intervalA = fundA ? fundA.intervalHours : opp.intervalA_hours;
   const intervalB = fundB ? fundB.intervalHours : opp.intervalB_hours;
-  const strategy = useMemo(() => parseStrategy(opp.opportunity), [opp.opportunity]);
-  const exchangeAId = String(opp.exchangeA).toLowerCase();
-  const exchangeBId = String(opp.exchangeB).toLowerCase();
-  const sideA: 'long' | 'short' | null = strategy.long === exchangeAId ? 'long' : strategy.short === exchangeAId ? 'short' : null;
-  const sideB: 'long' | 'short' | null = strategy.long === exchangeBId ? 'long' : strategy.short === exchangeBId ? 'short' : null;
   return (
-    <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--card)]">
+    <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--card)]">
       <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-start mb-2">
         <div className="min-w-0">
           <strong className="break-words font-mono">{opp.pair}</strong>
@@ -656,37 +633,33 @@ const OpportunityCard = memo(function OpportunityCard({
           </div>
         </div>
         <div className="sm:text-right">
-          <div className="flex items-baseline gap-1 justify-start sm:justify-end">
-            <span className="stat-hero text-[var(--green)]" title={t('arb.apyTitle')}>
+          <div className="flex items-baseline gap-1 justify-end">
+            <span className="text-lg font-bold font-mono text-[var(--green)]" title={t('arb.apyTitle')}>
               {opp.profit?.annualReturn?.toFixed(1)}%
             </span>
             <span className="text-xs font-normal text-[var(--text-muted)]">{t('arb.netApy')}</span>
           </div>
-          <div className="flex flex-wrap items-center justify-start sm:justify-end gap-x-1.5 gap-y-0.5 mt-1 text-xs text-[var(--text-muted)] font-mono">
-            {opp.score != null && (
-              <span>
-                {t('arb.compositeScore')} <span className="font-semibold text-[var(--text)]">{opp.score.toFixed(1)}</span>
-              </span>
-            )}
-            {opp.score != null && <span className="text-[var(--text3)]" aria-hidden="true">·</span>}
-            <span title={t('arb.dailySpreadTitle')}>
-              {t('arb.grossLabel')}: {(opp.profit?.grossDaily != null ? (opp.profit.grossDaily / 1000 * 100).toFixed(1) : '—')}% · {t('arb.fees')}: {(opp.profit?.fees != null ? (opp.profit.fees / 1000 * 100).toFixed(2) : '—')}% · {t('arb.slippage')}: {(opp.profit?.slippage != null ? (opp.profit.slippage / 1000 * 100).toFixed(2) : '—')}%
-            </span>
-            <span className="text-[var(--text3)]" aria-hidden="true">·</span>
-            <span className="flex items-center gap-1" title={t('arb.oiSignalTitle')}>
-              {(() => {
-                const minVol = Math.min(opp.volumeA || 0, opp.volumeB || 0);
-                const label = minVol > 10_000_000 ? t('arb.oiSignalHigh') : minVol > 1_000_000 ? t('arb.oiSignalMed') : minVol > 100_000 ? t('arb.oiSignalLow') : t('arb.oiSignalThin');
-                const color = minVol > 10_000_000 ? 'bg-[var(--green)]' : minVol > 1_000_000 ? 'bg-[var(--cobalt-text)]' : minVol > 100_000 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]';
-                return <><span className={clsx('inline-block w-1.5 h-1.5 rounded-full shrink-0', color)} aria-hidden="true" />{t('arb.oiSignal')}: {label} (${minVol > 1_000_000 ? `${(minVol / 1_000_000).toFixed(1)}M` : `${(minVol / 1000).toFixed(0)}K`})</>;
-              })()}
-            </span>
-          </div>
+          {opp.score != null && (
+            <div className="text-xs text-[var(--text-muted)] font-mono">
+              {t('arb.compositeScore')} <span className="font-semibold text-[var(--text)]">{opp.score.toFixed(1)}</span>
+            </div>
+          )}
+           <div className="text-xs text-[var(--text-muted)] font-mono" title={t('arb.dailySpreadTitle')}>
+            {t('arb.grossLabel')}: {(opp.profit?.grossDaily != null ? (opp.profit.grossDaily / 1000 * 100).toFixed(1) : '—')}% · {t('arb.fees')}: {(opp.profit?.fees != null ? (opp.profit.fees / 1000 * 100).toFixed(2) : '—')}% · {t('arb.slippage')}: {(opp.profit?.slippage != null ? (opp.profit.slippage / 1000 * 100).toFixed(2) : '—')}%
+            </div>
             {opp.accumulated && (
-              <div className="text-[10px] text-[var(--text-muted)] font-mono mt-0.5">
+              <div className="text-[10px] text-[var(--text-muted)] font-mono">
                 {t('arb.accumulated')} {t('arb.accumulatedD1')}:{(opp.accumulated.d1 * 100).toFixed(2)}% / {t('arb.accumulatedD7')}:{(opp.accumulated.d7 * 100).toFixed(2)}%
               </div>
             )}
+            <div className="text-[10px] text-[var(--text-muted)] mt-0.5" title={t('arb.oiSignalTitle')}>
+            {(() => {
+              const minVol = Math.min(opp.volumeA || 0, opp.volumeB || 0);
+              const label = minVol > 10_000_000 ? t('arb.oiSignalHigh') : minVol > 1_000_000 ? t('arb.oiSignalMed') : minVol > 100_000 ? t('arb.oiSignalLow') : t('arb.oiSignalThin');
+              const color = minVol > 10_000_000 ? 'bg-[var(--green)]' : minVol > 1_000_000 ? 'bg-[var(--cobalt-text)]' : minVol > 100_000 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]';
+              return <span className="flex items-center gap-1"><span className={clsx('inline-block w-1.5 h-1.5 rounded-full shrink-0', color)} aria-hidden="true" />{t('arb.oiSignal')}: {label} (${minVol > 1_000_000 ? `${(minVol / 1_000_000).toFixed(1)}M` : `${(minVol / 1000).toFixed(0)}K`})</span>;
+            })()}
+          </div>
         </div>
       </div>
 
@@ -701,7 +674,6 @@ const OpportunityCard = memo(function OpportunityCard({
           funding={fundingA}
           interval={intervalA}
           live={!!fundA}
-          side={sideA}
         />
         <ExchangePriceCell
           exchange={opp.exchangeB}
@@ -709,7 +681,6 @@ const OpportunityCard = memo(function OpportunityCard({
           funding={fundingB}
           interval={intervalB}
           live={!!fundB}
-          side={sideB}
         />
       </div>
 
@@ -719,21 +690,14 @@ const OpportunityCard = memo(function OpportunityCard({
         </div>
       )}
 
-      <div className="metric-block text-sm mb-2 font-mono">
-          <div className="metric-row">
-            <span className="text-[var(--text-muted)]">{t('arb.fundingIncome')}</span>
-            <span className="font-semibold text-[var(--text)]">+${opp.profit?.grossDaily?.toFixed(2)} {t('unit.usdtPerDay')}</span>
-          </div>
-          <div className="metric-row">
-            <span className="text-[var(--text-muted)]">{t('arb.oneTimeCosts')}</span>
-            <span>${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)} USDT</span>
-          </div>
-          <div className="metric-row">
-            <span className="text-[var(--text-muted)]">{t('arb.netDaily')}</span>
-            <span className={clsx('font-bold', (opp.profit?.netDaily ?? 0) >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
-              {(opp.profit?.netDaily ?? 0) >= 0 ? '+' : ''}${opp.profit?.netDaily?.toFixed(2)} USDT
-            </span>
-          </div>
+      <div className="text-sm mb-2 font-mono">
+          <div>{t('arb.fundingIncome')} +${opp.profit?.grossHourly?.toFixed(4)} {t('unit.usdtPerHour')} · +${opp.profit?.grossDaily?.toFixed(2)} {t('unit.usdtPerDay')}</div>
+          <div>{t('arb.oneTimeCosts')} ${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)} USDT</div>
+        <div>
+           {t('arb.netDaily')} <span className={clsx('font-mono', (opp.profit?.netDaily ?? 0) >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
+            {(opp.profit?.netDaily ?? 0) >= 0 ? '+' : ''}${opp.profit?.netDaily?.toFixed(2)} USDT
+          </span>
+        </div>
         {(() => {
           const oneTimeCost = (opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0);
           const grossDaily = opp.profit?.grossDaily ?? 0;
@@ -742,9 +706,8 @@ const OpportunityCard = memo(function OpportunityCard({
           const intervalHours = opp.intervalA_hours || 8;
           const cycles = Math.ceil(breakEven * 24 / intervalHours);
           return (
-            <div className="metric-row text-xs text-[var(--text-muted)]">
-              <span>{t('arb.breakEven')}:</span>
-              <strong className={breakEven <= 30 ? 'text-[var(--green)]' : 'text-[var(--amber)]'}>
+            <div className="text-xs text-[var(--text-muted)]">
+              {t('arb.breakEven')}: <strong className={breakEven <= 30 ? 'text-[var(--green)]' : 'text-[var(--amber)]'}>
                 ~{breakEven.toFixed(1)} {t('unit.daysShort')} · {cycles} {t('unit.settlementCycles')}
               </strong>
             </div>
@@ -752,23 +715,12 @@ const OpportunityCard = memo(function OpportunityCard({
         })()}
       </div>
 
-      <div className="text-sm bg-[var(--cobalt-soft)] border border-[var(--cobalt)] rounded-lg p-2 mb-2" title={t('arb.strategy') + ' ' + opp.opportunity}>
-        {strategy.long || strategy.short ? (
-          <div className="flex items-center flex-wrap gap-1.5">
-            {strategy.long && (
-              <span className="chip chip-brand" aria-label={`${t('arb.strategy')} LONG on ${exchangeLabel(strategy.long)}`}>
-                <IconArrowUp size={12} aria-hidden /> LONG · {exchangeLabel(strategy.long)}
-              </span>
-            )}
-            {strategy.short && (
-              <span className="chip chip-brand" aria-label={`${t('arb.strategy')} SHORT on ${exchangeLabel(strategy.short)}`}>
-                <IconArrowDown size={12} aria-hidden /> SHORT · {exchangeLabel(strategy.short)}
-              </span>
-            )}
-          </div>
-        ) : (
-          <span><strong>{t('arb.strategy')}</strong> {opp.opportunity}</span>
-        )}
+      <div className="text-xs text-[var(--text-muted)] mb-2 font-mono">
+          {t('arb.fees')} ${opp.profit?.fees?.toFixed(2)} USDT | {t('arb.slippage')} ${opp.profit?.slippage?.toFixed(2)} USDT
+      </div>
+
+      <div className="text-sm bg-[var(--cobalt-soft)] border border-[var(--cobalt)] rounded-lg p-2 mb-2">
+         <strong>{t('arb.strategy')}</strong> {opp.opportunity}
       </div>
 
       {opp.risk?.reasons?.length > 0 && (
@@ -889,23 +841,16 @@ function ExchangePriceCell({
   funding,
   interval,
   live,
-  side = null,
 }: {
   exchange: string;
   price: { value: number; live: boolean };
   funding: number;
   interval: number;
   live: boolean;
-  side?: 'long' | 'short' | null;
 }) {
   const t = useT();
   const valid = isFinite(price.value) && price.value > 0;
-  // Color by what the STRATEGY side earns, not by the bare sign of the rate:
-  // longs collect when the rate is negative, shorts collect when it's positive.
-  const favorable = side === 'long' ? funding < 0 : side === 'short' ? funding > 0 : false;
-  const fundingColor = side === null
-    ? funding > 0 ? 'text-[var(--green)]' : funding < 0 ? 'text-[var(--red)]' : 'text-[var(--text2)]'
-    : favorable ? 'text-[var(--green)]' : funding !== 0 ? 'text-[var(--red)]' : 'text-[var(--text2)]';
+  const fundingColor = funding > 0 ? 'text-[var(--green)]' : funding < 0 ? 'text-[var(--red)]' : 'text-[var(--text2)]';
   return (
     <div className="rounded-lg bg-surface-2 px-3 py-2 border border-[var(--border)]">
       <div className="flex items-center justify-between gap-1">
@@ -924,13 +869,6 @@ function ExchangePriceCell({
           </span>
         </span>
       </div>
-      {side !== null && favorable && (
-        <div className="mt-1 flex justify-end">
-          <span className="chip chip-success">
-            {side === 'long' ? t('arb.benefitLong') : t('arb.benefitShort')}
-          </span>
-        </div>
-      )}
     </div>
   );
 }

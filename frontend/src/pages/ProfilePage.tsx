@@ -14,7 +14,6 @@ import {
   IconBot,
   IconChartLine,
   IconCheck,
-  IconCircleDollarSign,
   IconGift,
   IconLink2,
   IconMedal,
@@ -433,7 +432,7 @@ export function ProfilePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3" id="plans-section">
+        <div className="grid grid-cols-1 gap-3">
         <PlanCard
           planId="pro"
           name="Pro"
@@ -469,17 +468,7 @@ export function ProfilePage() {
       <div className="card">
           <h2 className="text-base font-semibold mb-3">{t('profile.paymentHistory')}</h2>
           {paymentHistory.length === 0 ? (
-            <div className="text-center py-8">
-              <IconCircleDollarSign size={32} className="block mx-auto mb-3 text-[var(--text3)]" aria-hidden />
-              <p className="text-muted mb-1">{t('profile.noPayments')}</p>
-              <p className="text-xs text-[var(--text3)] mb-4">{t('profile.noPaymentsHint')}</p>
-              <button
-                onClick={() => document.getElementById('plans-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                className="btn btn-secondary text-sm py-2.5 w-auto mx-auto px-5"
-              >
-                {t('profile.goPlans')}
-              </button>
-            </div>
+            <div className="text-center py-6 text-muted">{t('profile.noPayments')}</div>
         ) : (
           <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {paymentHistory.map((payment) => (
@@ -498,11 +487,7 @@ export function ProfilePage() {
       <div className="card">
           <h2 className="text-base font-semibold mb-3">{t('profile.withdrawalHistory')}</h2>
           {withdrawalHistory.length === 0 ? (
-            <div className="text-center py-8">
-              <IconSend size={32} className="block mx-auto mb-3 text-[var(--text3)]" aria-hidden />
-              <p className="text-muted mb-1">{t('profile.noWithdrawals')}</p>
-              <p className="text-xs text-[var(--text3)]">{t('profile.noWithdrawalsHint')}</p>
-            </div>
+            <div className="text-center py-6 text-muted">{t('profile.noWithdrawals')}</div>
         ) : (
           <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {withdrawalHistory.map((withdrawal) => (
@@ -585,8 +570,8 @@ const PlanCard = memo(function PlanCard({
     <div
       className={`relative rounded-2xl p-5 transition-all duration-200 ${
         featured
-          ? 'mt-4 border-2 border-[var(--brand)]'
-          : 'border border-[var(--border)] opacity-90'
+          ? 'mt-4 border border-[var(--brand)]'
+          : 'border border-[var(--border)]'
       }`}
       style={{ background: 'var(--surface)', color: 'var(--text)' }}
     >
