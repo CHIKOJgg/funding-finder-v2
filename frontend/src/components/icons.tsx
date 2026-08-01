@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import {
   AlertTriangle,
+  ArrowDown,
   ArrowLeftRight,
   Bell,
   BellOff,
@@ -39,6 +40,7 @@ import {
   Package,
   Palette,
   PartyPopper,
+  Pause,
   Play,
   Plus,
   QrCode,
@@ -82,8 +84,9 @@ export interface IconProps {
   style?: CSSProperties;
 }
 
-const ICONS: Record<string, LucideIcon> = {
+const ICONS = {
   Gauge,
+  ArrowDown,
   ArrowLeftRight,
   Wallet,
   User,
@@ -145,15 +148,17 @@ const ICONS: Record<string, LucideIcon> = {
   Package,
   Palette,
   PartyPopper,
+  Pause,
   Rocket,
   Sprout,
   Target,
-};
+} satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
 
 export function Icon({ name, size = 20, strokeWidth = 2, fill, className, style }: IconProps & { name: IconName }) {
   const Comp = ICONS[name];
+  if (!Comp) return null;
   return <Comp size={size} strokeWidth={strokeWidth} fill={fill} className={className} style={style} aria-hidden="true" />;
 }
 
