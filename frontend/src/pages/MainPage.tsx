@@ -23,7 +23,7 @@ import { InstallBanner } from '../components/InstallBanner';
 import { PullToRefresh } from '../components/PullToRefresh';
 import { ExchangeResult } from '../types';
 import { useT, useI18n } from '../i18n';
-import { IconShare2, IconArrowLeftRight, IconStar, IconBell, IconChartLine, IconLock, IconExternalLink } from '../components/icons';
+import { IconShare2, IconArrowLeftRight, IconStar, IconBell, IconChartLine, IconLock, IconExternalLink, IconChevronDown, IconChevronRight, IconTable } from '../components/icons';
 
 type SortKey = 'rate' | 'volume' | 'interval';
 
@@ -453,12 +453,12 @@ export function MainPage() {
 <ExchangeSelect selected={exchangeFilter} onChange={setExchangeFilter} />
 
           {/* Quick-filter chips */}
-          <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+          <div className="chips-scroll mb-3 pb-1">
             {(['all', 'high', 'medium', 'low'] as const).map((key) => (
               <button
                 key={key}
                 onClick={() => { haptic('light'); setYieldFilter(key); }}
-                className="text-xs px-3 py-2 rounded-full font-semibold whitespace-nowrap border transition-colors active:opacity-80"
+                className="text-xs px-3 py-2 rounded-full font-semibold whitespace-nowrap border transition-colors active:opacity-80 shrink-0"
                 style={{
                   background: yieldFilter === key ? 'var(--cobalt)' : 'var(--surface-2)',
                   color: yieldFilter === key ? 'var(--on-brand)' : 'var(--text-muted)',
@@ -556,18 +556,18 @@ export function MainPage() {
 
           <div className="flex gap-2 mt-4">
             <button
+              onClick={() => planLimits.recommendationsEnabled ? handleRecommendations() : setPaywallFeature('recommendations')}
+              disabled={actionLoading || scanLoading}
+              className="btn btn-primary flex-1"
+            >
+               {t('main.recommendations')} {!planLimits.recommendationsEnabled && <span className="ml-1" aria-hidden="true"><IconLock size={14} className="inline" /></span>}
+            </button>
+            <button
               onClick={() => planLimits.aiEnabled ? handleAiAnalysis() : setPaywallFeature('ai')}
               disabled={actionLoading || scanLoading}
               className="btn btn-secondary flex-1"
             >
                {t('main.aiAnalysis')} {!planLimits.aiEnabled && <span className="ml-1" aria-hidden="true"><IconLock size={14} className="inline" /></span>}
-            </button>
-            <button
-              onClick={() => planLimits.recommendationsEnabled ? handleRecommendations() : setPaywallFeature('recommendations')}
-              disabled={actionLoading || scanLoading}
-              className="btn btn-success flex-1"
-            >
-               {t('main.recommendations')} {!planLimits.recommendationsEnabled && <span className="ml-1" aria-hidden="true"><IconLock size={14} className="inline" /></span>}
             </button>
           </div>
           <button
@@ -584,10 +584,10 @@ export function MainPage() {
 
           <button
             onClick={() => setShowMatrix((v) => !v)}
-            className="btn btn-secondary text-sm py-2 w-full mt-4"
+            className="btn btn-secondary text-sm py-2 w-full mt-4 flex items-center justify-center gap-1.5"
             aria-expanded={showMatrix}
           >
-            {showMatrix ? t('main.hideMatrix') : t('main.showMatrix')}
+            <IconTable size={14} aria-hidden /> {showMatrix ? t('main.hideMatrix') : t('main.showMatrix')}
           </button>
           {showMatrix && (
             <div className="mt-3">
@@ -896,6 +896,7 @@ const ResultItem = memo(function ResultItem({
 }) {
   const { isWatchlisted, toggleWatchlist } = useApp();
   const t = useT();
+  const [showMoreRates, setShowMoreRates] = useState(false);
   const starred = isWatchlisted(item.exchange, item.contract);
   const price = livePrice != null && !isNaN(livePrice) ? livePrice : item.mark_price;
 
@@ -930,15 +931,28 @@ const ResultItem = memo(function ResultItem({
           </div>
         </div>
         <div className="sm:text-right">
-          <div className={clsx('font-bold break-words font-mono', getFundingColor(item.funding_rate_per_hour))}>
-            {t('main.ratePerHour', { value: ((item.funding_rate_per_hour ?? 0) * 100).toFixed(4) })}
-          </div>
-          <div className="text-xs text-[var(--text-muted)] font-mono">
+          <div className={clsx('text-base font-bold break-words font-mono', getFundingColor(item.funding_rate_per_day ?? 0))}>
             {t('main.ratePerDay', { value: ((item.funding_rate_per_day ?? 0) * 100).toFixed(4) })}
           </div>
-          <div className="text-xs text-[var(--text-muted)] font-mono">
-            {t('main.ratePerYear', { value: (item.annualized_rate * 100)?.toFixed(2) })}
-          </div>
+          <button
+            onClick={() => setShowMoreRates((v) => !v)}
+            className="text-xs text-[var(--cobalt-text)] flex items-center gap-0.5 mt-0.5"
+            aria-expanded={showMoreRates}
+            aria-label={t('main.moreRates')}
+          >
+            {showMoreRates ? <IconChevronDown size={12} aria-hidden /> : <IconChevronRight size={12} aria-hidden />}
+            {t('main.moreRates')}
+          </button>
+          {showMoreRates && (
+            <div className="text-xs text-[var(--text-muted)] font-mono">
+              {t('main.ratePerHour', { value: ((item.funding_rate_per_hour ?? 0) * 100).toFixed(4) })}
+            </div>
+          )}
+          {showMoreRates && (
+            <div className="text-xs text-[var(--text-muted)] font-mono">
+              {t('main.ratePerYear', { value: (item.annualized_rate * 100)?.toFixed(2) })}
+            </div>
+          )}
           <div className="flex flex-wrap gap-1.5 justify-start sm:justify-end mt-1.5">
             <button
               onClick={() => {

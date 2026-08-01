@@ -194,7 +194,9 @@ export function PaywallModal({
                   className="rounded-xl p-3 text-center text-xs relative"
                   style={{
                     background: isCurrent ? 'var(--brand-soft)' : 'var(--surface-2)',
-                    border: isCurrent ? '1px solid var(--brand)' : isRecommended ? '1px solid var(--brand)' : '1px solid transparent',
+                    border: isCurrent || isRecommended ? '2px solid var(--brand)' : '1px solid transparent',
+                    transform: isRecommended ? 'scale(1.04)' : undefined,
+                    zIndex: isRecommended ? 1 : undefined,
                   }}
                 >
                   {isRecommended && (

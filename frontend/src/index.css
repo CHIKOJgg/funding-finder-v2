@@ -190,14 +190,8 @@
     color: var(--text);
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 12px;
+    padding: 16px;
     margin-bottom: 16px;
-  }
-
-  @media (min-width: 640px) {
-    .card {
-      padding: 16px;
-    }
   }
 
   .card-flush {
@@ -377,6 +371,31 @@
     font-family: var(--mono);
     font-variant-numeric: tabular-nums;
   }
+
+  /* One hero metric per card: the single number the user should read first.
+     Everything else on the card is a secondary caption. */
+  .stat-hero {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 1.5rem;
+    line-height: 1.25;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  /* Dense metric blocks read better with looser lines and 8px group gaps */
+  .metric-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .metric-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    line-height: 1.45;
+  }
 }
 
 @layer utilities {
@@ -410,6 +429,22 @@
 
   .bg-surface-2 {
     background: var(--surface-2);
+  }
+
+  /* Horizontally scrollable filter chips: hidden scrollbar + a soft fade on
+     the right edge so it's obvious more options exist past the 360px fold. */
+  .chips-scroll {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    mask-image: linear-gradient(90deg, #000 0 88%, transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, #000 0 88%, transparent 100%);
+  }
+
+  .chips-scroll::-webkit-scrollbar {
+    display: none;
   }
 }
 
@@ -516,6 +551,17 @@
 
 .web-nav-item.active {
   color: var(--cobalt-text);
+}
+
+/* Active tab: same treatment on every screen — tinted label, semibold weight,
+   thicker icon stroke (reads as "filled" next to the outline inactive icons). */
+.web-nav-item.active .web-nav-label {
+  font-weight: 600;
+  color: var(--cobalt-text);
+}
+
+.web-nav-item.active .web-nav-icon svg {
+  stroke-width: 2.5;
 }
 
 .web-nav-item:active {

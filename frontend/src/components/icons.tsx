@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import {
   AlertTriangle,
   ArrowDown,
+  ArrowUp,
   ArrowLeftRight,
   Bell,
   BellOff,
@@ -57,6 +58,7 @@ import {
   Sparkles,
   Sprout,
   Star,
+  Table,
   Target,
   Trash2,
   TrendingUp,
@@ -87,6 +89,7 @@ export interface IconProps {
 const ICONS = {
   Gauge,
   ArrowDown,
+  ArrowUp,
   ArrowLeftRight,
   Wallet,
   User,
@@ -151,6 +154,7 @@ const ICONS = {
   Pause,
   Rocket,
   Sprout,
+  Table,
   Target,
 } satisfies Record<string, LucideIcon>;
 
@@ -229,3 +233,5 @@ export const IconSprout = (props: IconProps) => <Icon name="Sprout" {...props} /
 export const IconTarget = (props: IconProps) => <Icon name="Target" {...props} />;
 export const IconPackage = (props: IconProps) => <Icon name="Package" {...props} />;
 export const IconPalette = (props: IconProps) => <Icon name="Palette" {...props} />;
+export const IconArrowUp = (props: IconProps) => <Icon name="ArrowUp" {...props} />;
+export const IconTable = (props: IconProps) => <Icon name="Table" {...props} />;
