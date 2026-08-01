@@ -106,7 +106,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   const current = STEPS[step];
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label={t('onboarding.title')}>
+    <div className="fixed inset-0 bg-[rgba(5,7,12,0.6)] flex items-center justify-center z-50 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label={t('onboarding.title')}>
       <div className="bg-surface rounded-2xl max-w-md w-full overflow-hidden" style={{ color: 'var(--text)' }}>
         {/* Skip button */}
         <div className="flex justify-end pt-3 pr-3">
@@ -262,7 +262,7 @@ function PostOnboardingChecklist({ onComplete }: { onComplete: () => void }) {
   const completedCount = Object.values(checked).filter(Boolean).length;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label={t('onboarding.checklistTitle')}>
+    <div className="fixed inset-0 bg-[rgba(5,7,12,0.6)] flex items-center justify-center z-50 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label={t('onboarding.checklistTitle')}>
       <div className="bg-surface rounded-2xl max-w-md w-full overflow-hidden p-5 sm:p-6" style={{ color: 'var(--text)' }}>
         <div className="text-center mb-4">
           <div className="flex justify-center mb-2" aria-hidden="true">

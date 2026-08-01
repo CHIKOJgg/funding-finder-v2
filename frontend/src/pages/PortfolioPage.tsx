@@ -586,7 +586,7 @@ const AutoExecuteDialog = memo(function AutoExecuteDialog({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 bg-[rgba(5,7,12,0.5)] flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
       <div className="bg-surface rounded-xl max-w-md w-full">
         <div className="card">
           <h2 className="text-lg font-semibold mb-1">{t('portfolio.autoTitle')}</h2>

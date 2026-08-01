@@ -105,7 +105,7 @@ export default function MarketDataTable({ exchange, contract }: MarketDataTableP
               onClick={() => setActiveTab(tab)}
               className={`px-2.5 min-h-[44px] text-xs rounded-lg border transition-colors active:opacity-80 ${
                 activeTab === tab
-                  ? 'bg-[var(--cobalt)] text-white border-[var(--cobalt)]'
+                  ? 'bg-[var(--cobalt)] text-[var(--on-brand)] border-[var(--cobalt)]'
                   : 'bg-[var(--bg1)] text-[var(--text2)] border-[var(--border)] active:border-[var(--border-2)]'
               }`}
             >

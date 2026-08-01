@@ -167,7 +167,7 @@
     top: 1px;
     width: 5px;
     height: 10px;
-    border: solid #ffffff;
+    border: solid var(--on-brand);
     border-width: 0 2px 2px 0;
     transform: rotate(40deg);
   }
@@ -180,7 +180,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #ffffff;
+    background: var(--on-brand);
   }
 }
 
@@ -310,7 +310,7 @@
   .exchange-btn.active {
     background: var(--cobalt);
     border-color: var(--cobalt);
-    color: #ffffff;
+    color: var(--on-brand);
   }
 
   .chip {

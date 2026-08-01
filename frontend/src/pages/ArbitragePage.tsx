@@ -297,7 +297,7 @@ export function ArbitragePage() {
     <div className="px-3 py-4 sm:px-4">
       <div className="flex items-center gap-3 mb-4">
         <div
-          className="w-11 h-11 rounded-xl flex items-center justify-center text-[13px] font-extrabold text-white shrink-0 font-mono"
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-[13px] font-extrabold text-[var(--on-brand)] shrink-0 font-mono"
           style={{ background: 'var(--cobalt)' }}
         >
           ff
@@ -934,7 +934,7 @@ function ProfitCalculator({
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
+      className="fixed inset-0 bg-[rgba(5,7,12,0.5)] flex items-center justify-center z-50 p-2 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="calculator-title"

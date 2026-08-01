@@ -523,7 +523,7 @@ export function AdminPage() {
       )}
 
       {editUser && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-[rgba(5,7,12,0.6)] flex items-center justify-center z-50 p-4">
           <div className="bg-surface rounded-xl max-w-md w-full" style={{ color: 'var(--text)' }}>
             <div className="card">
               <h2 className="text-lg font-semibold mb-4">

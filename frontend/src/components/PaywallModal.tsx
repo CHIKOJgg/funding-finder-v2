@@ -114,7 +114,7 @@ export function PaywallModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+      className="fixed inset-0 bg-[rgba(5,7,12,0.6)] flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="paywall-title"

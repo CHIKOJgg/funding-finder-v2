@@ -34,7 +34,7 @@ export const QrLoginModal = memo(function QrLoginModal({ onClose }: Props) {
         const dataUrl = await QRCode.toDataURL(scanUrl, {
           width: 256,
           margin: 2,
-          color: { dark: '#0f172a', light: '#ffffff' },
+          color: { dark: '#05070C', light: '#ffffff' },
         });
         if (!cancelled) {
           setQrDataUrl(dataUrl);
@@ -97,7 +97,7 @@ export const QrLoginModal = memo(function QrLoginModal({ onClose }: Props) {
        const scanUrl = `${SCAN_URL_BASE}#token=${res.token}`;
       const dataUrl = await QRCode.toDataURL(scanUrl, {
         width: 256, margin: 2,
-        color: { dark: '#0f172a', light: '#ffffff' },
+        color: { dark: '#05070C', light: '#ffffff' },
       });
       setQrDataUrl(dataUrl);
       setStatus('waiting');
@@ -110,7 +110,7 @@ export const QrLoginModal = memo(function QrLoginModal({ onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-[rgba(5,7,12,0.6)] flex items-center justify-center z-50 p-4"
       role="dialog"
       aria-modal="true"
       onClick={onClose}

@@ -33,7 +33,7 @@ export function FilterBar({ activeCount, children, defaultOpen, title }: Props) 
           {label}
           {activeCount > 0 && (
             <span
-              className="text-xs px-2 py-0.5 rounded-full bg-[var(--cobalt)] text-white"
+              className="text-xs px-2 py-0.5 rounded-full bg-[var(--cobalt)] text-[var(--on-brand)]"
               aria-label={`${t('filter.activeCount', { count: activeCount })}`}
             >
               {activeCount}
@@ -82,7 +82,7 @@ export function SegmentedControl<T extends string>({
           className={clsx(
             'text-xs px-3 min-h-[44px] flex items-center rounded-full border transition-colors active:opacity-80',
             value === opt.value
-              ? 'bg-[var(--cobalt)] text-white border-[var(--cobalt)]'
+              ? 'bg-[var(--cobalt)] text-[var(--on-brand)] border-[var(--cobalt)]'
               : 'bg-transparent text-[var(--text-muted)] border-[var(--border)] active:border-[var(--border-2)]'
           )}
           aria-pressed={value === opt.value}

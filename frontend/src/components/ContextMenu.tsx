@@ -191,7 +191,7 @@ export function ContextMenu({
                 e.stopPropagation();
                 it.action();
               }}
-              className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-[var(--surface-2)] transition-colors"
+              className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-[var(--surface-2)] active:bg-[var(--surface-2)] transition-colors"
               style={{ color: it.destructive ? 'var(--red)' : 'var(--text)' }}
             >
               <span className="w-5 flex justify-center shrink-0" aria-hidden="true">

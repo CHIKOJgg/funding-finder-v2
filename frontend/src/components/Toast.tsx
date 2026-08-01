@@ -59,7 +59,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed top-4 right-4 z-50 space-y-2 max-w-[min(92vw,420px)]">
+      <div className="fixed top-[calc(var(--safe-top)_+_16px)] right-4 z-50 space-y-2 max-w-[min(92vw,420px)]">
         {toasts.map((toast) => {
           const s = TOAST_STYLES[toast.type];
           return (

@@ -28,7 +28,7 @@ export function WebHeader({ user, onLogout }: WebHeaderProps) {
         <div className="flex items-center gap-2">
           <span
             className="flex items-center justify-center font-mono text-[13px] font-extrabold"
-            style={{ width: 26, height: 26, borderRadius: 7, background: 'var(--cobalt)', color: '#FFFFFF' }}
+            style={{ width: 26, height: 26, borderRadius: 7, background: 'var(--cobalt)', color: 'var(--on-brand)' }}
             aria-hidden="true"
           >
             ff

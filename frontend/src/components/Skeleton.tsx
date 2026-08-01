@@ -18,7 +18,7 @@ export const Skeleton = memo(function Skeleton({
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className={`animate-pulse bg-gray-200 rounded ${className}`}
+          className={`animate-pulse bg-[var(--bg2)] rounded ${className}`}
           style={{ height, width }}
           aria-hidden="true"
         />
@@ -40,7 +40,7 @@ export const CardSkeleton = memo(function CardSkeleton() {
 
 export const TableRowSkeleton = memo(function TableRowSkeleton() {
   return (
-    <div className="flex items-center space-x-4 py-3 border-b border-gray-100">
+    <div className="flex items-center space-x-4 py-3 border-b border-[var(--border)]">
       <Skeleton height="1rem" width="20%" />
       <Skeleton height="1rem" width="25%" />
       <Skeleton height="1rem" width="15%" />

@@ -15,7 +15,7 @@ function ErrorFallback({ error }: { error: Error | null }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--bg)' }}>
       <div className="card max-w-md w-full text-center">
-        <h2 className="text-xl font-bold text-red-500 mb-2">{t('errorBoundary.title')}</h2>
+        <h2 className="text-xl font-bold text-[var(--red)] mb-2">{t('errorBoundary.title')}</h2>
         <p className="text-muted mb-4">
           {t('errorBoundary.message')}
         </p>
@@ -34,7 +34,7 @@ function ErrorFallback({ error }: { error: Error | null }) {
           </button>
         </div>
         {import.meta.env.DEV && error && (
-          <pre className="mt-4 text-xs text-left bg-red-50 p-2 rounded overflow-auto max-h-40">
+          <pre className="mt-4 text-xs text-left bg-[var(--red-soft)] p-2 rounded overflow-auto max-h-40">
             {error.message}
           </pre>
         )}
