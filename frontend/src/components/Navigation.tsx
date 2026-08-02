@@ -44,7 +44,7 @@ export const Navigation = memo(function Navigation() {
               key={tab.path}
               onClick={() => navigate(tab.path)}
               className={clsx(
-                'web-nav-item relative',
+                 'web-nav-item relative px-2',
                 isActive ? 'active' : ''
               )}
               aria-label={tab.ariaLabel}

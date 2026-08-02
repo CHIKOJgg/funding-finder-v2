@@ -172,6 +172,7 @@ export function PortfolioPage() {
                 placeholder="BTCUSDT"
                 className="input-field text-sm"
                 aria-label="Pair"
+                id="portfolio-pair"
               />
             </div>
             <div className="grid grid-cols-3 gap-2 mb-3">
@@ -207,7 +208,16 @@ export function PortfolioPage() {
             {loading ? (
               <div className="text-center py-6 text-muted" role="status">{t('common.loading')}</div>
             ) : positions.length === 0 ? (
-              <div className="text-center py-6 text-muted">{t('portfolio.noPositions')}</div>
+              <div className="text-center py-6">
+                <p className="text-muted mb-3">{t('portfolio.noPositions')}</p>
+                <button
+                  type="button"
+                  className="btn btn-secondary mx-auto max-w-xs"
+                  onClick={() => document.getElementById('portfolio-pair')?.focus()}
+                >
+                  {t('portfolio.addPosition')}
+                </button>
+              </div>
             ) : (
               <div className="space-y-2">
                 {positions.map((p) => (

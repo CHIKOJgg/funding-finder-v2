@@ -312,10 +312,10 @@ export function ArbitragePage() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-4" role="tablist">
+      <div className="tab-strip mb-4" role="tablist">
         <button
           onClick={() => setActiveTab('opportunities')}
-          className={clsx('flex-1 py-2.5 rounded-xl font-medium transition-all', activeTab === 'opportunities' ? 'btn-primary' : 'btn-secondary')}
+          className={clsx('py-2.5 px-4 rounded-xl font-medium transition-all', activeTab === 'opportunities' ? 'btn-primary' : 'btn-secondary')}
           role="tab"
           aria-selected={activeTab === 'opportunities'}
         >
@@ -323,7 +323,7 @@ export function ArbitragePage() {
         </button>
         <button
           onClick={() => setActiveTab('alerts')}
-          className={clsx('flex-1 py-2.5 rounded-xl font-medium transition-all', activeTab === 'alerts' ? 'btn-primary' : 'btn-secondary')}
+          className={clsx('py-2.5 px-4 rounded-xl font-medium transition-all', activeTab === 'alerts' ? 'btn-primary' : 'btn-secondary')}
           role="tab"
           aria-selected={activeTab === 'alerts'}
         >
@@ -331,7 +331,7 @@ export function ArbitragePage() {
         </button>
         <button
           onClick={() => setActiveTab('spotfutures')}
-          className={clsx('flex-1 py-2.5 rounded-xl font-medium transition-all', activeTab === 'spotfutures' ? 'btn-primary' : 'btn-secondary')}
+          className={clsx('py-2.5 px-4 rounded-xl font-medium transition-all', activeTab === 'spotfutures' ? 'btn-primary' : 'btn-secondary')}
           role="tab"
           aria-selected={activeTab === 'spotfutures'}
         >
@@ -339,7 +339,7 @@ export function ArbitragePage() {
         </button>
         <button
           onClick={() => setActiveTab('heatmap')}
-          className={clsx('flex-1 py-2.5 rounded-xl font-medium transition-all', activeTab === 'heatmap' ? 'btn-primary' : 'btn-secondary')}
+          className={clsx('py-2.5 px-4 rounded-xl font-medium transition-all', activeTab === 'heatmap' ? 'btn-primary' : 'btn-secondary')}
           role="tab"
           aria-selected={activeTab === 'heatmap'}
         >
@@ -611,10 +611,10 @@ const OpportunityCard = memo(function OpportunityCard({
   const intervalA = fundA ? fundA.intervalHours : opp.intervalA_hours;
   const intervalB = fundB ? fundB.intervalHours : opp.intervalB_hours;
   return (
-    <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--card)]">
-      <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:items-start mb-2">
+    <div className="opportunity-card">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
         <div className="min-w-0">
-          <strong className="break-words font-mono">{opp.pair}</strong>
+          <strong className="text-base break-words font-mono">{opp.pair}</strong>
           <span className={clsx('ml-2 text-xs px-2 py-0.5 rounded-full', getRiskColor(opp.risk?.level))} title={t('arb.riskLevelTitle')}>
             {opp.risk?.level}
           </span>
@@ -628,13 +628,13 @@ const OpportunityCard = memo(function OpportunityCard({
               {t('arb.persistenceGrade', { grade: opp.persistenceGrade })}
             </span>
           )}
-           <div className="text-xs text-[var(--text-muted)] mt-0.5 font-mono" title={t('arb.untilFundingTitle')}>
+            <div className="text-xs text-[var(--text-muted)] mt-2 font-mono" title={t('arb.untilFundingTitle')}>
               <CountdownTimer intervalHours={opp.intervalA_hours} className="font-medium" showProgress /> {t('arb.untilFundingEx', { ex: opp.exchangeA })}
           </div>
         </div>
         <div className="sm:text-right">
           <div className="flex items-baseline gap-1 justify-end">
-            <span className="text-lg font-bold font-mono text-[var(--green)]" title={t('arb.apyTitle')}>
+            <span className="hero-metric text-[var(--green)]" title={t('arb.apyTitle')}>
               {opp.profit?.annualReturn?.toFixed(1)}%
             </span>
             <span className="text-xs font-normal text-[var(--text-muted)]">{t('arb.netApy')}</span>
@@ -663,11 +663,9 @@ const OpportunityCard = memo(function OpportunityCard({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-xs font-medium text-[var(--text-muted)]">{t('arb.prices')}</span>
-        <span className="text-xs text-[var(--text-muted)]">{t('arb.live')}</span>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+      <div className="section-block mt-4">
+        <div className="section-title">{t('arb.prices')} · {t('arb.live')}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <ExchangePriceCell
           exchange={opp.exchangeA}
           price={priceA}
@@ -683,6 +681,7 @@ const OpportunityCard = memo(function OpportunityCard({
           live={!!fundB}
         />
       </div>
+      </div>
 
       {opp.intervalMismatch && (
         <div className="text-xs text-[var(--amber)] bg-[var(--amber-soft)] p-2 rounded-lg mb-2 font-mono">
@@ -690,7 +689,9 @@ const OpportunityCard = memo(function OpportunityCard({
         </div>
       )}
 
-      <div className="text-sm mb-2 font-mono">
+      <div className="section-block mt-4">
+        <div className="section-title">{t('arb.fundingIncome')}</div>
+      <div className="text-sm font-mono leading-relaxed">
           <div>{t('arb.fundingIncome')} +${opp.profit?.grossHourly?.toFixed(4)} {t('unit.usdtPerHour')} · +${opp.profit?.grossDaily?.toFixed(2)} {t('unit.usdtPerDay')}</div>
           <div>{t('arb.oneTimeCosts')} ${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)} USDT</div>
         <div>
@@ -714,13 +715,17 @@ const OpportunityCard = memo(function OpportunityCard({
           );
         })()}
       </div>
+      </div>
 
       <div className="text-xs text-[var(--text-muted)] mb-2 font-mono">
           {t('arb.fees')} ${opp.profit?.fees?.toFixed(2)} USDT | {t('arb.slippage')} ${opp.profit?.slippage?.toFixed(2)} USDT
       </div>
 
-      <div className="text-sm bg-[var(--cobalt-soft)] border border-[var(--cobalt)] rounded-lg p-2 mb-2">
+      <div className="section-block mt-4">
+        <div className="section-title">{t('arb.strategy')}</div>
+      <div className="text-sm bg-[var(--cobalt-soft)] border border-[var(--cobalt)] rounded-lg p-3 leading-relaxed">
          <strong>{t('arb.strategy')}</strong> {opp.opportunity}
+      </div>
       </div>
 
       {opp.risk?.reasons?.length > 0 && (
@@ -741,7 +746,7 @@ const OpportunityCard = memo(function OpportunityCard({
         {t('arb.openBoth', { a: exchangeLabel(opp.exchangeA), b: exchangeLabel(opp.exchangeB) })}
       </button>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="card-actions">
         <button
           onClick={() => { haptic('light'); setShowCalc(!showCalc); }}
           className="btn btn-success text-sm py-2 flex-[1.4]"

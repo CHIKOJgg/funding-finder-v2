@@ -6,7 +6,7 @@ import { useToast } from '../components/Toast';
 import { PaywallModal } from '../components/PaywallModal';
 import { PaywallFeature, PlanLimits } from '../utils/plans';
 import { apiClient } from '../api/client';
-import { formatNumber, formatPrice, getFundingColor } from '../utils/formatters';
+import { formatNumber, getFundingColor } from '../utils/formatters';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { ExchangeSelector } from '../components/ExchangeSelector';
 import { ExchangeSelect } from '../components/ExchangeSelect';
@@ -877,7 +877,7 @@ const ResultSection = memo(function ResultSection({
 
 const ResultItem = memo(function ResultItem({
   item,
-  livePrice,
+  livePrice: _livePrice,
   sparklineData,
   onHistory,
   onAlert,
@@ -897,49 +897,44 @@ const ResultItem = memo(function ResultItem({
   const { isWatchlisted, toggleWatchlist } = useApp();
   const t = useT();
   const starred = isWatchlisted(item.exchange, item.contract);
-  const price = livePrice != null && !isNaN(livePrice) ? livePrice : item.mark_price;
-
   // Health: green if volume > 0 and funding_next_apply is in the future
   const isHealthy = item.volume_24h_settle > 0 && item.funding_next_apply > Date.now() - 86400000;
   return (
-    <div className="border-b border-[var(--border)] pb-2">
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
+    <div className="result-card">
+      <div className="section-stack">
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5 mb-0.5">
+          <div className="flex items-center gap-2">
             <span className={clsx('inline-block w-2 h-2 rounded-full shrink-0', isHealthy ? 'bg-[var(--green)]' : 'bg-[var(--red)]')} aria-hidden="true" title={isHealthy ? 'Exchange responding' : 'Stale data'} />
-            <strong className="text-sm break-words font-mono">{item.exchange.toUpperCase()}: {item.contract}</strong>
+            <strong className="text-base break-words font-mono">{item.exchange.toUpperCase()}: {item.contract}</strong>
             {sparklineData && <FundingSparkline data={sparklineData} width={48} height={16} />}
           </div>
-          <div className="text-xs text-[var(--text-muted)]">
-            {t('main.volume', { v: formatNumber(item.volume_24h_settle) })}
-          </div>
-          <div className="text-xs flex items-center gap-1">
-            <span className={clsx('inline-block w-2 h-2 rounded-full shrink-0', livePrice != null ? 'bg-[var(--green)] animate-pulse' : 'bg-[var(--text3)]')} aria-hidden="true" />
-            <span className="text-[var(--text)] font-semibold font-mono">${formatPrice(price)}</span>
-            <span className="text-[var(--text-muted)]">{t('arb.live')}</span>
-          </div>
-          <div className="text-xs text-[var(--text-muted)] font-mono">
-            {t('main.realRate', { r: ((item.currentFunding ?? 0) * 100).toFixed(4) })}
-          </div>
-          <div className="text-xs text-[var(--text-muted)] font-mono">
-            {t('main.interval', { h: item.funding_interval_hours, s: item.funding_interval_source })}
-          </div>
-          <div className="text-xs text-[var(--text-muted)] font-mono">
-            <CountdownTimer intervalHours={item.funding_interval_hours} className="font-medium" />
-            <span className="ml-1">{t('main.untilFunding')}</span>
+        </div>
+        <div className="section-block">
+          <div className="section-title">{t('main.ratePerDay', { value: '' }).replace(': ', '')}</div>
+          <div className={clsx('hero-metric', getFundingColor(item.funding_rate_per_hour))}>
+            {((item.funding_rate_per_day ?? 0) * 100).toFixed(4)}%
           </div>
         </div>
-        <div className="sm:text-right">
-          <div className={clsx('font-bold break-words font-mono', getFundingColor(item.funding_rate_per_hour))}>
-            {t('main.ratePerHour', { value: ((item.funding_rate_per_hour ?? 0) * 100).toFixed(4) })}
+        <div className="section-block">
+          <div className="section-title">{t('main.volume', { v: '' }).replace(': ', '')}</div>
+          <div className="metric-row">
+            <span className="metric-label">{t('main.volume', { v: '' }).replace(': ', '')}</span>
+            <span className="metric-value">{formatNumber(item.volume_24h_settle)}</span>
           </div>
-          <div className="text-xs text-[var(--text-muted)] font-mono">
-            {t('main.ratePerDay', { value: ((item.funding_rate_per_day ?? 0) * 100).toFixed(4) })}
+          <div className="metric-row">
+            <span className="metric-label">{t('main.realRate', { r: '' }).replace(': ', '')}</span>
+            <span className="metric-value">{((item.currentFunding ?? 0) * 100).toFixed(4)}%</span>
           </div>
-          <div className="text-xs text-[var(--text-muted)] font-mono">
-            {t('main.ratePerYear', { value: (item.annualized_rate * 100)?.toFixed(2) })}
+          <div className="metric-row">
+            <span className="metric-label">{t('main.interval', { h: '', s: '' }).replace(': ', '')}</span>
+            <span className="metric-value">{item.funding_interval_hours}h</span>
           </div>
-          <div className="flex flex-wrap gap-1.5 justify-start sm:justify-end mt-1.5">
+          <div className="metric-row">
+            <span className="metric-label">{t('main.untilFunding')}</span>
+            <span className="metric-value"><CountdownTimer intervalHours={item.funding_interval_hours} className="font-medium" /></span>
+          </div>
+        </div>
+        <div className="card-actions">
             <button
               onClick={() => {
                 haptic('light');
@@ -982,7 +977,6 @@ const ResultItem = memo(function ResultItem({
             >
               {t('main.open')}
             </button>
-          </div>
         </div>
       </div>
     </div>

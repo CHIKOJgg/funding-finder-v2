@@ -377,6 +377,102 @@
     font-family: var(--mono);
     font-variant-numeric: tabular-nums;
   }
+
+  /* Shared information hierarchy for dense mobile cards. */
+  .section-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .section-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .section-title {
+    color: var(--text2);
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .metric-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: baseline;
+    min-height: 24px;
+  }
+
+  .metric-label {
+    min-width: 0;
+    color: var(--text2);
+    font-size: 0.8125rem;
+    line-height: 1.35;
+  }
+
+  .metric-value {
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.35;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .hero-metric {
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .result-card,
+  .opportunity-card {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .result-card:first-child,
+  .opportunity-card:first-child {
+    padding-top: 4px;
+  }
+
+  .card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 4px;
+  }
+
+  .card-actions > button {
+    flex-shrink: 0;
+  }
+
+  .tab-strip {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 2px 1px 6px;
+    scrollbar-width: none;
+  }
+
+  .tab-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-strip > button {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
 }
 
 @layer utilities {
