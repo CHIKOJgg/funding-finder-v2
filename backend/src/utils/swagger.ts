@@ -1,22 +1,27 @@
 import swaggerUi from 'swagger-ui-express';
 import { Express, Request, Response } from 'express';
-import type swaggerJsdoc from 'swagger-jsdoc';
 
 // swagger-jsdoc pulls in vulnerable transitive deps (brace-expansion, fast-uri,
 // js-yaml) and is only needed to GENERATE the spec from JSDoc comments. It is a
-// devDependency: in production the spec is missing and the docs routes are
-// skipped (docs are dev tooling and shouldn't be exposed publicly anyway).
+// devDependency: with NODE_ENV=production npm install skips devDependencies, so
+// in production the spec is missing and the docs routes are skipped (docs are
+// dev tooling and shouldn't be exposed publicly anyway). Types for both
+// packages live in the ambient shim src/types/swagger-shim.d.ts.
+
+type GenerateFn = (options: Record<string, unknown>) => Record<string, unknown>;
 
 export async function setupSwagger(app: Express): Promise<void> {
-  let generate: (typeof swaggerJsdoc) | undefined;
+  let generate: GenerateFn | undefined;
   try {
-    generate = (await import('swagger-jsdoc')).default;
+    // Dynamic require: absent in production installs (devDependency).
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    generate = require('swagger-jsdoc') as GenerateFn;
   } catch {
-    // Production install (npm ci --omit=dev) — no swagger-jsdoc, skip docs.
+    // Production install — no swagger-jsdoc, skip docs.
     return;
   }
 
-  const options: Parameters<typeof swaggerJsdoc>[0] = {
+  const options: Record<string, unknown> = {
     definition: {
       openapi: '3.0.0',
       info: {
