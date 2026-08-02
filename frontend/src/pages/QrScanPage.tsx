@@ -1,11 +1,22 @@
 import { useState, useEffect, memo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { apiClient } from '../api/client';
+import { apiClient, setAuthToken } from '../api/client';
 import { IconCheckCircle2, IconXCircle } from '../components/icons';
+
+// The QR code may carry the token either as a query param (?token=…) after the
+// HashRouteBridge migrates a #/qr-scan?token=… fragment, or as a legacy
+// #token=… fragment. Support both.
+function readToken(searchParams: URLSearchParams): string | null {
+  const fromQuery = searchParams.get('token');
+  if (fromQuery) return fromQuery;
+  const hash = window.location.hash;
+  const hashMatch = hash.match(/[#?&]token=([^&]+)/);
+  return hashMatch ? decodeURIComponent(hashMatch[1]) : null;
+}
 
 export const QrScanPage = memo(function QrScanPage() {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const token = readToken(searchParams);
   const [status, setStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
 
@@ -21,9 +32,9 @@ export const QrScanPage = memo(function QrScanPage() {
       try {
         const res: any = await apiClient.qrLoginVerify(token);
         if (res?.ok && res.authToken) {
-          // Store the JWT token for authenticated API calls
-          localStorage.setItem('ff_auth_token', res.authToken);
-          localStorage.setItem('ff_user_id', res.userId);
+          // Persist the JWT and sync the in-memory client token so the desktop
+          // session is usable immediately (no reload required).
+          setAuthToken(res.authToken);
           setStatus('success');
         } else {
           setStatus('error');

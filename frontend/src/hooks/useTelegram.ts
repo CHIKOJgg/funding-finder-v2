@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { setTelegramInitData, setAuthToken, getAuthToken, clearAuthToken, apiClient, captureReferralCode } from '../api/client';
+import { setTelegramInitData, setAuthToken, getAuthToken, clearAuthToken, apiClient, captureReferralCode, onAuthExpired } from '../api/client';
 import type { TelegramWebApp } from '../types';
 
 export interface WebUser {
@@ -40,6 +40,15 @@ export function useTelegram() {
     setAuthenticated(false);
     setInitData(null);
   }, []);
+
+  // A 401 from any API call means the stored session token is dead. Drop it
+  // immediately and fall back to the login screen instead of silently
+  // degrading every protected call to "free" until a full page reload.
+  useEffect(() => {
+    return onAuthExpired(() => {
+      logout();
+    });
+  }, [logout]);
 
   // Ref to track whether we've already initialised Telegram (prevents duplicate
   // runs when the effect fires again after the SDK finishes loading).

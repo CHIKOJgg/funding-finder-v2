@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#3390ec" />
   <title>Funding Finder — arbitraje de funding en 23 exchanges</title>
   <meta name="description" content="Arbitraje de funding rate (tasa de financiación) en 23 exchanges de cripto: Binance, Bybit, OKX, Gate. Arbitraje sin riesgo entre exchanges, ideas de IA y PnL automático. Encuentra las mejores oportunidades en un clic." />
-  <link rel="canonical" href="https://funding-finder.onrender.com/landing.es.html" />
+  <link rel="canonical" href="https://funding-finder-frontend.onrender.com/landing.es.html" />
   <meta property="og:locale" content="es_ES" />
   <style>
     :root { --brand:#3390ec; --bg:#f3f4f6; --card:#fff; --text:#111827; --muted:#6b7280; --dark:#0f172a; --green:#22c55e; --amber:#f59e0b; --red:#ef4444; }
@@ -255,7 +255,7 @@
 
       function fmtPct(v) {
         if (v == null || isNaN(v)) return '—';
-        return (v * 100).toFixed(3) + '%';
+        return v.toFixed(0) + '%';
       }
       function fmtUsd(v) {
         if (v == null || isNaN(v)) return '—';

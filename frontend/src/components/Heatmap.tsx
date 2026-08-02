@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { clsx } from 'clsx';
 import { useT } from '../i18n';
 import { exchangeLabel } from '../utils/exchanges';
+import { API_BASE } from '../api/client';
 
 interface HeatmapCell {
   exchange: string;
@@ -49,7 +50,9 @@ export function Heatmap() {
   const [sortBy, setSortBy] = useState<'rate' | 'volume' | 'exchange'>('rate');
   const [filterExchange, setFilterExchange] = useState<string>('');
 
-  const API = (import.meta.env.VITE_API_URL || 'https://funding-finder-api.onrender.com').replace(/\/$/, '');
+  // Shared API base from the axios client — honors VITE_API_URL / dev proxy
+  // instead of hardcoding the production host.
+  const API = API_BASE;
 
   const fetchHeatmap = useCallback(async () => {
     try {
@@ -160,12 +163,12 @@ export function Heatmap() {
                  <tr key={`${p.exchange}-${p.contract}-${i}`} className={clsx('border-b border-[var(--border)]', rateToColor(p.rate_per_hour))}>
                    <td className="py-1 pr-2 font-medium">{exchangeLabel(p.exchange)}</td>
                    <td className="py-1 pr-2">{p.contract}</td>
-                   <td className={clsx('py-1 pr-2 text-right font-semibold', rateTextColor(p.rate_per_hour))}>
-                     {p.rate_per_hour >= 0 ? '+' : ''}{(p.rate_per_hour * 100).toFixed(4)}%/h
-                   </td>
-                   <td className={clsx('py-1 pr-2 text-right', rateTextColor(p.rate_per_hour))}>
-                     {p.annualized_rate != null && (p.annualized_rate >= 0 ? '+' : '')}{(p.annualized_rate * 100).toFixed(1)}%
-                   </td>
+                    <td className={clsx('py-1 pr-2 text-right font-semibold', rateTextColor(p.rate_per_hour ?? 0))}>
+                      {p.rate_per_hour != null ? `${(p.rate_per_hour >= 0 ? '+' : '')}${(p.rate_per_hour * 100).toFixed(4)}%/h` : '—'}
+                    </td>
+                    <td className={clsx('py-1 pr-2 text-right', rateTextColor(p.rate_per_hour ?? 0))}>
+                      {p.annualized_rate != null ? `${(p.annualized_rate >= 0 ? '+' : '')}${(p.annualized_rate * 100).toFixed(1)}%` : '—'}
+                    </td>
                    <td className={clsx('py-1 pr-2 text-right', rateTextColor(p.accumulated?.d1 ?? 0))}>
                      {p.accumulated != null ? (p.accumulated.d1 * 100 >= 0 ? '+' : '') + (p.accumulated.d1 * 100).toFixed(2) + '%' : '—'}
                    </td>

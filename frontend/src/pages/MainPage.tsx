@@ -704,62 +704,6 @@ export function MainPage() {
   );
 }
 
-// Fetches live perp prices for the symbols the user is actually viewing.
-// Prices are requested per exchange in one batched call and re-fetched every
-// 15s only while the rows are on screen — we never parse the whole market.
-function useLivePrices(items: ExchangeResult[]): Record<string, number> {
-  const [prices, setPrices] = useState<Record<string, number>>({});
-
-  // One request per tick for ALL exchanges via the unified /live/batch
-  // endpoint — this is the fix that stops per-exchange polling from tripping
-  // the rate limiter when many exchanges are selected. The response is keyed by
-  // `${exchange}:${SYMBOL}`; we re-key to `${exchange}:${contract}` so the
-  // existing ResultItem lookup keeps working.
-  const byExchange = useMemo(() => {
-    const map: Record<string, string[]> = {};
-    for (const it of items) {
-      (map[it.exchange] ||= []).push(it.contract);
-    }
-    return map;
-  }, [items]);
-
-  const depKey = useMemo(
-    () => Object.entries(byExchange).map(([ex, syms]) => `${ex}:${[...syms].sort().join(',')}`).sort().join('|'),
-    [byExchange]
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    const requests = Object.entries(byExchange).map(([ex, syms]) => ({ exchange: ex, symbols: syms }));
-    const load = async () => {
-      try {
-        if (requests.length === 0) return;
-        const res: any = await apiClient.getLiveBatch(requests);
-        if (!res?.ok || !res.prices) return;
-        const next: Record<string, number> = {};
-        for (const [k, p] of Object.entries(res.prices as Record<string, number>)) {
-          const [ex] = k.split(':');
-          const contract = k.slice(ex.length + 1);
-          next[`${ex}:${contract}`] = p;
-        }
-        if (!cancelled) setPrices(next);
-      } catch {
-        /* keep previous prices on transient error */
-      }
-    };
-    load();
-    const id = setInterval(() => {
-      if (!document.hidden) load();
-    }, 15_000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [depKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return prices;
-}
-
 // Fetch sparkline data for a set of (exchange, contract) pairs
 function useSparklines(items: ExchangeResult[]): Record<string, number[]> {
   const [data, setData] = useState<Record<string, number[]>>({});
@@ -856,7 +800,6 @@ const ResultSection = memo(function ResultSection({
   // Only the visible rows are ever shown / fetched — this is the optimization
   // that keeps price parsing cheap (no whole-market scan on every refresh).
   const visible = sorted.slice(0, limit);
-  const priceMap = useLivePrices(visible);
   const sparklineMap = useSparklines(visible);
 
   if (sorted.length === 0 && searchQuery) return null;
@@ -868,7 +811,7 @@ const ResultSection = memo(function ResultSection({
       </h3>
       <div className="space-y-2">
         {visible.map((item) => (
-          <ResultItem key={`${item.exchange}:${item.contract}`} item={item} livePrice={priceMap[`${item.exchange}:${item.contract}`]} sparklineData={sparklineMap[`${item.exchange}:${item.contract}`]} onHistory={onHistory} onAlert={onAlert} planLimits={planLimits} watchlistCount={watchlistCount} onWatchlistLimit={onWatchlistLimit} />
+          <ResultItem key={`${item.exchange}:${item.contract}`} item={item} sparklineData={sparklineMap[`${item.exchange}:${item.contract}`]} onHistory={onHistory} onAlert={onAlert} planLimits={planLimits} watchlistCount={watchlistCount} onWatchlistLimit={onWatchlistLimit} />
         ))}
       </div>
     </div>
@@ -877,7 +820,6 @@ const ResultSection = memo(function ResultSection({
 
 const ResultItem = memo(function ResultItem({
   item,
-  livePrice: _livePrice,
   sparklineData,
   onHistory,
   onAlert,
@@ -886,7 +828,6 @@ const ResultItem = memo(function ResultItem({
   onWatchlistLimit,
 }: {
   item: ExchangeResult;
-  livePrice?: number;
   sparklineData?: number[];
   onHistory: (data: { exchange: string; contract: string }) => void;
   onAlert: (data: { exchange: string; contract: string }) => void;

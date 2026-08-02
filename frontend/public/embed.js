@@ -85,8 +85,10 @@
   }
 
   function fmtPct(v) {
+    // annualReturn is ALREADY a percentage (e.g. 30.2 = 30.2%/yr) — the
+    // old ×100 made embeds advertise "89590%/yr".
     if (v == null || isNaN(v)) return '—';
-    return (v * 100).toFixed(3) + '%';
+    return v.toFixed(0) + '%';
   }
 
   function render(host) {

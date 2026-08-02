@@ -1,7 +1,9 @@
 // Platform-specific share URL builders. Each function returns a URL that
 // pre-fills the share dialog with the optimal text + link for that platform.
 
-const SITE_URL = 'https://funding-finder-frontend.onrender.com';
+// Fallback only — callers pass the real app URL via payload.url. Dynamic so
+// local/dev builds never leak the production origin into share links.
+const SITE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://funding-finder-frontend.onrender.com';
 
 export interface SharePayload {
   text: string;

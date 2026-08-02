@@ -470,7 +470,7 @@ const LiveTab = memo(function LiveTab({
 
         {loading ? (
               <div className="text-center py-6 text-muted" role="status">{t('common.loading')}</div>
-        ) : !live || live.totals.positions === 0 ? (
+        ) : !live?.totals || live.totals.positions === 0 ? (
           <div className="text-center py-6 text-muted">
             {keys.length === 0 ? t('portfolio.noKeysHint') : t('portfolio.noOpenPositions')}
           </div>
@@ -483,13 +483,13 @@ const LiveTab = memo(function LiveTab({
               </div>
               <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5">
                 <div className="text-[11px] text-[var(--text3)] leading-tight">PnL</div>
-                <div className={`font-mono font-bold text-[19px] leading-snug ${live.totals.unrealized >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]'}`}>
-                  {live.totals.unrealized >= 0 ? '+' : ''}{formatUsd(live.totals.unrealized)} USDT
+                <div className={`font-mono font-bold text-[19px] leading-snug ${(live.totals.unrealized ?? 0) >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]'}`}>
+                  {(live.totals.unrealized ?? 0) >= 0 ? '+' : ''}{formatUsd(live.totals.unrealized ?? 0)} USDT
                 </div>
               </div>
               <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5">
                 <div className="text-[11px] text-[var(--text3)] leading-tight">{t('portfolio.funding')}</div>
-                <div className="font-mono font-bold text-[19px] leading-snug text-[var(--green)]">+{formatUsd(live.totals.funding)} USDT</div>
+                <div className="font-mono font-bold text-[19px] leading-snug text-[var(--green)]">{(live.totals.funding ?? 0) >= 0 ? '+' : ''}{formatUsd(live.totals.funding ?? 0)} USDT</div>
               </div>
             </div>
 
@@ -644,7 +644,7 @@ const PortfolioRow = memo(function PortfolioRow({
           </div>
           {pnl && (
             <div className="text-xs text-[var(--text2)]">
-              ~{(pnl.hoursHeld).toFixed(1)} {t('portfolio.holdHours')}
+              ~{(pnl.hoursHeld ?? 0).toFixed(1)} {t('portfolio.holdHours')}
             </div>
           )}
         </div>
@@ -654,7 +654,7 @@ const PortfolioRow = memo(function PortfolioRow({
           </div>
           {pnl && (
             <div className="text-xs text-muted">
-              ≈ {(pnl.annualizedPct).toFixed(2)}{t('unit.pctPerYear')}
+              ≈ {(pnl.annualizedPct ?? 0).toFixed(2)}{t('unit.pctPerYear')}
             </div>
           )}
             <button onClick={onRemove} className="text-xs text-[var(--red)] hover:underline mt-1">{t('common.delete')}</button>

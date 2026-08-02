@@ -21,7 +21,7 @@ interface ShareCopy {
   shareText: string;
 }
 
-const SITE_URL = 'https://funding-finder-frontend.onrender.com';
+const SITE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://funding-finder-frontend.onrender.com';
 
 // Language-aware copy so a shared card matches the user's UI language and
 // reaches the widest audience. Falls back to English.

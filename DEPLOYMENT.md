@@ -16,6 +16,20 @@
 
 **Почему это критично:** в `.env` коммитились реальные ключи — их нужно сменить перед деплоем в продакшн.
 
+> **🚨 СРОЧНО:** рабочая копия `backend/.env` (бэкап-папка) содержит живые
+> прод-креды (Supabase DATABASE_URL с паролем, платёжные токены, JWT) и
+> `NODE_ENV=development`. Пока `.env` не в git — это не утечка в репозиторий,
+> но при запуске сервера из этой папки включаются dev-режимы: авторизация
+> любого пользователя как `dev_1`, `POST /api/payments/simulate` (бесплатная
+> подписка), `POST /api/auth/dev-guest`. **Обязательно:**
+> 1. Смени пароль Supabase (Dashboard → Database → Connection → Reset password).
+> 2. Смени все токены ниже (Crypto Pay / NOWPayments / OpenRouter).
+> 3. Сгенерируй новые JWT_SECRET / WEBHOOK_SECRET / ENCRYPTION_KEY.
+>
+> Код теперь fail-closed: если `NODE_ENV` не задан — сервер трактуется как
+> production (dev-байпасы выключены, слабые секреты отклоняются). Для локальной
+> разработки явно ставь `NODE_ENV=development`.
+
 ```bash
 # 1. Telegram Bot Token — зайди в @BotFather → /mybots → выбор бота → API Token → Revoke
 #    Скопируй новый токен
@@ -179,6 +193,19 @@ Render — лучший бесплатный вариант. База данны
 
 5. Нажми **Create Static Site**
 6. Дождись статуса **Live**
+
+> **⚠️ ОБЯЗАТЕЛЬНО — SPA rewrite rule.** Render Static Site по умолчанию
+> отдаёт 404 для SPA-маршрутов (`/privacy`, `/terms`, `/qr-scan`, `/public`).
+> После создания сайта открой **Redirects and Rewrites** (в настройках сайта
+> или по кнопке на странице деплоя) и добавь правило:
+>
+> | Source | Action | Destination |
+> |--------|--------|-------------|
+> | `/*` | **Rewrite** | `/index.html` |
+>
+> Без этого правила ссылки «Privacy» / «Terms» в футере лендинга ведут в 404,
+> а QR-логин не открывается. (Как фолбэк код поддерживает хэш-ссылки вида
+> `/index.html?app=1#/privacy` — они работают и без правила.)
 
 > **Почему VITE_API_URL:** React приложение собирается (`npm run build`) и хранится как статика. Оно не знает, где API сервер. `VITE_API_URL` подставляется при сборке и говорит: "все запросы к API отправляй на этот URL".
 

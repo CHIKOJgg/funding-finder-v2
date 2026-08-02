@@ -432,10 +432,14 @@ function DataProvider() {
 
   return (
     <AppContext.Provider value={contextValue}>
+      <HashRouteBridge />
       {isWeb && !authenticated ? (
         <BrowserRouter>
           <Routes>
             <Route path="/public" element={<Suspense fallback={<PageLoader />}><PublicPage /></Suspense>} />
+            <Route path="/terms" element={<Suspense fallback={<PageLoader />}><TermsPage /></Suspense>} />
+            <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><PrivacyPage /></Suspense>} />
+            <Route path="/qr-scan" element={<Suspense fallback={<PageLoader />}><QrScanPage /></Suspense>} />
             <Route path="*" element={<LoginPage onAuthenticated={login} />} />
           </Routes>
         </BrowserRouter>
@@ -479,6 +483,25 @@ function PageLoader() {
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--cobalt)]"></div>
     </div>
   );
+}
+
+// Static hosts (Render Static Site etc.) can't always be configured with an SPA
+// fallback, so deep links are sometimes written as /index.html#/privacy (hash
+// fragment). This bridge migrates a `#/path` fragment into the real URL before
+// React Router mounts, making hash-based deep links work on any host.
+function HashRouteBridge() {
+  useEffect(() => {
+    try {
+      const hash = window.location.hash;
+      if (hash.startsWith('#/')) {
+        window.history.replaceState(null, '', hash.slice(1));
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
+    } catch {
+      /* history API always available in modern browsers */
+    }
+  }, []);
+  return null;
 }
 
 export default function App() {

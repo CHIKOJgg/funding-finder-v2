@@ -1,7 +1,6 @@
 import { Router, Response } from 'express';
 import { prisma } from '../services/prisma.js';
 import { wsManager } from '../services/websocket.js';
-import { getJobStats } from '../services/jobQueue.js';
 import { getArchiveStats } from '../services/dataArchival.js';
 import { cache } from '../utils/exchangeClient.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
@@ -92,7 +91,6 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       totalAlerts,
       totalScans,
       archiveStats,
-      jobStats,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
@@ -106,7 +104,6 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
       prisma.generalAlert.count(),
       prisma.fundingRecord.count(),
       getArchiveStats().catch(() => null),
-      getJobStats().catch(() => null),
     ]);
 
     const mem = process.memoryUsage();
@@ -120,7 +117,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
           today: usersToday,
           activeWeek: activeWeek,
           activeMonth: activeMonth,
-          bySubscription: subscriptionBreakdown.reduce((acc: Record<string, number>, curr) => {
+          bySubscription: (subscriptionBreakdown ?? []).reduce((acc: Record<string, number>, curr) => {
             acc[curr.subscription] = curr._count;
             return acc;
           }, {} as Record<string, number>),
@@ -128,8 +125,8 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
         orders: {
           total: totalOrders,
           today: ordersToday,
-          revenue: revenue._sum.amount || 0,
-          revenueToday: revenueToday._sum?.amount || 0,
+          revenue: revenue?._sum?.amount || 0,
+          revenueToday: revenueToday?._sum?.amount || 0,
         },
         system: {
           uptime: process.uptime(),
@@ -139,7 +136,6 @@ router.get('/stats', async (req: AuthenticatedRequest, res: Response) => {
             rss: Math.round(mem.rss / 1024 / 1024),
           },
           websocket: wsStats,
-          jobs: jobStats,
           archive: archiveStats,
           cacheSize: cache.size,
         },

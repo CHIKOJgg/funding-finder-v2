@@ -542,6 +542,18 @@ router.post('/waitlist', validate(waitlistSchema), async (req, res) => {
         return res.json({ ok: true, already: true, message: 'Already on the list' });
       }
     }
+    // Dedupe by telegram handle too — without this, one visitor could create
+    // unlimited rows via the B2B form, each triggering a welcome email and a
+    // weekly-report send.
+    if (telegram) {
+      const existingTg = await prisma.waitlist.findFirst({
+        where: { telegram },
+        select: { id: true },
+      });
+      if (existingTg) {
+        return res.json({ ok: true, already: true, message: 'Already on the list' });
+      }
+    }
     await prisma.waitlist.create({
       data: {
         email: email ?? null,

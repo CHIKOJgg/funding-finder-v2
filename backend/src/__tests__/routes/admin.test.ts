@@ -9,17 +9,6 @@ jest.mock('../../services/prisma', () => ({
   checkDatabaseHealth: jest.fn(),
 }));
 
-var mockJobQueue: any;
-jest.mock('../../services/jobQueue', () => {
-  mockJobQueue = {
-    getJobStats: jest.fn().mockResolvedValue({}),
-    scanQueue: null,
-    alertQueue: null,
-    initJobQueues: jest.fn(),
-  };
-  return mockJobQueue;
-});
-
 var mockDataArchival: any;
 jest.mock('../../services/dataArchival', () => {
   mockDataArchival = {
@@ -44,7 +33,6 @@ const mkApp = () => createTestApp(adminRoutes, { authUser });
 beforeEach(() => {
   jest.resetAllMocks();
   mockAdmin.requireAdmin.mockImplementation((_req: any, _res: any, next: any) => next());
-  mockJobQueue.getJobStats.mockResolvedValue({});
   mockDataArchival.getArchiveStats.mockResolvedValue(null);
 });
 

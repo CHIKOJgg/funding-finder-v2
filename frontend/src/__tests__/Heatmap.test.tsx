@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { Heatmap } from '../components/Heatmap';
 
 vi.mock('../api/client', () => ({
+  API_BASE: 'https://funding-finder-api.onrender.com',
   apiClient: {
     getFeatureFlags: vi.fn(),
   },

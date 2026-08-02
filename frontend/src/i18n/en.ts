@@ -311,7 +311,7 @@ export const en: Record<string, string> = {
   'paywall.proFeat3': 'Portfolio + auto-PnL',
   'paywall.proFeat4': 'Unlimited watchlist',
   'paywall.proFeat5': 'Arbitrage signals',
-  'paywall.proplusFeat1': 'All 25 exchanges',
+  'paywall.proplusFeat1': 'All 23+ exchanges',
   'paywall.proplusFeat2': 'Priority AI analysis',
   'paywall.proplusFeat3': 'Personal support',
   'paywall.currentPlan': 'Current',
@@ -977,4 +977,22 @@ export const en: Record<string, string> = {
    // Sort aria
   'main.sortAriaLabel': 'Sort results',
   'main.directionFlip': 'Direction flip',
+
+  // Onboarding (first-run overlay) — used WITHOUT `|| fallback`, so a missing
+  // key would render the raw key to every new user.
+  'onboarding.title': 'Welcome to Funding Finder',
+  'onboarding.skip': 'Skip →',
+  'onboarding.scanHint': 'Auto-scan 8 top exchanges with one click',
+  'onboarding.trialHint': '7 days free — all Pro features included',
+
+  // Crypto checkout
+  'crypto.openCryptoBot': 'Open Crypto Bot',
+
+  // Pull-to-refresh
+  'pullToRefresh.pull': 'Pull to refresh',
+  'pullToRefresh.refreshing': 'Refreshing…',
+  'pullToRelease.refresh': 'Release to refresh',
+
+  // Public page
+  'public.payback': 'Payback',
 };

@@ -121,10 +121,12 @@ qrAuthRouter.get('/qr-login/status', requireQrAuth, async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Missing token parameter' });
     }
 
-    // Poll for up to 45 seconds
+    // Poll for up to 45 seconds. Ownership check: only the user who generated
+    // the token may poll it (otherwise any authenticated user could probe any
+    // token's state).
     const deadline = Date.now() + 45_000;
     while (Date.now() < deadline) {
-      const record = await prisma.qrLoginToken.findUnique({ where: { token } });
+      const record = await prisma.qrLoginToken.findFirst({ where: { token, userId } });
       if (!record) {
         return res.json({ ok: true, consumed: false, error: 'Token not found' });
       }

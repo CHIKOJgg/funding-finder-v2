@@ -658,7 +658,7 @@
         <a href="/landing.es.html">ES</a>
       </div>
       <div class="foot-links">
-        <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="#b2b">API / B2B</a>
+        <a href="/index.html?app=1#/privacy">Privacy</a> · <a href="/index.html?app=1#/terms">Terms</a> · <a href="#b2b">API / B2B</a>
       </div>
     </div>
   </footer>
@@ -671,7 +671,8 @@
     var WAITLIST_URL = API_URL + '/api/public/waitlist';
     var REFRESH_MS = 45000;
 
-    function fmtPct(v){ return (v==null||isNaN(v))?'—':(v*100).toFixed(3)+'%'; }
+    // annualReturn — уже процент (30.2 = 30.2%/год); НЕ умножаем на 100
+    function fmtApr(v){ return (v==null||isNaN(v))?'—':v.toFixed(0)+'%'; }
     function fmtMoney(n){ if(n==null||isNaN(n))return '$—'; return '$'+Math.round(n).toLocaleString('en-US'); }
 
     // ---- Live widget + calculator (share one fetch) ----
@@ -688,9 +689,10 @@
         document.getElementById('calcCapLabel').textContent='$'+cap.toLocaleString('en-US');
         var mode=document.querySelector('#calcSeg button.active').getAttribute('data-mode');
         var apr=mode==='best'?bestApr:divApr;
-        var year=cap*apr;
+        // apr в процентах — делим на 100 при пересчёте в доллары
+        var year=cap*apr/100;
         document.getElementById('calcYear').textContent=fmtMoney(year);
-        document.getElementById('calcApr').textContent=(apr*100).toFixed(1)+'%';
+        document.getElementById('calcApr').textContent=apr.toFixed(1)+'%';
         document.getElementById('calcMonth').textContent=fmtMoney(year/12);
         document.getElementById('calcDay').textContent=fmtMoney(year/365);
       }
@@ -703,7 +705,7 @@
         } else {
           body.innerHTML=opps.map(function(o){
             return '<div class="opp"><div><div class="pair">'+o.pair+'</div><div class="route">'+(o.opportunity||'')+'</div></div>'+
-              '<div class="rate"><div class="annual">до '+fmtPct(o.annualReturn)+'/год</div>'+
+              '<div class="rate"><div class="annual">до '+fmtApr(o.annualReturn)+'/год</div>'+
               '<span class="risk '+(o.riskLevel||'LOW')+'">'+(o.riskLevel||'LOW')+'</span></div></div>';
           }).join('');
           // Drive calculator from live data

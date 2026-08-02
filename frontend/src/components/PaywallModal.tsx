@@ -208,8 +208,8 @@ export function PaywallModal({
                   <div className="font-bold text-sm mb-1">{t(plan.labelKey)}</div>
                   {plan.tier !== 'free' && (
                     <div className="font-bold text-lg" style={{ color: 'var(--brand)' }}>
-                      ${billingCycle === 'annual' && plan.tier === 'pro'
-                        ? monthlyEquiv
+                      ${billingCycle === 'annual'
+                        ? Math.round(PLAN_PRICES[plan.tier as 'pro' | 'proplus'].annual / 12)
                         : PLAN_PRICES[plan.tier as 'pro' | 'proplus'].monthly}
                       <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>
                         /{t('paywall.mo')}

@@ -17,7 +17,7 @@ interface OnboardingProps {
 export function Onboarding({ onComplete }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const t = useT();
-  const { activateTrial, refreshTrial, runScan, setSelectedExchanges, selectedExchanges } = useApp();
+  const { activateTrial, refreshTrial, runScan, setSelectedExchanges, planLimits } = useApp();
   const [experience, setExperience] = useState<ExperienceLevel>('beginner');
   const [interest, setInterest] = useState<Interest>('both');
   const [showChecklist, setShowChecklist] = useState(false);
@@ -46,10 +46,13 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   const handleComplete = useCallback(async () => {
     track('onboarding_complete', { experience, interest });
 
-    const exchanges = experience === 'advanced' ? ADVANCED_EXCHANGES : PRESELECT_EXCHANGES;
-    if (!selectedExchanges || selectedExchanges.length === 0) {
-      setSelectedExchanges(exchanges);
-    }
+    // The experience choice must actually change the scan: advanced users get
+    // a wider default exchange set. The pre-populated default selection used
+    // to make this branch dead code — now we always apply the choice,
+    // capped to the user's plan limit.
+    const exchanges = (experience === 'advanced' ? ADVANCED_EXCHANGES : PRESELECT_EXCHANGES)
+      .slice(0, planLimits.maxExchanges);
+    setSelectedExchanges(exchanges);
 
     try {
       await activateTrial();
@@ -59,13 +62,13 @@ export function Onboarding({ onComplete }: OnboardingProps) {
     }
 
     try {
-      await runScan(selectedExchanges?.length ? selectedExchanges : exchanges);
+      await runScan(exchanges);
     } catch {
       // Non-critical: scan failure during onboarding should not block the flow.
     }
 
     setShowChecklist(true);
-  }, [selectedExchanges, setSelectedExchanges, activateTrial, refreshTrial, runScan, experience, interest]);
+  }, [setSelectedExchanges, activateTrial, refreshTrial, runScan, experience, interest, planLimits.maxExchanges]);
 
   const handleChecklistDone = useCallback(() => {
     onComplete();

@@ -59,8 +59,10 @@ async function getTopOpportunity(): Promise<any | null> {
 function formatMessage(opp: any): string {
   const diffPct = ((opp.difference ?? 0) * 100).toFixed(4);
   const diffDayPct = ((opp.difference_per_day ?? 0) * 100).toFixed(2);
+  // annualReturn is ALREADY a percentage (e.g. 15 = 15%/yr) — multiplying by
+  // 100 posted "1500%/год" to the public growth channel.
   const annual = opp.profit?.annualReturn !== undefined
-    ? `${(opp.profit.annualReturn * 100).toFixed(0)}%`
+    ? `${(opp.profit.annualReturn).toFixed(0)}%`
     : '—';
   const risk = opp.risk?.level || '—';
 

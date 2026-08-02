@@ -72,6 +72,10 @@ const baseSchema = z.object({
 
   // Pushover — push notifications for arbitrage alerts (https://pushover.net).
   PUSHOVER_TOKEN: z.string().optional().default(''),
+
+  // Prometheus metrics: public by default (scraped by monitoring). Set to '0'
+  // to require admin auth (prevents runtime-metadata disclosure to strangers).
+  PROMETHEUS_PUBLIC: z.enum(['0', '1']).optional().default('1'),
 });
 
 const devSchema = baseSchema.extend({
@@ -118,7 +122,15 @@ function validateEnv(): z.infer<typeof baseSchema> & {
   JWT_SECRET: string;
   WEBHOOK_SECRET: string;
 } {
-  const isProduction = process.env.NODE_ENV === 'production';
+  // Fail-closed: an UNSET NODE_ENV is treated as production. If a deploy
+  // forgets to set it, the dev-schema defaults and the dev-only auth/payment
+  // bypasses must NOT silently activate — only an explicit NODE_ENV=development
+  // (or =test) enables them.
+  const nodeEnvRaw = process.env.NODE_ENV;
+  const isProduction = nodeEnvRaw !== 'development' && nodeEnvRaw !== 'test';
+  if (nodeEnvRaw === undefined) {
+    console.warn('[config] NODE_ENV is not set — assuming production (fail-closed). Set NODE_ENV=development for local dev.');
+  }
   const schema = isProduction ? prodSchema : devSchema;
   const parsed = schema.safeParse(process.env);
   if (!parsed.success) {
@@ -132,7 +144,8 @@ function validateEnv(): z.infer<typeof baseSchema> & {
   if (isProduction) {
     const weakJwt = validateSecret('JWT_SECRET', data.JWT_SECRET || '', 32, 'JWT signing secret');
     const weakWebhook = validateSecret('WEBHOOK_SECRET', data.WEBHOOK_SECRET || '', 32, 'webhook signing secret');
-    const warnings = [weakJwt, weakWebhook].filter(Boolean) as string[];
+    const weakEncryption = validateSecret('ENCRYPTION_KEY', data.ENCRYPTION_KEY || '', 32, 'exchange API key encryption key');
+    const warnings = [weakJwt, weakWebhook, weakEncryption].filter(Boolean) as string[];
     if (warnings.length > 0) {
       throw new Error(`Security validation failed: ${warnings.join('; ')}. Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`);
     }
@@ -141,11 +154,15 @@ function validateEnv(): z.infer<typeof baseSchema> & {
 }
 
 const env = validateEnv();
-const isProduction = env.NODE_ENV === 'production';
+// Effective environment: unset NODE_ENV is treated as production (fail-closed),
+// and config.nodeEnv must reflect that so every `nodeEnv === 'development'`
+// gate in the codebase stays consistent with isProduction.
+const isProduction = env.NODE_ENV === 'production' || process.env.NODE_ENV === undefined;
+const effectiveNodeEnv = isProduction ? 'production' : env.NODE_ENV;
 
 export const config = {
   port: parseInt(env.PORT, 10),
-  nodeEnv: env.NODE_ENV,
+  nodeEnv: effectiveNodeEnv,
   isProduction,
   databaseUrl: env.DATABASE_URL,
 
@@ -257,6 +274,8 @@ export const config = {
   pushover: {
     token: env.PUSHOVER_TOKEN || undefined,
   },
+
+  prometheusPublic: env.PROMETHEUS_PUBLIC === '1',
 } as const;
 
 export type Config = typeof config;

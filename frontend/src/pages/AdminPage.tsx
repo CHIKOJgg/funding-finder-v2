@@ -112,6 +112,7 @@ export function AdminPage() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [funnel, setFunnel] = useState<Funnel | null>(null);
   const [loading, setLoading] = useState(true);
+  const [denied, setDenied] = useState(false);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -122,7 +123,12 @@ export function AdminPage() {
     try {
       const res: any = await apiClient.get('/admin/stats');
       if (res.ok) setStats(res.stats);
-    } catch { /* ignore */ }
+      else setDenied(true);
+    } catch {
+      // 403 from the backend (non-admin) — surface a clear denial state
+      // instead of a silently broken empty panel.
+      setDenied(true);
+    }
   }, []);
 
   const fetchMetrics = useCallback(async () => {
@@ -215,6 +221,17 @@ export function AdminPage() {
 
   if (!user) {
     return       <div className="p-4 text-center text-[var(--text3)]">{t('admin.loginRequired')}</div>;
+  }
+
+  if (denied) {
+    return (
+      <div className="p-4 max-w-4xl mx-auto">
+        <div className="card p-6 text-center">
+          <h1 className="text-xl font-bold mb-2 text-[var(--text)]">Admin Panel</h1>
+          <p className="text-sm text-[var(--red)]">{t('admin.accessDenied') || 'Access denied — this panel is for administrators only.'}</p>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -36,11 +36,26 @@ const I18nContext = createContext<I18nContextType>({
   languages: LANGUAGES,
 });
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(() => {
+// Detect the initial UI language for a visitor who never picked one:
+// 1) saved preference, 2) Telegram Mini App language_code, 3) browser language,
+// 4) English (the campaign default — the old hardcoded Russian default put
+// TR/VI/HI/ES campaign traffic into a Russian UI).
+function detectInitialLang(): Lang {
+  try {
     const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('ff_lang') : null;
-    return (saved as Lang) ?? 'ru';
-  });
+    if (saved && DICTS[saved as Lang]) return saved as Lang;
+    const tgLang = (window.Telegram?.WebApp?.initDataUnsafe?.user as any)?.language_code as string | undefined;
+    if (tgLang && DICTS[tgLang as Lang]) return tgLang as Lang;
+    const nav = (navigator.language || (navigator as any).userLanguage || 'en').slice(0, 2).toLowerCase();
+    if (nav && DICTS[nav as Lang]) return nav as Lang;
+  } catch {
+    /* ignore detection errors */
+  }
+  return 'en';
+}
+
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const [lang, setLangState] = useState<Lang>(detectInitialLang);
 
   const setLang = useCallback((l: Lang) => {
     localStorage.setItem('ff_lang', l);

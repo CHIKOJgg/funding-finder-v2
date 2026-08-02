@@ -33,10 +33,9 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: package-lock.json
       
-      - name: Install dependencies
-        working-directory: ./backend
+      - name: Install dependencies (root workspaces)
         run: npm ci
       
       - name: Generate Prisma client
@@ -76,10 +75,9 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: package-lock.json
       
-      - name: Install dependencies
-        working-directory: ./frontend
+      - name: Install dependencies (root workspaces)
         run: npm ci
       
       - name: Type check
@@ -105,8 +103,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      # Both Dockerfiles expect the REPO ROOT as build context (they COPY
+      # root package.json/package-lock.json and sibling workspace manifests).
+      # Building with ./backend / ./frontend contexts (the old config) failed
+      # 100% of the time.
       - name: Build backend Docker image
-        run: docker build -t funding-finder-backend ./backend
+        run: docker build -f backend/Dockerfile -t funding-finder-backend .
       
       - name: Build frontend Docker image
-        run: docker build -t funding-finder-frontend ./frontend
+        run: docker build -f frontend/Dockerfile -t funding-finder-frontend .

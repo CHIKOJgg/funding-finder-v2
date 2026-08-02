@@ -23,9 +23,14 @@ const redis = getRedis();
 // ---------------------------------------------------------------------------
 
 export function signAuthToken(payload: Omit<AuthTokenPayload, 'iat' | 'exp'>): string {
-  return jwt.sign(payload, config.jwt.secret, {
-    expiresIn: config.jwt.webTtl as jwt.SignOptions['expiresIn'],
-  });
+  // JWT_WEB_TTL may be a duration string ("7d", "30d") or a plain number of
+  // SECONDS ("2592000"). jsonwebtoken treats a numeric string as milliseconds
+  // (ms() with no unit) — which silently shrinks a 30-day session to ~43
+  // minutes — so numeric values must be converted to a number (seconds).
+  const ttl = config.jwt.webTtl;
+  const expiresIn: jwt.SignOptions['expiresIn'] =
+    /^\d+$/.test(ttl) ? parseInt(ttl, 10) : (ttl as jwt.SignOptions['expiresIn']);
+  return jwt.sign(payload, config.jwt.secret, { expiresIn });
 }
 
 export function verifyAuthToken(token: string): AuthTokenPayload | null {

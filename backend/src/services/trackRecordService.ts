@@ -11,6 +11,9 @@ import { canonicalPairKey } from './arbitrageService.js';
 // Method (kept deliberately conservative and clearly labelled):
 //   - For each canonical pair traded on >=2 exchanges, take each day's latest
 //     funding rate per exchange.
+//   - Rates are normalized to a common 8h basis (a 1h interval rate is worth
+//     an eighth of an 8h rate), so pairs mixing funding intervals are compared
+//     fairly instead of inflating the spread.
 //   - The market-neutral play captures (maxRate - minRate) that day: long the
 //     exchange paying the most, short the one charging the most.
 //   - We count ONE capture per day per pair (no compounding assumption), 1x
@@ -21,6 +24,8 @@ const HISTORY_DAYS = 30;
 const ASSUMED_NOTIONAL_USD = 10_000;
 const DIVERSIFIED_TOP_N = 5;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const CACHE_TTL_MS = 30 * 60 * 1000; // public endpoint — serve warm cache
+const CHUNK_SIZE = 10_000;
 
 interface PairStat {
   pair: string;
@@ -35,6 +40,15 @@ function dayKey(ts: number): string {
   return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`;
 }
 
+// funding is stored as the raw per-settlement rate; normalize to per-8h so
+// 1h/4h/8h/24h contracts are comparable. NULL interval = legacy row, assume 8h.
+function normalizeTo8h(funding: number, intervalHours: number | null | undefined): number {
+  const hours = intervalHours && intervalHours > 0 ? intervalHours : 8;
+  return funding * (8 / hours);
+}
+
+let cached: { at: number; result: Awaited<ReturnType<typeof computeTrackRecord>> } | null = null;
+
 export async function computeTrackRecord(
   days: number = HISTORY_DAYS,
   notionalUsd: number = ASSUMED_NOTIONAL_USD
@@ -47,32 +61,6 @@ export async function computeTrackRecord(
   bestPair: (PairStat & { cumulativePct: number; annualizedPct: number; profitUsd: number }) | null;
   diversified: { cumulativePct: number; annualizedPct: number; profitUsd: number } | null;
 }> {
-  const since = new Date(Date.now() - days * DAY_MS);
-
-  // Load in batches to avoid OOM
-  const BATCH_SIZE = 100;
-  let cursor: string | undefined;
-  const allHistories: any[] = [];
-
-  while (true) {
-    const batch = await prisma.fundingHistory.findMany({
-      where: { records: { some: { timestamp: { gte: since } } } },
-      include: {
-        records: {
-          where: { timestamp: { gte: since } },
-          orderBy: { timestamp: 'asc' },
-        },
-      },
-      take: BATCH_SIZE,
-      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-      orderBy: { id: 'asc' },
-    });
-
-    if (batch.length === 0) break;
-    allHistories.push(...batch);
-    cursor = batch[batch.length - 1].id;
-  }
-
   const base = {
     ok: true,
     available: false,
@@ -83,29 +71,84 @@ export async function computeTrackRecord(
     diversified: null as any,
   };
 
-  if (!allHistories.length) return base;
+  if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.result;
 
-  // canonical pair -> day -> exchange -> latest rate that day
-  const byPair = new Map<string, Map<string, Map<string, number>>>();
+  const since = new Date(Date.now() - days * DAY_MS);
 
-  for (const h of allHistories) {
+  // Build a historyId -> (exchange, contract) map once. Histories are few
+  // (one row per exchange:contract) compared to the millions of records.
+  const keyRows = await prisma.fundingHistory.findMany({
+    select: { id: true, key: true },
+  });
+  const keyById = new Map<string, { exchange: string; pair: string }>();
+  for (const h of keyRows) {
     const sep = h.key.indexOf(':');
     if (sep < 0) continue;
     const exchange = h.key.slice(0, sep);
-    const contract = h.key.slice(sep + 1);
-    const pair = canonicalPairKey(contract);
+    const pair = canonicalPairKey(h.key.slice(sep + 1));
     if (!pair) continue;
-
-    for (const rec of h.records) {
-      const dk = dayKey(rec.timestamp.getTime());
-      if (!byPair.has(pair)) byPair.set(pair, new Map());
-      const pairMap = byPair.get(pair)!;
-      if (!pairMap.has(dk)) pairMap.set(dk, new Map());
-      const dayMap = pairMap.get(dk)!;
-      // keep latest rate of the day
-      dayMap.set(exchange, rec.funding);
-    }
+    keyById.set(h.id, { exchange, pair });
   }
+
+  // canonical pair -> day -> exchange -> latest rate that day (8h-normalized).
+  // Records stream in timestamp-ascending order, so the last write per
+  // (history, day) IS the latest of that day.
+  const byPair = new Map<string, Map<string, Map<string, number>>>();
+  let pairsWithData = 0;
+
+  let lastTs: Date | null = null;
+  let lastId = '';
+
+  const processChunk = async (afterTs: Date | null, afterId: string): Promise<{ rows: any[]; done: boolean }> => {
+    const rows = await prisma.fundingRecord.findMany({
+      where: afterTs
+        ? {
+            OR: [
+              { timestamp: { gt: afterTs } },
+              { timestamp: afterTs, id: { gt: afterId } },
+            ],
+          }
+        : { timestamp: { gte: since } },
+      select: { id: true, timestamp: true, funding: true, intervalHours: true, fundingHistoryId: true },
+      orderBy: [{ timestamp: 'asc' }, { id: 'asc' }],
+      take: CHUNK_SIZE,
+    });
+    return { rows, done: rows.length < CHUNK_SIZE };
+  };
+
+  try {
+    let { rows, done } = await processChunk(null, '');
+    while (rows.length > 0) {
+      for (const rec of rows) {
+        const meta = keyById.get(rec.fundingHistoryId);
+        if (!meta) continue;
+        let pairMap = byPair.get(meta.pair);
+        if (!pairMap) {
+          pairMap = new Map();
+          byPair.set(meta.pair, pairMap);
+          pairsWithData += 1;
+        }
+        const dk = dayKey(rec.timestamp.getTime());
+        let dayMap = pairMap.get(dk);
+        if (!dayMap) {
+          dayMap = new Map();
+          pairMap.set(dk, dayMap);
+        }
+        // timestamp ascending => overwriting keeps the latest rate of the day
+        dayMap.set(meta.exchange, normalizeTo8h(rec.funding, rec.intervalHours));
+      }
+      const last = rows[rows.length - 1];
+      lastTs = last.timestamp;
+      lastId = last.id;
+      if (done) break;
+      ({ rows, done } = await processChunk(lastTs, lastId));
+    }
+  } catch (e) {
+    logger.error({ err: (e as Error).message }, 'Track record scan failed');
+    return base;
+  }
+
+  if (pairsWithData === 0) return base;
 
   const stats: PairStat[] = [];
 
@@ -166,7 +209,7 @@ export async function computeTrackRecord(
   const divCumulativePct = divFraction * 100;
   const divAnnualizedPct = (divCumulativePct / days) * 365;
 
-  return {
+  const result = {
     ...base,
     available: true,
     pairsAnalyzed: stats.length,
@@ -177,4 +220,11 @@ export async function computeTrackRecord(
       profitUsd: divProfit,
     },
   };
+
+  cached = { at: Date.now(), result };
+  return result;
+}
+
+export function clearTrackRecordCache(): void {
+  cached = null;
 }

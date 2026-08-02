@@ -6,8 +6,10 @@ import { getIntervalLabel } from '../utils/helpers.js';
 import { TRIAL_REMINDER_DAYS } from '../middleware/subscription.js';
 import { logger } from '../utils/logger.js';
 
-const DAILY_SUMMARY_HOUR = 9; // 9 AM Moscow time
-let dailyTimer: ReturnType<typeof setInterval> | null = null;
+const DAILY_SUMMARY_HOUR_UTC = 6; // 9:00 MSK = 06:00 UTC
+let dailyTimer: ReturnType<typeof setTimeout> | null = null;
+let trialTimer: ReturnType<typeof setInterval> | null = null;
+let lastSentYmd = '';
 
 export function startDailySummary(): void {
   if (dailyTimer) {
@@ -17,17 +19,46 @@ export function startDailySummary(): void {
 
   logger.info('Starting daily summary scheduler (9:00 MSK)');
 
-  // Check every hour if it's time to send
-  dailyTimer = setInterval(async () => {
+  // Phase-independent: instead of an hourly setInterval that only fired when a
+  // tick happened to land inside 09:00–09:04 MSK (a restart at 09:10 silently
+  // disabled the summary until the next lucky restart), self-schedule a
+  // setTimeout for the exact next 09:00 MSK boundary and catch up on boot.
+  const scheduleNext = () => {
     const now = new Date();
-    // Moscow is UTC+3
-    const mskHour = (now.getUTCHours() + 3) % 24;
-    if (mskHour === DAILY_SUMMARY_HOUR && now.getMinutes() < 5) {
-      await sendDailySummaries();
-    }
-    // Trial reminders run on their own cadence (once per matching day).
-    await sendTrialReminders();
-  }, 60 * 60 * 1000); // Check every hour
+    const next = new Date(now);
+    next.setUTCHours(DAILY_SUMMARY_HOUR_UTC, 0, 0, 0);
+    if (next.getTime() <= now.getTime()) next.setUTCDate(next.getUTCDate() + 1);
+    const delay = Math.min(next.getTime() - now.getTime() + 500, 24 * 60 * 60 * 1000);
+    dailyTimer = setTimeout(async () => {
+      try {
+        await sendDailySummaries();
+      } catch (err) {
+        logger.error({ err }, 'Daily summary run failed');
+      } finally {
+        scheduleNext();
+      }
+    }, delay);
+  };
+  scheduleNext();
+
+  // Catch up on boot: if the process started after 09:00 MSK and today's
+  // summary hasn't been sent yet, send it right away instead of waiting a
+  // full day (the old phase-locked hourly check skipped it entirely).
+  const todayYmd = nowYmd();
+  if (new Date().getUTCHours() >= DAILY_SUMMARY_HOUR_UTC && todayYmd !== lastSentYmd) {
+    lastSentYmd = todayYmd;
+    void sendDailySummaries().catch((e) => logger.warn({ err: (e as Error).message }, 'Daily summary catch-up failed'));
+  }
+
+  // Trial reminders stay on a plain hourly cadence (idempotent via bitmask).
+  trialTimer = setInterval(() => {
+    sendTrialReminders().catch((e) => logger.warn({ err: (e as Error).message }, 'Trial reminder tick failed'));
+  }, 60 * 60 * 1000);
+}
+
+function nowYmd(): string {
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`;
 }
 
 /**
@@ -78,10 +109,14 @@ export async function sendTrialReminders(): Promise<void> {
 
 export function stopDailySummary(): void {
   if (dailyTimer) {
-    clearInterval(dailyTimer);
+    clearTimeout(dailyTimer);
     dailyTimer = null;
-    logger.info('Daily summary scheduler stopped');
   }
+  if (trialTimer) {
+    clearInterval(trialTimer);
+    trialTimer = null;
+  }
+  logger.info('Daily summary scheduler stopped');
 }
 
 export async function sendDailySummaries(): Promise<void> {

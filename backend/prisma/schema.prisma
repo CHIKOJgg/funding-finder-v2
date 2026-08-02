@@ -219,6 +219,7 @@ model FundingRecord {
   fundingHistory    FundingHistory @relation(fields: [fundingHistoryId], references: [id])
   timestamp         DateTime @default(now())
   funding           Float
+  intervalHours     Float?
 
   @@index([fundingHistoryId])
   @@index([timestamp])

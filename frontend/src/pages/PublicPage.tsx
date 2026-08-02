@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useT } from '../i18n';
 import { exchangeLabel } from '../utils/exchanges';
 import { IconPlus } from '../components/icons';
+import { API_BASE } from '../api/client';
 
 interface HeatmapEntry {
   exchange: string;
@@ -35,7 +36,9 @@ export function PublicPage() {
   const [filterExchange, setFilterExchange] = useState<string>('');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const API = (import.meta.env.VITE_API_URL || 'https://funding-finder-api.onrender.com').replace(/\/$/, '');
+  // Shared API base from the axios client — honors VITE_API_URL / dev proxy
+  // instead of hardcoding the production host.
+  const API = API_BASE;
 
   useEffect(() => {
     document.title = 'Funding Finder — Real-time Crypto Funding Rates | Free Heatmap';
@@ -346,7 +349,7 @@ function HeatmapRow({ entry }: { entry: HeatmapEntry }) {
         {isPositive ? '+' : ''}{pctH}%/h
       </td>
       <td className="py-1.5 pr-2 text-right text-xs font-mono text-[var(--text-muted)]">
-        {(entry.annualized_rate * 100).toFixed(1)}%
+        {((entry.annualized_rate ?? 0) * 100).toFixed(1)}%
       </td>
       <td
         className="py-1.5 pr-2 text-right text-xs font-medium font-mono"
@@ -361,11 +364,11 @@ function HeatmapRow({ entry }: { entry: HeatmapEntry }) {
         {payback}
       </td>
       <td className="py-1.5 text-right text-xs font-mono text-[var(--text-muted)]">
-        {entry.volume_24h_settle >= 1_000_000
+        {entry.volume_24h_settle != null && !isNaN(entry.volume_24h_settle) && entry.volume_24h_settle >= 1_000_000
           ? `${(entry.volume_24h_settle / 1_000_000).toFixed(1)}M`
-          : entry.volume_24h_settle >= 1_000
+          : entry.volume_24h_settle != null && !isNaN(entry.volume_24h_settle) && entry.volume_24h_settle >= 1_000
             ? `${(entry.volume_24h_settle / 1_000).toFixed(0)}K`
-            : entry.volume_24h_settle.toFixed(0)}
+            : (entry.volume_24h_settle ?? 0).toFixed(0)}
       </td>
     </tr>
   );

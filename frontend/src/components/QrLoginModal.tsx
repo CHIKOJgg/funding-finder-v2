@@ -8,7 +8,12 @@ interface Props {
   onClose: () => void;
 }
 
-const SCAN_URL_BASE = 'https://funding-finder-frontend.onrender.com/qr-scan';
+function buildScanUrl(token: string): string {
+  // ?app=1 skips the landing funnel; the #/qr-scan?token= fragment is migrated
+  // to a real path by HashRouteBridge, so this works on any static host even
+  // without an SPA fallback rule.
+  return `${window.location.origin}/index.html?app=1#/qr-scan?token=${encodeURIComponent(token)}`;
+}
 
 export const QrLoginModal = memo(function QrLoginModal({ onClose }: Props) {
   const { showToast } = useToast();
@@ -30,7 +35,7 @@ export const QrLoginModal = memo(function QrLoginModal({ onClose }: Props) {
         setCountdown(Math.ceil((res.expiresAt - Date.now()) / 1000));
 
         // Generate QR code as data URL
-       const scanUrl = `${SCAN_URL_BASE}#token=${res.token}`;
+       const scanUrl = buildScanUrl(res.token);
         const dataUrl = await QRCode.toDataURL(scanUrl, {
           width: 256,
           margin: 2,
@@ -47,27 +52,47 @@ export const QrLoginModal = memo(function QrLoginModal({ onClose }: Props) {
     return () => { cancelled = true; };
   }, []);
 
-  // Poll for scan confirmation
+  // Poll for scan confirmation. The backend long-polls for up to 45s per call,
+  // so retry in a loop for the whole QR lifetime instead of giving up after a
+  // single unanswered poll (the old behaviour showed a bogus "failed" state).
   useEffect(() => {
     if (status !== 'waiting' || !token) return;
     let cancelled = false;
-    (async () => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const pollOnce = async (): Promise<'consumed' | 'not-yet' | 'expired' | 'error'> => {
       try {
         const res = await apiClient.qrLoginStatus(token);
-        if (cancelled) return;
-        if (res?.consumed) {
-          setStatus('scanned');
-          showToast('Desktop logged in!', 'success');
-          setTimeout(onClose, 2000);
-        } else {
-          setStatus('error');
-        }
+        if (res?.consumed) return 'consumed';
+        if (res?.error === 'Token expired') return 'expired';
+        return 'not-yet';
       } catch {
-        if (!cancelled) setStatus('error');
+        return 'error';
       }
-    })();
-    return () => { cancelled = true; };
-  }, [status, token, showToast, onClose]);
+    };
+
+    const loop = async () => {
+      if (cancelled) return;
+      const remaining = expiresAt ? expiresAt - Date.now() : 0;
+      if (remaining <= 0) {
+        if (!cancelled) setStatus('error');
+        return;
+      }
+      const result = await pollOnce();
+      if (cancelled) return;
+      if (result === 'consumed') {
+        setStatus('scanned');
+        showToast('Desktop logged in!', 'success');
+        timer = setTimeout(onClose, 2000);
+        return;
+      }
+      // Not scanned yet (or transient network error) — keep waiting until the
+      // QR itself expires.
+      timer = setTimeout(loop, 4000);
+    };
+    loop();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, [status, token, expiresAt, showToast, onClose]);
 
   // Countdown timer
   useEffect(() => {
@@ -94,7 +119,7 @@ export const QrLoginModal = memo(function QrLoginModal({ onClose }: Props) {
       setToken(res.token);
       setExpiresAt(res.expiresAt);
       setCountdown(Math.ceil((res.expiresAt - Date.now()) / 1000));
-       const scanUrl = `${SCAN_URL_BASE}#token=${res.token}`;
+       const scanUrl = buildScanUrl(res.token);
       const dataUrl = await QRCode.toDataURL(scanUrl, {
         width: 256, margin: 2,
         color: { dark: '#05070C', light: '#ffffff' },
@@ -176,9 +201,11 @@ export const QrLoginModal = memo(function QrLoginModal({ onClose }: Props) {
 
         {status === 'error' && (
           <div style={{ padding: 40 }}>
-            <p style={{ color: 'var(--text-muted)' }}>Failed to generate QR code</p>
+            <p style={{ color: 'var(--text-muted)' }}>
+              {expired ? 'QR code expired. Generate a new one to keep waiting.' : 'Failed to generate QR code'}
+            </p>
             <button onClick={handleRefresh} className="btn btn-primary mt-2" style={{ width: '100%' }}>
-              Try again
+              {expired ? 'Generate new QR code' : 'Try again'}
             </button>
           </div>
         )}

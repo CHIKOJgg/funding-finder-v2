@@ -169,8 +169,17 @@ export async function getSpotFutures(exchange: string, pair: string): Promise<Sp
     const fundingApy = r.fundingRate * annualIntervals * 100;
     const netApy = netPerInterval * annualIntervals * 100;
 
-    // Positive funding + positive basis: short perp / long spot collects funding.
-    const strategy = `Long spot + Short perp — collect funding (~${fundingApy.toFixed(1)}%/yr)`;
+    // Strategy direction must respect the SIGN of the funding rate: with
+    // negative funding, longs are PAID — the old copy always advertised
+    // "collect funding" even when netApy was negative (~-8%/yr).
+    let strategy: string;
+    if (netApy > 0) {
+      strategy = `Long spot + Short perp — collect funding (~${netApy.toFixed(1)}%/yr net)`;
+    } else if (fundingApy < 0) {
+      strategy = `Short spot + Long perp — earn the negative funding (~${(-netApy).toFixed(1)}%/yr net)`;
+    } else {
+      strategy = `Funding too low to cover fees (~${netApy.toFixed(1)}%/yr net) — not worth opening`;
+    }
 
     const arr = basisStore.get(key) || [];
     arr.push({ t: timestamp, basis: basisPct });

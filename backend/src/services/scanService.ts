@@ -79,6 +79,7 @@ async function saveToHistory(result: ScanResult): Promise<void> {
         fundingHistoryId,
         timestamp: now,
         funding: uniqueItems[i].currentFunding,
+        intervalHours: uniqueItems[i].funding_interval_hours || null,
       })),
     });
   } catch (e) {

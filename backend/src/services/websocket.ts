@@ -17,9 +17,15 @@ const VALID_CHANNELS = new Set(['scan', 'alerts', 'funding']);
 // New connections must authenticate within this window.
 const AUTH_TIMEOUT_MS = 5_000;
 
+// DoS guards: cap total live sockets and per-IP connections.
+const MAX_TOTAL_CONNECTIONS = 500;
+const MAX_PER_IP = 20;
+
 class WebSocketManager {
   private wss: WebSocketServer | null = null;
   private clients = new Map<string, WSClient>();
+  private byIp = new Map<string, Set<WebSocket>>();
+  private wsIp = new WeakMap<WebSocket, string>();
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
   init(server: HttpServer): void {
@@ -29,13 +35,23 @@ class WebSocketManager {
       this.handleConnection(ws, req);
     });
 
-    // Heartbeat to detect stale connections
+    // Heartbeat to detect stale connections. The server must actively send
+    // protocol-level pings: browsers auto-answer with pong frames, which is
+    // what updates lastPong. Without the ping() call every connection would
+    // be force-terminated after 60s (the old behaviour — clients never sent
+    // app-level {type:'ping'} messages).
     this.heartbeatInterval = setInterval(() => {
       this.clients.forEach((client, userId) => {
+        try {
+          if (client.ws.readyState !== WebSocket.OPEN) return;
+          client.ws.ping();
+        } catch {
+          // socket already closing — let the timeout sweep it
+        }
         if (Date.now() - client.lastPong > 60_000) {
           logger.debug(`WebSocket heartbeat timeout for ${userId}`);
-          client.ws.terminate();
-          this.clients.delete(userId);
+          try { client.ws.terminate(); } catch { /* already gone */ }
+          this.removeClient(userId, client.ws);
         }
       });
     }, 30_000);
@@ -43,37 +59,50 @@ class WebSocketManager {
     logger.info('WebSocket server initialized');
   }
 
+  private connectionIp(req: IncomingMessage): string {
+    const xff = req.headers['x-forwarded-for'];
+    if (typeof xff === 'string' && xff.length > 0) {
+      return xff.split(',')[0].trim();
+    }
+    return req.socket?.remoteAddress || 'unknown';
+  }
+
+  private removeClient(userId: string, ws: WebSocket): void {
+    // Only remove the map entry if it still points at THIS socket — the old
+    // socket's close handler must never delete the replacement connection
+    // registered by a duplicate-login reconnect.
+    const current = this.clients.get(userId);
+    if (current && current.ws === ws) {
+      this.clients.delete(userId);
+    }
+  }
+
+  private untrackIp(ip: string, ws: WebSocket): void {
+    const set = this.byIp.get(ip);
+    if (!set) return;
+    set.delete(ws);
+    if (set.size === 0) this.byIp.delete(ip);
+  }
+
   private handleConnection(ws: WebSocket, req: IncomingMessage): void {
+    const ip = this.connectionIp(req);
+    const perIp = this.byIp.get(ip) || new Set<WebSocket>();
+    if (this.clients.size >= MAX_TOTAL_CONNECTIONS || perIp.size >= MAX_PER_IP) {
+      ws.close(1013, 'Too many connections');
+      return;
+    }
+    perIp.add(ws);
+    this.byIp.set(ip, perIp);
+    this.wsIp.set(ws, ip);
+    ws.on('error', () => { /* prevent unhandled 'error' crash */ });
+
     try {
       let authenticated = false;
       let userId: string | null = null;
 
-      // Legacy path: allow auth via URL query params (backward compat with
-      // older clients). New clients should use message-based auth.
-      try {
-        const url = new URL(req.url || '/', `http://${req.headers.host}`);
-        const initData = url.searchParams.get('initData');
-        const token = url.searchParams.get('token');
-
-        if (initData) {
-          const validated = validateTelegramInitDataSync(initData);
-          if (validated) {
-            authenticated = true;
-            userId = validated.userId;
-          }
-        } else if (token) {
-          const payload = verifyAuthToken(token);
-          if (payload) {
-            authenticated = true;
-            userId = payload.sub;
-          }
-        }
-      } catch { /* URL parsing failed — proceed to message-based auth */ }
-
-      if (authenticated && userId) {
-        this.registerClient(ws, userId);
-        return;
-      }
+      // Message-based auth only. The legacy ?initData=/?token= query path was
+      // removed — it echoed bearer secrets into server access logs, and no
+      // current client uses it.
 
       // Message-based auth: client sends { type: "auth", initData: "..." } or
       // { type: "auth", token: "..." } as the first message within AUTH_TIMEOUT_MS.
@@ -142,7 +171,7 @@ class WebSocketManager {
     const existing = this.clients.get(userId);
     if (existing) {
       logger.debug(`WebSocket replacing existing connection for ${userId}`);
-      existing.ws.terminate();
+      try { existing.ws.terminate(); } catch { /* already gone */ }
     }
 
     this.clients.set(userId, client);
@@ -156,13 +185,17 @@ class WebSocketManager {
     });
 
     ws.on('close', () => {
-      this.clients.delete(userId);
+      this.removeClient(userId, ws);
+      const ipOf = this.wsIp.get(ws);
+      if (ipOf) this.untrackIp(ipOf, ws);
       logger.debug(`WebSocket disconnected: ${userId}`);
     });
 
     ws.on('error', (err) => {
       logger.error({ err, userId }, 'WebSocket error');
-      this.clients.delete(userId);
+      this.removeClient(userId, ws);
+      const ipOf = this.wsIp.get(ws);
+      if (ipOf) this.untrackIp(ipOf, ws);
     });
 
     this.send(ws, {
@@ -219,7 +252,13 @@ class WebSocketManager {
     const message = JSON.stringify({ type: 'broadcast', channel, data, timestamp: Date.now() });
     this.clients.forEach((client) => {
       if (client.subscriptions.has(channel) && client.ws.readyState === WebSocket.OPEN) {
-        client.ws.send(message);
+        // A socket that died mid-send must never take down the caller (scan
+        // routes broadcast outside try/catch).
+        try {
+          client.ws.send(message);
+        } catch {
+          // skip dead socket; heartbeat will sweep it
+        }
       }
     });
   }
@@ -228,7 +267,11 @@ class WebSocketManager {
   sendToUser(userId: string, data: any): void {
     const client = this.clients.get(userId);
     if (client && client.ws.readyState === WebSocket.OPEN) {
-      this.send(client.ws, data);
+      try {
+        this.send(client.ws, data);
+      } catch {
+        /* skip dead socket */
+      }
     }
   }
 

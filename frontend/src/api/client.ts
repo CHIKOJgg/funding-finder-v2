@@ -143,6 +143,35 @@ async function retryRequest<T>(
 }
 
 // Response interceptor: transform success data and error messages
+let authExpiredNotifiedAt = 0;
+const AUTH_EXPIRED_EVENT = 'ff:auth-expired';
+
+function notifyAuthExpired() {
+  // Throttle: at most one notification per 30s (polling loops would otherwise
+  // spam the event on every concurrent 401).
+  const now = Date.now();
+  if (now - authExpiredNotifiedAt < 30_000) return;
+  authExpiredNotifiedAt = now;
+  try {
+    window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+  } catch {
+    /* non-DOM environments */
+  }
+}
+
+export function onAuthExpired(listener: () => void): () => void {
+  try {
+    window.addEventListener(AUTH_EXPIRED_EVENT, listener);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, listener);
+  } catch {
+    return () => {};
+  }
+}
+
+// Endpoints that must NEVER trigger the session-expired flow (unauthenticated
+// by design, or handling their own auth failures).
+const AUTH_EXEMPT_PATHS = ['/auth/login', '/auth/register', '/auth/google', '/auth/wallet/verify', '/auth/wallet/nonce', '/auth/dev-guest', '/qr-login/verify'];
+
 api.interceptors.response.use(
   (response) => {
     const ms = Date.now() - (((response.config as any)._startedAt as number) || Date.now());
@@ -162,6 +191,14 @@ api.interceptors.response.use(
       const retryAfter = res.headers?.['retry-after'];
       (err as any).rateLimited = true;
       (err as any).retryAfter = retryAfter ? Number(retryAfter) : undefined;
+    }
+    // Expired / invalid session: notify the app so it can drop the stale token
+    // and prompt for re-auth instead of silently degrading to "free".
+    if (res && res.status === 401) {
+      const url = String(error.config?.url || '');
+      const exempt = AUTH_EXEMPT_PATHS.some((p) => url.includes(p));
+      if (!exempt) notifyAuthExpired();
+      (err as any).authExpired = true;
     }
     return Promise.reject(err);
   }
@@ -539,8 +576,7 @@ export const apiClient = {
 
   // QR Login: verify scanned token (unauthenticated, called from desktop browser)
   async qrLoginVerify(token: string) {
-    const res = await retryRequest(() => api.post('/qr-login/verify', { token }));
-    return (res as any).data;
+    return retryRequest(() => api.post('/qr-login/verify', { token }));
   },
 
   // ── Market Data (OI, LSR, Liquidations) ──────────────────────────────

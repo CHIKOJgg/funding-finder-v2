@@ -2,8 +2,8 @@
 // Vite copies this file (and manifest.json) to the build root, so it is
 // served at /sw.js. Registration happens in src/main.tsx (production only).
 
-const SHELL_CACHE = 'funding-finder-shell-v1';
-const API_CACHE = 'funding-finder-api-v1';
+const SHELL_CACHE = 'funding-finder-shell-v2';
+const API_CACHE = 'funding-finder-api-v2';
 
 // App shell + entry points precached on install so the UI loads offline.
 const PRECACHE_URLS = ['/', '/index.html', '/manifest.json', '/icon.svg'];
@@ -70,7 +70,11 @@ self.addEventListener('fetch', (event) => {
 
   // API GETs: cache successful responses so the LAST scan/alert data
   // is available offline. Network-first with cached fallback.
-  if (sameOrigin && url.pathname.startsWith('/api/')) {
+  // SECURITY: requests carrying an Authorization header are user-specific —
+  // caching them by URL alone could serve one user's data to another from the
+  // same browser. Those are NEVER cached. (Public, unauthenticated /api/*
+  // responses are safe to cache.)
+  if (sameOrigin && url.pathname.startsWith('/api/') && !req.headers.get('Authorization')) {
     event.respondWith(
       fetch(req)
         .then((res) => {

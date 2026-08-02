@@ -26,7 +26,7 @@ import {
   type IconName,
 } from '../components/icons';
 
-const SITE_URL = 'https://funding-finder-frontend.onrender.com';
+const SITE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://funding-finder-frontend.onrender.com';
 
 interface UserStats {
   totalScans: number;

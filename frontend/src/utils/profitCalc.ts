@@ -70,7 +70,7 @@ export function profitCalcClient(
   const feesB = EXCHANGE_FEES[opp.exchangeB]?.taker || 0.0005;
   const slippage = calcSlippage(opp.volumeA || 0, opp.volumeB || 0);
 
-  const grossHourly = capital * opp.difference;
+  const grossHourly = capital * (Number.isFinite(opp.difference) ? opp.difference : 0);
   const fees = capital * (feesA + feesB) * 2;
   const slippageCost = capital * slippage * 2;
   const oneTime = fees + slippageCost;

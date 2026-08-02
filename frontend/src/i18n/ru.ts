@@ -947,4 +947,38 @@ export const ru: Record<string, string> = {
    // Sort aria
   'main.sortAriaLabel': 'Сортировка результатов',
   'main.directionFlip': 'Смена направления',
+
+  // Paywall (сравнение тарифов)
+  'paywall.socialProof': 'Подписчики Pro сканируют больше бирж и получают AI-анализ.',
+  'paywall.compareTitle': 'Сравнить тарифы',
+  'paywall.planFree': 'Бесплатно',
+  'paywall.planPro': 'Pro',
+  'paywall.planProPlus': 'Pro+',
+  'paywall.freePrice': 'Бесплатно',
+  'paywall.freeFeat1': '8 бирж',
+  'paywall.freeFeat2': '1 AI-идея / день',
+  'paywall.freeFeat3': 'Базовые алерты',
+  'paywall.proFeat1': '20 бирж',
+  'paywall.proFeat2': 'Безлимитные AI-идеи',
+  'paywall.proFeat3': 'Портфель + авто-PnL',
+  'paywall.proFeat4': 'Безлимитный watchlist',
+  'paywall.proFeat5': 'Арбитражные сигналы',
+  'paywall.proplusFeat1': 'Все 23+ биржи',
+  'paywall.proplusFeat2': 'Приоритетный AI-анализ',
+  'paywall.proplusFeat3': 'Персональная поддержка',
+  'paywall.currentPlan': 'Текущий',
+  'paywall.upgradeRate': 'Пользователи, достигшие лимита, переходят на Pro',
+  'paywall.trialEnds': 'Триал заканчивается через',
+  'paywall.manageSubscription': 'Управление подпиской',
+  'paywall.footer': 'Оплата USDT · отмена в любой момент',
+
+  // Install banner (PWA)
+  'install.title': 'Установить Funding Finder',
+  'install.desc': 'Добавьте на главный экран для быстрого доступа',
+  'install.install': 'Установить',
+
+  // Soft paywall banner
+  'softPaywall.title': 'Вы использовали {used} из {total} {feature}. Обновите тариф для полного доступа.',
+  'softPaywall.desc': 'Начните {days}-дневный бесплатный триал — карта не нужна.',
+  'softPaywall.viewPlans': 'Смотреть тарифы',
 };

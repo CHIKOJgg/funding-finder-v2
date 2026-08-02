@@ -53,8 +53,11 @@ router.post('/createOrder', validate(createOrderSchema), async (req, res) => {
 
 router.get('/orderStatus/:orderId', async (req, res) => {
   try {
+    const userId = (req as AuthenticatedRequest).userId!;
     const order = await getOrder(req.params.orderId);
     if (!order) return res.status(404).json({ ok: false, error: 'Order not found' });
+    // Ownership check: a user may only poll their own orders.
+    if (order.userId !== userId) return res.status(403).json({ ok: false, error: 'Forbidden' });
 
     const invoice = await getInvoice(req.params.orderId);
 
@@ -114,15 +117,17 @@ router.post('/withdraw', validate(withdrawSchema), async (req, res) => {
     const { amount, currency, address, network } = req.body;
 
     const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({ where: { telegramId: userId } });
-      if (!user || user.balance < amount) {
-        throw new Error('Insufficient balance');
-      }
-
-      await tx.user.update({
-        where: { telegramId: userId },
+      // Atomic conditional decrement: the balance check and the deduction
+      // happen in ONE statement, so two concurrent withdrawals can never both
+      // pass the check and drive the balance negative (the old read-then-
+      // update pattern was racy under Postgres READ COMMITTED).
+      const updated = await tx.user.updateMany({
+        where: { telegramId: userId, balance: { gte: amount } },
         data: { balance: { decrement: amount } },
       });
+      if (updated.count === 0) {
+        throw new Error('Insufficient balance');
+      }
 
       const withdrawal = await tx.withdrawal.create({
         data: {
@@ -192,8 +197,12 @@ router.get('/balance', async (req, res) => {
 
 router.get('/invoice/:orderId', async (req, res) => {
   try {
+    const userId = (req as AuthenticatedRequest).userId!;
     const invoice = await getInvoice(req.params.orderId);
     if (!invoice) return res.status(404).json({ ok: false, error: 'Invoice not found' });
+    // Ownership check: a user may only fetch their own invoices.
+    const order = await getOrder(invoice.orderId);
+    if (!order || order.userId !== userId) return res.status(403).json({ ok: false, error: 'Forbidden' });
     res.json({ ok: true, invoice });
   } catch (e) {
     const error = e as Error;

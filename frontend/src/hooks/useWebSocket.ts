@@ -25,6 +25,9 @@ function resolveWsBase(): string {
   return `${proto}//${window.location.host}`;
 }
 
+const RECONNECT_DELAY_MS = 5000;
+const MAX_RECONNECT_DELAY_MS = 30000;
+
 export function useWebSocket(auth: { initData?: string | null; token?: string | null } | null, handlers?: {
   onScan?: MessageHandler;
   onAlertTriggered?: MessageHandler;
@@ -34,15 +37,24 @@ export function useWebSocket(auth: { initData?: string | null; token?: string | 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
   const handlersRef = useRef(handlers);
+  const authRef = useRef(auth);
+  const mountedRef = useRef(true);
+  const backoffRef = useRef(0);
 
   // Keep latest handlers without forcing reconnects on every render.
   useEffect(() => {
     handlersRef.current = handlers;
   }, [handlers]);
 
+  // Track the latest auth credentials so a reconnect after a token refresh
+  // picks them up without re-creating the effect.
+  useEffect(() => {
+    authRef.current = auth;
+  }, [auth]);
+
   const connect = useCallback(() => {
-    const initData = auth?.initData;
-    const token = auth?.token;
+    if (!mountedRef.current) return;
+    const { initData, token } = authRef.current || {};
     if (!initData && !token) return;
 
     let ws: WebSocket;
@@ -56,11 +68,14 @@ export function useWebSocket(auth: { initData?: string | null; token?: string | 
       // Constructing a WebSocket can throw synchronously (e.g. insecure ws://
       // from an https page). Never let this crash the app — just retry later.
       console.warn('[WS] Failed to open connection:', err);
-      reconnectTimer.current = setTimeout(connect, 10000);
+      const delay = Math.min(RECONNECT_DELAY_MS * Math.pow(2, backoffRef.current), MAX_RECONNECT_DELAY_MS);
+      backoffRef.current += 1;
+      reconnectTimer.current = setTimeout(connect, delay);
       return;
     }
 
     ws.onopen = () => {
+      backoffRef.current = 0;
       // Authenticate via the first message instead of URL query params.
       try {
         if (initData) {
@@ -94,13 +109,14 @@ export function useWebSocket(auth: { initData?: string | null; token?: string | 
     };
 
     ws.onclose = (event) => {
-      if (event.code === 4001) {
-        // Auth failure — attempt reconnection with fresh credentials
-        // after a short delay (token may have been refreshed).
-        reconnectTimer.current = setTimeout(connect, 5000);
-        return;
-      }
-      reconnectTimer.current = setTimeout(connect, 5000);
+      if (!mountedRef.current) return;
+      if (wsRef.current !== ws) return; // a newer socket already owns the slot
+      // 4001 = auth rejected. There is no refresh-token flow, so retrying
+      // with the same stale credentials just burns connections forever — stop.
+      if (event.code === 4001) return;
+      const delay = Math.min(RECONNECT_DELAY_MS * Math.pow(2, backoffRef.current), MAX_RECONNECT_DELAY_MS);
+      backoffRef.current += 1;
+      reconnectTimer.current = setTimeout(connect, delay);
     };
 
     ws.onerror = () => {
@@ -112,11 +128,13 @@ export function useWebSocket(auth: { initData?: string | null; token?: string | 
     };
 
     wsRef.current = ws;
-  }, [auth]);
+  }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     connect();
     return () => {
+      mountedRef.current = false;
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       try {
         wsRef.current?.close();

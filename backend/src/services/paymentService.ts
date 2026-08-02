@@ -53,6 +53,10 @@ export async function handleReferral(newTelegramId: string, referralCode: string
   const referrer = await prisma.user.findUnique({ where: { referralCode } });
   if (!referrer) return false;
 
+  // Self-referral guard: applying your OWN code used to grant yourself a
+  // free 7-day Pro trial + a bonus scan. Only a different user may refer.
+  if (referrer.telegramId === newTelegramId) return false;
+
   const existingUser = await prisma.user.findUnique({ where: { telegramId: newTelegramId } });
   if (existingUser && existingUser.referredBy) return false;
 

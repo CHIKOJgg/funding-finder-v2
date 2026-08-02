@@ -24,7 +24,6 @@ import { cache } from './utils/exchangeClient.js';
 import { setupSwagger } from './utils/swagger.js';
 import { featureFlags } from './utils/featureFlags.js';
 import { metricsMiddleware, getMetrics, metricsContentType } from './utils/metrics.js';
-import { initJobQueues, shutdownJobQueues, getJobStats } from './services/jobQueue.js';
 import { getArchiveStats } from './services/dataArchival.js';
 import { startTelegramBot, stopTelegramBot } from './services/bot/telegramBot.js';
 import { startPublicSignalChannel, stopPublicSignalChannel } from './services/publicSignalChannel.js';
@@ -147,7 +146,6 @@ const UNMETERED_PATHS = new Set([
   '/api/ready',
   '/api/metrics',
   '/api/prometheus',
-  '/api/log',
 ]);
 
 // Shared handler so EVERY rate-limit rejection is logged with the route,
@@ -253,7 +251,6 @@ app.get('/api/metrics', authenticate, requireAdmin, async (req, res) => {
     const dbHealth = await checkDatabaseHealth();
     const mem = process.memoryUsage();
     const wsStats = wsManager.getStats();
-    const jobStats = await getJobStats();
     const archiveStats = await getArchiveStats();
 
     res.json({
@@ -269,7 +266,6 @@ app.get('/api/metrics', authenticate, requireAdmin, async (req, res) => {
       },
       cache: { size: cache.size },
       websocket: wsStats,
-      jobs: jobStats,
       archive: archiveStats,
     });
   } catch (err) {
@@ -277,16 +273,21 @@ app.get('/api/metrics', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
-// Prometheus metrics endpoint
-app.get('/api/prometheus', async (req, res) => {
-  try {
-    res.setHeader('Content-Type', metricsContentType());
-    const metrics = await getMetrics();
-    res.send(metrics);
-  } catch (err) {
-    res.status(500).json({ ok: false, error: (err as Error).message });
-  }
-});
+// Prometheus metrics endpoint. Public scraping by default (monitoring); set
+// PROMETHEUS_PUBLIC=0 to require admin (prevents runtime-metadata disclosure).
+function prometheusHandler(req: express.Request, res: express.Response) {
+  getMetrics()
+    .then((metrics) => {
+      res.setHeader('Content-Type', metricsContentType());
+      res.send(metrics);
+    })
+    .catch((err) => res.status(500).json({ ok: false, error: (err as Error).message }));
+}
+if (config.prometheusPublic) {
+  app.get('/api/prometheus', prometheusHandler);
+} else {
+  app.get('/api/prometheus', authenticate, requireAdmin, prometheusHandler);
+}
 
 // API Documentation (gated behind feature flag)
 if (featureFlags.isEnabled('api_docs')) {
@@ -306,10 +307,21 @@ app.get('/api/feature-flags', (req, res) => {
 });
 
 // Client log ingestion (Mini App has no DevTools). Accepted WITHOUT auth so it
-// works even during a pre-login crash. Subject only to the global request
-// limiter; logs are batched client-side (~1.5s) so this is low volume.
+// works even during a pre-login crash. Has its own tight limiter — the path is
+// intentionally NOT in UNMETERED_PATHS, so anonymous log-flooding can't push
+// unbounded text into the server log drain.
+const logLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: createRateLimitStore('client-log'),
+  message: { ok: false, error: 'Rate limited' },
+  handler: rateLimitHandler('client-log'),
+});
 import logRoutes from './routes/log.js';
-app.use('/api', logRoutes);
+app.use('/api', logLimiter, logRoutes);
 
 // Rate limit for public, unauthenticated endpoints (landing page, heatmap).
 // Tighter than global to protect the scan cache from anonymous traffic storms.
@@ -557,7 +569,6 @@ async function start() {
       logger.info(`Funding Finder v2 listening at http://localhost:${config.port}`);
       logger.info(`Environment: ${config.nodeEnv}`);
 wsManager.init(server);
-  initJobQueues();
   startAlertEvaluator();
   startDailySummary();
   startDataArchival();
@@ -589,7 +600,6 @@ const gracefulShutdown = async (signal: string) => {
   stopMarketDataRefresh();
   stopSelfPing();
   wsManager.close();
-  await shutdownJobQueues();
   await disconnectDatabase();
   const { closeRedis } = await import('./utils/redis.js');
   await closeRedis();

@@ -630,7 +630,7 @@ const OpportunityCard = memo(function OpportunityCard({
         </div>
         <div className="opportunity-hero">
           <span className="hero-metric text-[var(--green)]" title={t('arb.apyTitle')}>
-            {opp.profit?.annualReturn?.toFixed(1)}%
+            {opp.profit?.annualReturn != null ? `${opp.profit.annualReturn.toFixed(1)}%` : '—'}
           </span>
           <span className="text-xs text-[var(--text-muted)]">{t('arb.netApy')}</span>
           {opp.score != null && (
@@ -677,7 +677,7 @@ const OpportunityCard = memo(function OpportunityCard({
       <div className="metric-stack">
           <div className="metric-row">
             <span className="metric-label">{cleanLabel(t('arb.fundingIncome'))}</span>
-            <span className="metric-value">+${opp.profit?.grossDaily?.toFixed(2)} {t('unit.usdtPerDay')}</span>
+            <span className="metric-value">+${opp.profit?.grossDaily != null ? opp.profit.grossDaily.toFixed(2) : '0.00'} {t('unit.usdtPerDay')}</span>
           </div>
           <div className="metric-row">
             <span className="metric-label">{cleanLabel(t('arb.oneTimeCosts'))}</span>

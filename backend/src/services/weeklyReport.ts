@@ -24,7 +24,8 @@ const POST_HOUR_MSK = 12; // 12:00 MSK
 const POST_WEEKDAY = 1; // Monday (0 = Sunday)
 const CACHE_TTL_MS = 30 * 60 * 1000;
 
-let weeklyTimer: ReturnType<typeof setInterval> | null = null;
+let weeklyTimer: ReturnType<typeof setTimeout> | null = null;
+let winbackTimer: ReturnType<typeof setTimeout> | null = null;
 let lastPostedYmd = '';
 let cache: { payload: WeeklyReport; ts: number } | null = null;
 
@@ -110,8 +111,10 @@ function pct(v: number | null | undefined, digits = 0): string {
 }
 
 function fmtApr(v: number | null): string {
+  // annualReturn is ALREADY a percentage (e.g. 15 = 15%/yr). Multiplying by
+  // 100 here previously posted "1500%/год" to the public channel.
   if (v == null || isNaN(v)) return '—';
-  return `${(v * 100).toFixed(0)}%`;
+  return `${v.toFixed(0)}%`;
 }
 
 function formatMessage(r: WeeklyReport): string {
@@ -230,37 +233,67 @@ export function startWeeklyReport(): void {
   }
   logger.info(`Weekly report enabled → Mondays ${POST_HOUR_MSK}:00 MSK`);
 
-  // Run winback emails daily at 10:00 MSK (idempotent per day per user).
+  const POST_HOUR_UTC = 9; // 12:00 MSK = 09:00 UTC
+  const WINBACK_HOUR_UTC = 7; // 10:00 MSK = 07:00 UTC
   let lastWinbackYmd = '';
-  const WINBACK_HOUR_MSK = 10;
 
-  // Check hourly; post once on the target weekday+hour (idempotent per day).
-  weeklyTimer = setInterval(() => {
+  // Phase-independent scheduling: instead of an hourly setInterval that must
+  // happen to land inside the target hour (a restart at 12:10 MSK silently
+  // skipped the week before), every run re-arms a setTimeout for the exact
+  // next target time and catches up on boot if the window already passed.
+  const scheduleAt = (targetUtc: number, run: () => Promise<void> | void, label: string) => {
     const now = new Date();
-    const mskHour = (now.getUTCHours() + 3) % 24;
-    // Weekday in MSK (adding 3h can roll the day over).
-    const mskDate = new Date(now.getTime() + 3 * 60 * 60 * 1000);
-    const weekday = mskDate.getUTCDay();
+    const next = new Date(now);
+    next.setUTCHours(targetUtc, 0, 0, 0);
+    if (next.getTime() <= now.getTime()) next.setUTCDate(next.getUTCDate() + 1);
+    const delay = Math.min(next.getTime() - now.getTime() + 500, 24 * 60 * 60 * 1000);
+    const handle = setTimeout(() => {
+      Promise.resolve(run())
+        .catch((e) => logger.warn({ err: (e as Error).message }, `${label} run failed`))
+        .finally(() => scheduleAt(targetUtc, run, label));
+    }, delay);
+    if (label === 'Weekly report') weeklyTimer = handle;
+    else if (label === 'Winback emails') winbackTimer = handle;
+  };
+
+  const tryWeeklyPost = async () => {
+    const mskDate = new Date(Date.now() + 3 * 60 * 60 * 1000);
     const ymd = `${mskDate.getUTCFullYear()}-${mskDate.getUTCMonth() + 1}-${mskDate.getUTCDate()}`;
-
-    if (weekday === POST_WEEKDAY && mskHour === POST_HOUR_MSK && ymd !== lastPostedYmd) {
-      lastPostedYmd = ymd;
-      void postWeeklyReport();
+    // Post when it's Monday MSK and at/after 12:00 MSK, once per day. This
+    // covers both the exact-hour tick and a late start after a restart.
+    if (mskDate.getUTCDay() === POST_WEEKDAY && new Date().getUTCHours() >= POST_HOUR_UTC && ymd !== lastPostedYmd) {
+      const ok = await postWeeklyReport();
+      // Mark only on success so a failed post is retried by the next tick.
+      if (ok) lastPostedYmd = ymd;
     }
+  };
 
-    // Winback email series — daily at 10:00 MSK
-    if (mskHour === WINBACK_HOUR_MSK && ymd !== lastWinbackYmd) {
+  const tryWinback = async () => {
+    const mskDate = new Date(Date.now() + 3 * 60 * 60 * 1000);
+    const ymd = `${mskDate.getUTCFullYear()}-${mskDate.getUTCMonth() + 1}-${mskDate.getUTCDate()}`;
+    if (new Date().getUTCHours() >= WINBACK_HOUR_UTC && ymd !== lastWinbackYmd) {
       lastWinbackYmd = ymd;
-      void runWinbackEmails().then((n) => {
-        if (n) logger.info(`Winback emails sent: ${n}`);
-      }).catch((e) => logger.warn({ err: (e as Error).message }, 'Winback email run failed'));
+      const n = await runWinbackEmails();
+      if (n) logger.info(`Winback emails sent: ${n}`);
     }
-  }, 60 * 60 * 1000);
+  };
+
+  scheduleAt(POST_HOUR_UTC, tryWeeklyPost, 'Weekly report');
+  scheduleAt(WINBACK_HOUR_UTC, tryWinback, 'Winback emails');
+
+  // Catch up on boot: if the process restarted after the target hour, run the
+  // idempotent attempts immediately instead of skipping to next week/day.
+  void tryWeeklyPost().catch((e) => logger.warn({ err: (e as Error).message }, 'Weekly report catch-up failed'));
+  void tryWinback().catch((e) => logger.warn({ err: (e as Error).message }, 'Winback catch-up failed'));
 }
 
 export function stopWeeklyReport(): void {
   if (weeklyTimer) {
-    clearInterval(weeklyTimer);
+    clearTimeout(weeklyTimer);
     weeklyTimer = null;
+  }
+  if (winbackTimer) {
+    clearTimeout(winbackTimer);
+    winbackTimer = null;
   }
 }
