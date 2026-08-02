@@ -633,6 +633,11 @@ const OpportunityCard = memo(function OpportunityCard({
             {opp.profit?.annualReturn?.toFixed(1)}%
           </span>
           <span className="text-xs text-[var(--text-muted)]">{t('arb.netApy')}</span>
+          {opp.score != null && (
+            <span className="text-xs text-[var(--text2)] font-mono mt-2 text-right">
+              {cleanLabel(t('arb.compositeScore'))} {opp.score.toFixed(1)}
+            </span>
+          )}
         </div>
       </div>
 
@@ -724,7 +729,6 @@ const OpportunityCard = memo(function OpportunityCard({
       <details className="advanced-details">
         <summary>{t('arb.moreDetails')}</summary>
         <div className="details-grid">
-          {opp.score != null && <div className="metric-row"><span className="metric-label">{cleanLabel(t('arb.compositeScore'))}</span><span className="metric-value">{opp.score.toFixed(1)}</span></div>}
           <div className="metric-row"><span className="metric-label">{cleanLabel(t('arb.grossLabel'))}</span><span className="metric-value">{opp.profit?.grossDaily != null ? `${(opp.profit.grossDaily / 1000 * 100).toFixed(1)}%` : '—'}</span></div>
           <div className="metric-row"><span className="metric-label">{cleanLabel(t('arb.fees'))}</span><span className="metric-value">{opp.profit?.fees != null ? `${(opp.profit.fees / 1000 * 100).toFixed(2)}%` : '—'}</span></div>
           <div className="metric-row"><span className="metric-label">{cleanLabel(t('arb.slippage'))}</span><span className="metric-value">{opp.profit?.slippage != null ? `${(opp.profit.slippage / 1000 * 100).toFixed(2)}%` : '—'}</span></div>
