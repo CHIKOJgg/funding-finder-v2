@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
@@ -23,7 +23,7 @@ import { InstallBanner } from '../components/InstallBanner';
 import { PullToRefresh } from '../components/PullToRefresh';
 import { ExchangeResult } from '../types';
 import { useT, useI18n } from '../i18n';
-import { IconShare2, IconArrowLeftRight, IconStar, IconBell, IconChartLine, IconLock, IconExternalLink } from '../components/icons';
+import { IconShare2, IconStar, IconBell, IconChartLine, IconLock, IconExternalLink } from '../components/icons';
 
 type SortKey = 'rate' | 'volume' | 'interval';
 
@@ -39,7 +39,6 @@ export function MainPage() {
   const { scanResults, scanLoading, scanStatus, runScan, selectedExchanges, setSelectedExchanges, planLimits, watchlist, user } = useApp();
   const [searchParams, setSearchParams] = useSearchParams();
   const { showToast } = useToast();
-  const navigate = useNavigate();
   const [paywallFeature, setPaywallFeature] = useState<PaywallFeature | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [capital, setCapital] = useState(1000);
@@ -383,13 +382,6 @@ export function MainPage() {
                 title={t('main.shareCardTitle')}
               >
                 <IconShare2 size={14} aria-hidden /> {t('main.shareCard')}
-              </button>
-              <button
-                onClick={() => navigate('/arbitrage')}
-                className="btn btn-secondary text-sm py-1.5 px-3 flex items-center gap-1.5"
-                title={t('main.arbSpreadsTitle')}
-              >
-                <IconArrowLeftRight size={14} aria-hidden /> {t('main.arbitrage')}
               </button>
             </div>
           </div>
