@@ -156,6 +156,7 @@ export const ru: Record<string, string> = {
   'arb.direction': 'Направление: {dir}',
   'arb.any': 'Любое',
   'arb.riskLevelTitle': 'Уровень риска: насколько расходятся ставки и волатильна пара.',
+  'arb.moreDetails': 'Дополнительные показатели и действия',
   'arb.untilFundingTitle': 'Время до следующего начисления фандинга. Позиции держат именно до этого момента.',
   'arb.untilFundingEx': 'до фандинга ({ex})',
   'arb.dailySpreadTitle': 'Дневной спред — разница ставок фандинга между биржами. Ваш потенциальный доход при удержании позиций до фандинга.',
@@ -164,7 +165,7 @@ export const ru: Record<string, string> = {
   'arb.fundingIncome': 'Доход фандинга:',
   'arb.oneTimeCosts': 'Разовые издержки (вход/выход):',
   'arb.netDaily': 'Чистыми за день:',
-  'arb.compositeScore': 'Композитвный балл:',
+  'arb.compositeScore': 'Композитный балл:',
   'arb.accumulated': 'Накопленный фандинг:',
   'arb.accumulatedD1': '1D',
   'arb.accumulatedD7': '7D',
@@ -890,7 +891,7 @@ export const ru: Record<string, string> = {
   'heatmap.loading': 'Загрузка тепловой карты…',
 
   // Arbitrage — NetAPR labels
-  'arb.netApy': 'Net APY',
+  'arb.netApy': 'Чистая доходность',
   'arb.grossLabel': 'Gross',
   'arb.breakEven': 'Окупаемость',
   'arb.breakEvenValue': '~{days} дн · {cycles} циклов',

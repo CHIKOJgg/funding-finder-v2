@@ -441,6 +441,80 @@
     border-bottom: 1px solid var(--border);
   }
 
+  .opportunity-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .opportunity-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+  }
+
+  .strategy-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 16px;
+    padding: 12px;
+    border: 1px solid var(--cobalt);
+    border-radius: 12px;
+    background: var(--cobalt-soft);
+    color: var(--text);
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+  .metric-stack,
+  .details-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .risk-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 12px;
+    color: var(--amber);
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+
+  .live-label {
+    color: var(--green);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+
+  .advanced-details {
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+  }
+
+  .advanced-details summary {
+    color: var(--cobalt-text);
+    cursor: pointer;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    list-style-position: inside;
+  }
+
+  .advanced-details[open] summary {
+    margin-bottom: 12px;
+  }
+
+  .advanced-details .card-actions {
+    margin-top: 14px;
+  }
+
   .result-card:first-child,
   .opportunity-card:first-child {
     padding-top: 4px;

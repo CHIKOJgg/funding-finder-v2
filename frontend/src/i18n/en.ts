@@ -156,6 +156,7 @@ export const en: Record<string, string> = {
   'arb.direction': 'Direction: {dir}',
   'arb.any': 'Any',
   'arb.riskLevelTitle': 'Risk level: how far apart the rates are and how volatile the pair is.',
+  'arb.moreDetails': 'Additional metrics and actions',
   'arb.untilFundingTitle': 'Time until the next funding accrual. Positions are held exactly until this moment.',
   'arb.untilFundingEx': 'until funding ({ex})',
   'arb.dailySpreadTitle': 'Daily spread — the difference in funding rates between exchanges. Your potential profit when holding positions until funding.',

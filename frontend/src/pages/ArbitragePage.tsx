@@ -40,6 +40,10 @@ function haptic(kind: 'light' | 'success' | 'error') {
   } catch { /* no haptics available */ }
 }
 
+function cleanLabel(value: string): string {
+  return value.replace(/[:：]\s*$/, '');
+}
+
 // Key used to store/lookup a live price for a (exchange, symbol) pair.
 function livePriceKey(exchange: string, pair: string): string {
   return `${exchange}:${pair.toUpperCase()}`;
@@ -612,59 +616,33 @@ const OpportunityCard = memo(function OpportunityCard({
   const intervalB = fundB ? fundB.intervalHours : opp.intervalB_hours;
   return (
     <div className="opportunity-card">
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
+      <div className="opportunity-head">
         <div className="min-w-0">
-          <strong className="text-base break-words font-mono">{opp.pair}</strong>
-          <span className={clsx('ml-2 text-xs px-2 py-0.5 rounded-full', getRiskColor(opp.risk?.level))} title={t('arb.riskLevelTitle')}>
-            {opp.risk?.level}
-          </span>
-          {opp.persistenceGrade && (
-            <span className={clsx('ml-1 text-xs px-1.5 py-0.5 rounded-full font-bold', {
-              'bg-[var(--green-soft)] text-[var(--green)]': opp.persistenceGrade === 'A',
-              'bg-[var(--cobalt-soft)] text-[var(--cobalt-text)]': opp.persistenceGrade === 'B',
-              'bg-[var(--amber-soft)] text-[var(--amber)]': opp.persistenceGrade === 'C' || opp.persistenceGrade === 'D',
-              'bg-[var(--red-soft)] text-[var(--red)]': opp.persistenceGrade === 'F',
-            })} title={t('arb.persistenceTitle')}>
-              {t('arb.persistenceGrade', { grade: opp.persistenceGrade })}
+          <div className="flex items-center gap-2 flex-wrap">
+            <strong className="text-base break-words font-mono">{opp.pair}</strong>
+            <span className={clsx('text-xs px-2 py-1 rounded-full', getRiskColor(opp.risk?.level))} title={t('arb.riskLevelTitle')}>
+              {opp.risk?.level}
             </span>
-          )}
-            <div className="text-xs text-[var(--text-muted)] mt-2 font-mono" title={t('arb.untilFundingTitle')}>
-              <CountdownTimer intervalHours={opp.intervalA_hours} className="font-medium" showProgress /> {t('arb.untilFundingEx', { ex: opp.exchangeA })}
+          </div>
+          <div className="text-xs text-[var(--text-muted)] mt-2 font-mono" title={t('arb.untilFundingTitle')}>
+            <CountdownTimer intervalHours={opp.intervalA_hours} className="font-medium" showProgress /> {t('arb.untilFundingEx', { ex: opp.exchangeA })}
           </div>
         </div>
-        <div className="sm:text-right">
-          <div className="flex items-baseline gap-1 justify-end">
-            <span className="hero-metric text-[var(--green)]" title={t('arb.apyTitle')}>
-              {opp.profit?.annualReturn?.toFixed(1)}%
-            </span>
-            <span className="text-xs font-normal text-[var(--text-muted)]">{t('arb.netApy')}</span>
-          </div>
-          {opp.score != null && (
-            <div className="text-xs text-[var(--text-muted)] font-mono">
-              {t('arb.compositeScore')} <span className="font-semibold text-[var(--text)]">{opp.score.toFixed(1)}</span>
-            </div>
-          )}
-           <div className="text-xs text-[var(--text-muted)] font-mono" title={t('arb.dailySpreadTitle')}>
-            {t('arb.grossLabel')}: {(opp.profit?.grossDaily != null ? (opp.profit.grossDaily / 1000 * 100).toFixed(1) : '—')}% · {t('arb.fees')}: {(opp.profit?.fees != null ? (opp.profit.fees / 1000 * 100).toFixed(2) : '—')}% · {t('arb.slippage')}: {(opp.profit?.slippage != null ? (opp.profit.slippage / 1000 * 100).toFixed(2) : '—')}%
-            </div>
-            {opp.accumulated && (
-              <div className="text-[10px] text-[var(--text-muted)] font-mono">
-                {t('arb.accumulated')} {t('arb.accumulatedD1')}:{(opp.accumulated.d1 * 100).toFixed(2)}% / {t('arb.accumulatedD7')}:{(opp.accumulated.d7 * 100).toFixed(2)}%
-              </div>
-            )}
-            <div className="text-[10px] text-[var(--text-muted)] mt-0.5" title={t('arb.oiSignalTitle')}>
-            {(() => {
-              const minVol = Math.min(opp.volumeA || 0, opp.volumeB || 0);
-              const label = minVol > 10_000_000 ? t('arb.oiSignalHigh') : minVol > 1_000_000 ? t('arb.oiSignalMed') : minVol > 100_000 ? t('arb.oiSignalLow') : t('arb.oiSignalThin');
-              const color = minVol > 10_000_000 ? 'bg-[var(--green)]' : minVol > 1_000_000 ? 'bg-[var(--cobalt-text)]' : minVol > 100_000 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]';
-              return <span className="flex items-center gap-1"><span className={clsx('inline-block w-1.5 h-1.5 rounded-full shrink-0', color)} aria-hidden="true" />{t('arb.oiSignal')}: {label} (${minVol > 1_000_000 ? `${(minVol / 1_000_000).toFixed(1)}M` : `${(minVol / 1000).toFixed(0)}K`})</span>;
-            })()}
-          </div>
+        <div className="opportunity-hero">
+          <span className="hero-metric text-[var(--green)]" title={t('arb.apyTitle')}>
+            {opp.profit?.annualReturn?.toFixed(1)}%
+          </span>
+          <span className="text-xs text-[var(--text-muted)]">{t('arb.netApy')}</span>
         </div>
       </div>
 
+      <div className="strategy-summary">
+        <span className="section-title">{cleanLabel(t('arb.strategy'))}</span>
+        <strong>{opp.opportunity}</strong>
+      </div>
+
       <div className="section-block mt-4">
-        <div className="section-title">{t('arb.prices')} · {t('arb.live')}</div>
+        <div className="section-title">{cleanLabel(t('arb.prices'))}</div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <ExchangePriceCell
           exchange={opp.exchangeA}
@@ -690,12 +668,19 @@ const OpportunityCard = memo(function OpportunityCard({
       )}
 
       <div className="section-block mt-4">
-        <div className="section-title">{t('arb.fundingIncome')}</div>
-      <div className="text-sm font-mono leading-relaxed">
-          <div>{t('arb.fundingIncome')} +${opp.profit?.grossHourly?.toFixed(4)} {t('unit.usdtPerHour')} · +${opp.profit?.grossDaily?.toFixed(2)} {t('unit.usdtPerDay')}</div>
-          <div>{t('arb.oneTimeCosts')} ${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)} USDT</div>
-        <div>
-           {t('arb.netDaily')} <span className={clsx('font-mono', (opp.profit?.netDaily ?? 0) >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
+        <div className="section-title">{cleanLabel(t('arb.netDaily'))}</div>
+      <div className="metric-stack">
+          <div className="metric-row">
+            <span className="metric-label">{cleanLabel(t('arb.fundingIncome'))}</span>
+            <span className="metric-value">+${opp.profit?.grossDaily?.toFixed(2)} {t('unit.usdtPerDay')}</span>
+          </div>
+          <div className="metric-row">
+            <span className="metric-label">{cleanLabel(t('arb.oneTimeCosts'))}</span>
+            <span className="metric-value">${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)} USDT</span>
+          </div>
+        <div className="metric-row">
+           <span className="metric-label">{cleanLabel(t('arb.netDaily'))}</span>
+           <span className={clsx('metric-value text-base', (opp.profit?.netDaily ?? 0) >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
             {(opp.profit?.netDaily ?? 0) >= 0 ? '+' : ''}${opp.profit?.netDaily?.toFixed(2)} USDT
           </span>
         </div>
@@ -707,8 +692,9 @@ const OpportunityCard = memo(function OpportunityCard({
           const intervalHours = opp.intervalA_hours || 8;
           const cycles = Math.ceil(breakEven * 24 / intervalHours);
           return (
-            <div className="text-xs text-[var(--text-muted)]">
-              {t('arb.breakEven')}: <strong className={breakEven <= 30 ? 'text-[var(--green)]' : 'text-[var(--amber)]'}>
+            <div className="metric-row">
+              <span className="metric-label">{cleanLabel(t('arb.breakEven'))}</span>
+              <strong className={clsx('metric-value', breakEven <= 30 ? 'text-[var(--green)]' : 'text-[var(--amber)]')}>
                 ~{breakEven.toFixed(1)} {t('unit.daysShort')} · {cycles} {t('unit.settlementCycles')}
               </strong>
             </div>
@@ -717,19 +703,8 @@ const OpportunityCard = memo(function OpportunityCard({
       </div>
       </div>
 
-      <div className="text-xs text-[var(--text-muted)] mb-2 font-mono">
-          {t('arb.fees')} ${opp.profit?.fees?.toFixed(2)} USDT | {t('arb.slippage')} ${opp.profit?.slippage?.toFixed(2)} USDT
-      </div>
-
-      <div className="section-block mt-4">
-        <div className="section-title">{t('arb.strategy')}</div>
-      <div className="text-sm bg-[var(--cobalt-soft)] border border-[var(--cobalt)] rounded-lg p-3 leading-relaxed">
-         <strong>{t('arb.strategy')}</strong> {opp.opportunity}
-      </div>
-      </div>
-
       {opp.risk?.reasons?.length > 0 && (
-        <div className="text-xs text-[var(--amber)] mb-2">
+        <div className="risk-notes">
           {opp.risk.reasons.map((r: string, i: number) => (
             <div key={i} className="flex items-center gap-1">
               <IconAlertTriangle size={12} aria-hidden className="shrink-0" /> {r}
@@ -746,7 +721,23 @@ const OpportunityCard = memo(function OpportunityCard({
         {t('arb.openBoth', { a: exchangeLabel(opp.exchangeA), b: exchangeLabel(opp.exchangeB) })}
       </button>
 
-      <div className="card-actions">
+      <details className="advanced-details">
+        <summary>{t('arb.moreDetails')}</summary>
+        <div className="details-grid">
+          {opp.score != null && <div className="metric-row"><span className="metric-label">{cleanLabel(t('arb.compositeScore'))}</span><span className="metric-value">{opp.score.toFixed(1)}</span></div>}
+          <div className="metric-row"><span className="metric-label">{cleanLabel(t('arb.grossLabel'))}</span><span className="metric-value">{opp.profit?.grossDaily != null ? `${(opp.profit.grossDaily / 1000 * 100).toFixed(1)}%` : '—'}</span></div>
+          <div className="metric-row"><span className="metric-label">{cleanLabel(t('arb.fees'))}</span><span className="metric-value">{opp.profit?.fees != null ? `${(opp.profit.fees / 1000 * 100).toFixed(2)}%` : '—'}</span></div>
+          <div className="metric-row"><span className="metric-label">{cleanLabel(t('arb.slippage'))}</span><span className="metric-value">{opp.profit?.slippage != null ? `${(opp.profit.slippage / 1000 * 100).toFixed(2)}%` : '—'}</span></div>
+          {opp.accumulated && <div className="metric-row"><span className="metric-label">{cleanLabel(t('arb.accumulated'))}</span><span className="metric-value">1D {(opp.accumulated.d1 * 100).toFixed(2)}% · 7D {(opp.accumulated.d7 * 100).toFixed(2)}%</span></div>}
+          <div className="text-xs text-[var(--text-muted)]" title={t('arb.oiSignalTitle')}>
+            {(() => {
+              const minVol = Math.min(opp.volumeA || 0, opp.volumeB || 0);
+              const label = minVol > 10_000_000 ? t('arb.oiSignalHigh') : minVol > 1_000_000 ? t('arb.oiSignalMed') : minVol > 100_000 ? t('arb.oiSignalLow') : t('arb.oiSignalThin');
+              return `${cleanLabel(t('arb.oiSignal'))}: ${label} (${minVol > 1_000_000 ? `${(minVol / 1_000_000).toFixed(1)}M` : `${(minVol / 1000).toFixed(0)}K`})`;
+            })()}
+          </div>
+        </div>
+        <div className="card-actions">
         <button
           onClick={() => { haptic('light'); setShowCalc(!showCalc); }}
           className="btn btn-success text-sm py-2 flex-[1.4]"
@@ -773,7 +764,8 @@ const OpportunityCard = memo(function OpportunityCard({
       >
           {t('arb.openEx', { ex: exchangeLabel(opp.exchangeB) })}
         </button>
-      </div>
+        </div>
+      </details>
 
       {showCalc && calcProfit && (
         <div className="mt-2 p-2 rounded-lg bg-[var(--surface-2)] border border-[var(--border)]">
@@ -861,14 +853,14 @@ function ExchangePriceCell({
       <div className="flex items-center justify-between gap-1">
         <span className="text-xs font-medium text-[var(--text-muted)] truncate" title={exchangeLabel(exchange)}>{exchangeLabel(exchange)}</span>
         <span className="flex items-center gap-1.5 shrink-0">
-          <span className={clsx('inline-block w-2 h-2 rounded-full', price.live ? 'bg-[var(--green)] animate-pulse' : 'bg-[var(--text3)]')} aria-hidden="true" />
+          {price.live && <span className="live-label">{t('arb.live')}</span>}
           <span className="text-sm font-semibold font-mono text-[var(--text)]">${valid ? formatPrice(price.value) : '—'}</span>
         </span>
       </div>
       <div className="flex items-center justify-between mt-1.5 gap-1">
         <span className="text-xs text-[var(--text-muted)]">{t('arb.fundingRate')}</span>
         <span className="flex items-center gap-1.5 shrink-0">
-          <span className={clsx('inline-block w-2 h-2 rounded-full', live ? 'bg-[var(--green)] animate-pulse' : 'bg-[var(--text3)]')} aria-hidden="true" />
+          {live && <span className="live-label">{t('arb.live')}</span>}
           <span className={clsx('text-xs font-semibold font-mono truncate max-w-full', fundingColor)} title={`${(funding * 100).toFixed(4)}%/${t('unit.hoursShort', { h: interval })}`}>
             {(funding * 100).toFixed(4)}{t('unit.pctPerHour')} ({t('unit.hoursShort', { h: interval })})
           </span>
