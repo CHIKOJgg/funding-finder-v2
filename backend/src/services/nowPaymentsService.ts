@@ -178,18 +178,27 @@ export async function handleNowPaymentsWebhook(update: NowPaymentsUpdate) {
   // its own network fee ON TOP of the quoted pay_amount, so the user always
   // sends >= expected. We therefore reject anything below the expected amount
   // (with a tiny rounding allowance) and never accept a partial/under payment.
+  // Fail-closed: if the amount data is missing from the IPN we must NOT grant
+  // a subscription — an ambiguous payment must be resolved manually/reconciled.
   const invoice = await prisma.invoice.findUnique({ where: { orderId: order.id } });
   const expected = invoice?.payAmount;
   const actuallyPaid = update.actually_paid != null ? parseFloat(String(update.actually_paid)) : undefined;
-  if (expected && actuallyPaid != null) {
-    // Allow a negligible rounding slack (0.1%) ABOVE expected only; never below.
-    if (actuallyPaid < expected * 0.999) {
-      logger.error(
-        { paymentId, actuallyPaid, expected },
-        'NOWPayments webhook: paid amount below expected — rejecting grant'
-      );
-      return { success: false, processed: false, status: 'paid' };
-    }
+
+  if (expected == null || actuallyPaid == null || Number.isNaN(actuallyPaid)) {
+    logger.error(
+      { paymentId, actuallyPaid, expected },
+      'NOWPayments webhook: missing amount data — rejecting grant'
+    );
+    return { success: false, processed: false, status: 'paid' };
+  }
+
+  // Allow a negligible rounding slack (0.1%) ABOVE expected only; never below.
+  if (actuallyPaid < expected * 0.999) {
+    logger.error(
+      { paymentId, actuallyPaid, expected },
+      'NOWPayments webhook: paid amount below expected — rejecting grant'
+    );
+    return { success: false, processed: false, status: 'paid' };
   }
 
   // Grant the subscription. updateOrderFromWebhook handles the transaction.

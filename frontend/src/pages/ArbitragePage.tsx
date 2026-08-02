@@ -139,7 +139,7 @@ function useArbLivePrices(opps: any[]): {
 }
 
 export function ArbitragePage() {
-  const { user, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts, liveFundingAt, subscription } = useApp();
+  const { user, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts, liveFundingAt, subscription, arbError } = useApp();
   const { showToast } = useToast();
   const t = useT();
   const [activeTab, setActiveTab] = useState<'opportunities' | 'alerts' | 'spotfutures' | 'heatmap'>('opportunities');
@@ -376,6 +376,18 @@ export function ArbitragePage() {
                   </div>
                 </div>
               ))}
+            </div>
+          ) : arbError && arbOpportunities.length === 0 ? (
+            <div className="text-center py-10 text-[var(--text-muted)]">
+              <IconSearch size={40} className="mx-auto mb-3 text-[var(--text3)]" aria-hidden />
+              <p className="font-medium">{t('arb.loadError')}</p>
+              <p className="text-xs mt-1">{t('arb.loadErrorHint')}</p>
+              <button
+                onClick={() => loadArbitrage(true, { silent: true })}
+                className="btn btn-primary text-sm py-2 px-4 mt-4"
+              >
+                {t('arb.retry')}
+              </button>
             </div>
           ) : arbOpportunities.length === 0 ? (
             <div className="text-center py-10 text-[var(--text-muted)]">

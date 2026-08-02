@@ -7,6 +7,8 @@ export { sleep };
 
 // ==================== Cache ====================
 
+export const CACHE_MAX_SIZE = 500;
+
 interface CacheEntry<T> {
   data: T;
   expiry: number;
@@ -15,7 +17,7 @@ interface CacheEntry<T> {
 class MemoryCache {
   private store = new Map<string, CacheEntry<any>>();
   private defaultTTL = 60_000;
-  private maxSize = 500;
+  private maxSize = CACHE_MAX_SIZE;
 
   get<T>(key: string): T | null {
     const entry = this.store.get(key);

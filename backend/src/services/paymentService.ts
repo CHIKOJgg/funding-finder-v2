@@ -361,21 +361,25 @@ export async function updateOrderFromWebhook(
 
       // Credit the referrer a percentage of the referral's FIRST payment.
       // A percentage (vs the old flat $5) gives ambassadors real upside and a
-      // stronger incentive to drive paying users. Guarded by `referralCredited`
-      // so a replayed webhook can't double-pay. Amount is capped at the plan
-      // price (no negative or absurd values).
-      if (!currentOrder.referralCredited && user.referredBy) {
-        const REFERRAL_RATE = 0.2; // 20% of first payment
-        const bonus = Math.max(0, Math.min(REFERRAL_RATE * order.amount, order.amount));
-        await tx.user.update({
-          where: { id: user.referredBy },
-          data: { balance: { increment: bonus } },
-        });
-        await tx.order.update({
-          where: { id: order.id },
+      // stronger incentive to drive paying users. Guarded by an ATOMIC
+      // conditional flip of `referralCredited` (updateMany + count check) so
+      // concurrent webhook/poll/reconcile calls can never double-pay: only one
+      // transaction can win the `referralCredited: false` claim. Amount is
+      // capped at the plan price (no negative or absurd values).
+      if (user.referredBy) {
+        const claimed = await tx.order.updateMany({
+          where: { id: order.id, referralCredited: false },
           data: { referralCredited: true },
         });
-        logger.info({ referrerId: user.referredBy, orderId: order.id, bonus }, 'Referral bonus (20% of first payment) credited to balance');
+        if (claimed.count === 1) {
+          const REFERRAL_RATE = 0.2; // 20% of first payment
+          const bonus = Math.max(0, Math.min(REFERRAL_RATE * order.amount, order.amount));
+          await tx.user.update({
+            where: { id: user.referredBy },
+            data: { balance: { increment: bonus } },
+          });
+          logger.info({ referrerId: user.referredBy, orderId: order.id, bonus }, 'Referral bonus (20% of first payment) credited to balance');
+        }
       }
 
       return currentOrder;

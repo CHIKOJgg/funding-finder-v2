@@ -61,8 +61,13 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       // Non-critical: trial may already be active or expired. Ignore.
     }
 
+    // Kick off the scan in the BACKGROUND and hand over immediately: a cold
+    // multi-exchange scan can take up to 120s, and blocking the user on a
+    // spinner-less button is the #1 onboarding drop-off point. The scan state
+    // lives in the shared provider, so the main screen renders progress while
+    // the checklist is shown.
     try {
-      await runScan(exchanges);
+      void runScan(exchanges);
     } catch {
       // Non-critical: scan failure during onboarding should not block the flow.
     }

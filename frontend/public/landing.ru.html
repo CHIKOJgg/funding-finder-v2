@@ -698,7 +698,9 @@
       }
       window.__renderCalc=renderCalc;
 
-      function render(data){
+      function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+function render(data){
         var opps=(data.opportunities||[]);
         if(!opps.length){
           body.innerHTML='<div class="live-sub" style="text-align:center;padding:8px 0">Нет свежих возможностей в этом окне — обновляем…</div>';
@@ -706,7 +708,7 @@
           body.innerHTML=opps.map(function(o){
             return '<div class="opp"><div><div class="pair">'+o.pair+'</div><div class="route">'+(o.opportunity||'')+'</div></div>'+
               '<div class="rate"><div class="annual">до '+fmtApr(o.annualReturn)+'/год</div>'+
-              '<span class="risk '+(o.riskLevel||'LOW')+'">'+(o.riskLevel||'LOW')+'</span></div></div>';
+              '<span class="risk '+esc(o.riskLevel||'LOW')+'">'+esc(o.riskLevel||'LOW')+'</span></div></div>';
           }).join('');
           // Drive calculator from live data
           var aprs=opps.map(function(o){return o.annualReturn;}).filter(function(v){return v!=null&&!isNaN(v);});

@@ -29,9 +29,12 @@ async function getLatestRatePerHour(exchange: string, pair: string): Promise<num
       include: { records: { orderBy: { timestamp: 'desc' }, take: 1 } },
     });
     if (history && history.records.length > 0) {
-      const funding = history.records[0].funding;
-      // Assume standard 8h settlement when interval is unknown.
-      return funding / 8;
+      const record = history.records[0];
+      // Normalize to an hourly rate. Exchanges settle every 1h, 4h or 8h —
+      // the record stores the real interval; only fall back to 8h when the
+      // interval is unknown (legacy data).
+      const intervalHours = record.intervalHours || 8;
+      return record.funding / intervalHours;
     }
   } catch (err) {
     logger.debug({ err: (err as Error).message }, 'Portfolio rate lookup failed');

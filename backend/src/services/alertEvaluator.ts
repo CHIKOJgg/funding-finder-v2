@@ -153,14 +153,17 @@ async function evaluateAllAlerts(): Promise<void> {
   const tgIds = uniqueUserIds.filter((id) => id.startsWith('tg_'));
   const otherIds = uniqueUserIds.filter((id) => !id.startsWith('tg_'));
 
+  // IMPORTANT: web users are stored with telegramId = wallet_0x.../google_...,
+  // so BOTH groups must be looked up by telegramId (never by the cuid `id`,
+  // which can never match a wallet_0x... trigger key).
   const [tgUsers, webUsers] = await Promise.all([
     tgIds.length ? prisma.user.findMany({ where: { telegramId: { in: tgIds } } }) : [],
-    otherIds.length ? prisma.user.findMany({ where: { id: { in: otherIds } } }) : [],
+    otherIds.length ? prisma.user.findMany({ where: { telegramId: { in: otherIds } } }) : [],
   ]);
 
   const userMap = new Map<string, any>();
   for (const u of tgUsers) userMap.set(u.telegramId, u);
-  for (const u of webUsers) userMap.set(u.id, u);
+  for (const u of webUsers) userMap.set(u.telegramId, u);
 
   // Send notifications (Telegram + Email + Pushover)
   const notifications: Promise<any>[] = [];

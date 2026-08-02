@@ -120,10 +120,9 @@ router.get('/oi-weighted-rate', marketDataLimiter, validate(oiWeightedQuerySchem
     if (exchanges.length < 2 || exchanges.length > 10) {
       return sendError(res, 400, 'Provide 2-10 comma-separated exchanges', 'OI_WEIGHTED_INPUT');
     }
-    const exchangeRates = exchanges.map((e) => ({ exchange: e, rate: 0 }));
     const key = `oi-weighted:${contract}:${exchanges.join(',')}`;
     try {
-      const result = await getCachedOiWeighted(key, () => getOiWeightedFundingRate(contract, exchangeRates));
+      const result = await getCachedOiWeighted(key, () => getOiWeightedFundingRate(contract, exchanges));
       res.json({ ok: true, data: result });
     } catch (_) {
       res.json({ ok: true, data: 0 });

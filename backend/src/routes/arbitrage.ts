@@ -10,6 +10,7 @@ import {
   toggleArbitrageAlert,
   detectArbitrageOpportunities,
   calculateProfit,
+  canonicalPairKey,
 } from '../services/arbitrageService.js';
 import { getSpotFutures, SF_SUPPORTED_EXCHANGES } from '../services/spotFuturesService.js';
 import { getLivePriceBatch } from '../services/priceService.js';
@@ -23,6 +24,33 @@ import { logger } from '../utils/logger.js';
 import { sendError } from '../middleware/errorHandler.js';
 
 const router = Router();
+
+// Resolve the native fundingHistory key (e.g. "gate:BTC_USDT") for a canonical
+// pair ("BTCUSDT"): the scanner stores history under native contract names, so
+// we canonicalize the stored keys and match the requested pair.
+async function resolveNativeKey(exchange: string, canonical: string): Promise<string | null> {
+  const rows = await prisma.fundingHistory.findMany({
+    where: { key: { startsWith: `${exchange}:` } },
+    select: { key: true },
+  });
+  for (const { key } of rows) {
+    const sep = key.indexOf(':');
+    if (sep === -1) continue;
+    if (canonicalPairKey(key.slice(sep + 1)) === canonical) return key;
+  }
+  return null;
+}
+
+// Group records by day, taking the latest rate each day per exchange.
+function latestPerDay(records: { timestamp: Date; funding: number }[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const r of records) {
+    const d = r.timestamp;
+    const key = `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`;
+    map.set(key, r.funding); // last one wins (sorted asc)
+  }
+  return map;
+}
 
 // Serve a cached scan instantly (stale-while-revalidate) if one covers the
 // requested exchanges. Mirrors the resilient behaviour of POST /scan so the
@@ -282,13 +310,34 @@ router.get('/arbitrage/backtest', validate(backtestSchema), async (req, res) => 
       return res.status(400).json({ ok: false, error: 'pair, exchangeA, exchangeB are required' });
     }
 
-    // Derive the canonical contract key from the pair (e.g. "BTC/USDT" -> "BTCUSDT")
-    const canonicalPair = pair.replace('/', '').toUpperCase();
+    // Derive the canonical contract key from the pair. FundingHistory keys are
+    // stored under the exchanges' NATIVE contract names (gate:BTC_USDT,
+    // okx:BTC-USDT-SWAP, hyperliquid:BTC), so we canonicalize the stored keys
+    // and match the requested canonical pair ("BTC/USDT" -> "BTCUSDT").
+    const canonicalPair = canonicalPairKey(pair);
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const [keyA, keyB] = await Promise.all([
+      resolveNativeKey(exchangeA, canonicalPair),
+      resolveNativeKey(exchangeB, canonicalPair),
+    ]);
+
+    if (!keyA || !keyB) {
+      return res.json({
+        ok: true,
+        available: false,
+        pair,
+        exchangeA,
+        exchangeB,
+        days,
+        capital,
+        message: 'Insufficient history data',
+      });
+    }
 
     const [histA, histB] = await Promise.all([
       prisma.fundingHistory.findUnique({
-        where: { key: `${exchangeA}:${canonicalPair}` },
+        where: { key: keyA },
         include: {
           records: {
             where: { timestamp: { gte: since } },
@@ -297,7 +346,7 @@ router.get('/arbitrage/backtest', validate(backtestSchema), async (req, res) => 
         },
       }),
       prisma.fundingHistory.findUnique({
-        where: { key: `${exchangeB}:${canonicalPair}` },
+        where: { key: keyB },
         include: {
           records: {
             where: { timestamp: { gte: since } },
@@ -324,16 +373,6 @@ router.get('/arbitrage/backtest', validate(backtestSchema), async (req, res) => 
     }
 
     // Group records by day, taking the latest rate each day per exchange
-    function latestPerDay(records: { timestamp: Date; funding: number }[]): Map<string, number> {
-      const map = new Map<string, number>();
-      for (const r of records) {
-        const d = r.timestamp;
-        const key = `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`;
-        map.set(key, r.funding); // last one wins (sorted asc)
-      }
-      return map;
-    }
-
     const dayMapA = latestPerDay(recordsA);
     const dayMapB = latestPerDay(recordsB);
 
@@ -341,6 +380,7 @@ router.get('/arbitrage/backtest', validate(backtestSchema), async (req, res) => 
     const dailyResults: { date: string; spread: number; profitUsd: number }[] = [];
     let cumulativeSpread = 0;
     let daysWithSpread = 0;
+    let daysWithData = 0;
     let maxDrawdown = 0;
     let peak = 0;
 
@@ -349,9 +389,15 @@ router.get('/arbitrage/backtest', validate(backtestSchema), async (req, res) => 
     const feeB = 0.0005;
     const oneTimeCostPct = (feeA + feeB) * 2; // entry + exit on both legs
 
+    // Entry+exit fees are a ONE-TIME cost per position, not per day: deduct
+    // them from the first profitable day only (the old code charged them every
+    // day, understating total profit by (days-1) x fees).
+    let oneTimeCostApplied = false;
+
     for (const [day, rateA] of dayMapA) {
       const rateB = dayMapB.get(day);
       if (rateB == null) continue;
+      daysWithData += 1;
 
       const spread = Math.abs(rateA - rateB);
       if (spread <= 0) continue;
@@ -360,8 +406,11 @@ router.get('/arbitrage/backtest', validate(backtestSchema), async (req, res) => 
       daysWithSpread += 1;
 
       const grossProfit = capital * spread;
-      const oneTimeCost = capital * oneTimeCostPct;
-      const netProfit = grossProfit - oneTimeCost;
+      let netProfit = grossProfit;
+      if (!oneTimeCostApplied) {
+        netProfit = grossProfit - capital * oneTimeCostPct;
+        oneTimeCostApplied = true;
+      }
 
       dailyResults.push({ date: day, spread, profitUsd: netProfit });
 
@@ -376,7 +425,10 @@ router.get('/arbitrage/backtest', validate(backtestSchema), async (req, res) => 
     const winDays = dailyResults.filter(d => d.profitUsd > 0).length;
     const winRate = dailyResults.length > 0 ? (winDays / dailyResults.length) * 100 : 0;
     const cumulativePct = (cumulativeSpread * 100);
-    const annualizedPct = daysWithSpread > 0 ? (cumulativePct / daysWithSpread) * 365 : 0;
+    // Annualize over the whole observation window (days where both exchanges
+    // had data), not just the days with a positive spread — the old formula
+    // inflated the result by ignoring flat/zero-spread days.
+    const annualizedPct = daysWithData > 0 ? (cumulativePct / daysWithData) * 365 : 0;
 
     return res.json({
       ok: true,

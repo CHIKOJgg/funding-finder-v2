@@ -100,7 +100,7 @@
   <header>
     <div class="wrap">
       <div class="logo">Funding<span>Finder</span></div>
-      <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Mở miễn phí</a>
+      <a class="btn" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Mở miễn phí</a>
     </div>
   </header>
 
@@ -110,7 +110,7 @@
       <h1>Nơi tỷ lệ funding đang cao nhất</h1>
       <p>Tổng hợp tỷ lệ funding của 23 sàn crypto, arbitrage liên sàn, ý tưởng AI và auto-PnL. Chúng tôi tìm mức tốt nhất cho bạn — trong tích tắc, không cần đăng ký.</p>
       <div class="actions">
-        <a class="btn green" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">🚀 Mở miễn phí</a>
+        <a class="btn green" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">🚀 Mở miễn phí</a>
         <a class="btn ghost" href="/?app=1">Mở ứng dụng web</a>
       </div>
 
@@ -123,7 +123,7 @@
           <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
         </div>
         <div class="live-foot">
-          <a class="btn ghost" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Mở tất cả trong ứng dụng →</a>
+          <a class="btn ghost" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Mở tất cả trong ứng dụng →</a>
         </div>
       </div>
 
@@ -169,7 +169,7 @@
             <li>1 AI-совет/день</li>
             <li>Базовые алерты</li>
           </ul>
-          <a class="btn ghost" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Bắt đầu</a>
+          <a class="btn ghost" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Bắt đầu</a>
         </div>
         <div class="plan featured">
           <div class="name">Pro</div>
@@ -181,7 +181,7 @@
             <li>Безлимитный вотчлист</li>
           </ul>
           <a class="btn" href="/?plan=pro&utm_source=landing&utm_medium=landing">Mở trong PWA</a>
-          <a class="plan-mini" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">hoặc trong Mini App Telegram</a>
+          <a class="plan-mini" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">hoặc trong Mini App Telegram</a>
         </div>
         <div class="plan">
           <div class="name">Pro+</div>
@@ -193,7 +193,7 @@
             <li>Ранний доступ к фичам</li>
           </ul>
           <a class="btn" href="/?plan=proplus&utm_source=landing&utm_medium=landing">Mở trong PWA</a>
-          <a class="plan-mini" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">hoặc trong Mini App Telegram</a>
+          <a class="plan-mini" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">hoặc trong Mini App Telegram</a>
         </div>
       </div>
       <div class="pwa-hint">
@@ -234,13 +234,13 @@
     <div class="wrap">
       <h2 style="color:#fff">Mời bạn bè — nhận % từ khoản thanh toán của họ</h2>
       <p class="sub" style="color:#cbd5e1">Chia sẻ link referral trong ứng dụng và kiếm tiền thật từ mỗi người giới thiệu có thanh toán.</p>
-      <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Lấy link referral</a>
+      <a class="btn" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Lấy link referral</a>
     </div>
   </section>
 
   <footer>
     <div class="wrap">
-      Funding Finder • <a href="https://t.me/FundingFinderBot">Telegram</a> • Не является инвестиционной рекомендацией.
+      Funding Finder • <a href="https://t.me/fundinganalyzerbot">Telegram</a> • Không phải là lời khuyên đầu tư.
     </div>
   </footer>
 
@@ -263,7 +263,9 @@
       }
       function riskClass(r) { return r || 'LOW'; }
 
-      function render(data) {
+      function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+function render(data) {
         var opps = (data.opportunities || []);
         if (!opps.length) {
           body.innerHTML = '<div class="live-sub" style="text-align:center;padding:8px 0">Нет актуальных возможностей в этом окне — обновляем…</div>';
@@ -272,12 +274,12 @@
             return '' +
               '<div class="opp">' +
                 '<div>' +
-                  '<div class="pair">' + o.pair + '</div>' +
-                  '<div class="route">' + o.opportunity + '</div>' +
+                  '<div class="pair">' + esc(o.pair) + '</div>' +
+                  '<div class="route">' + esc(o.opportunity) + '</div>' +
                 '</div>' +
                 '<div class="rate">' +
                   '<div class="annual">до ' + fmtPct(o.annualReturn) + '/год</div>' +
-                  '<span class="risk ' + riskClass(o.riskLevel) + '">' + o.riskLevel + '</span>' +
+                  '<span class="risk ' + esc(riskClass(o.riskLevel)) + '">' + esc(o.riskLevel) + '</span>' +
                 '</div>' +
               '</div>';
           }).join('');

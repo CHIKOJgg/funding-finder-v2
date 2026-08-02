@@ -24,6 +24,7 @@ import {
   getOrCreateClient,
   createApiClient,
   cleanupConnections,
+  CACHE_MAX_SIZE,
 } from '../utils/exchangeClient.js';
 
 // installMockAxios replaces axios.create / isAxiosError used by exchangeClient
@@ -63,8 +64,8 @@ describe('MemoryCache (via exported `cache`)', () => {
     expect(cache.get('x')).toBeNull();
   });
 
-  test('evictOldest keeps size bounded at maxSize (20000)', () => {
-    const MAX = 20000;
+  test('evictOldest keeps size bounded at maxSize', () => {
+    const MAX = CACHE_MAX_SIZE;
     const keys = Array.from({ length: MAX + 1 }, (_, i) => `k${i}`);
     for (const k of keys) cache.set(k, k);
 

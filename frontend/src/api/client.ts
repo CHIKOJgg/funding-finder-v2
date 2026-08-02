@@ -48,7 +48,20 @@ const api = axios.create({
 });
 
 let telegramInitData: string | null = null;
-let authToken: string | null = localStorage.getItem('ff_auth_token') || null;
+
+// localStorage can throw in privacy/incognito modes or when disabled — the
+// module-level read must never brick the whole app.
+function safeGet(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function safeSet(key: string, value: string): void {
+  try { localStorage.setItem(key, value); } catch { /* storage unavailable */ }
+}
+function safeRemove(key: string): void {
+  try { localStorage.removeItem(key); } catch { /* storage unavailable */ }
+}
+
+let authToken: string | null = safeGet('ff_auth_token');
 
 export function setTelegramInitData(data: string | null) {
   telegramInitData = data;
@@ -56,8 +69,8 @@ export function setTelegramInitData(data: string | null) {
 
 export function setAuthToken(token: string | null) {
   authToken = token;
-  if (token) localStorage.setItem('ff_auth_token', token);
-  else localStorage.removeItem('ff_auth_token');
+  if (token) safeSet('ff_auth_token', token);
+  else safeRemove('ff_auth_token');
 }
 
 export function getAuthToken(): string | null {
@@ -74,16 +87,16 @@ export function captureReferralCode() {
   const url = new URL(window.location.href);
   const ref = url.searchParams.get('ref');
   if (ref) {
-    localStorage.setItem(REFERRAL_STORAGE_KEY, ref);
+    safeSet(REFERRAL_STORAGE_KEY, ref);
     url.searchParams.delete('ref');
     window.history.replaceState({}, '', url.toString());
   }
 }
 export function getStoredReferralCode(): string | undefined {
-  return localStorage.getItem(REFERRAL_STORAGE_KEY) || undefined;
+  return safeGet(REFERRAL_STORAGE_KEY) || undefined;
 }
 export function clearReferralCode() {
-  localStorage.removeItem(REFERRAL_STORAGE_KEY);
+  safeRemove(REFERRAL_STORAGE_KEY);
 }
 
 api.interceptors.request.use((config) => {
@@ -404,17 +417,23 @@ export const apiClient = {
 
   async walletVerify(message: string, signature: string) {
     const referredByCode = getStoredReferralCode();
-    return api.post('/auth/wallet/verify', { message, signature, referredByCode });
+    const res = await api.post('/auth/wallet/verify', { message, signature, referredByCode });
+    if (res.data?.ok) clearReferralCode();
+    return res;
   },
 
   async googleLogin(idToken: string) {
     const referredByCode = getStoredReferralCode();
-    return api.post('/auth/google', { idToken, referredByCode });
+    const res = await api.post('/auth/google', { idToken, referredByCode });
+    if (res.data?.ok) clearReferralCode();
+    return res;
   },
 
   async emailRegister(email: string, password: string, firstName?: string) {
     const referredByCode = getStoredReferralCode();
-    return api.post('/auth/register', { email, password, firstName, referredByCode });
+    const res = await api.post('/auth/register', { email, password, firstName, referredByCode });
+    if (res.data?.ok) clearReferralCode();
+    return res;
   },
 
   async emailLogin(email: string, password: string) {

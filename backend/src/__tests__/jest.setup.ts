@@ -10,6 +10,9 @@ process.env.WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'test-webhook-secret-
 process.env.ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'test-encryption-key-32-bytes-minimum!!';
 process.env.REDIS_URL = process.env.REDIS_URL || '';
 process.env.TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+// SIWE tests sign messages for "localhost" — pin the domain so a local
+// backend/.env (WEB_AUTH_DOMAIN=production-domain) can't leak into the suite.
+process.env.WEB_AUTH_DOMAIN = process.env.WEB_AUTH_DOMAIN || 'localhost';
 // The developer account receives the ultimate tier + rate-limit exemption via
 // config (not a hardcoded constant). Seed it here so the exempt-user code path
 // is actually exercised by the test suite.

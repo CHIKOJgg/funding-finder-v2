@@ -202,14 +202,18 @@ export async function getLiquidationSnapshots(
   });
 }
 
-// Get OI-weighted average funding rate
+// Get OI-weighted average funding rate.
+// Uses the latest stored funding rate per exchange (normalized to per-hour by
+// each contract's real settlement interval) weighted by open interest. The old
+// implementation weighted caller-supplied rates which were hardcoded to 0, so
+// this endpoint always returned 0.
 export async function getOiWeightedFundingRate(
   contract: string,
-  exchangeRates: Array<{ exchange: string; rate: number }>
+  exchanges: string[]
 ): Promise<number> {
   // Get latest OI for each exchange
   const oiData = await Promise.all(
-    exchangeRates.map(async ({ exchange }) => {
+    exchanges.map(async (exchange) => {
       const latestOI = await getLatestOpenInterest(exchange, contract);
       return { exchange, oi: latestOI?.openInterestUsd ?? 0 };
     })
@@ -218,10 +222,21 @@ export async function getOiWeightedFundingRate(
   const totalOi = oiData.reduce((sum, d) => sum + d.oi, 0);
   if (totalOi === 0) return 0;
 
+  const latestRatePerHour = async (exchange: string): Promise<number> => {
+    const hist = await prisma.fundingHistory.findUnique({
+      where: { key: `${exchange}:${contract}` },
+      include: { records: { orderBy: { timestamp: 'desc' }, take: 1 } },
+    });
+    const rec = hist?.records?.[0];
+    if (!rec) return 0;
+    return rec.funding / (rec.intervalHours || 8);
+  };
+
   // Weight rates by OI
   let weightedSum = 0;
-  for (const { exchange, rate } of exchangeRates) {
-    const oi = oiData.find((d) => d.exchange === exchange)?.oi ?? 0;
+  for (const { exchange, oi } of oiData) {
+    if (oi <= 0) continue;
+    const rate = await latestRatePerHour(exchange);
     weightedSum += rate * (oi / totalOi);
   }
 

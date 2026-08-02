@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../App';
+import { useTelegram } from '../hooks/useTelegram';
 import { useToast } from '../components/Toast';
 import { TrialCTA } from '../components/TrialCTA';
 import { CryptoCheckoutModal } from '../components/CryptoCheckoutModal';
@@ -46,6 +47,8 @@ const ACHIEVEMENTS = [
 
 export function ProfilePage() {
   const { user, subscription: ctxSubscription, isWeb, refreshSubscription } = useApp();
+  const { openLink } = useTelegram();
+  const [creatingOrder, setCreatingOrder] = useState(false);
   const [checkout, setCheckout] = useState<{ planId: string; planName: string; price: number } | null>(null);
   const [showQrLogin, setShowQrLogin] = useState(false);
   const { showToast } = useToast();
@@ -138,12 +141,17 @@ export function ProfilePage() {
   }, [showToast]);
 
   const handleCreateOrder = useCallback(async (planId: string) => {
+    // Guard against double-tap: two concurrent orders = two invoices/charges.
+    if (creatingOrder) return;
+    setCreatingOrder(true);
     try {
       const response: any = await apiClient.createOrder(planId);
       if (response.ok) {
         const invoiceUrl = response.botInvoiceUrl || response.miniAppInvoiceUrl || response.webAppInvoiceUrl;
         if (invoiceUrl) {
-          window.open(invoiceUrl, '_blank');
+          // window.open is blocked inside the Telegram webview; openLink falls
+          // back to tg.openLink() inside Telegram and window.open elsewhere.
+          openLink(invoiceUrl);
         }
         showToast(t('profile.paymentCreated'), 'success');
       } else {
@@ -151,8 +159,10 @@ export function ProfilePage() {
       }
     } catch (error) {
       showToast(t('app.networkError', { error: (error as Error).message }), 'error');
+    } finally {
+      setCreatingOrder(false);
     }
-  }, [showToast]);
+  }, [creatingOrder, openLink, showToast, t]);
 
   // Website: open the crypto checkout modal instead of the Telegram invoice.
   const openCheckout = useCallback((planId: string, planName: string, price: number) => {
@@ -337,7 +347,7 @@ export function ProfilePage() {
         <div className="flex gap-2 mt-2">
           <button
             onClick={() => {
-              const bot = import.meta.env.VITE_BOT_USERNAME || 'FundingFinderBot';
+              const bot = import.meta.env.VITE_BOT_USERNAME || 'fundinganalyzerbot';
               window.open(`https://t.me/${bot}`, '_blank', 'noopener');
             }}
             className="btn btn-secondary text-sm py-2 flex-1 flex items-center justify-center gap-1.5"
@@ -441,6 +451,7 @@ export function ProfilePage() {
           featured
           features={['profile.feat12ex', 'profile.featAi', 'profile.featCsv', 'profile.featPriority']}
           currentPlan={subscription}
+          busy={creatingOrder}
           onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
         />
         <PlanCard
@@ -450,6 +461,7 @@ export function ProfilePage() {
           tagline={t('profile.planTaglineProMax')}
           features={['profile.feat20ex', 'profile.featAllPro', 'profile.featAnalytics', 'profile.featSupport', 'profile.featEarly']}
           currentPlan={subscription}
+          busy={creatingOrder}
           onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
         />
       </div>
@@ -553,6 +565,7 @@ const PlanCard = memo(function PlanCard({
   featured = false,
   currentPlan,
   onSelect,
+  busy = false,
 }: {
   planId: string;
   name: string;
@@ -562,6 +575,7 @@ const PlanCard = memo(function PlanCard({
   featured?: boolean;
   currentPlan: string;
   onSelect: (planId: string, name: string, price: number) => void;
+  busy?: boolean;
 }) {
   const t = useT();
   const isCurrent = currentPlan === planId;
@@ -614,9 +628,10 @@ const PlanCard = memo(function PlanCard({
       ) : (
         <button
           onClick={() => onSelect(planId, name, price)}
+          disabled={busy}
           className="btn text-sm py-2.5 w-full btn-primary"
         >
-          {currentPlan === 'free' ? t('profile.connect') : t('profile.switch')}
+          {busy ? t('profile.creating') : currentPlan === 'free' ? t('profile.connect') : t('profile.switch')}
         </button>
       )}
     </div>

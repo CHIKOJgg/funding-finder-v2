@@ -1,10 +1,6 @@
 import { Router, Request } from 'express';
-import crypto from 'crypto';
-import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
-import { validate } from '../middleware/validation.js';
 import {
-  updateOrderFromWebhook,
   verifyCryptoPaySignature,
   handleCryptoPayWebhook,
 } from '../services/paymentService.js';
@@ -12,7 +8,6 @@ import {
   verifyNowPaymentsSignature,
   handleNowPaymentsWebhook,
 } from '../services/nowPaymentsService.js';
-import { config } from '../config/index.js';
 import { getRedis } from '../utils/redis.js';
 import { logger } from '../utils/logger.js';
 
@@ -125,70 +120,12 @@ async function releaseWebhookLock(webhookId: string): Promise<void> {
   }
 }
 
-const webhookSchema = z.object({
-  orderId: z.string().min(1),
-  status: z.string().optional(),
-  tx: z.record(z.any()).optional(),
-});
-
-function timingSafeEqual(a: string, b: string): boolean {
-  try {
-    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
-  } catch {
-    return false;
-  }
-}
-
 function getRawBody(req: Request): Buffer | string {
   const raw = (req as any).rawBody;
   if (raw) return raw as Buffer;
   // Fallback: re-stringify parsed body (legacy path, less reliable).
   return JSON.stringify(req.body);
 }
-
-webhookRouter.post('/payment', validate(webhookSchema), async (req, res) => {
-  const token = req.headers['x-webhook-token'] as string;
-  if (!token || !timingSafeEqual(token, config.webhook.secret)) {
-    logger.warn('Invalid webhook token');
-    return res.status(401).json({ ok: false, error: 'invalid token' });
-  }
-
-  const { orderId, status } = req.body;
-
-  // Idempotency check
-  if (await isWebhookProcessed(orderId)) {
-    logger.debug({ orderId }, 'Duplicate payment webhook, skipping');
-    return res.json({ ok: true, message: 'Already processed' });
-  }
-
-  const locked = await acquireWebhookLock(orderId);
-  if (!locked) {
-    return res.json({ ok: true, message: 'Already processed' });
-  }
-
-  const processPromise = (async () => {
-    try {
-      const order = await updateOrderFromWebhook(orderId, status || 'paid');
-      if (!order) throw new Error('Order not found');
-      await markWebhookProcessed(orderId);
-      logger.info({ orderId, status: order.status }, 'Order updated via webhook');
-      return order;
-    } finally {
-      processingWebhooks.delete(orderId);
-      await releaseWebhookLock(orderId);
-    }
-  })();
-
-  processingWebhooks.set(orderId, processPromise);
-
-  try {
-    const order = await processPromise;
-    res.json({ ok: true, order });
-  } catch (e) {
-    const error = e as Error;
-    res.status(error.message === 'Order not found' ? 404 : 500).json({ ok: false, error: error.message });
-  }
-});
 
 webhookRouter.post('/crypto-pay', async (req, res) => {
   try {
@@ -237,9 +174,8 @@ webhookRouter.post('/crypto-pay', async (req, res) => {
       res.status(400).json({ ok: false, error: 'Not processed' });
     }
   } catch (e) {
-    const error = e as Error;
-    logger.error({ err: error }, 'Crypto Pay webhook error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    logger.error({ err: e }, 'Crypto Pay webhook error');
+    res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });
 
@@ -290,9 +226,8 @@ webhookRouter.post('/nowpayments', async (req, res) => {
       res.status(400).json({ ok: false, error: 'Not processed' });
     }
   } catch (e) {
-    const error = e as Error;
-    logger.error({ err: error }, 'NOWPayments webhook error');
-    res.status(500).json({ ok: false, error: error.message || String(error) });
+    logger.error({ err: e }, 'NOWPayments webhook error');
+    res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });
 

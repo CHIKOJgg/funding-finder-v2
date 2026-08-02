@@ -148,7 +148,7 @@ export function PublicPage() {
         {/* Multi-CTA */}
         <div className="flex flex-col sm:flex-row justify-center gap-3">
           <a
-            href="https://t.me/FundingFinderBot"
+            href="https://t.me/fundinganalyzerbot"
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-primary text-sm py-2.5 px-6"
@@ -266,7 +266,7 @@ export function PublicPage() {
         <p className="text-sm font-medium mb-2" style={{ color: 'var(--text)' }}>{t('public.cta')}</p>
         <div className="flex justify-center gap-3">
           <a
-            href="https://t.me/FundingFinderBot"
+            href="https://t.me/fundinganalyzerbot"
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-primary text-sm py-2 px-4"

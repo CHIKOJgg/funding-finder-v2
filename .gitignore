@@ -59,6 +59,9 @@ docker-compose.override.yml
 .yarn-integrity
 .eslintcache
 .node_repl_history
+procs.txt
+rltest*.js
+*.rltest.js
 
 # Telegram MiniApp
 *.local

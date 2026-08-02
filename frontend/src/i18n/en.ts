@@ -140,6 +140,9 @@ export const en: Record<string, string> = {
   'arb.refreshBtn': 'Refresh',
   'arb.noOpportunities': 'No arbitrage opportunities found',
   'arb.noOpportunitiesHint': 'Try selecting different exchanges or lowering your filters.',
+  'arb.loadError': 'Could not load opportunities',
+  'arb.loadErrorHint': 'Check your connection and try again.',
+  'arb.retry': 'Try again',
   'arb.loadingMore': 'Loading more...',
   'arb.allLoaded': 'All {count} opportunities shown',
   'arb.minApyPlaceholder': '0 — no limit',
@@ -385,6 +388,7 @@ export const en: Record<string, string> = {
   // Profile
   'profile.loadError': 'Failed to load profile data',
   'profile.paymentCreated': 'Payment created',
+  'profile.creating': 'Creating…',
   'profile.paymentError': 'Error creating payment: ',
   'profile.referralRequired': 'Enter a referral code',
   'profile.referralApplied': 'Referral code applied!',
@@ -757,6 +761,7 @@ export const en: Record<string, string> = {
   'admin.funnel.paywall_view': 'Paywall view',
   'admin.funnel.trial_start': 'Trial start',
   'admin.funnel.paid': 'Paid',
+  'admin.accessDenied': 'Access denied — this panel is for administrators only.',
 
   // Activation checklist ("first profit in 5 minutes")
   'activation.title': 'Get to your first profit in 5 minutes',
@@ -990,6 +995,7 @@ export const en: Record<string, string> = {
 
   // Pull-to-refresh
   'pullToRefresh.pull': 'Pull to refresh',
+  'pullToRefresh.refresh': 'Refresh',
   'pullToRefresh.refreshing': 'Refreshing…',
   'pullToRelease.refresh': 'Release to refresh',
 

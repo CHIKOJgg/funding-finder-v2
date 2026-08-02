@@ -28,8 +28,11 @@ describe('spotFuturesService', () => {
   });
 
   it('computes basis, funding APY and net APY for a supported exchange', async () => {
+    // Funding must beat the per-interval fee drag (4 x taker = 0.2%/8h), so
+    // use a high-but-realistic funding rate (0.25% per 8h) to exercise the
+    // "collect funding" path.
     axiosMock.routeGet({
-      'premiumIndex': { markPrice: '60050', lastFundingRate: '0.0001' },
+      'premiumIndex': { markPrice: '60050', lastFundingRate: '0.0025' },
       'ticker/price': { price: '60000' },
     });
 
@@ -40,7 +43,7 @@ describe('spotFuturesService', () => {
     expect(res.perpMark).toBe(60050);
     expect(res.basisPct).toBeCloseTo(((60050 - 60000) / 60000) * 100, 6);
     // fundingApy = rate * intervalsPerYear * 100; 8h -> 3/day * 365 = 1095 intervals.
-    expect(res.fundingApy).toBeCloseTo(0.0001 * 1095 * 100, 4);
+    expect(res.fundingApy).toBeCloseTo(0.0025 * 1095 * 100, 4);
     expect(res.netApy).toBeLessThan(res.fundingApy!);
     expect(res.strategy).toMatch(/collect funding/);
     expect(res.series.length).toBeGreaterThan(0);

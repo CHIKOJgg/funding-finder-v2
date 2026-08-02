@@ -64,6 +64,7 @@ interface AppContextType {
   setArbAlerts: React.Dispatch<React.SetStateAction<any[]>>;
   arbLoading: boolean;
   arbLoaded: boolean;
+  arbError: string | null;
   loadArbitrage: (force?: boolean, opts?: { silent?: boolean }) => Promise<void>;
   loadAlerts: (force?: boolean) => Promise<void>;
   // Latest live opportunities pushed over WebSocket (server warm-up broadcast).
@@ -93,6 +94,7 @@ export const AppContext = createContext<AppContextType>({
   setArbAlerts: () => {},
   arbLoading: false,
   arbLoaded: false,
+  arbError: null,
   loadArbitrage: async () => {},
   loadAlerts: async () => {},
   liveFundingAt: null,
@@ -252,11 +254,41 @@ function DataProvider() {
     refreshWatchlist();
   }, [user?.id, refreshTrial, refreshWatchlist]);
 
+  // Trial/plan expiry re-gate: the SERVER downgrades the plan when the trial
+  // ends, but the client would keep showing Pro limits (and hiding the
+  // paywall) until a full reload. Re-sync subscription + trial on tab focus so
+  // the monetization funnel reactivates without a refresh.
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    const sync = () => {
+      apiClient.getProfile()
+        .then((r: any) => {
+          if (cancelled) return;
+          const sub = r?.user?.subscription || r?.subscription;
+          if (sub) setSubscription(sub);
+        })
+        .catch(() => {});
+      refreshTrial();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') sync();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [user?.id, refreshTrial]);
+
   // Arbitrage state
   const [arbOpportunities, setArbOpportunities] = useState<any[]>([]);
   const [arbAlerts, setArbAlerts] = useState<any[]>([]);
   const [arbLoading, setArbLoading] = useState(false);
   const [arbLoaded, setArbLoaded] = useState(false);
+  const [arbError, setArbError] = useState<string | null>(null);
   const [alertsLoaded, setAlertsLoaded] = useState(false);
 
   // In-flight promises (dedupe so switching tabs never restarts a request)
@@ -309,10 +341,13 @@ function DataProvider() {
         if (response.ok) {
           setArbOpportunities(response.opportunities || []);
           setArbLoaded(true);
+          setArbError(null);
         } else if (!opts?.silent) {
+          setArbError(String(response.error || 'Unknown error'));
           showToast(t('app.loadOppError') + ': ' + (response.error || ''), 'error');
         }
       } catch (error) {
+        setArbError((error as Error).message || 'Network error');
         // Background/auto refreshes fail silently: keep the last good data on
         // screen instead of spamming "can't load opportunities" every poll.
         if (!opts?.silent) showToast(t('app.loadOppError'), 'error');
@@ -407,6 +442,7 @@ function DataProvider() {
     setArbAlerts,
     arbLoading,
     arbLoaded,
+    arbError,
     loadArbitrage,
     loadAlerts,
     liveFundingAt,
@@ -424,7 +460,7 @@ function DataProvider() {
     refreshSubscription,
   }), [
     user, subscription, planLimits, scanResults, scanLoading, scanStatus, runScan,
-    selectedExchanges, arbOpportunities, arbAlerts, arbLoading, arbLoaded,
+    selectedExchanges, arbOpportunities, arbAlerts, arbLoading, arbLoaded, arbError,
     loadArbitrage, loadAlerts, trialStatus, refreshTrial, activateTrial,
     watchlist, isWatchlisted, toggleWatchlist, refreshWatchlist,
     isWeb, authProvider, logout, refreshSubscription, liveFundingAt, applyLiveFunding,
@@ -507,12 +543,21 @@ function HashRouteBridge() {
 export default function App() {
   // Debug overlay (replacement for F12 in the mini app). Open with `?debug=1`
   // in the URL, or via the floating bug button (shown only to the developer).
-  const [debugOpen, setDebugOpen] = useState(
-    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1'
-  );
+  const [debugOpen, setDebugOpen] = useState(false);
   const { user: tgUser } = useTelegram();
   const DEBUG_USER_ID = import.meta.env.VITE_DEBUG_TELEGRAM_ID as string | undefined;
   const isDebugUser = Boolean(DEBUG_USER_ID) && tgUser?.id === DEBUG_USER_ID;
+
+  // `?debug=1` auto-opens the log overlay ONLY in dev builds or for the
+  // configured debug user — never for anonymous production visitors (the log
+  // buffer contains request URLs and error details).
+  useEffect(() => {
+    const wantsDebug =
+      typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1';
+    if (wantsDebug && (import.meta.env.DEV || isDebugUser)) {
+      setDebugOpen(true);
+    }
+  }, [isDebugUser]);
 
   // Funding Finder is deliberately theme-independent: always dark/cobalt,
   // regardless of Telegram or system theme. No theme-following effect.

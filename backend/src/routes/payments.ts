@@ -32,11 +32,35 @@ const createOrderSchema = z.object({
 });
 
 const withdrawSchema = z.object({
-  amount: z.number().min(10),
-  currency: z.string().min(1),
+  amount: z.number().min(10).max(5000, 'Max 5000 USDT per withdrawal'),
+  currency: z.literal('USDT').or(z.literal('usdt')),
   address: z.string().min(1),
-  network: z.string().min(1),
+  network: z.enum(['TRC20', 'ERC20', 'BEP20', 'BTC', 'SOL', 'TON']),
 });
+
+// Basic address format validation per network — prevents "withdraw to
+// garbage" (permanently lost funds) and obvious fat-finger typos. Not a
+// substitute for admin review, but it stops the worst cases.
+function isPlausibleAddress(network: string, address: string): boolean {
+  switch (network) {
+    case 'TRC20':
+      return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(address);
+    case 'ERC20':
+    case 'BEP20':
+      return /^0x[0-9a-fA-F]{40}$/.test(address);
+    case 'BTC':
+      return /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(address);
+    case 'SOL':
+      return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
+    case 'TON':
+      return /^(UQ|EQ)[A-Za-z0-9_-]{46,48}$/.test(address);
+    default:
+      return false;
+  }
+}
+
+// Per-user daily withdrawal cap (anti-fraud; generous for a referral payout).
+const DAILY_WITHDRAW_LIMIT = 20000;
 
 router.post('/createOrder', validate(createOrderSchema), async (req, res) => {
   try {
@@ -115,6 +139,21 @@ router.post('/withdraw', validate(withdrawSchema), async (req, res) => {
   try {
     const userId = (req as AuthenticatedRequest).userId!;
     const { amount, currency, address, network } = req.body;
+
+    if (!isPlausibleAddress(network, address)) {
+      return sendError(res, 400, `Address does not look like a valid ${network} address`, 'WITHDRAW_ADDRESS_INVALID');
+    }
+
+    // Daily cap: sum of today's withdrawals (created, not only completed).
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+    const todayTotal = await prisma.withdrawal.aggregate({
+      where: { userId, createdAt: { gte: dayStart } },
+      _sum: { amount: true },
+    });
+    if ((todayTotal._sum.amount || 0) + amount > DAILY_WITHDRAW_LIMIT) {
+      return sendError(res, 400, 'Daily withdrawal limit exceeded', 'WITHDRAW_DAILY_LIMIT');
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       // Atomic conditional decrement: the balance check and the deduction

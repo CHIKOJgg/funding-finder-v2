@@ -100,7 +100,7 @@
   <header>
     <div class="wrap">
       <div class="logo">Funding<span>Finder</span></div>
-      <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Ücretsiz aç</a>
+      <a class="btn" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Ücretsiz aç</a>
     </div>
   </header>
 
@@ -110,7 +110,7 @@
       <h1>Fonlama oranının şu an en yüksek olduğu yer</h1>
       <p>23 kripto borsasının fonlama oranı toplayıcısı, borsalar arası arbitraj, AI fikirleri ve otomatik PnL. En iyi oranları sizin için saniyeler içinde buluruz, kayıt gerekmeden.</p>
       <div class="actions">
-        <a class="btn green" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">🚀 Ücretsiz aç</a>
+        <a class="btn green" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">🚀 Ücretsiz aç</a>
         <a class="btn ghost" href="/?app=1">Web uygulamasını aç</a>
       </div>
 
@@ -123,7 +123,7 @@
           <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
         </div>
         <div class="live-foot">
-          <a class="btn ghost" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Uygulamada tümünü aç →</a>
+          <a class="btn ghost" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Uygulamada tümünü aç →</a>
         </div>
       </div>
 
@@ -169,7 +169,7 @@
             <li>1 AI-совет/день</li>
             <li>Базовые алерты</li>
           </ul>
-          <a class="btn ghost" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Başla</a>
+          <a class="btn ghost" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Başla</a>
         </div>
         <div class="plan featured">
           <div class="name">Pro</div>
@@ -181,7 +181,7 @@
             <li>Безлимитный вотчлист</li>
           </ul>
           <a class="btn" href="/?plan=pro&utm_source=landing&utm_medium=landing">PWA'da aç</a>
-          <a class="plan-mini" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">veya Telegram Mini App'te</a>
+          <a class="plan-mini" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">veya Telegram Mini App'te</a>
         </div>
         <div class="plan">
           <div class="name">Pro+</div>
@@ -193,7 +193,7 @@
             <li>Ранний доступ к фичам</li>
           </ul>
           <a class="btn" href="/?plan=proplus&utm_source=landing&utm_medium=landing">PWA'da aç</a>
-          <a class="plan-mini" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">veya Telegram Mini App'te</a>
+          <a class="plan-mini" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">veya Telegram Mini App'te</a>
         </div>
       </div>
       <div class="pwa-hint">
@@ -234,13 +234,13 @@
     <div class="wrap">
       <h2 style="color:#fff">Arkadaşlarınızı davet edin — ödemelerinin %'sini kazanın</h2>
       <p class="sub" style="color:#cbd5e1">Uygulamadaki referans bağlantınızı paylaşın ve her ödeme yapan referansınızdan gerçek para kazanın.</p>
-      <a class="btn" href="https://t.me/FundingFinderBot" target="_blank" rel="noopener">Referans bağlantısı al</a>
+      <a class="btn" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Referans bağlantısı al</a>
     </div>
   </section>
 
   <footer>
     <div class="wrap">
-      Funding Finder • <a href="https://t.me/FundingFinderBot">Telegram</a> • Не является инвестиционной рекомендацией.
+      Funding Finder • <a href="https://t.me/fundinganalyzerbot">Telegram</a> • Yatırım tavsiyesi değildir.
     </div>
   </footer>
 
@@ -263,7 +263,9 @@
       }
       function riskClass(r) { return r || 'LOW'; }
 
-      function render(data) {
+      function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+function render(data) {
         var opps = (data.opportunities || []);
         if (!opps.length) {
           body.innerHTML = '<div class="live-sub" style="text-align:center;padding:8px 0">Нет актуальных возможностей в этом окне — обновляем…</div>';
@@ -272,12 +274,12 @@
             return '' +
               '<div class="opp">' +
                 '<div>' +
-                  '<div class="pair">' + o.pair + '</div>' +
-                  '<div class="route">' + o.opportunity + '</div>' +
+                  '<div class="pair">' + esc(o.pair) + '</div>' +
+                  '<div class="route">' + esc(o.opportunity) + '</div>' +
                 '</div>' +
                 '<div class="rate">' +
                   '<div class="annual">до ' + fmtPct(o.annualReturn) + '/год</div>' +
-                  '<span class="risk ' + riskClass(o.riskLevel) + '">' + o.riskLevel + '</span>' +
+                  '<span class="risk ' + esc(riskClass(o.riskLevel)) + '">' + esc(o.riskLevel) + '</span>' +
                 '</div>' +
               '</div>';
           }).join('');

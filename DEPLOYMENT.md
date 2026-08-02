@@ -157,13 +157,14 @@ Render — лучший бесплатный вариант. База данны
    | `CRYPTO_PAY_NETWORK` | `testnet` или `mainnet` | Сначала testnet! |
     | `WEBHOOK_SECRET` | `случайная_строка` | Из шага 1 |
     | `JWT_SECRET` | `случайная_строка` | Из шага 1 |
-    | `CORS_ORIGINS` | `https://t.me,https://funding-finder.onrender.com` | Домены фронтенда (и TG) |
+    | `ENCRYPTION_KEY` | `случайная_строка (>=32 симв.)` | `openssl rand -hex 32` — шифрование API-ключей бирж (обязателен!) |
+    | `CORS_ORIGINS` | `https://t.me,https://funding-finder-frontend.onrender.com` | Домены фронтенда (и TG) |
     | `NOWPAYMENTS_API_KEY` | `NP03...` | [nowpayments.io](https://nowpayments.io/dashboard) — для крипто-оплаты на сайте |
     | `NOWPAYMENTS_IPN_SECRET` | `случайная_строка` | NOWPayments → Settings → IPN secret (подпись webhook) |
     | `NOWPAYMENTS_NETWORK` | `bgcryptonote` | Сеть вывода средств |
     | `API_BASE_URL` | `https://funding-finder-api.onrender.com` | Публичный URL API (нужен для IPN callback) |
     | `GOOGLE_CLIENT_ID` | `....apps.googleusercontent.com` | Google Console → OAuth Client ID (вход через Google) |
-    | `WEB_AUTH_DOMAIN` | `funding-finder.onrender.com` | Домен сайта (для SIWE / входа через кошелёк) |
+    | `WEB_AUTH_DOMAIN` | `funding-finder-frontend.onrender.com` | Домен сайта (для SIWE / входа через кошелёк) |
 
 5. Нажми **Create Web Service**
 6. Дождись статусус **Live** (~2-3 минуты)
@@ -211,7 +212,7 @@ Render — лучший бесплатный вариант. База данны
 
 ### 3.5 Проверка
 
-1. Открой URL фронтенда (типа `https://funding-finder.onrender.com`)
+1. Открой URL фронтенда (типа `https://funding-finder-frontend.onrender.com`)
 2. Должна загрузиться страница сканирования
 3. Открой консоль браузера (F12) — проверь, что API запросы идут на правильный URL
 4. Проверь health check: `https://funding-finder-api.onrender.com/api/health`
@@ -233,18 +234,26 @@ Render — лучший бесплатный вариант. База данны
 
 ### 4.2 Подготовка
 
+docker-compose читает переменные из `.env` в **корне репозитория** (не `backend/.env` — этот файл используется только при запуске Node напрямую).
+
 ```bash
 cd funding-finder-v2
 
-# Создай .env файл из примера
-cp backend/.env.example backend/.env
+# Создай .env в корне репозитория из примера
+cp .env.example .env
 
-# Отредактируй backend/.env — заполни реальными значениями:
-#   DATABASE_URL=postgresql://postgres:postgres@db:5432/funding_finder
+# Отредактируй .env — заполни реальными значениями:
 #   TELEGRAM_BOT_TOKEN=...
+#   JWT_SECRET=<openssl rand -hex 32>
+#   WEBHOOK_SECRET=<openssl rand -hex 32>
+#   ENCRYPTION_KEY=<openssl rand -hex 32>   (обязателен в production, >=32 символов)
 #   OPENROUTER_API_KEY=...
-#   и т.д.
+#   NOWPAYMENTS_NETWORK=live / CRYPTO_PAY_NETWORK=mainnet (приём реальных платежей)
+#   API_BASE_URL=https://<ваш-домен-api>    (иначе IPN-вебхуки платежей не дойдут)
 ```
+
+> Секреты из примера (`change-me-to-...`) заблокированы: при `NODE_ENV=production`
+> backend не стартует, пока не заданы реальные JWT_SECRET / WEBHOOK_SECRET / ENCRYPTION_KEY.
 
 ### 4.3 Запуск
 
@@ -360,7 +369,7 @@ flyctl deploy
 2. Заполни:
    - **App Name:** `Funding Finder`
    - **Description:** `Мониторинг фандинг ставок криптовалют`
-   - **URL:** `https://funding-finder.onrender.com` (URL твоего фронтенда)
+   - **URL:** `https://funding-finder-frontend.onrender.com` (URL твоего фронтенда)
    - **Mini App URL:** тот же URL
    - **Photo:** загрузи логотип (рекомендуется 640x640)
 
@@ -438,7 +447,7 @@ wss://funding-finder-api.onrender.com/ws?initData=...
 ### Проблема: "CORS error" в браузере
 **Решение:**
 1. Проверь `CORS_ORIGINS` — должен содержать домен фронтенда
-2. Формат: `https://funding-finder.onrender.com`
+2. Формат: `https://funding-finder-frontend.onrender.com`
 
 ### Проблема: "Rate limit exceeded" на API
 **Решение:**
@@ -530,12 +539,12 @@ wss://funding-finder-api.onrender.com/ws?initData=...
 1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
    → создать **OAuth 2.0 Client ID** (тип Web application).
 2. В **Authorized JavaScript origins** добавь домен сайта
-   (`https://funding-finder.onrender.com`).
+   (`https://funding-finder-frontend.onrender.com`).
 3. Client ID → `GOOGLE_CLIENT_ID`. Редирект не нужен (используем
    `token` flow через Google Identity Services).
 
 ### 10.3 Что проверить на сайте
-- [ ] Открывается `https://funding-finder.onrender.com` (SPA логин-гейт)
+- [ ] Открывается `https://funding-finder-frontend.onrender.com` (SPA логин-гейт)
 - [ ] Вход через кошелёк (SIWE) подписывает и открывает сессию
 - [ ] Вход через Google открывает сессию
 - [ ] ProfilePage → крипто-чекаут → выбор монеты → оплата подтверждается

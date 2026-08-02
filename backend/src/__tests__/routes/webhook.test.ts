@@ -35,29 +35,12 @@ import * as nowPaymentsService from '../../services/nowPaymentsService';
 
 const authUser = makeAuthUser();
 const mkApp = () => createTestApp(webhookRoutes, { authUser });
-const TOKEN = process.env.WEBHOOK_SECRET || 'test-webhook-secret-at-least-32-chars-long!!';
 
 beforeEach(() => {
   jest.resetAllMocks();
 });
 
 describe('webhook routes', () => {
-  it('POST /payment updates an order (200)', async () => {
-    (paymentService.updateOrderFromWebhook as jest.Mock).mockResolvedValue({ id: 'o1', status: 'paid' });
-    const res = await request(mkApp())
-      .post('/payment')
-      .set('x-webhook-token', TOKEN)
-      .send({ orderId: 'o1', status: 'paid' });
-    expect(res.status).toBe(200);
-    expect(res.body.ok).toBe(true);
-  });
-
-  it('POST /payment returns 401 on bad token', async () => {
-    const res = await request(mkApp()).post('/payment').set('x-webhook-token', 'wrong').send({ orderId: 'o1' });
-    expect(res.status).toBe(401);
-    expect(res.body.ok).toBe(false);
-  });
-
   it('POST /crypto-pay processes webhook (200)', async () => {
     (paymentService.verifyCryptoPaySignature as jest.Mock).mockReturnValue(true);
     (paymentService.handleCryptoPayWebhook as jest.Mock).mockResolvedValue({ success: true });

@@ -64,7 +64,9 @@ describe('arbitrage routes', () => {
 
   it('GET /arbitrage/opportunities returns 200', async () => {
     (scanService.runScan as jest.Mock).mockResolvedValue(scanShape);
-    (arbitrageService.detectArbitrageOpportunities as jest.Mock).mockResolvedValue([]);
+    // detectArbitrageOpportunities is SYNC in the route — mockReturnValue,
+    // not mockResolvedValue (a Promise serializes to {} in the response).
+    (arbitrageService.detectArbitrageOpportunities as jest.Mock).mockReturnValue([]);
     const res = await request(mkApp()).get('/arbitrage/opportunities');
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);

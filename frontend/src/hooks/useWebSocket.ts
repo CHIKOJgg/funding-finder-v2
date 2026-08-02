@@ -57,6 +57,15 @@ export function useWebSocket(auth: { initData?: string | null; token?: string | 
     const { initData, token } = authRef.current || {};
     if (!initData && !token) return;
 
+    // Never stack sockets: the mount effect and the auth-change effect can
+    // both fire connect() for the same credentials.
+    if (
+      wsRef.current &&
+      (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)
+    ) {
+      return;
+    }
+
     let ws: WebSocket;
     try {
       const wsBase = resolveWsBase();
@@ -143,6 +152,26 @@ export function useWebSocket(auth: { initData?: string | null; token?: string | 
       }
     };
   }, [connect]);
+
+  // Reconnect when the auth credentials CHANGE. The connect effect above runs
+  // once at mount, when a web user is not yet authenticated — without this,
+  // the socket would never open after a fresh web login (Google/wallet/email).
+  const authKey = auth?.initData || auth?.token || '';
+  useEffect(() => {
+    if (authKey) {
+      connect();
+    } else {
+      // Logged out: drop any stale socket and stop reconnect attempts.
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      try {
+        wsRef.current?.close();
+        wsRef.current = null;
+      } catch {
+        // ignore
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authKey]);
 
   return wsRef;
 }

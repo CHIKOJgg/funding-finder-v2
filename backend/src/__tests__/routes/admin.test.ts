@@ -73,6 +73,8 @@ describe('admin routes', () => {
 
   it('DELETE /users/:id deletes a user (200)', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ telegramId: 'u1' });
+    mockPrisma.generalAlert.findMany.mockResolvedValue([]);
+    mockPrisma.arbitrageAlert.findMany.mockResolvedValue([]);
     mockPrisma.$transaction.mockResolvedValue(undefined);
     const res = await request(mkApp()).delete('/users/u1');
     expect(res.status).toBe(200);

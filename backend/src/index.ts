@@ -291,8 +291,9 @@ if (config.prometheusPublic) {
 
 // API Documentation (gated behind feature flag)
 if (featureFlags.isEnabled('api_docs')) {
-  setupSwagger(app);
-  logger.info('Swagger API docs enabled at /docs');
+  void setupSwagger(app).then(() => {
+    logger.info('Swagger API docs enabled at /docs');
+  });
 }
 
 // Feature flags endpoint (public)

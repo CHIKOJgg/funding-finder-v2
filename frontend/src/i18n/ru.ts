@@ -140,6 +140,9 @@ export const ru: Record<string, string> = {
   'arb.refreshBtn': 'Обновить',
   'arb.noOpportunities': 'Арбитражные возможности не найдены',
   'arb.noOpportunitiesHint': 'Попробуйте выбрать другие биржи или снизить фильтры.',
+  'arb.loadError': 'Не удалось загрузить возможности',
+  'arb.loadErrorHint': 'Проверьте соединение и попробуйте снова.',
+  'arb.retry': 'Повторить',
   'arb.loadingMore': 'Загрузка...',
   'arb.allLoaded': 'Показаны все {count} возможностей',
   'arb.minApyPlaceholder': '0 — без ограничения',
@@ -363,6 +366,7 @@ export const ru: Record<string, string> = {
   // Profile
   'profile.loadError': 'Не удалось загрузить данные профиля',
   'profile.paymentCreated': 'Платеж создан',
+  'profile.creating': 'Создание…',
   'profile.paymentError': 'Ошибка при создании платежа: ',
   'profile.referralRequired': 'Введите реферальный код',
   'profile.referralApplied': 'Реферальный код применён!',
@@ -981,4 +985,15 @@ export const ru: Record<string, string> = {
   'softPaywall.title': 'Вы использовали {used} из {total} {feature}. Обновите тариф для полного доступа.',
   'softPaywall.desc': 'Начните {days}-дневный бесплатный триал — карта не нужна.',
   'softPaywall.viewPlans': 'Смотреть тарифы',
+
+  // Crypto checkout
+  'crypto.openCryptoBot': 'Открыть Crypto Bot',
+
+  // Pull-to-refresh
+  'pullToRefresh.pull': 'Потяните для обновления',
+  'pullToRefresh.refresh': 'Обновить',
+  'pullToRefresh.refreshing': 'Обновление…',
+
+  // Admin
+  'admin.accessDenied': 'Доступ запрещён',
 };

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
+import rateLimit from 'express-rate-limit';
 import { isAddress, getAddress } from 'ethers';
 import { validate } from '../middleware/validation.js';
 import { authenticate, AuthenticatedRequest } from '../middleware/auth.js';
@@ -229,6 +230,25 @@ if (!config.isProduction) {
 // Email / password registration + login
 // ---------------------------------------------------------------------------
 
+// Per-account brute-force protection. The shared IP-based `authLimiter`
+// (3000 req/15 min) is useless against a distributed attack on one account;
+// this keys on the normalized email so ~20 attempts per account per 15 min is
+// the ceiling. Falls back to IP when the body isn't parseable.
+const credentialLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request): string => {
+    const email = (req.body as { email?: unknown } | undefined)?.email;
+    if (typeof email === 'string' && email.trim()) {
+      return `cred:${email.trim().toLowerCase()}`;
+    }
+    return `cred:ip:${req.ip || 'unknown'}`;
+  },
+  message: { ok: false, error: 'Too many attempts. Try again later.' },
+});
+
 const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -237,7 +257,7 @@ const registerSchema = z.object({
 });
 
 // POST /api/auth/register → create account with email + password
-router.post('/register', validate(registerSchema), async (req: Request, res: Response) => {
+router.post('/register', credentialLimiter, validate(registerSchema), async (req: Request, res: Response) => {
   try {
     const { email, password, firstName, referredByCode } = req.body;
     const normalizedEmail = email.toLowerCase().trim();
@@ -281,7 +301,7 @@ const loginSchema = z.object({
 });
 
 // POST /api/auth/login → sign in with email + password
-router.post('/login', validate(loginSchema), async (req: Request, res: Response) => {
+router.post('/login', credentialLimiter, validate(loginSchema), async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     const normalizedEmail = email.toLowerCase().trim();

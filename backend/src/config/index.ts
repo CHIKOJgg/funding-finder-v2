@@ -67,7 +67,7 @@ const baseSchema = z.object({
   // different name, support handle and landing URL without code changes.
   APP_NAME: z.string().optional().default('Funding Finder'),
   APP_THEME_COLOR: z.string().optional().default('#3390ec'),
-  SUPPORT_TELEGRAM: z.string().optional().default('FundingFinderBot'),
+  SUPPORT_TELEGRAM: z.string().optional().default('fundinganalyzerbot'),
   LANDING_URL: z.string().optional().default(''),
 
   // Pushover — push notifications for arbitrage alerts (https://pushover.net).
@@ -168,7 +168,7 @@ export const config = {
 
   telegram: {
     botToken: env.TELEGRAM_BOT_TOKEN.trim(),
-    botUsername: env.TELEGRAM_BOT_USERNAME.trim() || 'FundingFinderBot',
+    botUsername: env.TELEGRAM_BOT_USERNAME.trim() || 'fundinganalyzerbot',
     publicSignalChannel: env.PUBLIC_SIGNAL_CHANNEL || undefined,
   },
 

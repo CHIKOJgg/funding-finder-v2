@@ -3,7 +3,14 @@ import crypto from 'crypto';
 import { logger } from '../utils/logger.js';
 
 export function requestId(req: Request, _res: Response, next: NextFunction) {
-  const id = req.headers['x-request-id'] as string || crypto.randomUUID();
+  // Honor a caller-supplied id, but sanitize it: the value lands in logs
+  // verbatim, so strip control characters (log injection) and cap length.
+  const provided = req.headers['x-request-id'];
+  const id =
+    typeof provided === 'string' && provided.trim()
+      ? provided.replace(/[\r\n\u0000-\u001f\u007f]/g, '').slice(0, 128)
+      : crypto.randomUUID();
+  req.headers['x-request-id'] = id;
   next();
 }
 

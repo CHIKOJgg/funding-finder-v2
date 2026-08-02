@@ -210,6 +210,8 @@ describe('paymentService', () => {
       (prismaMock.user.update as jest.Mock).mockResolvedValue({});
       (prismaMock.paymentHistory.create as jest.Mock).mockResolvedValue({ id: 'ph1' });
       (prismaMock.paymentRecord.findUnique as jest.Mock).mockResolvedValue(null);
+      // Atomic claim: only ONE caller may flip referralCredited false->true.
+      (prismaMock.order.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
 
       await updateOrderFromWebhook('order_ref', 'paid');
 
@@ -218,10 +220,12 @@ describe('paymentService', () => {
       );
       expect(referrerUpdate).toBeDefined();
       expect(referrerUpdate[0].data.balance.increment).toBeCloseTo(99 * 0.2, 5);
-      const orderUpdate = (prismaMock.order.update as jest.Mock).mock.calls.find(
-        (c: any) => c[0]?.where?.id === 'order_ref' && c[0]?.data?.referralCredited === true
+      expect(prismaMock.order.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'order_ref', referralCredited: false },
+          data: { referralCredited: true },
+        })
       );
-      expect(orderUpdate).toBeDefined();
     });
 
     it('does not double-credit the referrer on replayed webhook', async () => {
@@ -233,6 +237,8 @@ describe('paymentService', () => {
       (prismaMock.user.update as jest.Mock).mockResolvedValue({});
       (prismaMock.paymentHistory.create as jest.Mock).mockResolvedValue({ id: 'ph1' });
       (prismaMock.paymentRecord.findUnique as jest.Mock).mockResolvedValue(null);
+      // A replayed webhook: the flag is already true, so the atomic claim loses.
+      (prismaMock.order.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
 
       await updateOrderFromWebhook('order_ref2', 'paid');
 

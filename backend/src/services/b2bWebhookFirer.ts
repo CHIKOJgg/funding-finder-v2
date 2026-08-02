@@ -4,6 +4,7 @@
 import crypto from 'crypto';
 import { prisma } from './prisma.js';
 import { logger } from '../utils/logger.js';
+import { validatePublicUrl } from '../utils/ssrf.js';
 
 const WEBHOOK_TIMEOUT_MS = 10_000;
 const MAX_RETRIES = 2;
@@ -27,6 +28,22 @@ async function fireOneWebhook(
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
+      // Re-validate the URL at delivery time (defense in depth against DNS
+      // rebinding: a host that resolved fine at registration may now point
+      // at an internal address).
+      const blockReason = await validatePublicUrl(webhook.url);
+      if (blockReason) {
+        logger.error(
+          { webhookId: webhook.id, reason: blockReason },
+          'B2B webhook blocked by SSRF guard'
+        );
+        await prisma.b2bWebhook.update({
+          where: { id: webhook.id },
+          data: { failCount: { increment: 1 } },
+        }).catch(() => {});
+        return false;
+      }
+
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
 

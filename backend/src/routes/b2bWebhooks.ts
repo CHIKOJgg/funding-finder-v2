@@ -4,6 +4,7 @@ import { validate } from '../middleware/validation.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
+import { validatePublicUrl } from '../utils/ssrf.js';
 import crypto from 'crypto';
 
 const router = Router();
@@ -95,6 +96,13 @@ router.post('/b2b-webhooks', validate(registerSchema), async (req, res) => {
     const userId = (req as AuthenticatedRequest).userId!;
     const { url, events, label } = req.body;
 
+    // SSRF guard: the server will POST to this URL from its own IP, so it must
+    // not point at private/reserved networks or cloud metadata endpoints.
+    const urlBlockReason = await validatePublicUrl(url);
+    if (urlBlockReason) {
+      return res.status(400).json({ ok: false, error: `Webhook URL rejected: ${urlBlockReason}` });
+    }
+
     const count = await prisma.b2bWebhook.count({ where: { userId } });
     if (count >= MAX_WEBHOOKS_PER_USER) {
       return res.status(429).json({
@@ -124,7 +132,7 @@ router.post('/b2b-webhooks', validate(registerSchema), async (req, res) => {
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'B2B webhook registration failed');
-    return res.status(500).json({ ok: false, error: error.message });
+    return res.status(500).json({ ok: false, error: 'Webhook registration failed' });
   }
 });
 

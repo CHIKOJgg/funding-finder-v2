@@ -8,8 +8,7 @@
 // Reads the target from KEEPALIVE_URL (falls back to the deployed Render URL).
 // Exits non-zero on failure so the cron provider can alert you.
 
-const TARGET = process.env.KEEPALIVE_URL || 'https://funding-finder-backend.onrender.com';
-
+const TARGET = process.env.KEEPALIVE_URL || 'https://funding-finder-api.onrender.com';
 async function ping() {
   const url = `${TARGET.replace(/\/$/, '')}/api/health`;
   try {

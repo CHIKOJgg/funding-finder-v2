@@ -186,8 +186,9 @@ describe('LOAD — memory stays bounded under repeated scans', () => {
     for (let i = 0; i < 500; i++) {
       cache.set(`mem-test-${i}`, { i }, 1000);
     }
-    // maxSize is 20000, so 500 is fine and size is bounded.
-    expect(cache.size).toBeLessThanOrEqual(20000);
+    // maxSize is 500 (CACHE_MAX_SIZE), so 500 inserts evict the first entries
+    // and the size stays bounded.
+    expect(cache.size).toBeLessThanOrEqual(500);
     expect(cache.size).toBeGreaterThan(sizeBefore);
     cache.clear();
     expect(cache.size).toBe(0);

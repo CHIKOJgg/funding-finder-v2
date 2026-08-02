@@ -46,7 +46,11 @@ describe('trial routes', () => {
   });
 
   it('POST /trial/activate returns 409 when already used', async () => {
-    mockPrisma.user.findUnique.mockResolvedValue({ subscription: 'free', trialUsed: true });
+    // The route uses an atomic conditional update: when no row matches
+    // (trialUsed already true), Prisma throws P2025 and the route falls back
+    // to a check that must yield 409 (user not on an active pro trial).
+    mockPrisma.user.update.mockRejectedValue({ code: 'P2025' });
+    mockPrisma.user.findUnique.mockResolvedValue({ subscription: 'free', trialUsed: true, trialEndsAt: null });
     const res = await request(mkApp()).post('/trial/activate');
     expect(res.status).toBe(409);
     expect(res.body.ok).toBe(false);
