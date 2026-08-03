@@ -182,6 +182,41 @@ export async function createOrder(
       };
     }
 
+    // Reuse a recent open checkout instead of creating multiple payable
+    // invoices when a user closes and reopens the payment dialog.
+    const existing = await prisma.order.findFirst({
+      where: {
+        userId: telegramId,
+        planId,
+        status: { in: ['pending', 'waiting', 'confirming'] },
+        createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
+        invoice: { provider },
+      },
+      include: { invoice: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (existing?.invoice) {
+      return {
+        ok: true,
+        existing: true,
+        orderId: existing.id,
+        provider,
+        invoiceId: existing.invoice.invoiceId,
+        paymentId: existing.invoice.paymentId,
+        amount: existing.amount,
+        billingPeriod: existing.billingPeriod,
+        currency: existing.currency,
+        botInvoiceUrl: existing.invoice.botInvoiceUrl,
+        miniAppInvoiceUrl: existing.invoice.miniAppInvoiceUrl,
+        webAppInvoiceUrl: existing.invoice.webAppInvoiceUrl,
+        invoiceUrl: existing.invoice.webAppInvoiceUrl,
+        payAddress: existing.invoice.payAddress,
+        payAmount: existing.invoice.payAmount,
+        payCurrency: existing.invoice.payCurrency,
+        status: existing.invoice.status,
+      };
+    }
+
     // ---- NOWPayments (website / non-Telegram crypto checkout) ----
     if (provider === 'nowpayments') {
       const { createNowPaymentsPayment } = await import('./nowPaymentsService.js');
