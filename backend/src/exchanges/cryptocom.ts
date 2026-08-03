@@ -5,7 +5,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { upsertOpenInterest, upsertLongShortRatio } from '../services/marketDataService.js';
 import { logger } from '../utils/logger.js';
 
-const CRYPTOCOM_BASE = 'https://api.crypto.com';
+const CRYPTOCOM_BASE = 'https://deriv-api.crypto.com';
 const CONCURRENCY = 3;
 const CRYPTOCOM_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR;
 
@@ -19,14 +19,16 @@ export async function scanCryptoCom(): Promise<ExchangeResult[]> {
       'cryptocom:instruments',
       async () => {
         const res = await retry(() =>
-          client.get('/api/v1/public/get-instruments', {
-            params: { instrument_kind: 'PERPETUAL', settlement_asset: 'USDT' },
-            timeout: 15000,
-          }),
+          client.post('/derivatives/v1/public/get-instruments', {}, { timeout: 15000 }),
           2,
           500
         );
-        return res.data?.result || [];
+        const result = res.data?.result;
+        const rows = Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : [];
+        return rows.filter((i: any) =>
+          String(i.instrument_name ?? i.inst_id ?? '').includes('USDT') &&
+          String(i.instrument_name ?? i.inst_id ?? '').includes('PERP')
+        );
       },
       300_000
     );
@@ -41,23 +43,21 @@ export async function scanCryptoCom(): Promise<ExchangeResult[]> {
     const tickers = await cachedRequest(
       'cryptocom:tickers',
       async () => {
-        const instIds = usdtInstruments.map((i: any) => i.inst_id).join(',');
+        const instIds = usdtInstruments.map((i: any) => i.instrument_name ?? i.inst_id).join(',');
         const res = await retry(() =>
-          client.get('/api/v1/public/get-tickers', {
-            params: { inst_id: instIds },
-            timeout: 15000,
-          }),
+          client.post('/derivatives/v1/public/get-ticker', { instrument_name: instIds }, { timeout: 15000 }),
           2,
           500
         );
-        return res.data?.result || [];
+        const result = res.data?.result;
+        return Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : [];
       },
       60_000
     );
 
     const tickerMap = new Map<string, any>();
     for (const t of tickers) {
-      tickerMap.set(t.inst_id, t);
+      tickerMap.set(t.instrument_name ?? t.inst_id, t);
     }
 
     const results = await mapWithConcurrency(
@@ -65,7 +65,7 @@ export async function scanCryptoCom(): Promise<ExchangeResult[]> {
       { concurrency: CONCURRENCY },
       async (instr: any) => {
         try {
-          const symbol = instr.inst_id;
+          const symbol = instr.instrument_name ?? instr.inst_id;
           const ticker = tickerMap.get(symbol);
           if (!ticker) return null;
 
