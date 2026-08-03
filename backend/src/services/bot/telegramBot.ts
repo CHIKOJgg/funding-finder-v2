@@ -181,10 +181,11 @@ export class TelegramBot {
     }
   }
 
-  // Resolve (or create) the internal user for a Telegram sender. `telegramId`
-  // is the numeric id string, identical to the WebApp session key.
+  // Resolve (or create) the internal user for a Telegram sender. Keep the
+  // `tg_` prefix used by Telegram Mini App auth so bot and Mini App sessions
+  // share the same user/referral/payment record.
   private async resolveUser(from: TgUser) {
-    const telegramId = String(from.id);
+    const telegramId = `tg_${from.id}`;
     const existing = await prisma.user.findUnique({ where: { telegramId } });
     if (existing) {
       await prisma.user.update({

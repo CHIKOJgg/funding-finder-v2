@@ -296,13 +296,13 @@ export function ProfilePage() {
         </p>
       </div>
 
-      <div className="card">
+      {!(subscription !== 'free' && subscriptionExpiresAt) && <div className="card">
           <h2 className="text-base font-semibold mb-1 text-[var(--text)] flex items-center gap-2">
             <IconGift size={18} style={{ color: 'var(--brand)' }} /> {t('profile.trialTitle')}
           </h2>
           <p className="text-sm text-muted mb-3">{t('profile.trialDesc')}</p>
         <TrialCTA />
-      </div>
+      </div>}
 
       <div className="card">
           <h2 className="text-base font-semibold mb-1 text-[var(--text)] flex items-center gap-2">

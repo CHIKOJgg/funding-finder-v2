@@ -29,10 +29,13 @@ router.get('/referral/list', async (req, res) => {
     const userId = (req as AuthenticatedRequest).userId!;
     const user = await getUser(userId);
     const referralCount = await prisma.user.count({ where: { referredBy: user.id } });
-    // Order.userId stores the USER'S identity key (telegramId, e.g. tg_123 or
-    // wallet_0x...), NOT the User.id cuid — query by telegramId.
+    const referredUsers = await prisma.user.findMany({
+      where: { referredBy: user.id },
+      select: { telegramId: true },
+    });
+    const referredIds = referredUsers.map((referred) => referred.telegramId);
     const paidReferrals = await prisma.order.count({
-      where: { userId: user.telegramId, status: 'paid', referralCredited: true },
+      where: { userId: { in: referredIds }, status: 'paid', referralCredited: true },
     });
     res.json({
       ok: true,

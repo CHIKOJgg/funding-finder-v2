@@ -41,8 +41,9 @@ describe('referrals routes', () => {
   });
 
   it('GET /referral/list returns referral count (200)', async () => {
-    (paymentService.getUser as jest.Mock).mockResolvedValue({ id: 'u1' });
+    (paymentService.getUser as jest.Mock).mockResolvedValue({ id: 'u1', telegramId: 'tg_1' });
     mockPrisma.user.count.mockResolvedValue(3);
+    mockPrisma.user.findMany.mockResolvedValue([]);
     const res = await request(mkApp()).get('/referral/list');
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
