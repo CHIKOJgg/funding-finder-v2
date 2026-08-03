@@ -13,16 +13,16 @@ const annualFromMonthly = (m: number) => Math.round(m * 12 * 0.8);
 // the old Basic/Pro split), Pro+ is the high-value tier. Free stays free.
 export const PLANS: Record<PlanId, Plan> = {
   pro: {
-    monthlyPrice: 49,
-    annualPrice: annualFromMonthly(49),
-    price: 49,
+    monthlyPrice: 1,
+    annualPrice: annualFromMonthly(1),
+    price: 1,
     name: 'Pro',
     features: ['20 бирж в скане', 'AI-анализ безлимита', 'Портфель + PnL', 'Безлимитный вотчлист', 'Приоритетные обновления', 'Экспорт данных'],
   },
   proplus: {
-    monthlyPrice: 149,
-    annualPrice: annualFromMonthly(149),
-    price: 149,
+    monthlyPrice: 1,
+    annualPrice: annualFromMonthly(1),
+    price: 1,
     name: 'Pro+',
     features: ['Все 25 бирж', 'Все функции Pro', 'Персональная поддержка', 'Ранний доступ к фичам', 'White-label'],
   },

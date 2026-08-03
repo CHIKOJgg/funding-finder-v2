@@ -900,7 +900,7 @@ export const en: Record<string, string> = {
   'public.faq2Q': 'How often is the data updated?',
   'public.faq2A': 'Our system scans all exchanges every 5 minutes and updates the heatmap in real-time. WebSocket connections provide live updates when rates change.',
   'public.faq3Q': 'Is Funding Finder free?',
-  'public.faq3A': 'The public heatmap is completely free. The full app with AI analysis, alerts, arbitrage scanner, and portfolio tracking is available with a Pro subscription starting at $49/month.',
+  'public.faq3A': 'The public heatmap is completely free. The full app with AI analysis, alerts, arbitrage scanner, and portfolio tracking is available with a Pro subscription starting at $1/month.',
   'public.faq4Q': 'How do I start earning from funding rates?',
   'public.faq4A': 'Open a perpetual futures position on an exchange with a high positive funding rate (if you want to receive payments as a short). Our AI analysis feature can recommend the best positions for your capital.',
   'public.termsLink': 'Terms',
