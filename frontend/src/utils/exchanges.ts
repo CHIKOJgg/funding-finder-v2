@@ -105,10 +105,8 @@ function withAffiliate(exchange: string, url: string): string {
 export const ALL_EXCHANGES = [
   'gate', 'binance', 'bybit', 'mexc', 'okx',
   'bitget', 'bingx', 'phemex', 'woo',
-  'hyperliquid', 'dydx', 'paradex',
-  'htx', 'coinex', 'blofin', 'bitmart', 'weex', 'coinw',
-  'drift', 'helix', 'apex', 'aster', 'bluefin',
-  'kucoin', 'cryptocom', 'deribit',
+  'hyperliquid', 'dydx', 'htx', 'blofin', 'aster', 'bluefin',
+  'kucoin', 'kraken', 'coinbase', 'bitunix', 'orderly', 'aevo',
   'kraken', 'coinbase', 'bitunix', 'orderly', 'aevo',
 ];
 

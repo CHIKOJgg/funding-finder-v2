@@ -410,7 +410,7 @@ export const ru: Record<string, string> = {
   'profile.featAi': 'AI-анализ рынка',
   'profile.featCsv': 'Экспорт в CSV',
   'profile.featPriority': 'Приоритетные сигналы',
-  'profile.feat20ex': 'До 31 биржи',
+  'profile.feat20ex': 'До 21 биржи',
   'profile.featAllPro': 'Всё из Pro',
   'profile.featAnalytics': 'Расширенная аналитика',
   'profile.featSupport': 'Персональная поддержка',

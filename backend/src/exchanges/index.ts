@@ -3,8 +3,6 @@ import { scanGate } from './gate.js';
 import { scanBinance } from './binance.js';
 import { scanBybit } from './bybit.js';
 import { scanKuCoin } from './kucoin.js';
-import { scanCryptoCom } from './cryptocom.js';
-import { scanDeribit } from './deribit.js';
 import { scanMEXC } from './mexc.js';
 import { scanOKX } from './okx.js';
 import { scanBitget } from './bitget.js';
@@ -13,17 +11,9 @@ import { scanPhemex } from './phemex.js';
 import { scanWOO } from './woo.js';
 import { scanHyperliquid } from './hyperliquid.js';
 import { scanDydx } from './dydx.js';
-import { scanParadex } from './paradex.js';
 // Phase-2 additions
 import { scanHtx } from './htx.js';
-import { scanCoinEx } from './coinex.js';
 import { scanBloFin } from './blofin.js';
-import { scanBitMart } from './bitmart.js';
-import { scanWeex } from './weex.js';
-import { scanCoinW } from './coinw.js';
-import { scanDrift } from './drift.js';
-import { scanHelix } from './helix.js';
-import { scanApex } from './apex.js';
 import { scanAster } from './aster.js';
 import { scanBluefin } from './bluefin.js';
 import { scanKraken } from './kraken.js';
@@ -39,8 +29,6 @@ const EXCHANGE_SCANNERS: Record<string, () => Promise<ExchangeResult[]>> = {
   binance: scanBinance,
   bybit: scanBybit,
   kucoin: scanKuCoin,
-  cryptocom: scanCryptoCom,
-  deribit: scanDeribit,
   mexc: scanMEXC,
   okx: scanOKX,
   // CEX additions (batch 1)
@@ -51,18 +39,9 @@ const EXCHANGE_SCANNERS: Record<string, () => Promise<ExchangeResult[]>> = {
   // DEX additions (batch 1)
   hyperliquid: scanHyperliquid,
   dydx: scanDydx,
-  paradex: scanParadex,
   // CEX additions (batch 2)
   htx: scanHtx,
-  coinex: scanCoinEx,
   blofin: scanBloFin,
-  bitmart: scanBitMart,
-  weex: scanWeex,
-  coinw: scanCoinW,
-  // DEX additions (batch 2)
-  drift: scanDrift,
-  helix: scanHelix,
-  apex: scanApex,
   aster: scanAster,
   bluefin: scanBluefin,
   kraken: scanKraken,
@@ -156,4 +135,4 @@ export function cleanup(): void {
   logger.info('Cleaned up all exchange connections');
 }
 
-export { scanGate, scanBinance, scanBybit, scanKuCoin, scanCryptoCom, scanDeribit, scanMEXC, scanOKX, scanBitget, scanBingX, scanPhemex, scanWOO, scanHyperliquid, scanDydx, scanParadex, scanHtx, scanCoinEx, scanBloFin, scanBitMart, scanWeex, scanCoinW, scanDrift, scanHelix, scanApex, scanAster, scanBluefin, scanKraken, scanCoinbase, scanBitunix, scanOrderly, scanAevo };
+export { scanGate, scanBinance, scanBybit, scanKuCoin, scanMEXC, scanOKX, scanBitget, scanBingX, scanPhemex, scanWOO, scanHyperliquid, scanDydx, scanHtx, scanBloFin, scanAster, scanBluefin, scanKraken, scanCoinbase, scanBitunix, scanOrderly, scanAevo };

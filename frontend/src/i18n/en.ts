@@ -432,7 +432,7 @@ export const en: Record<string, string> = {
   'profile.featAi': 'AI market analysis',
   'profile.featCsv': 'CSV export',
   'profile.featPriority': 'Priority signals',
-  'profile.feat20ex': 'Up to 31 exchanges',
+  'profile.feat20ex': 'Up to 21 exchanges',
   'profile.featAllPro': 'Everything in Pro',
   'profile.featAnalytics': 'Advanced analytics',
   'profile.featSupport': 'Personal support',
