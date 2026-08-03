@@ -403,9 +403,9 @@ export async function updateOrderFromWebhook(
  * Verify the Crypto Pay webhook signature.
  *
  * Crypto Pay signs the *raw bytes* of the request body with HMAC-SHA256 using
- * the API token as key (header `Crypto-Pay-API-Signature`). We must verify
- * against the raw body, not a re-serialized copy, since re-stringifying a
- * parsed object can reorder keys / change whitespace and break the check.
+ * SHA256(API_TOKEN) as the key (header `Crypto-Pay-API-Signature`). We must
+ * verify against the raw body, not a re-serialized copy, since re-stringifying
+ * a parsed object can reorder keys / change whitespace and break the check.
  */
 export function verifyCryptoPaySignature(rawBody: string | Buffer, signature: string) {
   const token = config.cryptoPay.apiToken;
@@ -415,8 +415,9 @@ export function verifyCryptoPaySignature(rawBody: string | Buffer, signature: st
   }
   if (!signature || typeof signature !== 'string') return false;
 
-  const payload = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : String(rawBody);
-  const hmac = crypto.createHmac('sha256', token).update(payload).digest('hex');
+  const payload = Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(String(rawBody));
+  const secret = crypto.createHash('sha256').update(token).digest();
+  const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex');
   if (hmac.length !== signature.length) return false;
   return crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(signature));
 }

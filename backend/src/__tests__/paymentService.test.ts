@@ -47,7 +47,8 @@ describe('paymentService', () => {
     it('accepts a correct HMAC-SHA256 signature over the raw body', () => {
       config.cryptoPay.apiToken = 'secret';
       const body = '{"invoice_id":123}';
-      const sig = crypto.createHmac('sha256', 'secret').update(body).digest('hex');
+      const secret = crypto.createHash('sha256').update('secret').digest();
+      const sig = crypto.createHmac('sha256', secret).update(body).digest('hex');
       expect(verifyCryptoPaySignature(body, sig)).toBe(true);
     });
 
