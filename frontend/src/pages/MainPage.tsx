@@ -969,7 +969,7 @@ const ResultItem = memo(function ResultItem({
             </button>
             <button
               onClick={() => { haptic('light'); openExchange(item.exchange, item.contract); }}
-                className="h-11 px-3 sm:h-11 sm:px-4 rounded-lg flex items-center justify-center bg-[var(--green)] text-[var(--on-success)] border border-[var(--green)] active:opacity-80 transition-all text-xs font-semibold shrink-0"
+                className="h-11 px-3 sm:h-11 sm:px-4 ml-auto rounded-lg flex items-center justify-center bg-[var(--green)] text-[var(--on-success)] border border-[var(--green)] active:opacity-80 transition-all text-xs font-semibold shrink-0"
               aria-label={`Open ${item.exchange} ${item.contract} on exchange`}
               title={t('main.openOnExchange', { contract: item.contract, exchange: exchangeLabel(item.exchange) })}
             >
