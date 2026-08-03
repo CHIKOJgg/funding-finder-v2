@@ -80,7 +80,7 @@ router.post('/keys', requireSubscription('pro'), validate(addSchema), async (req
 });
 
 // DELETE /api/keys/:id
-router.delete('/keys/:id', requireSubscription('pro'), validate(deleteSchema), async (req: AuthenticatedRequest, res) => {
+router.delete('/keys/:id', requireSubscription('pro'), validate(deleteSchema, 'params'), async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.userId;
     if (!userId) return res.status(401).json({ ok: false, error: 'Authentication required' });

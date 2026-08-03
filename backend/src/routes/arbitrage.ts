@@ -296,7 +296,7 @@ const backtestSchema = z.object({
 // Pair-specific backtest: compute historical arbitrage returns for a specific
 // pair + exchange combination using the FundingHistory data the scanner stores.
 // GET /api/arbitrage/backtest?pair=BTC/USDT&exchangeA=binance&exchangeB=bybit&days=30&capital=1000
-router.get('/arbitrage/backtest', validate(backtestSchema), async (req, res) => {
+router.get('/arbitrage/backtest', validate(backtestSchema, 'query'), async (req, res) => {
   try {
     const { pair, exchangeA, exchangeB, days, capital } = req.query as unknown as {
       pair: string;

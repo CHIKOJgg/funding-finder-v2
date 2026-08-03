@@ -30,6 +30,11 @@ const PortfolioPage = React.lazy(() => import('./pages/PortfolioPage').then(m =>
 const QrScanPage = React.lazy(() => import('./pages/QrScanPage').then(m => ({ default: m.QrScanPage })));
 const PublicPage = React.lazy(() => import('./pages/PublicPage').then(m => ({ default: m.PublicPage })));
 
+// Backoff schedule for silent re-polls of a cold-start (degraded/empty)
+// arbitrage response — long enough for the backend warm-up scan to finish,
+// short enough that the "no opportunities" screen never looks dead.
+const ARB_RETRY_DELAYS = [5000, 10000, 20000, 40000];
+
 interface AppContextType {
   user: { id: string; firstName?: string; username?: string; subscription?: string; referralCode?: string } | null;
 
@@ -295,6 +300,9 @@ function DataProvider() {
   const scanInFlight = useRef<Promise<void> | null>(null);
   const arbInFlight = useRef<Promise<void> | null>(null);
   const alertsInFlight = useRef<Promise<void> | null>(null);
+  // How many silent retries a cold-start (degraded/empty) arbitrage response
+  // has consumed; reset as soon as real data lands. 5s → 10s → 20s → 40s.
+  const arbDegradedRetries = useRef(0);
 
   const runScan = useCallback((exchanges: string[]) => {
     if (scanInFlight.current) return scanInFlight.current;
@@ -332,6 +340,7 @@ function DataProvider() {
     if (!force && arbLoaded) return Promise.resolve();
     setArbLoading(true);
     const p = (async () => {
+      let willRetry = false;
       try {
         // Request only the user's selected (plan-capped) exchanges. The backend
         // serves the warm full-set cache via superset matching, so we still get
@@ -339,7 +348,30 @@ function DataProvider() {
         const exchanges = selectedExchanges.slice(0, planLimits.maxExchanges);
         const response: any = await apiClient.getArbitrageOpportunities(exchanges);
         if (response.ok) {
-          setArbOpportunities(response.opportunities || []);
+          const opportunities = response.opportunities || [];
+          // A degraded response right after a cold backend start means the
+          // warm-up scan hasn't finished yet. Treat it as "not loaded" and
+          // quietly retry with backoff instead of showing a dead "no
+          // opportunities" screen until the user manually refreshes. A plain
+          // empty list (no `degraded` flag) is an honest "no arbitrage right
+          // now" — show it immediately.
+          if (!arbLoaded && opportunities.length === 0 && response.degraded === true) {
+            const depth = arbDegradedRetries.current;
+            if (depth < ARB_RETRY_DELAYS.length) {
+              arbDegradedRetries.current = depth + 1;
+              willRetry = true;
+              setTimeout(() => {
+                // Silent backfill: even with the tab hidden the retry chain
+                // must complete, otherwise a cold start leaves an empty screen.
+                loadArbitrage(true, { silent: true }).then(() => {});
+              }, ARB_RETRY_DELAYS[depth]);
+              return;
+            }
+            // Retry budget exhausted — fall through and show the empty state
+            // (which now carries its own refresh button).
+          }
+          arbDegradedRetries.current = 0;
+          setArbOpportunities(opportunities);
           setArbLoaded(true);
           setArbError(null);
         } else if (!opts?.silent) {
@@ -352,7 +384,9 @@ function DataProvider() {
         // screen instead of spamming "can't load opportunities" every poll.
         if (!opts?.silent) showToast(t('app.loadOppError'), 'error');
       } finally {
-        setArbLoading(false);
+        // While a backfill retry is scheduled keep the loading skeleton on
+        // screen instead of flashing the empty state between attempts.
+        if (!willRetry) setArbLoading(false);
         arbInFlight.current = null;
       }
     })();

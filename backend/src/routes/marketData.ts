@@ -58,7 +58,7 @@ router.get('/open-interest/:exchange/:contract', marketDataLimiter, async (req, 
   }
 });
 
-router.get('/open-interest-history', marketDataLimiter, validate(querySchema), async (req, res) => {
+router.get('/open-interest-history', marketDataLimiter, validate(querySchema, 'query'), async (req, res) => {
   try {
     const { exchange, contract, hours } = req.query as unknown as { exchange: string; contract: string; hours: number };
     const records = await getOpenInterestHistory(exchange, contract, hours);
@@ -83,7 +83,7 @@ router.get('/long-short-ratio/:exchange/:contract', marketDataLimiter, async (re
   }
 });
 
-router.get('/long-short-ratio-history', marketDataLimiter, validate(querySchema), async (req, res) => {
+router.get('/long-short-ratio-history', marketDataLimiter, validate(querySchema, 'query'), async (req, res) => {
   try {
     const { exchange, contract, hours } = req.query as unknown as { exchange: string; contract: string; hours: number };
     const records = await getLongShortRatioHistory(exchange, contract, hours);

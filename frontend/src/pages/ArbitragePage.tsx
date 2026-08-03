@@ -394,6 +394,12 @@ export function ArbitragePage() {
               <IconSearch size={40} className="mx-auto mb-3 text-[var(--text3)]" aria-hidden />
               <p className="font-medium">{t('arb.noOpportunities')}</p>
               <p className="text-xs mt-1">{t('arb.noOpportunitiesHint')}</p>
+              <button
+                onClick={() => loadArbitrage(true, { silent: true })}
+                className="btn btn-primary text-sm py-2 px-4 mt-4"
+              >
+                {t('arb.refreshBtn')}
+              </button>
             </div>
           ) : (
             <>

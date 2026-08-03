@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo, useRef, useLayoutEffect, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { useApp } from '../App';
@@ -61,7 +61,7 @@ export function MainPage() {
     return 'all';
   });
   const [showWatchlistOnly, setShowWatchlistOnly] = useState(() => searchParams.get('wl') === '1');
-  const [alertModal, setAlertModal] = useState<{ exchange: string; contract: string } | null>(null);
+  const [alertModal, setAlertModal] = useState<{ exchange: string; contract: string; x?: number; y?: number } | null>(null);
   const [alertCondition, setAlertCondition] = useState<'above' | 'below' | 'flip'>('above');
   const [alertThreshold, setAlertThreshold] = useState(0.01);
   const [alertCreating, setAlertCreating] = useState(false);
@@ -208,14 +208,25 @@ export function MainPage() {
 
   const isPremium = planLimits.aiEnabled;
 
-  const autoScanDone = useRef(false);
+  // Auto-scan on first visit with limited retries. A failed first attempt (cold
+  // backend start, rate limit) must not leave the page empty until the user
+  // manually refreshes, so we quietly retry twice with a delay. The retry stops
+  // the moment results exist or the user starts their own scan.
+  const autoScanAttempts = useRef(0);
 
   useEffect(() => {
-    if (!scanResults && selectedExchanges.length > 0 && !autoScanDone.current) {
-      autoScanDone.current = true;
+    if (scanResults || scanLoading || selectedExchanges.length === 0) return;
+    if (manualScan.current) return;
+    if (autoScanAttempts.current >= 3) return; // 1 initial + 2 retries
+    const attempt = autoScanAttempts.current;
+    autoScanAttempts.current += 1;
+    if (attempt === 0) {
       runScan(selectedExchanges);
+      return;
     }
-  }, [runScan, scanResults, selectedExchanges]);
+    const timer = setTimeout(() => runScan(selectedExchanges), 15000);
+    return () => clearTimeout(timer);
+  }, [runScan, scanResults, scanLoading, selectedExchanges]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -292,9 +303,9 @@ export function MainPage() {
             value: lastScanMs == null ? '—' : lastScanMs < 1000 ? '<1s' : `${(lastScanMs / 1000).toFixed(1)}s`,
           },
         ].map((kpi) => (
-          <div key={kpi.label} className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5">
-            <div className="text-[11px] text-[var(--text3)] leading-tight">{kpi.label}</div>
-            <div className="font-mono font-bold text-[19px] leading-snug text-[var(--text)]">{kpi.value}</div>
+          <div key={kpi.label} className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 pt-2.5 pb-2.5 min-w-0">
+            <div className="text-[11px] text-[var(--text3)] leading-tight truncate">{kpi.label}</div>
+            <div className="font-mono font-bold text-[19px] leading-snug text-[var(--text)] tabular-nums truncate" title={kpi.value}>{kpi.value}</div>
           </div>
         ))}
       </div>
@@ -616,67 +627,60 @@ export function MainPage() {
       )}
 
       {alertModal && (
-        <div
-          className="fixed inset-0 bg-[rgba(5,7,12,0.5)] flex items-center justify-center z-50 p-2 sm:p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="alert-dialog-title"
-        >
-           <div className="bg-surface rounded-xl max-w-md w-full">
-            <div className="card">
-              <h2 id="alert-dialog-title" className="text-lg font-semibold mb-2">{t('main.createAlert')}</h2>
-              <p className="text-sm text-[var(--text-muted)] mb-4">
-                {alertModal.exchange.toUpperCase()}: {alertModal.contract}
-              </p>
+        <AlertPopover x={alertModal.x} y={alertModal.y} onClose={() => setAlertModal(null)}>
+          <div className="card">
+            <h2 id="alert-dialog-title" className="text-lg font-semibold mb-2">{t('main.createAlert')}</h2>
+            <p className="text-sm text-[var(--text-muted)] mb-4">
+              {alertModal.exchange.toUpperCase()}: {alertModal.contract}
+            </p>
 
-              <div className="mb-4">
-                  <label className="block text-sm font-medium text-[var(--text)] mb-1">{t('main.condition')}</label>
-                <select
-                  value={alertCondition}
-                  onChange={(e) => setAlertCondition(e.target.value as 'above' | 'below' | 'flip')}
-                  className="input-field"
-                >
-                  <option value="above">{t('main.above')}</option>
-                  <option value="below">{t('main.below')}</option>
-                  <option value="flip">{t('main.directionFlip')}</option>
-                </select>
-              </div>
+            <div className="mb-4">
+                <label className="block text-sm font-medium text-[var(--text)] mb-1">{t('main.condition')}</label>
+              <select
+                value={alertCondition}
+                onChange={(e) => setAlertCondition(e.target.value as 'above' | 'below' | 'flip')}
+                className="input-field"
+              >
+                <option value="above">{t('main.above')}</option>
+                <option value="below">{t('main.below')}</option>
+                <option value="flip">{t('main.directionFlip')}</option>
+              </select>
+            </div>
 
-              {alertCondition !== 'flip' && (
-              <div className="mb-4">
-                  <label className="block text-sm font-medium text-[var(--text)] mb-1" htmlFor="alert-threshold">
-                    {t('main.threshold')}
-                  </label>
-                <input
-                  id="alert-threshold"
-                  type="number"
-                  value={alertThreshold}
-                  onChange={(e) => setAlertThreshold(Number(e.target.value) || 0)}
-                  step={0.001}
-                  min={0}
-                  className="input-field"
-                />
-              </div>
-              )}
+            {alertCondition !== 'flip' && (
+            <div className="mb-4">
+                <label className="block text-sm font-medium text-[var(--text)] mb-1" htmlFor="alert-threshold">
+                  {t('main.threshold')}
+                </label>
+              <input
+                id="alert-threshold"
+                type="number"
+                value={alertThreshold}
+                onChange={(e) => setAlertThreshold(Number(e.target.value) || 0)}
+                step={0.001}
+                min={0}
+                className="input-field"
+              />
+            </div>
+            )}
 
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setAlertModal(null)}
-                  className="btn btn-secondary flex-1"
-                >
-                   {t('common.cancel')}
-                </button>
-                <button
-                  onClick={handleCreateAlert}
-                  disabled={alertCreating || (alertCondition !== 'flip' && alertThreshold <= 0)}
-                  className="btn btn-primary flex-1"
-                >
-                  {alertCreating ? t('main.creating') : t('common.create')}
-                </button>
-              </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setAlertModal(null)}
+                className="btn btn-secondary flex-1"
+              >
+                 {t('common.cancel')}
+              </button>
+              <button
+                onClick={handleCreateAlert}
+                disabled={alertCreating || (alertCondition !== 'flip' && alertThreshold <= 0)}
+                className="btn btn-primary flex-1"
+              >
+                {alertCreating ? t('main.creating') : t('common.create')}
+              </button>
             </div>
           </div>
-        </div>
+        </AlertPopover>
       )}
 
       <PaywallModal
@@ -693,6 +697,67 @@ export function MainPage() {
       />
     </div>
     </PullToRefresh>
+  );
+}
+
+// Popover anchored near the tapped element (with viewport clamping) that hosts
+// the alert-creation form. Falls back to screen-center when opened without
+// coordinates (e.g. via the keyboard shortcut). Re-measures on every content
+// size change (the form grows/shrinks when toggling the flip condition).
+function AlertPopover({ x, y, onClose, children }: { x?: number; y?: number; onClose: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const place = () => {
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      const pad = 10;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      let left: number;
+      let top: number;
+      if (x == null || y == null) {
+        left = Math.max(pad, (vw - w) / 2);
+        top = Math.max(pad, (vh - h) / 2);
+      } else {
+        // Place below-right of the tap point; flip left / above when it would
+        // overflow the viewport so the popover never gets cut off.
+        left = x + 10;
+        if (left + w > vw - pad) left = x - w - 10;
+        if (left < pad) left = pad;
+        top = y + 10;
+        if (top + h > vh - pad) top = Math.max(pad, y - h - 10);
+        if (top < pad) top = pad;
+      }
+      setPos((prev) => (prev && prev.left === left && prev.top === top ? prev : { left, top }));
+    };
+    place();
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(place);
+      ro.observe(el);
+    }
+    window.addEventListener('resize', place);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', place);
+    };
+  }, [x, y]);
+
+  return (
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="alert-dialog-title">
+      <div className="absolute inset-0 bg-[rgba(5,7,12,0.5)]" onClick={onClose} aria-hidden="true" />
+      <div
+        ref={ref}
+        className="absolute animate-pop-in rounded-xl"
+        style={{ left: pos?.left ?? 0, top: pos?.top ?? 0, width: 'min(360px, calc(100vw - 20px))', background: 'var(--surface)' }}
+      >
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -757,7 +822,7 @@ const ResultSection = memo(function ResultSection({
   limit: number;
   colorClass: string;
   onHistory: (data: { exchange: string; contract: string }) => void;
-  onAlert: (data: { exchange: string; contract: string }) => void;
+  onAlert: (data: { exchange: string; contract: string }, pos?: { x: number; y: number }) => void;
   searchQuery: string;
   sortBy: SortKey;
   showWatchlistOnly: boolean;
@@ -822,7 +887,7 @@ const ResultItem = memo(function ResultItem({
   item: ExchangeResult;
   sparklineData?: number[];
   onHistory: (data: { exchange: string; contract: string }) => void;
-  onAlert: (data: { exchange: string; contract: string }) => void;
+  onAlert: (data: { exchange: string; contract: string }, pos?: { x: number; y: number }) => void;
   planLimits: PlanLimits;
   watchlistCount: number;
   onWatchlistLimit: () => void;
@@ -889,7 +954,7 @@ const ResultItem = memo(function ResultItem({
               <IconStar size={18} aria-hidden className={starred ? 'fill-current' : ''} />
             </button>
             <button
-              onClick={() => { haptic('light'); onAlert({ exchange: item.exchange, contract: item.contract }); }}
+              onClick={(e) => { haptic('light'); onAlert({ exchange: item.exchange, contract: item.contract }, { x: e.clientX, y: e.clientY }); }}
               className="w-11 h-11 rounded-lg flex items-center justify-center bg-[var(--bg1)] text-[var(--text2)] border border-[var(--border)] active:text-[var(--cobalt-text)] active:border-[var(--cobalt)] transition-all shrink-0"
               aria-label={`Create alert for ${item.exchange} ${item.contract}`}
             >

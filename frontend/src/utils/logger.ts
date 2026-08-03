@@ -40,7 +40,7 @@ function apiBase(): string {
 }
 
 let buffer: LogEntry[] = loadBuffer();
-let sessionId =
+const sessionId =
   localStorage.getItem(SESSION_KEY) || Math.random().toString(36).slice(2, 10);
 localStorage.setItem(SESSION_KEY, sessionId);
 

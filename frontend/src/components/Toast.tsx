@@ -26,6 +26,7 @@ const TOAST_STYLES: Record<Toast['type'], { bg: string; fg: string; border: stri
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const idCounter = useRef(0);
 
   const removeToast = useCallback((id: string) => {
     const timeout = timeoutsRef.current.get(id);
@@ -37,7 +38,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const showToast = useCallback((message: string, type: Toast['type'] = 'info') => {
-    const id = Date.now().toString();
+    // Monotonic counter (not Date.now()): several toasts can fire within the
+    // same millisecond (e.g. parallel WebSocket pushes) — they must still get
+    // unique keys or React would dedupe them and removals would collide.
+    idCounter.current += 1;
+    const id = `toast-${idCounter.current}`;
     setToasts((prev) => [...prev, { id, message, type }]);
     // Important notifications (errors, new spreads) linger a bit longer so
     // they're actually read; transient success/info toasts disappear quickly.

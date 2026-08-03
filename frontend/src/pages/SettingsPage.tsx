@@ -480,20 +480,6 @@ export function SettingsPage() {
       <AccordionSection title={t('settings.appearance')} icon="Palette" defaultOpen={false}>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text2)' }} htmlFor="settings-theme">{t('settings.theme')}</label>
-            <select
-              id="settings-theme"
-              value={settings.theme}
-              onChange={(e) => setSettings((prev) => ({ ...prev, theme: e.target.value as 'auto' | 'light' | 'dark' }))}
-              className="input-field"
-            >
-              <option value="auto">{t('settings.themeAuto')}</option>
-              <option value="light">{t('settings.themeLight')}</option>
-              <option value="dark">{t('settings.themeDark')}</option>
-            </select>
-          </div>
-
-          <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text2)' }} htmlFor="settings-timezone">{t('settings.timezone')}</label>
             <select
               id="settings-timezone"
@@ -519,6 +505,7 @@ export function SettingsPage() {
               <option value="Asia/Tokyo">{t('settings.tzTokyo')}</option>
             </select>
           </div>
+          <p className="text-xs" style={{ color: 'var(--text3)' }}>{t('settings.themeFixed')}</p>
         </div>
       </AccordionSection>
 

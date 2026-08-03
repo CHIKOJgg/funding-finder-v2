@@ -363,6 +363,7 @@ export const en: Record<string, string> = {
   'settings.themeAuto': 'Auto',
   'settings.themeLight': 'Light',
   'settings.themeDark': 'Dark',
+  'settings.themeFixed': 'Funding Finder is always dark — a theme picker would have nothing to switch.',
   'settings.timezone': 'Timezone',
   'settings.tzMsk': 'Moscow (MSK)',
   'settings.tzKaliningrad': 'Kaliningrad (UTC+2)',

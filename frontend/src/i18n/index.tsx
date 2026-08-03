@@ -8,14 +8,16 @@ import { es } from './es';
 
 export type Lang = 'ru' | 'en' | 'tr' | 'vi' | 'hi' | 'es';
 
+// Only fully translated locales are offered in the switcher. TR/VI/HI/ES
+// dictionaries are partial (~60 of 950 keys) and would silently fall back to
+// English — a fake "supported" language. Keep them in DICTS so a previously
+// saved preference still resolves; they just stop being selectable.
 export const LANGUAGES: { code: Lang; label: string }[] = [
   { code: 'ru', label: 'RU' },
   { code: 'en', label: 'EN' },
-  { code: 'tr', label: 'TR' },
-  { code: 'vi', label: 'VI' },
-  { code: 'hi', label: 'HI' },
-  { code: 'es', label: 'ES' },
 ];
+
+export const SUPPORTED_LANG_CODES = new Set<string>(LANGUAGES.map((l) => l.code));
 
 const DICTS: Record<Lang, Dict> = { ru, en, tr, vi, hi, es };
 
@@ -43,11 +45,11 @@ const I18nContext = createContext<I18nContextType>({
 function detectInitialLang(): Lang {
   try {
     const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('ff_lang') : null;
-    if (saved && DICTS[saved as Lang]) return saved as Lang;
+    if (saved && SUPPORTED_LANG_CODES.has(saved)) return saved as Lang;
     const tgLang = (window.Telegram?.WebApp?.initDataUnsafe?.user as any)?.language_code as string | undefined;
-    if (tgLang && DICTS[tgLang as Lang]) return tgLang as Lang;
+    if (tgLang && SUPPORTED_LANG_CODES.has(tgLang)) return tgLang as Lang;
     const nav = (navigator.language || (navigator as any).userLanguage || 'en').slice(0, 2).toLowerCase();
-    if (nav && DICTS[nav as Lang]) return nav as Lang;
+    if (nav && SUPPORTED_LANG_CODES.has(nav)) return nav as Lang;
   } catch {
     /* ignore detection errors */
   }

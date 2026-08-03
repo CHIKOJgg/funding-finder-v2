@@ -417,22 +417,25 @@ export const apiClient = {
 
   async walletVerify(message: string, signature: string) {
     const referredByCode = getStoredReferralCode();
-    const res = await api.post('/auth/wallet/verify', { message, signature, referredByCode });
-    if (res.data?.ok) clearReferralCode();
+    const res: any = await api.post('/auth/wallet/verify', { message, signature, referredByCode });
+    // The response interceptor already unwraps to response.data, so `res.ok`
+    // is the correct check (not res.data?.ok — that is always undefined and
+    // would leak the referral code into the next registration).
+    if (res?.ok) clearReferralCode();
     return res;
   },
 
   async googleLogin(idToken: string) {
     const referredByCode = getStoredReferralCode();
-    const res = await api.post('/auth/google', { idToken, referredByCode });
-    if (res.data?.ok) clearReferralCode();
+    const res: any = await api.post('/auth/google', { idToken, referredByCode });
+    if (res?.ok) clearReferralCode();
     return res;
   },
 
   async emailRegister(email: string, password: string, firstName?: string) {
     const referredByCode = getStoredReferralCode();
-    const res = await api.post('/auth/register', { email, password, firstName, referredByCode });
-    if (res.data?.ok) clearReferralCode();
+    const res: any = await api.post('/auth/register', { email, password, firstName, referredByCode });
+    if (res?.ok) clearReferralCode();
     return res;
   },
 

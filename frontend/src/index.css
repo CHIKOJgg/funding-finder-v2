@@ -403,19 +403,22 @@
   .metric-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 16px;
+    gap: 12px;
     align-items: baseline;
     min-height: 24px;
   }
 
   .metric-label {
     min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--text2);
     font-size: 0.8125rem;
     line-height: 1.35;
   }
 
   .metric-value {
+    min-width: 0;
     color: var(--text);
     font-family: var(--mono);
     font-size: 0.875rem;
@@ -424,6 +427,8 @@
     font-variant-numeric: tabular-nums;
     text-align: right;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .hero-metric {
@@ -433,6 +438,7 @@
     font-weight: 700;
     line-height: 1.15;
     font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
   }
 
   .result-card,
@@ -481,6 +487,10 @@
     flex-direction: column;
     gap: 4px;
     margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--amber);
+    border-radius: 10px;
+    background: var(--amber-soft);
     color: var(--amber);
     font-size: 0.75rem;
     line-height: 1.35;
@@ -554,6 +564,11 @@
     animation: slideIn 0.3s ease-out;
   }
 
+  /* Popovers (tap-anchored dialogs): quick fade + rise, no slide from the side */
+  .animate-pop-in {
+    animation: popIn 0.16s ease-out;
+  }
+
   /* Bump the smallest text up so labels/prices stay legible.
      text-xs: 12px -> 13px, custom 10px -> 12px. */
   .text-xs {
@@ -591,6 +606,17 @@
   to {
     opacity: 1;
     transform: translateX(0);
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
   }
 }
 

@@ -9,11 +9,12 @@ import { sendError } from '../middleware/errorHandler.js';
 const router = Router();
 
 const scheduleSchema = z.object({
-  exchanges: z.array(z.enum(SUPPORTED_EXCHANGES as [string, ...string[]])).max(25).optional(),
+  // Comma-separated CSV string (e.g. "binance,bybit") — parsed in the handler.
+  exchanges: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(50).optional(),
 });
 
-router.get('/funding/schedule', validate(scheduleSchema), async (req, res) => {
+router.get('/funding/schedule', validate(scheduleSchema, 'query'), async (req, res) => {
   try {
     const exchanges = (req.query.exchanges as string | undefined)
       ?.split(',')

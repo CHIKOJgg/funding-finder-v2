@@ -2,23 +2,20 @@ import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { prisma } from '../services/prisma.js';
-import { signAuthToken, verifyAuthToken } from '../services/authService.js';
+import { signAuthToken } from '../services/authService.js';
 import { logger } from '../utils/logger.js';
 import { sendError } from '../middleware/errorHandler.js';
 
-// Auth middleware for QR login request/status (accepts Bearer token only)
+// Auth guard for QR login request/status. The router is mounted behind the
+// unified `authenticate` middleware (accepts both web Bearer tokens AND
+// Telegram Mini App init data), which already resolves `req.userId`. This
+// route-level check only confirms the caller is authenticated — it never
+// re-parses credentials, so both auth methods keep working.
 function requireQrAuth(req: Request, res: Response, next: NextFunction) {
-  const authHeader = req.headers['authorization'];
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.slice('Bearer '.length).trim();
-    const payload = verifyAuthToken(token);
-    if (payload) {
-      (req as AuthenticatedRequest).userId = payload.sub;
-      (req as AuthenticatedRequest).authProvider = payload.provider;
-      return next();
-    }
+  if (!(req as AuthenticatedRequest).userId) {
+    return res.status(401).json({ ok: false, error: 'Authentication required' });
   }
-  return res.status(401).json({ ok: false, error: 'Authentication required' });
+  return next();
 }
 
 // Authenticated router (request + status) — mounted behind auth middleware

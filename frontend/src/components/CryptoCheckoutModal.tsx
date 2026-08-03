@@ -110,7 +110,7 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
         setOrder(res);
         setStatus(res.status || 'waiting');
         if (res.invoiceUrl) {
-          window.open(res.invoiceUrl, '_blank');
+          window.open(res.invoiceUrl, '_blank', 'noopener,noreferrer');
         }
         if (res.simulated) {
           showToast(t('crypto.demoModeToast'), 'success');
@@ -272,7 +272,7 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
                     onClick={() => {
                       if (order.payCurrency?.startsWith('usdt')) {
                         const botLink = 'https://t.me/CryptoBot';
-                        window.open(botLink, '_blank');
+                        window.open(botLink, '_blank', 'noopener,noreferrer');
                       }
                     }}
                     className="btn btn-primary text-xs py-1.5 flex-1"

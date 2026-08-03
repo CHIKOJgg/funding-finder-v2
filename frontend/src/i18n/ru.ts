@@ -341,6 +341,7 @@ export const ru: Record<string, string> = {
   'settings.themeAuto': 'Авто',
   'settings.themeLight': 'Светлая',
   'settings.themeDark': 'Тёмная',
+  'settings.themeFixed': 'Funding Finder всегда в тёмной теме — переключать нечего.',
   'settings.timezone': 'Часовой пояс',
   'settings.tzMsk': 'Москва (MSK)',
   'settings.tzKaliningrad': 'Калининград (UTC+2)',
