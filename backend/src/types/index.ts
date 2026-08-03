@@ -32,6 +32,11 @@ export const EXCHANGE_FUNDING_INTERVALS: Record<string, number> = {
   kucoin: 28800,        // 8h fixed
   cryptocom: 28800,     // 8h fixed
   deribit: 28800,       // 8h fixed
+  kraken: 28800,
+  coinbase: 28800,
+  bitunix: 28800,
+  orderly: 28800,
+  aevo: 28800,
 };
 
 // Funding intervals commonly seen

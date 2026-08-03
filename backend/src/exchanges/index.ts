@@ -26,6 +26,11 @@ import { scanHelix } from './helix.js';
 import { scanApex } from './apex.js';
 import { scanAster } from './aster.js';
 import { scanBluefin } from './bluefin.js';
+import { scanKraken } from './kraken.js';
+import { scanCoinbase } from './coinbase.js';
+import { scanBitunix } from './bitunix.js';
+import { scanOrderly } from './orderly.js';
+import { scanAevo } from './aevo.js';
 import { sleep, circuitBreaker, cleanupConnections } from '../utils/exchangeClient.js';
 import { logger } from '../utils/logger.js';
 
@@ -60,6 +65,11 @@ const EXCHANGE_SCANNERS: Record<string, () => Promise<ExchangeResult[]>> = {
   apex: scanApex,
   aster: scanAster,
   bluefin: scanBluefin,
+  kraken: scanKraken,
+  coinbase: scanCoinbase,
+  bitunix: scanBitunix,
+  orderly: scanOrderly,
+  aevo: scanAevo,
 };
 
 /** Single source of truth for every supported exchange id. */
@@ -146,4 +156,4 @@ export function cleanup(): void {
   logger.info('Cleaned up all exchange connections');
 }
 
-export { scanGate, scanBinance, scanBybit, scanKuCoin, scanCryptoCom, scanDeribit, scanMEXC, scanOKX, scanBitget, scanBingX, scanPhemex, scanWOO, scanHyperliquid, scanDydx, scanParadex, scanHtx, scanCoinEx, scanBloFin, scanBitMart, scanWeex, scanCoinW, scanDrift, scanHelix, scanApex, scanAster, scanBluefin };
+export { scanGate, scanBinance, scanBybit, scanKuCoin, scanCryptoCom, scanDeribit, scanMEXC, scanOKX, scanBitget, scanBingX, scanPhemex, scanWOO, scanHyperliquid, scanDydx, scanParadex, scanHtx, scanCoinEx, scanBloFin, scanBitMart, scanWeex, scanCoinW, scanDrift, scanHelix, scanApex, scanAster, scanBluefin, scanKraken, scanCoinbase, scanBitunix, scanOrderly, scanAevo };

@@ -29,6 +29,11 @@ export const EXCHANGE_LABELS: Record<string, string> = {
   apex: 'ApeX',
   aster: 'Aster',
   bluefin: 'Bluefin',
+  kraken: 'Kraken Futures',
+  coinbase: 'Coinbase International',
+  bitunix: 'Bitunix',
+  orderly: 'Orderly Network',
+  aevo: 'Aevo',
 };
 
 // ---------------------------------------------------------------------------
@@ -104,6 +109,7 @@ export const ALL_EXCHANGES = [
   'htx', 'coinex', 'blofin', 'bitmart', 'weex', 'coinw',
   'drift', 'helix', 'apex', 'aster', 'bluefin',
   'kucoin', 'cryptocom', 'deribit',
+  'kraken', 'coinbase', 'bitunix', 'orderly', 'aevo',
 ];
 
 // Normalize any pair representation a caller might pass — "BTCUSDT",
@@ -191,6 +197,16 @@ function buildBaseTradeUrl(exchange: string, _pair: string, symbol: string, base
       return symbol ? `https://crypto.com/exchange/trade/${base}_USDT-PERP` : 'https://crypto.com/exchange';
     case 'deribit':
       return symbol ? `https://www.deribit.com/main#/markets/${base}-USDT` : 'https://www.deribit.com';
+    case 'kraken':
+      return 'https://futures.kraken.com/trade';
+    case 'coinbase':
+      return 'https://www.coinbase.com/advanced-trade';
+    case 'bitunix':
+      return 'https://www.bitunix.com';
+    case 'orderly':
+      return 'https://orderly.network';
+    case 'aevo':
+      return 'https://app.aevo.xyz';
     default:
       return symbol ? `https://www.binance.com/en/futures/${symbol}` : 'https://www.binance.com/en/futures';
   }
