@@ -370,6 +370,11 @@ app.use('/api/v1/auth', authLimiter, authRoutes);
 import { qrAuthRouter, qrPublicRouter } from './routes/qrLogin.js';
 app.use('/api', qrPublicRouter);             // /api/qr-login/verify (no auth)
 
+// Payment providers do not send Telegram init-data. Mount webhooks before the
+// authenticated /api catch-all routes; signature verification happens inside
+// the webhook router itself.
+app.use('/api/webhook', webhookRoutes);
+
 // Routes with auth
 // Scan hits many exchange APIs and AI calls cost money, so each route group
 // carries its own strict per-user cap (defined inside the route files so the
@@ -392,9 +397,6 @@ app.use('/api/admin', authenticate, adminRoutes);
 
 // Debug/diagnostics routes (require admin role)
 app.use('/api/debug', authenticate, requireAdmin, debugRoutes);
-
-// Webhook routes (no user auth, webhook token/signature verified inside)
-app.use('/api/webhook', webhookRoutes);
 
 // QR Login routes (request/status need auth)
 app.use('/api', authLimiter, authenticate, qrAuthRouter); // /api/qr-login/request, /status
