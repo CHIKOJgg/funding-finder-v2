@@ -4,11 +4,26 @@ import { logger } from '../utils/logger.js';
 
 const isProd = config.isProduction;
 
+function runtimeDatabaseUrl(url: string): string {
+  // Supabase session poolers have a small per-pool client limit. Prisma's
+  // default pool can exhaust it when warm-up jobs and user requests overlap.
+  // Keep schema sync on the original DIRECT_URL; this limit applies only to
+  // the long-running application client.
+  try {
+    const parsed = new URL(url);
+    if (!parsed.searchParams.has('connection_limit')) parsed.searchParams.set('connection_limit', '5');
+    if (!parsed.searchParams.has('pool_timeout')) parsed.searchParams.set('pool_timeout', '20');
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 export const prisma = new PrismaClient({
   log: isProd ? ['error'] : ['error', 'warn'],
   datasources: {
     db: {
-      url: config.databaseUrl,
+      url: runtimeDatabaseUrl(config.databaseUrl),
     },
   },
 });

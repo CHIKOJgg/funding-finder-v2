@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { isAddress, getAddress } from 'ethers';
 import { validate } from '../middleware/validation.js';
 import { authenticate, AuthenticatedRequest } from '../middleware/auth.js';
@@ -244,7 +244,7 @@ const credentialLimiter = rateLimit({
     if (typeof email === 'string' && email.trim()) {
       return `cred:${email.trim().toLowerCase()}`;
     }
-    return `cred:ip:${req.ip || 'unknown'}`;
+    return `cred:ip:${ipKeyGenerator(req.ip || 'unknown')}`;
   },
   message: { ok: false, error: 'Too many attempts. Try again later.' },
 });
