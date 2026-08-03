@@ -24,7 +24,7 @@ export const PLANS: Record<PlanId, Plan> = {
     annualPrice: annualFromMonthly(1),
     price: 1,
     name: 'Pro+',
-    features: ['Все 25 бирж', 'Все функции Pro', 'Персональная поддержка', 'Ранний доступ к фичам', 'White-label'],
+    features: ['Все 31 биржа', 'Все функции Pro', 'Персональная поддержка', 'Ранний доступ к фичам', 'White-label'],
   },
 };
 

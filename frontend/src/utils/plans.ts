@@ -16,7 +16,7 @@ export interface PlanLimits {
 export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
   free: { maxExchanges: 8, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 10, portfolioEnabled: false, label: 'Free' },
   pro: { maxExchanges: 20, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true, label: 'Pro' },
-  proplus: { maxExchanges: 25, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true, label: 'Pro+' },
+  proplus: { maxExchanges: 31, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true, label: 'Pro+' },
 };
 
 const PLAN_ORDER: PlanTier[] = ['free', 'pro', 'proplus'];

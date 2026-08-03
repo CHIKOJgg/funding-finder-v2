@@ -18,7 +18,7 @@ const PLAN_LIMITS: Record<PlanTier, {
   // (Daily free AI tip is handled separately via `lastFreeAiAt`.)
   free: { maxExchanges: 8, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 10, portfolioEnabled: false },
   pro: { maxExchanges: 20, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
-  proplus: { maxExchanges: 25, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
+  proplus: { maxExchanges: 31, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
 };
 
 /** Trial duration in days. */
