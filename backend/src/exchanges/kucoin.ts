@@ -62,7 +62,11 @@ export async function scanKuCoin(): Promise<ExchangeResult[]> {
           const ticker = tickerMap.get(symbol);
           if (!ticker) return null;
 
-          const fundingRateStr = ticker.fundingRate ?? ticker.funding_rate ?? '';
+          const fundingRateStr = ticker.fundingRate
+            ?? ticker.fundingFeeRate
+            ?? ticker.predictedFundingFeeRate
+            ?? ticker.funding_rate
+            ?? '';
           if (!fundingRateStr) return null;
 
           const currentFunding = parseFloat(fundingRateStr);
