@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { logger } from '../utils/logger.js';
-import { cachedRequest } from '../utils/exchangeClient.js';
+import { cache, cachedRequest } from '../utils/exchangeClient.js';
 
 // Live last-price for perpetual contracts, keyed by (exchange, symbol) and
 // cached briefly. The UI only ever fetches prices for the symbols the user is
@@ -216,7 +216,7 @@ export async function getLivePriceBatch(exchange: string, symbols: string[]): Pr
   const lower = exchange.toLowerCase();
 
   // Use bulk ticker endpoints for exchanges that support them
-  if (lower === 'binance' || lower === 'bybit' || lower === 'okx' || lower === 'bitget' || lower === 'mexc') {
+  if (lower === 'binance') {
     try {
       const bulkMap = await fetchBulkTickers(lower);
       if (bulkMap) {
@@ -249,7 +249,7 @@ export async function getLivePriceBatch(exchange: string, symbols: string[]): Pr
 
 async function fetchBulkTickers(exchange: string): Promise<Map<string, number> | null> {
   const cacheKey = `bulkTickers:${exchange}`;
-  const cached = (await import('../utils/exchangeClient.js')).cache.get<Map<string, number>>(cacheKey);
+  const cached = cache.get<Map<string, number>>(cacheKey);
   if (cached) return cached;
 
   let data: any[] | null = null;
@@ -281,8 +281,11 @@ async function fetchBulkTickers(exchange: string): Promise<Map<string, number> |
         break;
       }
     }
-  } catch {
-    // Bulk ticker endpoint unreachable — return null to signal fallback.
+  } catch (err: any) {
+    // Do not fan out per-symbol requests after Binance WAF/rate-limit errors.
+    const status = err?.response?.status;
+    if (status === 418 || status === 429) return new Map<string, number>();
+    // Other bulk endpoint failures may use the single-symbol fallback.
     return null;
   }
 
@@ -323,7 +326,6 @@ async function fetchBulkTickers(exchange: string): Promise<Map<string, number> |
 
   // Cache for 10 seconds — matches the live funding-rate cadence so prices and
   // funding stay in sync on the 10s UI poll instead of prices lagging 15s.
-  const { cache } = await import('../utils/exchangeClient.js');
   cache.set(cacheKey, map, 10_000);
   return map;
 }

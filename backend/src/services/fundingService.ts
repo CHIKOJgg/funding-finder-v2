@@ -43,10 +43,18 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
   try {
     switch (exchange.toLowerCase()) {
       case 'binance': {
-        const r = await cachedRequest(`funding:binance:${symbol}`, () =>
-          axios.get('https://fapi.binance.com/fapi/v1/premiumIndex', { params: { symbol }, timeout: 10000 }), FUNDING_CACHE_TTL_MS);
-        const d = r.data;
-        if (!d) return null;
+        const all = await getCachedList('funding:binance:all', 'https://fapi.binance.com/fapi/v1/premiumIndex');
+        const d = Array.isArray(all) ? all.find((item: any) => item.symbol === symbol) : null;
+        if (!d && Array.isArray(all)) return null;
+        if (!d) {
+          const fallback = await cachedRequest(`funding:binance:${symbol}`, () =>
+            axios.get('https://fapi.binance.com/fapi/v1/premiumIndex', { params: { symbol }, timeout: 10000 }), FUNDING_CACHE_TTL_MS);
+          if (!fallback.data) return null;
+          const rate = num(fallback.data.lastFundingRate);
+          return rate == null
+            ? null
+            : { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: Number(fallback.data.nextFundingTime) || 0 };
+        }
         const rate = num(d.lastFundingRate);
         if (rate == null) return null;
         return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: Number(d.nextFundingTime) || 0 };

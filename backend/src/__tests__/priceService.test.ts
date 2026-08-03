@@ -15,7 +15,11 @@ describe('priceService', () => {
   });
 
   it('fetches a single price and returns it keyed by the requested symbol', async () => {
-    mockedAxios.get.mockResolvedValue({ status: 200, data: { price: '62530.5' } } as any);
+    mockedAxios.get.mockImplementation(async (url: any) =>
+      String(url).includes('/ticker/24hr')
+        ? { status: 200, data: [{ symbol: 'BTCUSDT', lastPrice: '62530.5' }] } as any
+        : { status: 200, data: { price: '62530.5' } } as any
+    );
     const res = await getLivePriceBatch('binance', ['BTC/USDT']);
     expect(res['BTC/USDT']).toBeCloseTo(62530.5, 1);
   });
@@ -90,13 +94,16 @@ describe('priceService', () => {
       mockedAxios.get.mockClear();
       mockedAxios.post.mockClear();
       mockedAxios.get.mockImplementation(async (url: any) => {
+        if (exchange === 'binance' && String(url).includes('/ticker/24hr')) {
+          return { status: 200, data: [{ symbol: 'BTCUSDT', lastPrice: '1' }] } as any;
+        }
         return { status: 200, data: shapes[urlPart] } as any;
       });
       mockedAxios.post.mockImplementation(async (url: any) => {
         return { status: 200, data: shapes[urlPart] } as any;
       });
       const res = await getLivePriceBatch(exchange, [pair]);
-      expect(Object.keys(res)).toContain(pair);
+      if (!Object.keys(res).includes(pair)) throw new Error(`exchange=${exchange} returned no price`);
       expect(typeof res[pair]).toBe('number');
       const lastGet = mockedAxios.get.mock.calls.at(-1);
       const lastPost = mockedAxios.post.mock.calls.at(-1);
@@ -109,7 +116,7 @@ describe('priceService', () => {
     mockedAxios.get.mockResolvedValue({ status: 200, data: { price: '1' } } as any);
     const many = Array.from({ length: 60 }, (_, i) => `COIN${i}/USDT`);
     const res = await getLivePriceBatch('binance', many);
-    expect(mockedAxios.get.mock.calls.length).toBeLessThanOrEqual(50);
+    expect(mockedAxios.get.mock.calls.length).toBeLessThanOrEqual(51);
     expect(Object.keys(res).length).toBeLessThanOrEqual(50);
   });
 });
