@@ -367,6 +367,7 @@ export const ru: Record<string, string> = {
   // Profile
   'profile.loadError': 'Не удалось загрузить данные профиля',
   'profile.paymentCreated': 'Платеж создан',
+  'profile.planSwitchedNoPayment': 'Тариф изменён без повторной оплаты',
   'profile.creating': 'Создание…',
   'profile.paymentError': 'Ошибка при создании платежа: ',
   'profile.referralRequired': 'Введите реферальный код',

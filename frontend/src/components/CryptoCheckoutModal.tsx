@@ -107,6 +107,11 @@ export function CryptoCheckoutModal({ open, planId, planName, price, onClose, on
       setCreating(true);
       const res: any = await apiClient.createOrder(planId, { provider: 'nowpayments', payCurrency: currency });
       if (res?.ok) {
+        if (res.alreadyEntitled) {
+          showToast(t('profile.planSwitchedNoPayment'), 'success');
+          onPaid();
+          return;
+        }
         setOrder(res);
         setStatus(res.status || 'waiting');
         if (res.invoiceUrl) {

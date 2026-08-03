@@ -389,6 +389,7 @@ export const en: Record<string, string> = {
   // Profile
   'profile.loadError': 'Failed to load profile data',
   'profile.paymentCreated': 'Payment created',
+  'profile.planSwitchedNoPayment': 'Plan changed without another payment',
   'profile.creating': 'Creating…',
   'profile.paymentError': 'Error creating payment: ',
   'profile.referralRequired': 'Enter a referral code',

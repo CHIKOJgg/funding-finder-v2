@@ -161,7 +161,26 @@ export async function createOrder(
 
   try {
     // Ensure the user row exists (Order.userId is an FK to User.telegramId)
-    await getUser(telegramId);
+    const user = await getUser(telegramId);
+
+    // A higher active tier already includes every lower tier. Switch down
+    // immediately without creating a second invoice or charging the user.
+    if (planRank(user.subscription) > planRank(planId)) {
+      await prisma.user.update({
+        where: { telegramId },
+        data: { subscription: planId },
+      });
+      return {
+        ok: true,
+        alreadyEntitled: true,
+        switched: true,
+        orderId: null,
+        planId,
+        amount: 0,
+        billingPeriod,
+        currency,
+      };
+    }
 
     // ---- NOWPayments (website / non-Telegram crypto checkout) ----
     if (provider === 'nowpayments') {
@@ -430,7 +449,7 @@ function amountsMatch(expected: number, paid: number): boolean {
 export async function handleCryptoPayWebhook(update: any) {
   if (update?.update_type === 'invoice_paid') {
     const payload = update.payload || {};
-    const invoiceId = payload.invoice_id;
+    const invoiceId = String(payload.invoice_id);
     const paidAmount = parseFloat(payload.amount);
 
     const order = await prisma.order.findFirst({ where: { invoiceId } });

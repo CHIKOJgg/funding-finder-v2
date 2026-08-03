@@ -147,6 +147,11 @@ export function ProfilePage() {
     try {
       const response: any = await apiClient.createOrder(planId);
       if (response.ok) {
+        if (response.alreadyEntitled) {
+          await loadUserData();
+          showToast(t('profile.planSwitchedNoPayment'), 'success');
+          return;
+        }
         const invoiceUrl = response.botInvoiceUrl || response.miniAppInvoiceUrl || response.webAppInvoiceUrl;
         if (invoiceUrl) {
           // window.open is blocked inside the Telegram webview; openLink falls
