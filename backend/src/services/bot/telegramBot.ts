@@ -79,6 +79,14 @@ export class TelegramBot {
     if (!this.stopped) return;
     this.stopped = false;
     logger.info('Telegram bot: long-polling started');
+    // Long polling and a Telegram webhook are mutually exclusive. A stale
+    // webhook (for example from an earlier local/Render setup) makes every
+    // getUpdates call return 409.
+    try {
+      await this.call('deleteWebhook', { drop_pending_updates: false });
+    } catch (err) {
+      logger.warn({ err: (err as Error).message }, 'Telegram bot: failed to clear webhook');
+    }
     // Drop any updates that arrived while we were offline so we don't replay them.
     try {
       const pending = await this.call('getUpdates', { offset: -1, limit: 1 });

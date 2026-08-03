@@ -112,9 +112,20 @@ export const ALL_EXCHANGES = [
 // a slash, or missing the USDT quote) makes the exchange autoroute to its
 // homepage instead of opening the trading pair.
 function normalizePerpSymbol(pair: string): string {
-  const cleaned = (pair || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const base = normalizeBase(pair);
+  return base ? `${base}USDT` : '';
+}
+
+function normalizeBase(pair: string): string {
+  let cleaned = (pair || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!cleaned) return '';
-  return cleaned.endsWith('USDT') ? cleaned : `${cleaned}USDT`;
+  cleaned = cleaned.replace(/(SWAP|PERP)$/, '');
+  for (const quote of ['USDT', 'USDC', 'USD']) {
+    if (cleaned.endsWith(quote) && cleaned.length > quote.length) {
+      return cleaned.slice(0, -quote.length);
+    }
+  }
+  return cleaned;
 }
 
 export function getExchangeTradeUrl(exchange: string, pair: string): string {
@@ -124,7 +135,7 @@ export function getExchangeTradeUrl(exchange: string, pair: string): string {
   return withAffiliate(exchange, url);
 }
 
-function buildBaseTradeUrl(exchange: string, pair: string, symbol: string, base: string): string {
+function buildBaseTradeUrl(exchange: string, _pair: string, symbol: string, base: string): string {
   switch (exchange.toLowerCase()) {
     case 'binance':
       return symbol ? `https://www.binance.com/en/futures/${symbol}` : 'https://www.binance.com/en/futures';
@@ -139,45 +150,45 @@ function buildBaseTradeUrl(exchange: string, pair: string, symbol: string, base:
       // (BTCUSDT) 404s and the exchange autoredirects to its homepage.
       return symbol ? `https://futures.mexc.com/exchange/${base}_USDT` : 'https://futures.mexc.com';
     case 'bitget':
-      return pair ? `https://www.bitget.com/futures/usdt/${pair}` : 'https://www.bitget.com/futures/usdt';
+      return symbol ? `https://www.bitget.com/futures/usdt/${symbol}` : 'https://www.bitget.com/futures/usdt';
     case 'bingx':
-      return pair ? `https://www.bingx.com/futures/${pair}` : 'https://www.bingx.com/futures';
+      return symbol ? `https://www.bingx.com/futures/${base}-USDT` : 'https://www.bingx.com/futures';
     case 'phemex':
-      return pair ? `https://www.phemex.com/futures/${pair}` : 'https://www.phemex.com/futures';
+      return symbol ? `https://www.phemex.com/futures/${symbol}` : 'https://www.phemex.com/futures';
     case 'woo':
-      return pair ? `https://app.woox.io/markets/${pair}` : 'https://app.woox.io/markets';
+      return symbol ? `https://app.woox.io/markets/${base}_USDT` : 'https://app.woox.io/markets';
     case 'hyperliquid':
-      return pair ? `https://hyperliquid.xyz/trade/${pair}` : 'https://hyperliquid.xyz/trade';
+      return base ? `https://hyperliquid.xyz/trade/${base}` : 'https://hyperliquid.xyz/trade';
     case 'dydx':
-      return pair ? `https://dydx.trade/markets/${pair}` : 'https://dydx.trade/markets';
+      return base ? `https://dydx.trade/markets/${base}-USD` : 'https://dydx.trade/markets';
     case 'paradex':
-      return pair ? `https://paradex.io/trade/${pair}` : 'https://paradex.io/trade';
+      return base ? `https://paradex.io/trade/${base}-USD-PERP` : 'https://paradex.io/trade';
     case 'htx':
-      return pair ? `https://www.htx.com/en-us/futures/USDT/${pair}` : 'https://www.htx.com/en-us/futures';
+      return symbol ? `https://www.htx.com/en-us/futures/USDT/${base}-USDT` : 'https://www.htx.com/en-us/futures';
     case 'coinex':
-      return pair ? `https://www.coinex.com/futures/${pair}` : 'https://www.coinex.com/futures';
+      return symbol ? `https://www.coinex.com/futures/${symbol}` : 'https://www.coinex.com/futures';
     case 'blofin':
-      return pair ? `https://blofin.com/futures/${pair}` : 'https://blofin.com/futures';
+      return symbol ? `https://blofin.com/futures/${base}-USDT` : 'https://blofin.com/futures';
     case 'bitmart':
-      return pair ? `https://www.bitmart.com/contract/${pair}` : 'https://www.bitmart.com/contract';
+      return symbol ? `https://www.bitmart.com/contract/${symbol}` : 'https://www.bitmart.com/contract';
     case 'weex':
-      return pair ? `https://www.weex.com/futures/${pair}` : 'https://www.weex.com/futures';
+      return symbol ? `https://www.weex.com/futures/${symbol}` : 'https://www.weex.com/futures';
     case 'coinw':
-      return pair ? `https://www.coinw.com/futures/${pair}` : 'https://www.coinw.com/futures';
+      return symbol ? `https://www.coinw.com/futures/${symbol}` : 'https://www.coinw.com/futures';
     case 'drift':
-      return pair ? `https://drift.trade/market/${pair}` : 'https://drift.trade';
+      return base ? `https://drift.trade/market/${base}-PERP` : 'https://drift.trade';
     case 'helix':
-      return pair ? `https://helixapp.com/trade/${pair}` : 'https://helixapp.com/trade';
+      return base ? `https://helixapp.com/trade/${base.toLowerCase()}usdt-perp` : 'https://helixapp.com/trade';
     case 'apex':
-      return pair ? `https://pro.apex.exchange/market/${pair}` : 'https://pro.apex.exchange';
+      return symbol ? `https://pro.apex.exchange/market/${symbol}` : 'https://pro.apex.exchange';
     case 'aster':
-      return pair ? `https://www.asterdex.com/futures/${pair}` : 'https://www.asterdex.com/futures';
+      return symbol ? `https://www.asterdex.com/futures/${symbol}` : 'https://www.asterdex.com/futures';
     case 'bluefin':
-      return pair ? `https://bluefin.io/trade/${pair}` : 'https://bluefin.io/trade';
+      return base ? `https://bluefin.io/trade/${base}-PERP` : 'https://bluefin.io/trade';
     case 'kucoin':
       return symbol ? `https://futures.kucoin.com/trade/${symbol}` : 'https://futures.kucoin.com';
     case 'cryptocom':
-      return symbol ? `https://crypto.com/exchange/trade/${symbol}` : 'https://crypto.com/exchange';
+      return symbol ? `https://crypto.com/exchange/trade/${base}_USDT-PERP` : 'https://crypto.com/exchange';
     case 'deribit':
       return symbol ? `https://www.deribit.com/main#/markets/${base}-USDT` : 'https://www.deribit.com';
     default:
