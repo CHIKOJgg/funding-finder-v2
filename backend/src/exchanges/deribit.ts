@@ -20,7 +20,7 @@ export async function scanDeribit(): Promise<ExchangeResult[]> {
       async () => {
         const res = await retry(() =>
           client.get('/api/v2/public/get_instruments', {
-            params: { currency: 'BTC', kind: 'future', expiration_period: 'week' },
+             params: { currency: 'BTC', kind: 'future' },
             timeout: 15000,
           }),
           2,
@@ -30,7 +30,7 @@ export async function scanDeribit(): Promise<ExchangeResult[]> {
 
         const ethRes = await retry(() =>
           client.get('/api/v2/public/get_instruments', {
-            params: { currency: 'ETH', kind: 'future', expiration_period: 'week' },
+             params: { currency: 'ETH', kind: 'future' },
             timeout: 15000,
           }),
           2,
@@ -39,7 +39,7 @@ export async function scanDeribit(): Promise<ExchangeResult[]> {
         const ethResult = ethRes.data?.result || [];
 
         return [...btcResult, ...ethResult].filter(
-          (i: any) => i.trading === true && i.is_active === true
+          (i: any) => i.trading === true && i.is_active === true && /PERPETUAL$/.test(i.instrument_name || '')
         );
       },
       300_000
@@ -59,7 +59,11 @@ export async function scanDeribit(): Promise<ExchangeResult[]> {
 
           const fundingRes = await retry(() =>
             client.get('/api/v2/public/get_funding_rate', {
-              params: { instrument_name: symbol },
+            params: {
+              instrument_name: symbol,
+              start_timestamp: Date.now() - 60 * 60 * 1000,
+              end_timestamp: Date.now(),
+            },
               timeout: 10000,
             }),
             2,

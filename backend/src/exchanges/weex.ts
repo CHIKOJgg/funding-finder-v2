@@ -5,7 +5,7 @@ import { toExchangeResult } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
-const WEEX_BASE = 'https://api.weex.com';
+const WEEX_BASE = 'https://api-contract.weex.com';
 const CONCURRENCY = 3;
 const WEEX_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // typical 8h
 
@@ -17,7 +17,7 @@ export async function scanWeex(): Promise<ExchangeResult[]> {
     const symbols = await cachedRequest(
       'weex:symbols',
       async () => {
-        const res = await retry(() => client.get('/api/v1/futures/public/symbols'));
+        const res = await retry(() => client.get('/capi/v2/market/contracts'));
         return res.data?.data || res.data?.result || [];
       },
       6 * 60 * 60 * 1000
@@ -32,8 +32,8 @@ export async function scanWeex(): Promise<ExchangeResult[]> {
       const symbol = s.symbol; // BTCUSDT
       try {
         const [fr, tk] = await Promise.allSettled([
-          retry(() => client.get('/api/v1/futures/public/funding-rate', { params: { symbol }, timeout: 10000 })),
-          retry(() => client.get('/api/v1/futures/public/ticker', { params: { symbol }, timeout: 10000 })),
+          retry(() => client.get('/capi/v2/market/funding_rate', { params: { symbol }, timeout: 10000 })),
+          retry(() => client.get('/capi/v2/market/tickers', { params: { symbol }, timeout: 10000 })),
         ]);
         const fd = fr.status === 'fulfilled' ? fr.value.data?.data : null;
         const td = tk.status === 'fulfilled' ? tk.value.data?.data : null;

@@ -128,12 +128,14 @@ export async function scanOKX(): Promise<ExchangeResult[]> {
             maxLeverage: instr.lever ? parseInt(instr.lever) : undefined,
           }).catch(() => {});
 
-          // Use funding data from the ticker batch response instead of N+1 API calls.
-          // OKX tickers endpoint includes fundingRate and nextFundingTime fields.
-          const currentFunding = parseFloat(ticker.fundingRate) || 0;
-          const nextFundingTime = ticker.nextFundingTime
-            ? new Date(ticker.nextFundingTime).getTime()
-            : 0;
+           // Tickers do not include funding fields. Use the documented public
+           // funding endpoint and cache each instrument briefly.
+           const funding = await cachedRequest(`okx:funding:${symbol}`, async () => {
+             const res = await retry(() => client.get('/api/v5/public/funding-rate', { params: { instId: symbol } }));
+             return res.data?.data?.[0] || null;
+           }, 60_000);
+           const currentFunding = parseFloat(funding?.fundingRate) || 0;
+           const nextFundingTime = funding?.nextFundingTime ? Number(funding.nextFundingTime) : 0;
 
            const mark = parseFloat(ticker.last) || 0;
            const vol24 = parseFloat(ticker.volCcy24h) || parseFloat(ticker.vol24h) || 0;

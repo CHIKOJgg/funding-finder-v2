@@ -40,9 +40,10 @@ export async function scanHtx(): Promise<ExchangeResult[]> {
       'htx:tickers',
       async () => {
         try {
-          const res = await retry(() => client.get('/linear-swap-api/v1/swap_ticker'));
+          const res = await retry(() => client.get('/linear-swap-ex/market/detail/merged', { params: { contract_code: 'BTC-USDT' } }));
+          const rows = Array.isArray(res.data?.data) ? res.data.data : [res.data?.tick];
           const m = new Map<string, number>();
-          for (const t of res.data?.data || []) m.set(t.contract_code, safeParseFloat(t.last_price));
+          for (const t of rows.filter(Boolean)) m.set(t.contract_code || 'BTC-USDT', safeParseFloat(t.close ?? t.last_price));
           return m;
         } catch {
           return new Map<string, number>();

@@ -47,8 +47,8 @@ export async function scanBingX(): Promise<ExchangeResult[]> {
             timeout: 15000,
           })
         );
-        const history = frRes.data?.data || [];
-        const latest = Array.isArray(history) ? history[0] : null;
+         const history = frRes.data?.data || [];
+         const latest = Array.isArray(history) ? history[0] : history;
         const currentFunding = safeParseFloat(latest?.fundingRate);
         const lastFundingTime = Number(latest?.fundingTime) || 0;
         const markFromFr = safeParseFloat(latest?.markPrice) || mark;
