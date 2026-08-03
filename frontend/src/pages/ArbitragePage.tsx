@@ -738,13 +738,13 @@ const OpportunityCard = memo(function OpportunityCard({
 
       <button
         onClick={() => { haptic('light'); openExchange(opp.exchangeA, opp.pair); setTimeout(() => openExchange(opp.exchangeB, opp.pair), 400); }}
-        className="btn btn-primary text-sm py-2 w-full mb-2"
+         className="btn btn-primary text-sm py-2 w-full mt-3 mb-3"
         title={t('arb.openBothTitle', { pair: opp.pair, a: exchangeLabel(opp.exchangeA), b: exchangeLabel(opp.exchangeB) })}
       >
         {t('arb.openBoth', { a: exchangeLabel(opp.exchangeA), b: exchangeLabel(opp.exchangeB) })}
       </button>
 
-      <details className="advanced-details">
+       <details className="advanced-details mt-2">
         <summary>{t('arb.moreDetails')}</summary>
         <div className="details-grid">
           <div className="metric-row"><span className="metric-label">{cleanLabel(t('arb.grossLabel'))}</span><span className="metric-value">{opp.profit?.grossDaily != null ? `${(opp.profit.grossDaily / 1000 * 100).toFixed(1)}%` : '—'}</span></div>
