@@ -19,7 +19,7 @@ router.post('/trial/activate', async (req: AuthenticatedRequest, res) => {
     // This prevents two concurrent requests from both activating the trial.
     const endsAt = new Date(Date.now() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000);
     const updated = await prisma.user.update({
-      where: { telegramId: userId, trialUsed: false },
+      where: { telegramId: userId, trialUsed: false, subscription: 'free' },
       data: { subscription: 'pro', trialUsed: true, trialEndsAt: endsAt },
     });
 
@@ -38,7 +38,7 @@ router.post('/trial/activate', async (req: AuthenticatedRequest, res) => {
         where: { telegramId: req.userId! },
         select: { subscription: true, trialEndsAt: true },
       });
-      if (user?.subscription === 'pro') {
+      if (user?.subscription === 'pro' && user.trialEndsAt && user.trialEndsAt.getTime() > Date.now()) {
         const endsAtMs = user.trialEndsAt ? user.trialEndsAt.getTime() : null;
         const msLeft = endsAtMs ? Math.max(0, endsAtMs - Date.now()) : 0;
         return res.json({

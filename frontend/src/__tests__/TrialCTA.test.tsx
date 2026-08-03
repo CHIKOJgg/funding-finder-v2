@@ -47,7 +47,7 @@ function renderCTA(ctx: any) {
 describe('TrialCTA', () => {
   it('shows the free-trial activation CTA when no trial yet', () => {
     renderCTA({ ...baseCtx, trialStatus: null });
-    expect(screen.getByText(/Активировать 7 дня/)).toBeInTheDocument();
+    expect(screen.getByText(/Активировать 3 дня/)).toBeInTheDocument();
   });
 
   it('shows active countdown when trial is active', () => {
@@ -58,7 +58,7 @@ describe('TrialCTA', () => {
   it('calls activateTrial when CTA clicked', () => {
     const activateTrial = vi.fn().mockResolvedValue(false);
     renderCTA({ ...baseCtx, activateTrial });
-    fireEvent.click(screen.getByText(/Активировать 7 дня/));
+    fireEvent.click(screen.getByText(/Активировать 3 дня/));
     expect(activateTrial).toHaveBeenCalledOnce();
   });
 
@@ -69,4 +69,3 @@ describe('TrialCTA', () => {
     expect(btn).not.toBeDisabled();
   });
 });
-

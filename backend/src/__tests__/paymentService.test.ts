@@ -210,11 +210,12 @@ describe('paymentService', () => {
       (prismaMock.order.findUnique as jest.Mock).mockImplementation((args: any) =>
         args?.where?.id ? Promise.resolve(order) : Promise.resolve(null)
       );
-      (prismaMock.user.findUnique as jest.Mock).mockResolvedValue({ subscription: 'free', referredBy: 'referrer_id' });
+      (prismaMock.user.findUnique as jest.Mock).mockResolvedValue({ id: 'referred_id', subscription: 'free', referredBy: 'referrer_id' });
       (prismaMock.user.update as jest.Mock).mockResolvedValue({});
+      (prismaMock.user.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
       (prismaMock.paymentHistory.create as jest.Mock).mockResolvedValue({ id: 'ph1' });
       (prismaMock.paymentRecord.findUnique as jest.Mock).mockResolvedValue(null);
-      // Atomic claim: only ONE caller may flip referralCredited false->true.
+      // Atomic claim: only ONE caller may claim the referred user's first payment.
       (prismaMock.order.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
 
       await updateOrderFromWebhook('order_ref', 'paid');
@@ -224,6 +225,12 @@ describe('paymentService', () => {
       );
       expect(referrerUpdate).toBeDefined();
       expect(referrerUpdate[0].data.balance.increment).toBeCloseTo(99 * 0.2, 5);
+      expect(prismaMock.user.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'referred_id', referralFirstPaymentCredited: false },
+          data: { referralFirstPaymentCredited: true },
+        })
+      );
       expect(prismaMock.order.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'order_ref', referralCredited: false },
@@ -237,11 +244,12 @@ describe('paymentService', () => {
       (prismaMock.order.findUnique as jest.Mock).mockImplementation((args: any) =>
         args?.where?.id ? Promise.resolve(order) : Promise.resolve(null)
       );
-      (prismaMock.user.findUnique as jest.Mock).mockResolvedValue({ subscription: 'free', referredBy: 'referrer_id' });
+      (prismaMock.user.findUnique as jest.Mock).mockResolvedValue({ id: 'referred_id', subscription: 'free', referredBy: 'referrer_id' });
       (prismaMock.user.update as jest.Mock).mockResolvedValue({});
       (prismaMock.paymentHistory.create as jest.Mock).mockResolvedValue({ id: 'ph1' });
       (prismaMock.paymentRecord.findUnique as jest.Mock).mockResolvedValue(null);
-      // A replayed webhook: the flag is already true, so the atomic claim loses.
+      // A replayed webhook: the user-level atomic claim loses.
+      (prismaMock.user.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
       (prismaMock.order.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
 
       await updateOrderFromWebhook('order_ref2', 'paid');

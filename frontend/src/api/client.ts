@@ -129,11 +129,11 @@ async function retryRequest<T>(
       return await fn();
     } catch (err) {
       lastError = err as Error;
-      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      const status = axios.isAxiosError(err) ? err.response?.status : (err as any).status;
       logger.warn('net', `request attempt ${i + 1}/${retries + 1} failed${status ? ` (${status})` : ''}: ${(err as Error).message}`);
       // Check raw Axios error before interceptor transforms it
-      if (axios.isAxiosError(err)) {
-        const st = err.response?.status;
+      if (axios.isAxiosError(err) || status !== undefined) {
+        const st = axios.isAxiosError(err) ? err.response?.status : status;
         // 429 rate-limit: trigger the global backoff so we stop hammering the
         // server (retrying only worsens the storm), then surface it immediately.
         if (st === 429) {
@@ -197,6 +197,7 @@ api.interceptors.response.use(
     const message = res?.data?.error || error.message || 'Network error';
     logger.error('net', `${res?.status || 'ERR'} ${error.config?.method?.toUpperCase?.() || 'GET'} ${error.config?.url || ''} (${ms}ms): ${message}`);
     const err = new Error(message);
+    (err as any).status = res?.status;
     // Surface rate-limit responses as a distinct, recoverable condition so
     // callers can show a friendly message and back off instead of crashing
     // or hammering the server.

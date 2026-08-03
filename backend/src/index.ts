@@ -50,7 +50,7 @@ import portfolioRoutes from './routes/portfolio.js';
 import portfolioLiveRoutes from './routes/portfolioLive.js';
 import keysRoutes from './routes/keys.js';
 import webhookRoutes from './routes/webhook.js';
-import { getInvoiceStatus, updateOrderFromWebhook } from './services/paymentService.js';
+import { getInvoiceStatus, reconcileCryptoPayInvoice, updateOrderFromWebhook } from './services/paymentService.js';
 import adminRoutes from './routes/admin.js';
 import debugRoutes from './routes/debug.js';
 import publicRoutes from './routes/public.js';
@@ -557,7 +557,7 @@ async function reconcileCryptoPayOrders() {
     if (!order.invoiceId) continue;
     const invoice = await getInvoiceStatus(order.invoiceId);
     if (!invoice?.status) continue;
-    await updateOrderFromWebhook(order.invoiceId, invoice.status);
+    await reconcileCryptoPayInvoice(order.invoiceId, invoice);
     if (invoice.status === 'paid') updated += 1;
   }
   if (updated > 0) logger.info(`Crypto Pay: confirmed ${updated} order(s) by polling`);

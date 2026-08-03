@@ -168,7 +168,7 @@ export async function createOrder(
     if (planRank(user.subscription) > planRank(planId)) {
       await prisma.user.update({
         where: { telegramId },
-        data: { subscription: planId },
+        data: { subscription: planId, subscriptionSourceOrderId: null },
       });
       return {
         ok: true,
@@ -308,10 +308,10 @@ export async function updateOrderFromWebhook(
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({ where: { telegramId: order.userId } });
       if (!user) return null;
-      if (user.subscription === order.planId && order.planId !== 'free') {
+      if (user.subscription === order.planId && user.subscriptionSourceOrderId === order.id && order.planId !== 'free') {
         await tx.user.update({
           where: { telegramId: order.userId },
-          data: { subscription: 'free' },
+          data: { subscription: 'free', subscriptionExpiresAt: null, subscriptionSourceOrderId: null, subscriptionReminderSent: 0 },
         });
         logger.info({ userId: order.userId, plan: order.planId }, 'Subscription revoked after refund/failure');
       }
@@ -333,6 +333,7 @@ export async function updateOrderFromWebhook(
     const result = await prisma.$transaction(async (tx) => {
       const currentOrder = await tx.order.findUnique({ where: { id: order.id } });
       if (!currentOrder) return null;
+      if (currentOrder.status === 'paid') return currentOrder;
 
       // Re-read inside the transaction to get the freshest subscription.
       const user = await tx.user.findUnique({ where: { telegramId: order.userId } });
@@ -355,12 +356,12 @@ export async function updateOrderFromWebhook(
       if (newRank > currentRank) {
         await tx.user.update({
           where: { telegramId: order.userId },
-          data: { subscription: order.planId, subscriptionExpiresAt, subscriptionReminderSent: 0, trialEndsAt: null },
+          data: { subscription: order.planId, subscriptionExpiresAt, subscriptionSourceOrderId: order.id, subscriptionReminderSent: 0, trialEndsAt: null },
         });
       } else {
         await tx.user.update({
           where: { telegramId: order.userId },
-          data: { subscriptionExpiresAt, subscriptionReminderSent: 0, trialEndsAt: null },
+          data: { subscriptionExpiresAt, subscriptionSourceOrderId: order.id, subscriptionReminderSent: 0, trialEndsAt: null },
         });
       }
 
@@ -396,9 +397,9 @@ export async function updateOrderFromWebhook(
       // transaction can win the `referralCredited: false` claim. Amount is
       // capped at the plan price (no negative or absurd values).
       if (user.referredBy) {
-        const claimed = await tx.order.updateMany({
-          where: { id: order.id, referralCredited: false },
-          data: { referralCredited: true },
+        const claimed = await tx.user.updateMany({
+          where: { id: user.id, referralFirstPaymentCredited: false },
+          data: { referralFirstPaymentCredited: true },
         });
         if (claimed.count === 1) {
           const REFERRAL_RATE = 0.2; // 20% of first payment
@@ -409,6 +410,7 @@ export async function updateOrderFromWebhook(
           });
           logger.info({ referrerId: user.referredBy, orderId: order.id, bonus }, 'Referral bonus (20% of first payment) credited to balance');
         }
+        await tx.order.updateMany({ where: { id: order.id, referralCredited: false }, data: { referralCredited: true } });
       }
 
       return currentOrder;
@@ -460,9 +462,10 @@ export async function handleCryptoPayWebhook(update: any) {
   if (update?.update_type === 'invoice_paid') {
     const payload = update.payload || {};
     const invoiceId = String(payload.invoice_id);
-    const paidAmount = parseFloat(payload.amount);
+    const paidAmount = parseFloat(String(payload.paid_amount ?? payload.amount));
+    const paidAsset = String(payload.paid_asset ?? payload.asset ?? '').toUpperCase();
 
-    const order = await prisma.order.findFirst({ where: { invoiceId } });
+    const order = await prisma.order.findFirst({ where: { invoiceId }, include: { invoice: true } });
     if (!order) {
       logger.warn({ invoiceId }, 'Crypto Pay webhook: order not found');
       return { success: false };
@@ -476,11 +479,28 @@ export async function handleCryptoPayWebhook(update: any) {
       );
       return { success: false };
     }
+    if (order.invoice?.provider !== 'crypto_pay' || paidAsset !== String(order.currency).toUpperCase()) {
+      logger.error({ invoiceId, paidAsset, expectedAsset: order.currency }, 'Crypto Pay webhook: provider or asset mismatch');
+      return { success: false };
+    }
 
     await updateOrderFromWebhook(invoiceId, 'paid');
     return { success: true };
   }
   return { success: false };
+}
+
+/** Reconcile a Crypto Pay invoice using the same validation as webhooks. */
+export async function reconcileCryptoPayInvoice(invoiceId: string, invoice: any) {
+  const order = await prisma.order.findFirst({ where: { invoiceId }, include: { invoice: true } });
+  if (!order || order.invoice?.provider !== 'crypto_pay') return false;
+  if (invoice?.status === 'paid') {
+    const paidAmount = parseFloat(String(invoice.paid_amount ?? invoice.amount));
+    const paidAsset = String(invoice.paid_asset ?? invoice.asset ?? '').toUpperCase();
+    if (!amountsMatch(order.amount, paidAmount) || paidAsset !== String(order.currency).toUpperCase()) return false;
+  }
+  await updateOrderFromWebhook(invoiceId, invoice.status);
+  return true;
 }
 
 export async function getWithdrawalHistory(userId: string, limit: number = 50, offset: number = 0) {

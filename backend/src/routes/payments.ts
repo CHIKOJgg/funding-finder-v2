@@ -8,12 +8,13 @@ import {
   getOrder,
   getInvoice,
   getInvoiceStatus,
+  reconcileCryptoPayInvoice,
   updateOrderFromWebhook,
   getWithdrawalHistory,
   getPaymentHistory,
   getUserBalance,
 } from '../services/paymentService.js';
-import { getNowPaymentsStatus, mapNowPaymentsStatus } from '../services/nowPaymentsService.js';
+import { getNowPaymentsPayment, handleNowPaymentsWebhook, mapNowPaymentsStatus } from '../services/nowPaymentsService.js';
 import { prisma } from '../services/prisma.js';
 import { config } from '../config/index.js';
 import { logger } from '../utils/logger.js';
@@ -89,11 +90,17 @@ router.get('/orderStatus/:orderId', async (req, res) => {
     // getNowPaymentsStatus no-ops when no API key is configured (simulation).
     if (invoice?.provider === 'nowpayments' && invoice.paymentId) {
       if (['pending', 'waiting', 'confirming'].includes(order.status)) {
-        const npStatus = await getNowPaymentsStatus(invoice.paymentId);
-        if (npStatus) {
+        const payment = await getNowPaymentsPayment(invoice.paymentId);
+        const npStatus = payment?.payment_status;
+        if (payment && npStatus) {
           const mapped = mapNowPaymentsStatus(npStatus);
           if (mapped === 'paid') {
-            await updateOrderFromWebhook(order.id, 'paid', 'nowpayments');
+            await handleNowPaymentsWebhook({
+              ...payment,
+              payment_id: payment.payment_id ?? invoice.paymentId,
+              order_id: order.id,
+              payment_status: npStatus,
+            });
           } else if (mapped === 'failed') {
             await updateOrderFromWebhook(order.id, 'failed', 'nowpayments');
           } else {
@@ -104,7 +111,7 @@ router.get('/orderStatus/:orderId', async (req, res) => {
     } else if (order.invoiceId) {
       const invoiceStatus = await getInvoiceStatus(order.invoiceId);
       if (invoiceStatus) {
-        await updateOrderFromWebhook(order.invoiceId, invoiceStatus.status);
+          await reconcileCryptoPayInvoice(order.invoiceId, invoiceStatus);
         const updatedOrder = await getOrder(req.params.orderId);
         return res.json({ ok: true, order: updatedOrder, invoice });
       }
@@ -125,6 +132,9 @@ if (!config.isProduction) {
     try {
       const order = await getOrder(req.params.orderId);
       if (!order) return res.status(404).json({ ok: false, error: 'Order not found' });
+      if (order.userId !== (req as AuthenticatedRequest).userId) {
+        return res.status(403).json({ ok: false, error: 'Forbidden' });
+      }
       const updated = await updateOrderFromWebhook(order.id, 'paid', 'nowpayments');
       res.json({ ok: true, order: updated });
     } catch (e) {

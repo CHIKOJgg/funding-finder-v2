@@ -17,6 +17,6 @@ describe('PaywallModal portfolio feature', () => {
     expect(screen.getByText('Симулятор портфеля')).toBeInTheDocument();
     expect(screen.getByText(/Только для подписчиков Pro/)).toBeInTheDocument();
     // Trial CTA is shown as an alternative for portfolio gating
-    expect(screen.getByText(/Активировать 7 дня/)).toBeInTheDocument();
+    expect(screen.getByText(/Активировать 3 дня/)).toBeInTheDocument();
   });
 });

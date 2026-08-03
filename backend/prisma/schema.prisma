@@ -25,6 +25,8 @@ model User {
   subscription   String   @default("free")
   subscriptionExpiresAt DateTime?
   subscriptionReminderSent Int @default(0) // bitmask: 3 days, 1 day, expiry day
+  subscriptionSourceOrderId String?
+  referralFirstPaymentCredited Boolean @default(false)
   trialUsed      Boolean  @default(false)
   trialEndsAt    DateTime?
   trialScans     Int      @default(1)

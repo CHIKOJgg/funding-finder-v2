@@ -296,6 +296,19 @@ function DataProvider() {
   const [arbError, setArbError] = useState<string | null>(null);
   const [alertsLoaded, setAlertsLoaded] = useState(false);
 
+  // Never carry entitlement or user-scoped data into another session. A
+  // failed profile request must not leave the previous user's Pro state active.
+  useEffect(() => {
+    setSubscription('free');
+    setTrialStatus(null);
+    setWatchlist([]);
+    setScanResults(null);
+    setArbOpportunities([]);
+    setArbAlerts([]);
+    setArbLoaded(false);
+    setAlertsLoaded(false);
+  }, [user?.id]);
+
   // In-flight promises (dedupe so switching tabs never restarts a request)
   const scanInFlight = useRef<Promise<void> | null>(null);
   const arbInFlight = useRef<Promise<void> | null>(null);

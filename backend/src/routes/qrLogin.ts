@@ -210,11 +210,14 @@ qrPublicRouter.post('/qr-login/verify', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Token expired' });
     }
 
-    // Mark as consumed
-    await prisma.qrLoginToken.update({
-      where: { token },
+    // Consume atomically so two concurrent scans cannot mint two sessions.
+    const consumed = await prisma.qrLoginToken.updateMany({
+      where: { token, consumed: false },
       data: { consumed: true },
     });
+    if (consumed.count !== 1) {
+      return res.status(400).json({ ok: false, error: 'Token already consumed' });
+    }
 
     // Generate a JWT session for the desktop browser
     const authToken = signAuthToken({ sub: record.userId, provider: 'telegram' });

@@ -157,6 +157,16 @@ export async function handleNowPaymentsWebhook(update: NowPaymentsUpdate) {
     return { success: false, processed: false };
   }
 
+  const storedInvoice = await prisma.invoice.findUnique({ where: { orderId: order.id } });
+  if (paymentId && storedInvoice?.paymentId && paymentId !== storedInvoice.paymentId) {
+    logger.error({ paymentId, storedPaymentId: storedInvoice.paymentId, orderId: order.id }, 'NOWPayments webhook: payment ID mismatch');
+    return { success: false, processed: false };
+  }
+  if (update.pay_currency && storedInvoice?.payCurrency && update.pay_currency.toLowerCase() !== storedInvoice.payCurrency.toLowerCase()) {
+    logger.error({ paymentId, payCurrency: update.pay_currency, expected: storedInvoice.payCurrency }, 'NOWPayments webhook: currency mismatch');
+    return { success: false, processed: false };
+  }
+
   // Always reflect the latest raw status on the invoice (for polling/display).
   await prisma.invoice.updateMany({
     where: { orderId: order.id },
@@ -169,7 +179,8 @@ export async function handleNowPaymentsWebhook(update: NowPaymentsUpdate) {
   }
 
   if (status === 'failed') {
-    await prisma.order.update({ where: { id: order.id }, data: { status: 'failed' } });
+    const { updateOrderFromWebhook } = await import('./paymentService.js');
+    await updateOrderFromWebhook(order.id, 'failed', 'nowpayments');
     return { success: true, processed: true, status: 'failed' };
   }
 
@@ -180,7 +191,7 @@ export async function handleNowPaymentsWebhook(update: NowPaymentsUpdate) {
   // (with a tiny rounding allowance) and never accept a partial/under payment.
   // Fail-closed: if the amount data is missing from the IPN we must NOT grant
   // a subscription — an ambiguous payment must be resolved manually/reconciled.
-  const invoice = await prisma.invoice.findUnique({ where: { orderId: order.id } });
+  const invoice = storedInvoice;
   const expected = invoice?.payAmount;
   const actuallyPaid = update.actually_paid != null ? parseFloat(String(update.actually_paid)) : undefined;
 
@@ -209,14 +220,20 @@ export async function handleNowPaymentsWebhook(update: NowPaymentsUpdate) {
 
 /** Fetch the current status of a payment from NOWPayments (used for polling). */
 export async function getNowPaymentsStatus(paymentId: string): Promise<string | null> {
+  const payment = await getNowPaymentsPayment(paymentId);
+  return payment?.payment_status || null;
+}
+
+export async function getNowPaymentsPayment(paymentId: string): Promise<NowPaymentsUpdate | null> {
   if (!config.nowPayments.apiKey) return null;
   try {
     const res = await axios.get(`${NP_BASE}/payment/${paymentId}`, {
       headers: { 'x-api-key': config.nowPayments.apiKey },
       timeout: 10000,
     });
-    if (res.data?.payment_status) return res.data.payment_status;
-    return null;
+    return res.data?.payment_status
+      ? { ...res.data, payment_id: res.data.payment_id ?? paymentId }
+      : null;
   } catch {
     return null;
   }
@@ -244,7 +261,8 @@ export async function reconcileNowPaymentsOrders(): Promise<number> {
   for (const order of openOrders) {
     const paymentId = order.invoice?.paymentId;
     if (!paymentId) continue;
-    const status = await getNowPaymentsStatus(paymentId);
+    const payment = await getNowPaymentsPayment(paymentId);
+    const status = payment?.payment_status;
     if (!status) continue;
 
     await prisma.invoice.updateMany({
@@ -254,12 +272,21 @@ export async function reconcileNowPaymentsOrders(): Promise<number> {
 
     const mapped = mapNowPaymentsStatus(status);
     if (mapped === 'paid') {
-      const { updateOrderFromWebhook } = await import('./paymentService.js');
-      await updateOrderFromWebhook(order.id, 'paid', 'nowpayments');
-      updated++;
+      const result = await handleNowPaymentsWebhook({
+        ...payment,
+        payment_id: payment?.payment_id ?? paymentId,
+        order_id: order.id,
+        payment_status: status,
+      });
+      if (result.success) updated++;
     } else if (mapped === 'failed') {
-      await prisma.order.update({ where: { id: order.id }, data: { status: 'failed' } });
-      updated++;
+      const result = await handleNowPaymentsWebhook({
+        ...payment,
+        payment_id: payment?.payment_id ?? paymentId,
+        order_id: order.id,
+        payment_status: status,
+      });
+      if (result.success) updated++;
     } else {
       await prisma.order.update({ where: { id: order.id }, data: { status: mapped } });
     }

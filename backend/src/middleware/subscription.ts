@@ -22,7 +22,7 @@ const PLAN_LIMITS: Record<PlanTier, {
 };
 
 /** Trial duration in days. */
-export const TRIAL_DURATION_DAYS = 7;
+export const TRIAL_DURATION_DAYS = 3;
 
 /** Days-before-expiry thresholds at which a reminder is sent (TG push). */
 export const TRIAL_REMINDER_DAYS = [2, 1];

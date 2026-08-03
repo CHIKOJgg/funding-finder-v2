@@ -33,7 +33,7 @@ export function getPlanLimits(subscription: string | undefined): PlanLimits {
 
 export type PaywallFeature = 'exchanges' | 'ai' | 'recommendations' | 'portfolio' | 'watchlist';
 
-export const TRIAL_DURATION_DAYS = 7;
+export const TRIAL_DURATION_DAYS = 3;
 
 // Зеркало цен из backend/src/services/paymentService.ts (годовая = -20%).
 export const PLAN_PRICES: Record<Exclude<PlanTier, 'free'>, { monthly: number; annual: number }> = {
