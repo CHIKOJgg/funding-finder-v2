@@ -61,6 +61,7 @@ export function ProfilePage() {
   const [withdrawalHistory, setWithdrawalHistory] = useState<any[]>([]);
   const [balance, setBalance] = useState(0);
   const [subscription, setSubscription] = useState('free');
+  const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [userStats, setUserStats] = useState<UserStats>({ totalScans: 0, totalAlerts: 0, uniqueExchanges: 0 });
 
@@ -119,6 +120,7 @@ export function ProfilePage() {
       if (profileRes && (profileRes as any).ok) {
         const profile = (profileRes as any).user || profileRes;
         setSubscription(profile.subscription || 'free');
+        setSubscriptionExpiresAt(profile.subscriptionExpiresAt || null);
         if (profile.balance !== undefined) setBalance(profile.balance);
         setUserStats({
           totalScans: profile.totalScans || 0,
@@ -444,6 +446,11 @@ export function ProfilePage() {
             <p className="text-sm opacity-90 mt-2">
               {t('profile.planDesc')}
             </p>
+            {subscription !== 'free' && subscriptionExpiresAt && (
+              <p className="text-sm opacity-90 mt-2">
+                {t('profile.subscriptionUntil')}: {new Date(subscriptionExpiresAt).toLocaleDateString()}
+              </p>
+            )}
           </div>
         </div>
 

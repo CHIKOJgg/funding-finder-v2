@@ -93,6 +93,7 @@ function publicUser(user: any) {
     firstName: user.firstName,
     username: user.username,
     subscription: user.subscription,
+    subscriptionExpiresAt: user.subscriptionExpiresAt,
     referralCode: user.referralCode,
   };
 }

@@ -23,6 +23,8 @@ model User {
   firstName      String?
   role           String   @default("user")
   subscription   String   @default("free")
+  subscriptionExpiresAt DateTime?
+  subscriptionReminderSent Int @default(0) // bitmask: 3 days, 1 day, expiry day
   trialUsed      Boolean  @default(false)
   trialEndsAt    DateTime?
   trialScans     Int      @default(1)

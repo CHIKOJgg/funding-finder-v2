@@ -138,6 +138,41 @@ export async function sendTrialReminder(chatId: number, daysLeft: number): Promi
   return sendTelegramMessage({ chatId, text, parseMode: 'HTML', replyMarkup });
 }
 
+export async function sendSubscriptionReminder(
+  chatId: number,
+  plan: string,
+  daysLeft: number,
+  expiresAt: Date,
+): Promise<boolean> {
+  const planLabel = plan === 'proplus' ? 'Pro+' : 'Pro';
+  const date = expiresAt.toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' });
+  const timing = daysLeft === 0
+    ? 'сегодня'
+    : `через ${daysLeft} ${daysLeft === 1 ? 'день' : 'дня'}`;
+  const text = [
+    `⏳ <b>Подписка ${planLabel} заканчивается ${timing}</b>`,
+    `Дата окончания: <b>${date}</b>`,
+    `После этого аккаунт перейдёт на бесплатный тариф.`,
+    `Продлите подписку, чтобы сохранить доступ к функциям.`,
+  ].join('\n');
+
+  const replyMarkup = getAppUrl()
+    ? { inline_keyboard: [[{ text: '💳 Продлить подписку', url: getAppUrl()! }]] }
+    : undefined;
+
+  return sendTelegramMessage({ chatId, text, parseMode: 'HTML', replyMarkup });
+}
+
+export async function sendSubscriptionExpired(chatId: number, plan: string): Promise<boolean> {
+  const planLabel = plan === 'proplus' ? 'Pro+' : 'Pro';
+  const text = [
+    `ℹ️ <b>Подписка ${planLabel} закончилась</b>`,
+    `Аккаунт переведён на бесплатный тариф.`,
+    `Вы можете продлить подписку в любое время.`,
+  ].join('\n');
+  return sendTelegramMessage({ chatId, text, parseMode: 'HTML' });
+}
+
 export async function sendDailySummary(
   chatId: number,
   data: {

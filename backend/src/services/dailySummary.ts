@@ -1,9 +1,9 @@
 import { prisma } from './prisma.js';
 import { runScan } from './scanService.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
-import { sendDailySummary, sendTrialReminder } from './telegramNotify.js';
+import { sendDailySummary, sendSubscriptionExpired, sendSubscriptionReminder, sendTrialReminder } from './telegramNotify.js';
 import { getIntervalLabel } from '../utils/helpers.js';
-import { TRIAL_REMINDER_DAYS } from '../middleware/subscription.js';
+import { enforceSubscriptionExpiry, SUBSCRIPTION_REMINDER_DAYS, TRIAL_REMINDER_DAYS } from '../middleware/subscription.js';
 import { logger } from '../utils/logger.js';
 
 const DAILY_SUMMARY_HOUR_UTC = 6; // 9:00 MSK = 06:00 UTC
@@ -53,7 +53,57 @@ export function startDailySummary(): void {
   // Trial reminders stay on a plain hourly cadence (idempotent via bitmask).
   trialTimer = setInterval(() => {
     sendTrialReminders().catch((e) => logger.warn({ err: (e as Error).message }, 'Trial reminder tick failed'));
+    sendSubscriptionReminders().catch((e) => logger.warn({ err: (e as Error).message }, 'Subscription reminder tick failed'));
   }, 60 * 60 * 1000);
+
+  // Catch up immediately after deploy/restart instead of waiting for the first
+  // hourly tick.
+  void sendSubscriptionReminders().catch((e) => logger.warn({ err: (e as Error).message }, 'Subscription reminder catch-up failed'));
+}
+
+/** Notify paid users at 3 days, 1 day and expiry, once per threshold. */
+export async function sendSubscriptionReminders(): Promise<void> {
+  try {
+    const now = Date.now();
+    const users = await prisma.user.findMany({
+      where: {
+        subscription: { in: ['pro', 'proplus'] },
+        subscriptionExpiresAt: { not: null },
+      },
+      select: { telegramId: true, subscription: true, subscriptionExpiresAt: true, subscriptionReminderSent: true },
+    });
+
+    let sent = 0;
+    for (const user of users) {
+      if (!user.subscriptionExpiresAt) continue;
+      const chatId = parseInt(String(user.telegramId).replace('tg_', ''), 10);
+      if (!chatId || isNaN(chatId)) continue;
+
+      const msLeft = user.subscriptionExpiresAt.getTime() - now;
+      const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
+      if (daysLeft < 0) {
+        await enforceSubscriptionExpiry(user.telegramId);
+        if (await sendSubscriptionExpired(chatId, user.subscription)) sent++;
+        continue;
+      }
+
+      for (const d of SUBSCRIPTION_REMINDER_DAYS) {
+        const bit = 1 << d;
+        if (daysLeft === d && (user.subscriptionReminderSent & bit) === 0) {
+          if (await sendSubscriptionReminder(chatId, user.subscription, d, user.subscriptionExpiresAt)) {
+            await prisma.user.update({
+              where: { telegramId: user.telegramId },
+              data: { subscriptionReminderSent: user.subscriptionReminderSent | bit },
+            });
+            sent++;
+          }
+        }
+      }
+    }
+    if (sent) logger.info(`Subscription reminders sent: ${sent}`);
+  } catch (err) {
+    logger.error({ err }, 'Failed to send subscription reminders');
+  }
 }
 
 function nowYmd(): string {

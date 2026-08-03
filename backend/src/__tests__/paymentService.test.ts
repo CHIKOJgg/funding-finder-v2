@@ -149,7 +149,10 @@ describe('paymentService', () => {
       const updated = await updateOrderFromWebhook('order_1', 'paid');
       expect(updated).toBeDefined();
       expect(prismaMock.user.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { telegramId: 'tg_1' }, data: { subscription: 'pro' } })
+        expect.objectContaining({
+          where: { telegramId: 'tg_1' },
+          data: expect.objectContaining({ subscription: 'pro' }),
+        })
       );
       expect(prismaMock.paymentRecord.create).toHaveBeenCalled();
     });

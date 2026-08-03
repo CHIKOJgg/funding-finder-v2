@@ -27,6 +27,51 @@ export const TRIAL_DURATION_DAYS = 7;
 /** Days-before-expiry thresholds at which a reminder is sent (TG push). */
 export const TRIAL_REMINDER_DAYS = [2, 1];
 
+/** Paid subscription reminder thresholds, in days until expiry. */
+export const SUBSCRIPTION_REMINDER_DAYS = [3, 1, 0];
+
+/** Expire paid access and recover dates for legacy paid users. */
+export async function enforceSubscriptionExpiry(userId: string): Promise<boolean> {
+  try {
+    let user = await prisma.user.findUnique({
+      where: { telegramId: userId },
+      select: { subscription: true, subscriptionExpiresAt: true },
+    });
+    if (!user || user.subscription === 'free') return false;
+
+    // Existing paid users predate subscriptionExpiresAt. Infer a first expiry
+    // from their latest paid order so the new reminder system works for them.
+    if (!user.subscriptionExpiresAt) {
+      const latestOrder = await prisma.order.findFirst({
+        where: { userId, status: 'paid' },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true, billingPeriod: true },
+      });
+      if (latestOrder) {
+        const days = latestOrder.billingPeriod === 'annual' ? 365 : 30;
+        const expiresAt = new Date(latestOrder.createdAt.getTime() + days * 24 * 60 * 60 * 1000);
+        user = await prisma.user.update({
+          where: { telegramId: userId },
+          data: { subscriptionExpiresAt: expiresAt, subscriptionReminderSent: 0 },
+          select: { subscription: true, subscriptionExpiresAt: true },
+        });
+      }
+    }
+
+    if (user.subscriptionExpiresAt && user.subscriptionExpiresAt.getTime() <= Date.now()) {
+      await prisma.user.update({
+        where: { telegramId: userId },
+        data: { subscription: 'free', subscriptionExpiresAt: null, subscriptionReminderSent: 0 },
+      });
+      logger.info({ userId }, 'Paid subscription expired');
+      return true;
+    }
+  } catch (err) {
+    logger.error({ err }, 'Paid subscription expiry enforcement failed');
+  }
+  return false;
+}
+
 /**
  * If the user is on a trial-derived "pro" plan whose trial window has elapsed,
  * revert them to the free plan. Returns true when a reset happened.
@@ -78,6 +123,7 @@ export function requireSubscription(minimumTier: PlanTier) {
 
       // Revert any trial-derived Pro whose window has elapsed before checking
       // the tier, so an expired trial can't pass a paid-feature gate.
+      await enforceSubscriptionExpiry(userId);
       await enforceTrialExpiry(userId);
       user = await prisma.user.findUnique({ where: { telegramId: userId } }) ?? user;
 
@@ -100,6 +146,7 @@ export function requireSubscription(minimumTier: PlanTier) {
 }
 
 export async function getSubscriptionLimits(userId: string) {
+  await enforceSubscriptionExpiry(userId);
   const user = await prisma.user.findUnique({ where: { telegramId: userId } });
   if (!user) {
     return { tier: 'free', ...PLAN_LIMITS.free };

@@ -3,6 +3,7 @@ import { prisma } from '../services/prisma.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 import { sendError } from '../middleware/errorHandler.js';
+import { enforceSubscriptionExpiry } from '../middleware/subscription.js';
 
 const router = Router();
 
@@ -13,6 +14,7 @@ router.get('/profile', async (req: AuthenticatedRequest, res) => {
       return sendError(res, 401, 'Authentication required', 'AUTH_REQUIRED');
     }
 
+    await enforceSubscriptionExpiry(userId);
     const user = await prisma.user.findUnique({ where: { telegramId: userId } });
     if (!user) {
       return sendError(res, 404, 'User not found', 'USER_NOT_FOUND');
@@ -21,6 +23,7 @@ router.get('/profile', async (req: AuthenticatedRequest, res) => {
     return res.json({
       ok: true,
       subscription: user.subscription,
+      subscriptionExpiresAt: user.subscriptionExpiresAt,
       balance: user.balance,
       referralCode: user.referralCode,
       trialScans: user.trialScans,

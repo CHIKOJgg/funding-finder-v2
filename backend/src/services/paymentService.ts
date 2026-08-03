@@ -340,6 +340,11 @@ export async function updateOrderFromWebhook(
 
       const newRank = planRank(order.planId);
       const currentRank = planRank(user.subscription);
+      const periodDays = order.billingPeriod === 'annual' ? 365 : 30;
+      const baseTime = user.subscriptionExpiresAt && user.subscriptionExpiresAt.getTime() > Date.now()
+        ? user.subscriptionExpiresAt.getTime()
+        : Date.now();
+      const subscriptionExpiresAt = new Date(baseTime + periodDays * 24 * 60 * 60 * 1000);
 
       await tx.order.update({
         where: { id: order.id },
@@ -350,7 +355,12 @@ export async function updateOrderFromWebhook(
       if (newRank > currentRank) {
         await tx.user.update({
           where: { telegramId: order.userId },
-          data: { subscription: order.planId },
+          data: { subscription: order.planId, subscriptionExpiresAt, subscriptionReminderSent: 0, trialEndsAt: null },
+        });
+      } else {
+        await tx.user.update({
+          where: { telegramId: order.userId },
+          data: { subscriptionExpiresAt, subscriptionReminderSent: 0, trialEndsAt: null },
         });
       }
 
