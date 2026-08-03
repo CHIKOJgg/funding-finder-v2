@@ -8,7 +8,7 @@ import { execSync } from 'child_process';
 import { createServer } from 'http';
 import rateLimit from 'express-rate-limit';
 import { config } from './config/index.js';
-import { connectDatabase, disconnectDatabase, checkDatabaseHealth } from './services/prisma.js';
+import { connectDatabase, disconnectDatabase, checkDatabaseHealth, prisma } from './services/prisma.js';
 import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestId, requestLogger } from './middleware/requestLogger.js';
@@ -50,6 +50,7 @@ import portfolioRoutes from './routes/portfolio.js';
 import portfolioLiveRoutes from './routes/portfolioLive.js';
 import keysRoutes from './routes/keys.js';
 import webhookRoutes from './routes/webhook.js';
+import { getInvoiceStatus, updateOrderFromWebhook } from './services/paymentService.js';
 import adminRoutes from './routes/admin.js';
 import debugRoutes from './routes/debug.js';
 import publicRoutes from './routes/public.js';
@@ -531,6 +532,60 @@ function stopNowPaymentsPolling() {
   }
 }
 
+// Crypto Pay webhook retries are not guaranteed after a deployment. Reconcile
+// recent open invoices as a safety net so a paid invoice is not lost when a
+// webhook was delivered while the service was restarting or misconfigured.
+let cryptoPayPoller: ReturnType<typeof setInterval> | null = null;
+
+async function reconcileCryptoPayOrders() {
+  if (!config.cryptoPay.apiToken) return;
+
+  const orders = await prisma.order.findMany({
+    where: {
+      status: { not: 'paid' },
+      invoiceId: { not: null },
+      invoice: { provider: 'crypto_pay' },
+      createdAt: { gte: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
+    },
+    select: { invoiceId: true },
+    take: 50,
+    orderBy: { createdAt: 'asc' },
+  });
+
+  let updated = 0;
+  for (const order of orders) {
+    if (!order.invoiceId) continue;
+    const invoice = await getInvoiceStatus(order.invoiceId);
+    if (!invoice?.status) continue;
+    await updateOrderFromWebhook(order.invoiceId, invoice.status);
+    if (invoice.status === 'paid') updated += 1;
+  }
+  if (updated > 0) logger.info(`Crypto Pay: confirmed ${updated} order(s) by polling`);
+}
+
+async function startCryptoPayPolling() {
+  if (!config.cryptoPay.apiToken) {
+    logger.info('Crypto Pay polling skipped (no API token configured)');
+    return;
+  }
+  logger.info('Crypto Pay reconciliation poller started');
+  void reconcileCryptoPayOrders().catch((err) => {
+    logger.warn({ err: (err as Error).message }, 'Crypto Pay polling error');
+  });
+  cryptoPayPoller = setInterval(() => {
+    void reconcileCryptoPayOrders().catch((err) => {
+      logger.warn({ err: (err as Error).message }, 'Crypto Pay polling error');
+    });
+  }, 20_000);
+}
+
+function stopCryptoPayPolling() {
+  if (cryptoPayPoller) {
+    clearInterval(cryptoPayPoller);
+    cryptoPayPoller = null;
+  }
+}
+
 // Self-ping keep-alive for platforms that spin down idle services (e.g. Render
 // free tier sleeps after ~15 min of no traffic). Pinging our own /api/health
 // every 10 minutes keeps the instance awake. Prefer API_BASE_URL (the public
@@ -577,6 +632,7 @@ wsManager.init(server);
   startDataArchival();
   startFundingWarmup();
   startNowPaymentsPolling();
+  startCryptoPayPolling();
   startMarketDataRefresh();
   startTelegramBot();
   startPublicSignalChannel();
@@ -597,6 +653,7 @@ const gracefulShutdown = async (signal: string) => {
   stopDataArchival();
   stopFundingWarmup();
   stopNowPaymentsPolling();
+  stopCryptoPayPolling();
   stopTelegramBot();
   stopPublicSignalChannel();
   stopWeeklyReport();
