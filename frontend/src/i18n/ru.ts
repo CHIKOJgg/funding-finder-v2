@@ -122,6 +122,7 @@ export const ru: Record<string, string> = {
   'main.price': 'Цена: {p}',
   'main.realRate': 'Ставка фандинга: {r}%',
   'main.interval': 'Интервал: {h}ч ({s})',
+  'main.intervalLabel': 'Интервал',
   'main.untilFunding': 'до фандинга',
   'main.openOnExchange': 'Открыть {contract} на {exchange}',
   'main.open': 'Открыть',
@@ -448,6 +449,9 @@ export const ru: Record<string, string> = {
   'profile.achProUser': 'Pro юзер',
   'profile.achDiversified': 'Диверсификатор',
   'profile.achievementProgress': '{count}/{total} открыто',
+  'profile.achievementHint': 'Выполните указанное действие, чтобы получить достижение.',
+  'profile.showRecent': 'Показать последние',
+  'profile.showAll': 'Показать все',
 
   // Portfolio
   'portfolio.title': 'Портфель',

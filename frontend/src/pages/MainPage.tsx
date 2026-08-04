@@ -404,24 +404,24 @@ export function MainPage() {
               style={{ background: 'var(--cobalt-soft)', border: '1px solid var(--cobalt)' }}
             >
               <div className="text-xs font-semibold uppercase tracking-wide text-[var(--cobalt-text)]" title={t('main.bestOpportunityTitle')}>{t('main.bestOpportunity')}</div>
-              <div className="flex items-end justify-between mt-1">
-                <div>
+              <div className="flex items-start justify-between gap-3 mt-1">
+                <div className="min-w-0">
                   <div className="text-xl font-bold text-[var(--text)]">{topPick.exchange.toUpperCase()}: {topPick.contract}</div>
-                  <div className="text-[var(--text2)] text-sm font-mono">
-                    {t('main.topRateLine', { h: ((topPick.funding_rate_per_hour ?? 0) * 100).toFixed(6), d: ((topPick.funding_rate_per_day ?? 0) * 100).toFixed(4) })}
-                  </div>
                 </div>
-                <button
-                  onClick={() => { haptic('light'); openExchange(topPick.exchange, topPick.contract); }}
-                  className="btn text-sm py-2 px-4 shrink-0 flex items-center gap-1.5"
-                  style={{ background: 'var(--cobalt)', color: 'var(--on-brand)' }}
-                >
-                  <IconExternalLink size={14} aria-hidden /> {t('main.openPositionBtn')}
-                </button>
+                <div className="text-right text-[var(--text2)] text-sm font-mono shrink-0">
+                  <div>{((topPick.funding_rate_per_hour ?? 0) * 100).toFixed(6)}%/ч</div>
+                  <div>≈ {((topPick.funding_rate_per_day ?? 0) * 100).toFixed(4)}%/день</div>
+                </div>
               </div>
+              <button
+                onClick={() => { haptic('light'); openExchange(topPick.exchange, topPick.contract); }}
+                className="btn text-sm py-2 px-4 w-full mt-3 flex items-center justify-center gap-1.5"
+                style={{ background: 'var(--cobalt)', color: 'var(--on-brand)' }}
+              >
+                <IconExternalLink size={14} aria-hidden /> {t('main.openPositionBtn')}
+              </button>
             </div>
-          )
-}
+          )}
 
 
           <div className="flex gap-2 mb-4">
@@ -925,7 +925,7 @@ const ResultItem = memo(function ResultItem({
             <span className="metric-value">{((item.currentFunding ?? 0) * 100).toFixed(4)}%</span>
           </div>
           <div className="metric-row">
-            <span className="metric-label">{t('main.interval', { h: '', s: '' }).replace(': ', '')}</span>
+            <span className="metric-label">{t('main.intervalLabel')}</span>
             <span className="metric-value">{item.funding_interval_hours}h</span>
           </div>
           <div className="metric-row">

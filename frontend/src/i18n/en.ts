@@ -122,6 +122,7 @@ export const en: Record<string, string> = {
   'main.price': 'Price: {p}',
   'main.realRate': 'Funding rate: {r}%',
   'main.interval': 'Interval: {h}h ({s})',
+  'main.intervalLabel': 'Interval',
   'main.untilFunding': 'until funding',
   'main.openOnExchange': 'Open {contract} on {exchange}',
   'main.open': 'Open',
@@ -470,6 +471,9 @@ export const en: Record<string, string> = {
   'profile.achProUser': 'Pro User',
   'profile.achDiversified': 'Diversified',
   'profile.achievementProgress': '{count}/{total} achieved',
+  'profile.achievementHint': 'Complete the related action to unlock this achievement.',
+  'profile.showRecent': 'Show recent',
+  'profile.showAll': 'Show all',
 
   // Portfolio
   'portfolio.title': 'Portfolio',

@@ -9,18 +9,16 @@ import { QrLoginModal } from '../components/QrLoginModal';
 import { apiClient } from '../api/client';
 import { useT } from '../i18n';
 import { PLAN_PRICES } from '../utils/plans';
-import { clsx } from 'clsx';
 import { CardSkeleton } from '../components/Skeleton';
 import {
-  IconBot,
   IconChartLine,
   IconCheck,
   IconGift,
   IconLink2,
-  IconMedal,
   IconMessageCircle,
   IconSend,
   IconShare2,
+  IconSettings,
   IconSmartphone,
   IconStar,
   Icon,
@@ -58,6 +56,8 @@ export function ProfilePage() {
   const [referralCode, setReferralCode] = useState('');
   const [applyingReferral, setApplyingReferral] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
+  const [showAllPayments, setShowAllPayments] = useState(false);
+  const [selectedAchievement, setSelectedAchievement] = useState<string | null>(null);
   const [withdrawalHistory, setWithdrawalHistory] = useState<any[]>([]);
   const [balance, setBalance] = useState(0);
   const [subscription, setSubscription] = useState('free');
@@ -216,7 +216,16 @@ export function ProfilePage() {
 
   return (
     <div className="px-3 py-4 sm:px-4">
-      <div className="card">
+      <div className="card relative">
+        <Link
+          to="/settings"
+          className="absolute top-4 right-4 w-9 h-9 rounded-lg flex items-center justify-center"
+          style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}
+          aria-label={t('profile.settingsLink')}
+          title={t('profile.settingsLink')}
+        >
+          <IconSettings size={18} />
+        </Link>
         <div className="flex items-center gap-3 mb-4">
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold shrink-0"
@@ -224,11 +233,34 @@ export function ProfilePage() {
           >
             {(user?.firstName || 'U').charAt(0).toUpperCase()}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 pr-10">
             <div className="font-semibold truncate">{user?.firstName || t('header.user')}</div>
             <div className="text-sm text-muted truncate">{user?.username ? '@' + user.username : user?.id}</div>
           </div>
+          <div className="ml-auto flex items-center gap-1 pr-12">
+            {ACHIEVEMENTS.map((ach) => {
+              const unlocked = ach.condition(userStats, referralStats.referrals, subscription);
+              return (
+                <button
+                  key={ach.id}
+                  onClick={() => setSelectedAchievement(selectedAchievement === ach.id ? null : ach.id)}
+                  className="w-7 h-7 rounded-md flex items-center justify-center"
+                  style={{ color: unlocked ? 'var(--amber)' : 'var(--text3)', background: unlocked ? 'var(--amber-soft)' : 'var(--surface-2)', opacity: unlocked ? 1 : 0.55 }}
+                  title={t(ach.key)}
+                  aria-label={t(ach.key)}
+                >
+                  <Icon name={ach.icon} size={15} />
+                </button>
+              );
+            })}
+          </div>
         </div>
+        {selectedAchievement && (
+          <div className="mb-3 rounded-lg px-3 py-2 text-xs" style={{ background: 'var(--amber-soft)', color: 'var(--text)' }}>
+            <strong>{t(ACHIEVEMENTS.find((ach) => ach.id === selectedAchievement)?.key || '')}</strong>
+            <div className="text-muted mt-1">{t('profile.achievementHint')}</div>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl p-3" style={{ background: 'var(--surface-2)' }}>
             <div className="text-xs text-muted">{t('profile.balance')}</div>
@@ -260,40 +292,6 @@ export function ProfilePage() {
             <div className="text-lg font-bold stat">{userStats.uniqueExchanges}</div>
           </div>
         </div>
-      </div>
-
-      {/* Achievements */}
-      <div className="card">
-        <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
-          <IconMedal size={18} style={{ color: 'var(--brand)' }} /> {t('profile.achievements')}
-        </h2>
-        <div className="grid grid-cols-4 gap-2">
-          {ACHIEVEMENTS.map((ach) => {
-            const unlocked = ach.condition(userStats, referralStats.referrals, subscription);
-            return (
-              <div
-                key={ach.id}
-                className={clsx(
-                  'flex flex-col items-center p-2 rounded-xl text-center transition-all',
-                  !unlocked && 'opacity-40 grayscale'
-                )}
-                style={{ background: unlocked ? 'var(--amber-soft)' : 'transparent' }}
-                title={t(ach.key)}
-              >
-                <span style={{ color: unlocked ? 'var(--amber)' : 'var(--text-muted)' }}>
-                  <Icon name={ach.icon} size={22} />
-                </span>
-                <span className="text-[10px] mt-1 leading-tight">{t(ach.key)}</span>
-              </div>
-            );
-          })}
-        </div>
-        <p className="text-xs text-muted mt-2 text-center">
-          {t('profile.achievementProgress', {
-            count: ACHIEVEMENTS.filter((a) => a.condition(userStats, referralStats.referrals, subscription)).length,
-            total: ACHIEVEMENTS.length,
-          })}
-        </p>
       </div>
 
       {!(subscription !== 'free' && subscriptionExpiresAt) && <div className="card">
@@ -351,15 +349,42 @@ export function ProfilePage() {
         >
           <IconLink2 size={16} /> {t('profile.copyLink')}
         </button>
-        <div className="flex gap-2 mt-2">
+        <div className="grid grid-cols-4 gap-2 mt-2">
           <button
-            onClick={() => {
-              const bot = import.meta.env.VITE_BOT_USERNAME || 'fundinganalyzerbot';
-              window.open(`https://t.me/${bot}`, '_blank', 'noopener');
+            onClick={async () => {
+              const { telegramShareUrl } = await import('../utils/shareLinks');
+              const payload = { text: t('profile.shareText'), url: referralLink || SITE_URL, referralCode: user?.referralCode, utm: { source: 'miniapp', medium: 'share', campaign: 'referral_telegram' } };
+              window.open(telegramShareUrl(payload), '_blank', 'noopener');
             }}
-            className="btn btn-secondary text-sm py-2 flex-1 flex items-center justify-center gap-1.5"
+            className="btn btn-secondary py-2 flex items-center justify-center"
+            title={t('profile.shareTelegram')}
+            aria-label={t('profile.shareTelegram')}
           >
-            <IconBot size={16} /> {t('profile.openBot')}
+            <IconSend size={17} />
+          </button>
+          <button
+            onClick={async () => {
+              const { twitterShareUrl } = await import('../utils/shareLinks');
+              const payload = { text: t('profile.shareText'), url: referralLink || SITE_URL, referralCode: user?.referralCode, utm: { source: 'miniapp', medium: 'share', campaign: 'referral_twitter' } };
+              window.open(twitterShareUrl(payload), '_blank', 'noopener');
+            }}
+            className="btn btn-secondary py-2 flex items-center justify-center text-base font-bold"
+            title={t('profile.shareX')}
+            aria-label={t('profile.shareX')}
+          >
+            X
+          </button>
+          <button
+            onClick={async () => {
+              const { whatsappShareUrl } = await import('../utils/shareLinks');
+              const payload = { text: t('profile.shareText'), url: referralLink || SITE_URL, referralCode: user?.referralCode, utm: { source: 'miniapp', medium: 'share', campaign: 'referral_whatsapp' } };
+              window.open(whatsappShareUrl(payload), '_blank', 'noopener');
+            }}
+            className="btn btn-secondary py-2 flex items-center justify-center"
+            title={t('profile.shareWhatsApp')}
+            aria-label={t('profile.shareWhatsApp')}
+          >
+            <IconMessageCircle size={17} />
           </button>
           <button
             onClick={async () => {
@@ -375,44 +400,11 @@ export function ProfilePage() {
                 showToast(t('profile.linkCopied'), 'success');
               }
             }}
-            className="btn btn-secondary text-sm py-2 flex-1 flex items-center justify-center gap-1.5"
+            className="btn btn-secondary py-2 flex items-center justify-center"
+            title={t('profile.share')}
+            aria-label={t('profile.share')}
           >
-            <IconShare2 size={16} /> {t('profile.share')}
-          </button>
-        </div>
-        <div className="flex gap-1.5 mt-2">
-          <button
-            onClick={async () => {
-              const { telegramShareUrl } = await import('../utils/shareLinks');
-              const payload = { text: t('profile.shareText'), url: referralLink || SITE_URL, referralCode: user?.referralCode, utm: { source: 'miniapp', medium: 'share', campaign: 'referral_telegram' } };
-              window.open(telegramShareUrl(payload), '_blank', 'noopener');
-            }}
-            className="btn btn-secondary text-xs py-1.5 flex-1 flex items-center justify-center gap-1"
-            title={t('profile.shareTelegram')}
-          >
-            <IconSend size={14} /> {t('profile.shareTelegram')}
-          </button>
-          <button
-            onClick={async () => {
-              const { twitterShareUrl } = await import('../utils/shareLinks');
-              const payload = { text: t('profile.shareText'), url: referralLink || SITE_URL, referralCode: user?.referralCode, utm: { source: 'miniapp', medium: 'share', campaign: 'referral_twitter' } };
-              window.open(twitterShareUrl(payload), '_blank', 'noopener');
-            }}
-            className="btn btn-secondary text-xs py-1.5 flex-1"
-            title={t('profile.shareX')}
-          >
-            {t('profile.shareX')}
-          </button>
-          <button
-            onClick={async () => {
-              const { whatsappShareUrl } = await import('../utils/shareLinks');
-              const payload = { text: t('profile.shareText'), url: referralLink || SITE_URL, referralCode: user?.referralCode, utm: { source: 'miniapp', medium: 'share', campaign: 'referral_whatsapp' } };
-              window.open(whatsappShareUrl(payload), '_blank', 'noopener');
-            }}
-            className="btn btn-secondary text-xs py-1.5 flex-1 flex items-center justify-center gap-1"
-            title={t('profile.shareWhatsApp')}
-          >
-            <IconMessageCircle size={14} /> {t('profile.shareWhatsApp')}
+            <IconShare2 size={17} />
           </button>
         </div>
         {referralLink && (
@@ -495,7 +487,7 @@ export function ProfilePage() {
             <div className="text-center py-6 text-muted">{t('profile.noPayments')}</div>
         ) : (
           <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            {paymentHistory.map((payment) => (
+             {paymentHistory.slice(0, showAllPayments ? paymentHistory.length : 3).map((payment) => (
               <div key={payment.id} className="flex justify-between items-center py-3">
                 <div>
                   <div className="font-medium">{planLabel(payment.plan)}</div>
@@ -504,8 +496,16 @@ export function ProfilePage() {
                 <div className="text-right font-bold stat">{payment.amount} {payment.currency}</div>
               </div>
             ))}
-          </div>
-        )}
+           </div>
+         )}
+          {paymentHistory.length > 3 && (
+            <button
+              onClick={() => setShowAllPayments((value) => !value)}
+              className="btn btn-secondary text-sm py-2 w-full mt-3"
+            >
+              {showAllPayments ? t('profile.showRecent') : t('profile.showAll')}
+            </button>
+          )}
       </div>
 
       <div className="card">
@@ -530,10 +530,6 @@ export function ProfilePage() {
             ))}
           </div>
         )}
-      </div>
-
-      <div className="card">
-        <Link to="/settings" className="btn btn-secondary text-sm py-2.5">{t('profile.settingsLink')}</Link>
       </div>
 
       <div className="text-center py-2">
@@ -561,9 +557,10 @@ export function ProfilePage() {
 }
 
 function planLabel(plan: string): string {
-  switch (plan) {
+  switch (plan.toLowerCase().replace(/\s/g, '')) {
     case 'pro': return 'Pro';
-    case 'proplus': return 'Pro+';
+    case 'proplus':
+    case 'pro+': return 'Pro+';
     default: return 'Free';
   }
 }

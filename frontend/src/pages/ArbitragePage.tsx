@@ -24,7 +24,6 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconClock,
-  IconLightbulb,
   IconSearch,
   IconTrash2,
   IconTrendingUp,
@@ -843,9 +842,6 @@ const OpportunityCard = memo(function OpportunityCard({
         <LiquidationHeatmap price={priceA.value} className="mt-1" />
       )}
 
-      <p className="text-xs text-[var(--text-muted)] mt-2 text-center flex items-center justify-center gap-1">
-        <IconLightbulb size={12} aria-hidden /> {t('arb.hint', { pair: opp.pair })}
-      </p>
     </div>
   );
 });
