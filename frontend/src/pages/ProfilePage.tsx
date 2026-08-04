@@ -233,26 +233,26 @@ export function ProfilePage() {
           >
             {(user?.firstName || 'U').charAt(0).toUpperCase()}
           </div>
-          <div className="min-w-0 pr-10">
+          <div className="min-w-0 flex-1 pr-10">
             <div className="font-semibold truncate">{user?.firstName || t('header.user')}</div>
             <div className="text-sm text-muted truncate">{user?.username ? '@' + user.username : user?.id}</div>
-          </div>
-          <div className="ml-auto flex items-center gap-1 pr-12">
-            {ACHIEVEMENTS.map((ach) => {
-              const unlocked = ach.condition(userStats, referralStats.referrals, subscription);
-              return (
-                <button
-                  key={ach.id}
-                  onClick={() => setSelectedAchievement(selectedAchievement === ach.id ? null : ach.id)}
-                  className="w-7 h-7 rounded-md flex items-center justify-center"
-                  style={{ color: unlocked ? 'var(--amber)' : 'var(--text3)', background: unlocked ? 'var(--amber-soft)' : 'var(--surface-2)', opacity: unlocked ? 1 : 0.55 }}
-                  title={t(ach.key)}
-                  aria-label={t(ach.key)}
-                >
-                  <Icon name={ach.icon} size={15} />
-                </button>
-              );
-            })}
+            <div className="flex items-center gap-1 mt-2 overflow-x-auto pr-1">
+              {ACHIEVEMENTS.map((ach) => {
+                const unlocked = ach.condition(userStats, referralStats.referrals, subscription);
+                return (
+                  <button
+                    key={ach.id}
+                    onClick={() => setSelectedAchievement(selectedAchievement === ach.id ? null : ach.id)}
+                    className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+                    style={{ color: unlocked ? 'var(--amber)' : 'var(--text3)', background: unlocked ? 'var(--amber-soft)' : 'var(--surface-2)', opacity: unlocked ? 1 : 0.55 }}
+                    title={t(ach.key)}
+                    aria-label={t(ach.key)}
+                  >
+                    <Icon name={ach.icon} size={15} />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
         {selectedAchievement && (
