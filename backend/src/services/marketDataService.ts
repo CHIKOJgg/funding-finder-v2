@@ -4,6 +4,13 @@ import { logger } from '../utils/logger.js';
 // Track last OI value per key to avoid inserting duplicate records
 const lastOiValues = new Map<string, { value: number; timestamp: number }>();
 
+// Background OI/LSR writes are serialised so warmup scans never saturate the
+// database pool and starve user-facing API requests.
+let bgWriteQueue: Promise<void> = Promise.resolve();
+function enqueueBgWrite(fn: () => Promise<void>): void {
+  bgWriteQueue = bgWriteQueue.then(fn, fn);
+}
+
 // Open Interest data fetching and storage (with dedup)
 export async function upsertOpenInterest(
   exchange: string,
@@ -14,11 +21,11 @@ export async function upsertOpenInterest(
   if (typeof openInterestUsd !== 'number' || !isFinite(openInterestUsd)) return;
   const key = `${exchange}:${contract}`;
   const last = lastOiValues.get(key);
-  // Skip if value hasn't changed meaningfully and last record was < 5 min ago
   if (last && Math.abs(last.value - openInterestUsd) / (last.value || 1) < 0.001 && timestamp - last.timestamp < 300_000) {
     return;
   }
   lastOiValues.set(key, { value: openInterestUsd, timestamp });
+  enqueueBgWrite(async () => {
   try {
     await prisma.openInterestHistory.upsert({
       where: { key },
@@ -43,6 +50,7 @@ export async function upsertOpenInterest(
   } catch (err) {
     logger.debug(`Failed to upsert OI for ${key}: ${(err as Error).message}`);
   }
+  });
 }
 
 // Track last LSR value per key to avoid inserting duplicate records
@@ -64,6 +72,7 @@ export async function upsertLongShortRatio(
     return;
   }
   lastLsrValues.set(key, { value: longShortRatio, timestamp });
+  enqueueBgWrite(async () => {
   try {
     await prisma.longShortRatioHistory.upsert({
       where: { key },
@@ -92,6 +101,7 @@ export async function upsertLongShortRatio(
   } catch (err) {
     logger.debug(`Failed to upsert LSR for ${key}: ${(err as Error).message}`);
   }
+  });
 }
 
 // Periodically evict stale entries from dedup caches to prevent memory leak

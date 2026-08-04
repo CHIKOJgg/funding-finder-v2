@@ -15,8 +15,18 @@ export interface ContractInfo {
   openInterest?: number;
 }
 
+// Prevent warmup scans from saturating the database pool. All metadata write
+// calls are queued so at most 1 connection is consumed by background upserts
+// regardless of how many exchanges are being scanned simultaneously.
+let upsertQueue: Promise<void> = Promise.resolve();
+
+function enqueueUpsert(fn: () => Promise<void>): void {
+  upsertQueue = upsertQueue.then(fn, fn);
+}
+
 export async function upsertContractMetadata(info: ContractInfo): Promise<void> {
   const key = `${info.exchange}:${info.contract}`;
+  enqueueUpsert(async () => {
   try {
     await prisma.contractMetadata.upsert({
       where: { key },
@@ -49,6 +59,7 @@ export async function upsertContractMetadata(info: ContractInfo): Promise<void> 
   } catch (err) {
     logger.debug(`Failed to upsert metadata for ${key}: ${(err as Error).message}`);
   }
+  });
 }
 
 export async function getContractMetadata(key: string) {
