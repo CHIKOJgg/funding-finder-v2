@@ -316,7 +316,7 @@ export function MainPage() {
 
       {!planLimits.aiEnabled && <ActivationChecklist />}
 
-<div className="card" style={scanResults ? { position: 'sticky', top: '0', zIndex: 30, background: 'var(--surface)', paddingTop: 'var(--safe-top, 0px)' } : undefined}>
+      <div className="card">
         <ExchangeSelector
           value={selectedExchanges}
           onChange={setSelectedExchanges}
@@ -375,17 +375,18 @@ export function MainPage() {
 
       <FundingCalendar exchanges={selectedExchanges} refreshSignal={calendarRefresh} />
 
-      {scanLoading && (
+      {scanLoading && !scanResults && (
         <div className="card">
             <h2 className="text-lg font-semibold mb-3">{t('main.scanResults')}</h2>
             <ResultSkeleton />
         </div>
       )}
 
-      {!scanLoading && scanResults && (
+      {scanResults && (
         <div className="card">
           <div className="flex items-center justify-between mb-3 gap-2">
             <h2 className="text-lg font-semibold">{t('main.scanResults')}</h2>
+            {scanLoading && <span className="text-xs text-muted animate-pulse">{t('main.scanningBtn')}</span>}
             <div className="flex gap-2">
               <button
                 onClick={handleShareCard}

@@ -364,7 +364,7 @@ export function ArbitragePage() {
             </button>
           </div>
 
-          {arbLoading ? (
+          {arbLoading && arbOpportunities.length === 0 ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="p-3 rounded-lg border border-[var(--border)] bg-[var(--card)] animate-pulse">
@@ -478,9 +478,9 @@ export function ArbitragePage() {
                     {t('arb.shown', { x: Math.min(visibleCount, filteredOpportunities.length), y: filteredOpportunities.length })}
                   </div>
                   <div className="space-y-3">
-                    {filteredOpportunities.slice(0, visibleCount).map((opp, idx) => (
+                    {filteredOpportunities.slice(0, visibleCount).map((opp) => (
                       <OpportunityCard
-                        key={`${opp.pair}-${opp.exchangeA}-${opp.exchangeB}-${idx}`}
+                        key={opp.id ?? `${opp.pair}-${opp.exchangeA}-${opp.exchangeB}`}
                         opportunity={opp}
                         priceMap={priceMap}
                         fundingMap={fundingMap}

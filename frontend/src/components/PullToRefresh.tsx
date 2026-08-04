@@ -27,7 +27,7 @@ export function PullToRefresh({
   const onTouchStart = useCallback((e: TouchEvent) => {
     const container = containerRef.current;
     if (!container || refreshing) return;
-    const top = container.scrollTop <= 0;
+    const top = window.scrollY <= 0;
     lockedTopRef.current = top;
     if (top && e.touches[0]) {
       startYRef.current = e.touches[0].clientY;
@@ -46,7 +46,7 @@ export function PullToRefresh({
       return;
     }
     const container = containerRef.current;
-    if (!container || container.scrollTop > 0) {
+    if (!container || window.scrollY > 0) {
       setPullDistance(0);
       draggingRef.current = false;
       return;
@@ -100,7 +100,7 @@ export function PullToRefresh({
   const rotation = progress * 180;
 
   return (
-    <div ref={containerRef} className="relative overflow-y-auto h-full">
+    <div ref={containerRef} className="relative">
       <div
         className="pointer-events-none absolute left-0 right-0 flex justify-center transition-opacity"
         style={{
