@@ -21,16 +21,21 @@ export function createRateLimitStore(prefix: string): Options['store'] | undefin
     return undefined;
   }
   try {
+    // Only create a Redis-backed store when the client is fully connected.
+    // Upstash free tier drops idle connections; wait for 'ready' status.
+    if ((redis as any).status !== 'ready') {
+      logger.warn(`Redis status is "${(redis as any).status}" — rate limiter ${prefix} using in-memory fallback`);
+      return undefined;
+    }
     return new RedisStore({
       sendCommand: (...args: string[]) => {
         try {
-          if (!(redis as any).status || (redis as any).status === 'end') return undefined;
           return (redis as any).call(...args);
         } catch {
-          // Swallow transient Redis errors gracefully (Upstash free tier
-          // idles connections quickly). The request proceeds without rate
-          // limiting; the shared Redis client auto-reconnects on next use.
-          return undefined;
+          // Transient Redis errors (connection drop, timeout) are silently
+          // treated as zero hits so the request proceeds without rate
+          // limiting. The shared Redis client auto-reconnects.
+          return 0;
         }
       },
       prefix: `rl:${prefix}:`,
