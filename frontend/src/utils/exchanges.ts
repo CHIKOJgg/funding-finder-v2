@@ -107,7 +107,6 @@ export const ALL_EXCHANGES = [
   'bitget', 'bingx', 'phemex', 'woo',
   'hyperliquid', 'dydx', 'htx', 'blofin', 'aster', 'bluefin',
   'kucoin', 'kraken', 'coinbase', 'bitunix', 'orderly', 'aevo',
-  'kraken', 'coinbase', 'bitunix', 'orderly', 'aevo',
 ];
 
 // Normalize any pair representation a caller might pass — "BTCUSDT",

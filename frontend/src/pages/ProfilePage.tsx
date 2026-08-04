@@ -443,6 +443,13 @@ export function ProfilePage() {
                 {t('profile.subscriptionUntil')}: {new Date(subscriptionExpiresAt).toLocaleDateString()}
               </p>
             )}
+            {subscription === 'proplus' && (
+              <a href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener noreferrer"
+                 className="inline-flex items-center gap-1.5 mt-2 text-sm font-semibold underline opacity-95 hover:opacity-100">
+                <IconSmartphone size={14} />
+                @fundinganalyzerbot — {t('profile.prioritySupport') || 'приоритетная поддержка'}
+              </a>
+            )}
           </div>
         </div>
 

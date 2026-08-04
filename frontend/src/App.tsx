@@ -174,7 +174,11 @@ function DataProvider() {
       .then((r: any) => {
         if (cancelled) return;
         const sub = r?.user?.subscription || r?.subscription;
-        if (sub) setSubscription(sub);
+        if (sub) {
+          setSubscription(sub);
+          // Pro+ users get faster live data refresh (2s vs 4s).
+          apiClient.setProPlusRefresh(sub === 'proplus');
+        }
       })
       .catch(() => { /* plan stays 'free' on failure */ });
     return () => { cancelled = true; };

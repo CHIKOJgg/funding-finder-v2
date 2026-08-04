@@ -17,7 +17,7 @@ import { getLivePriceBatch } from '../services/priceService.js';
 import { getLiveFundingBatch } from '../services/fundingService.js';
 import { runScan, getCachedScan } from '../services/scanService.js';
 import { getWarmupPromise } from '../services/fundingWarmup.js';
-import { getSubscriptionLimits, requireSubscription } from '../middleware/subscription.js';
+import { getSubscriptionLimits, requireSubscription, planRank } from '../middleware/subscription.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
@@ -310,12 +310,20 @@ router.get('/arbitrage/backtest', requireSubscription('pro'), validate(backtestS
       return res.status(400).json({ ok: false, error: 'pair, exchangeA, exchangeB are required' });
     }
 
+    // Pro users capped at 30 days; Pro+ gets the full 90-day range.
+    const authUserId = (req as AuthenticatedRequest).userId!;
+    const planLimits = await getSubscriptionLimits(authUserId);
+    const effectiveDays = Math.min(days || 30, planLimits.tier === 'proplus' ? 90 : 30);
+    if (effectiveDays < (days || 30)) {
+      logger.info({ userId: authUserId, requestedDays: days, capped: effectiveDays, tier: planLimits.tier }, 'Backtest days capped by plan tier');
+    }
+
     // Derive the canonical contract key from the pair. FundingHistory keys are
     // stored under the exchanges' NATIVE contract names (gate:BTC_USDT,
     // okx:BTC-USDT-SWAP, hyperliquid:BTC), so we canonicalize the stored keys
     // and match the requested canonical pair ("BTC/USDT" -> "BTCUSDT").
     const canonicalPair = canonicalPairKey(pair);
-    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const since = new Date(Date.now() - effectiveDays * 24 * 60 * 60 * 1000);
 
     const [keyA, keyB] = await Promise.all([
       resolveNativeKey(exchangeA, canonicalPair),
@@ -329,7 +337,7 @@ router.get('/arbitrage/backtest', requireSubscription('pro'), validate(backtestS
         pair,
         exchangeA,
         exchangeB,
-        days,
+        days: effectiveDays,
         capital,
         message: 'Insufficient history data',
       });
@@ -366,7 +374,7 @@ router.get('/arbitrage/backtest', requireSubscription('pro'), validate(backtestS
         pair,
         exchangeA,
         exchangeB,
-        days,
+        days: effectiveDays,
         capital,
         message: 'Insufficient history data',
       });
@@ -436,7 +444,7 @@ router.get('/arbitrage/backtest', requireSubscription('pro'), validate(backtestS
       pair,
       exchangeA,
       exchangeB,
-      days,
+      days: effectiveDays,
       capital,
       daysWithSpread,
       totalDays: dailyResults.length,

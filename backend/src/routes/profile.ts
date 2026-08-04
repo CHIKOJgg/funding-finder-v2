@@ -29,6 +29,7 @@ router.get('/profile', async (req: AuthenticatedRequest, res) => {
       trialScans: user.trialScans,
       trialUsed: user.trialUsed,
       trialEndsAt: user.trialEndsAt,
+      supportTelegram: user.subscription === 'proplus' ? '@fundinganalyzerbot' : undefined,
     });
   } catch (err) {
     logger.error({ err }, 'Profile fetch error');

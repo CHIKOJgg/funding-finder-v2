@@ -563,6 +563,9 @@ export const apiClient = {
   // snapshot (so the UI stays populated) instead of hitting the limiter again.
   LIVE_BATCH_CACHE_MS: 4000,
   _liveBatchCache: { key: '', at: 0, data: null as any } as { key: string; at: number; data: any },
+  setProPlusRefresh(enabled: boolean) {
+    this.LIVE_BATCH_CACHE_MS = enabled ? 2000 : 4000;
+  },
   async getLiveBatch(requests: { exchange: string; symbols: string[] }[]) {
     const key = requests
       .map((r) => `${r.exchange}:${[...r.symbols].sort().join(',')}`)
