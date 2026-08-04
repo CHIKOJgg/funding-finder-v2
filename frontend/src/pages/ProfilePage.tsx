@@ -189,7 +189,7 @@ export function ProfilePage() {
     }
     setApplyingReferral(true);
     try {
-      const response: any = await apiClient.post('/referral/apply', { code: referralCode.trim() });
+      const response: any = await apiClient.post('/referral/apply', { referralCode: referralCode.trim() });
       if (response.ok) {
         showToast(t('profile.referralApplied'), 'success');
         setReferralCode('');
