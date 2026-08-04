@@ -192,7 +192,14 @@ export async function scanBinance(): Promise<ExchangeResult[]> {
     logger.info(`Binance scan completed: ${valid.length} results`);
     return valid;
   } catch (error) {
-    logger.error(`Error scanning Binance: ${(error as Error).message}`);
+    const message = (error as Error).message;
+    // Render's Datacenter IP is frequently rate-limited by Binance WAF (418);
+    // this is a known deployment constraint, not a code bug.
+    if (message.includes('418') || message.includes('rate')) {
+      logger.warn(`Binance scan skipped (host WAF/rate – expected on free Render): ${message}`);
+    } else {
+      logger.error(`Error scanning Binance: ${message}`);
+    }
     return [];
   }
 }

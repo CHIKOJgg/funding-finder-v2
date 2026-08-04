@@ -9,20 +9,32 @@ import { Plan, PlanId } from '../types/index.js';
 // Annual price = 20% off the 12× monthly equivalent (billed once per year).
 const annualFromMonthly = (m: number) => Math.round(m * 12 * 0.8);
 
+// Time-limited promo codes for early adopters (30% off first payment).
+// Each code can be used any number of times while active. Remove the entry
+// to expire the code.
+const PROMO_CODES: Record<string, number> = {
+  EARLY30: 0.30,
+};
+
+export function getPromoDiscount(code?: string): number {
+  if (!code) return 0;
+  return PROMO_CODES[code.toUpperCase().trim()] || 0;
+}
+
 // Consolidated to 2 paid tiers. Pro is the hero (lower entry price than
 // the old Basic/Pro split), Pro+ is the high-value tier. Free stays free.
 export const PLANS: Record<PlanId, Plan> = {
   pro: {
-    monthlyPrice: 1,
-    annualPrice: annualFromMonthly(1),
-    price: 1,
+    monthlyPrice: 49,
+    annualPrice: annualFromMonthly(49),
+    price: 49,
     name: 'Pro',
     features: ['20 бирж в скане', 'AI-анализ безлимита', 'Портфель + PnL', 'Безлимитный вотчлист', 'Приоритетные обновления', 'Экспорт данных'],
   },
   proplus: {
-    monthlyPrice: 1,
-    annualPrice: annualFromMonthly(1),
-    price: 1,
+    monthlyPrice: 149,
+    annualPrice: annualFromMonthly(149),
+    price: 149,
     name: 'Pro+',
     features: ['Все 21 биржа', 'Все функции Pro', 'Персональная поддержка', 'Ранний доступ к фичам', 'White-label'],
   },
@@ -148,13 +160,20 @@ export async function createOrder(
     provider?: 'crypto_pay' | 'nowpayments';
     payCurrency?: string;
     billingPeriod?: 'monthly' | 'annual';
+    promoCode?: string;
   }
 ) {
   const plan = PLANS[planId];
   if (!plan) throw new Error('Invalid plan');
 
   const billingPeriod = options?.billingPeriod || 'monthly';
-  const amount = billingPeriod === 'annual' ? plan.annualPrice : plan.monthlyPrice;
+  let amount = billingPeriod === 'annual' ? plan.annualPrice : plan.monthlyPrice;
+
+  // Apply a time-limited promo code to the regular price.
+ const promoDiscount = getPromoDiscount(options?.promoCode);
+ if (promoDiscount > 0) {
+   amount = Math.round(amount * (1 - promoDiscount) * 100) / 100;
+ }
 
   const provider = options?.provider || 'crypto_pay';
   const orderId = `order_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;

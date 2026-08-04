@@ -450,7 +450,7 @@ export function ProfilePage() {
         <PlanCard
           planId="pro"
           name="Pro"
-          price={1}
+          price={49}
           tagline={t('profile.planTaglinePro')}
           featured
           features={['profile.feat12ex', 'profile.featAi', 'profile.featCsv', 'profile.featPriority']}
@@ -461,7 +461,7 @@ export function ProfilePage() {
         <PlanCard
           planId="proplus"
           name="Pro+"
-          price={1}
+          price={149}
           tagline={t('profile.planTaglineProMax')}
           features={['profile.feat20ex', 'profile.featAllPro', 'profile.featAnalytics', 'profile.featSupport', 'profile.featEarly']}
           currentPlan={subscription}

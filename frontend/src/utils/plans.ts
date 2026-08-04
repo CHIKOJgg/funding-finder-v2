@@ -37,8 +37,8 @@ export const TRIAL_DURATION_DAYS = 3;
 
 // Зеркало цен из backend/src/services/paymentService.ts (годовая = -20%).
 export const PLAN_PRICES: Record<Exclude<PlanTier, 'free'>, { monthly: number; annual: number }> = {
-  pro: { monthly: 1, annual: Math.round(1 * 12 * 0.8) },
-  proplus: { monthly: 1, annual: Math.round(1 * 12 * 0.8) },
+  pro: { monthly: 49, annual: Math.round(49 * 12 * 0.8) },
+  proplus: { monthly: 149, annual: Math.round(149 * 12 * 0.8) },
 };
 
 export const ANNUAL_DISCOUNT_PCT = 20;
