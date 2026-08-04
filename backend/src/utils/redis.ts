@@ -24,13 +24,24 @@ export function getRedis(): Redis | null {
   }
 
   try {
-    client = new Redis(config.redis.url, {
+    // Upstash and most managed Redis providers require TLS (rediss://).
+    // Auto-upgrade plain redis:// URLs that point to upstash.io or render.com
+    // to avoid "Connection closed" after the first idle timeout.
+    let url = config.redis.url;
+    if (url.startsWith('redis://') && (url.includes('upstash.io') || url.includes('render.com'))) {
+      url = url.replace('redis://', 'rediss://');
+      logger.info('Auto-upgraded Redis URL to TLS (rediss://) for managed provider');
+    }
+    client = new Redis(url, {
       maxRetriesPerRequest: 2,
       lazyConnect: true,
-      // Don't let a slow/unreachable Redis block the event loop forever.
-      connectTimeout: 5000,
-      retryStrategy: (times) => (times > 3 ? null : Math.min(times * 200, 1000)),
+      connectTimeout: 10000,
+      retryStrategy: (times) => {
+        if (times > 5) return null;
+        return Math.min(times * 500, 3000);
+      },
     });
+    client.setMaxListeners(20);
     client.on('error', (err) => logger.debug({ err: err.message }, 'Redis client error'));
   } catch (err) {
     logger.warn({ err: (err as Error).message }, 'Failed to initialize Redis client');

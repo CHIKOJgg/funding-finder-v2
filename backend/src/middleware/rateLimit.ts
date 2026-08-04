@@ -22,7 +22,17 @@ export function createRateLimitStore(prefix: string): Options['store'] | undefin
   }
   try {
     return new RedisStore({
-      sendCommand: (...args: string[]) => (redis as any).call(...args),
+      sendCommand: (...args: string[]) => {
+        try {
+          if (!(redis as any).status || (redis as any).status === 'end') return undefined;
+          return (redis as any).call(...args);
+        } catch {
+          // Swallow transient Redis errors gracefully (Upstash free tier
+          // idles connections quickly). The request proceeds without rate
+          // limiting; the shared Redis client auto-reconnects on next use.
+          return undefined;
+        }
+      },
       prefix: `rl:${prefix}:`,
     });
   } catch (err) {
