@@ -14,8 +14,8 @@ export interface PlanLimits {
 
 // Зеркало PLAN_LIMITS из backend/src/middleware/subscription.ts
 export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
-  free: { maxExchanges: 8, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 10, portfolioEnabled: false, label: 'Free' },
-  pro: { maxExchanges: 20, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true, label: 'Pro' },
+  free: { maxExchanges: 4, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 10, portfolioEnabled: false, label: 'Free' },
+  pro: { maxExchanges: 9, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true, label: 'Pro' },
   proplus: { maxExchanges: 21, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true, label: 'Pro+' },
 };
 

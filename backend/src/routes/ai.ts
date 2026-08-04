@@ -76,7 +76,7 @@ router.post('/ai', aiLimiter, validate(aiSchema), async (req: AuthenticatedReque
   }
 });
 
-router.post('/recommend', recommendLimiter, validate(recommendSchema), (req, res) => {
+router.post('/recommend', recommendLimiter, requireSubscription('pro'), validate(recommendSchema), (req, res) => {
   try {
     const { list, capital } = req.body;
     const text = generateRecommendations(list, capital);

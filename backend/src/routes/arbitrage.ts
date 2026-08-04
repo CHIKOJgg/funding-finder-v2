@@ -17,7 +17,7 @@ import { getLivePriceBatch } from '../services/priceService.js';
 import { getLiveFundingBatch } from '../services/fundingService.js';
 import { runScan, getCachedScan } from '../services/scanService.js';
 import { getWarmupPromise } from '../services/fundingWarmup.js';
-import { getSubscriptionLimits } from '../middleware/subscription.js';
+import { getSubscriptionLimits, requireSubscription } from '../middleware/subscription.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
@@ -261,7 +261,7 @@ router.get('/arbitrage/opportunities', async (req, res) => {
   }
 });
 
-router.post('/arbitrage/calculate-profit', validate(calculateProfitSchema), async (req, res) => {
+router.post('/arbitrage/calculate-profit', requireSubscription('pro'), validate(calculateProfitSchema), async (req, res) => {
   try {
     const { opportunity, capital } = req.body;
     const result = await calculateProfit(opportunity, capital);
@@ -296,7 +296,7 @@ const backtestSchema = z.object({
 // Pair-specific backtest: compute historical arbitrage returns for a specific
 // pair + exchange combination using the FundingHistory data the scanner stores.
 // GET /api/arbitrage/backtest?pair=BTC/USDT&exchangeA=binance&exchangeB=bybit&days=30&capital=1000
-router.get('/arbitrage/backtest', validate(backtestSchema, 'query'), async (req, res) => {
+router.get('/arbitrage/backtest', requireSubscription('pro'), validate(backtestSchema, 'query'), async (req, res) => {
   try {
     const { pair, exchangeA, exchangeB, days, capital } = req.query as unknown as {
       pair: string;
@@ -458,7 +458,7 @@ router.get('/arbitrage/backtest', validate(backtestSchema, 'query'), async (req,
 // Spot-Futures (cash-and-carry) snapshot for a single pair: spot price, perp
 // mark, basis %, funding rate and the annualized yield of longing spot +
 // shorting the perp to collect funding.
-router.get('/arbitrage/spot-futures', async (req, res) => {
+router.get('/arbitrage/spot-futures', requireSubscription('pro'), async (req, res) => {
   try {
     const exchange = (req.query.exchange as string) || 'binance';
     const pair = (req.query.pair as string) || 'BTCUSDT';
