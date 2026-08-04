@@ -501,7 +501,7 @@ export function MainPage() {
               limit={10}
               colorClass="text-[var(--green)]"
               onHistory={setHistoryModal}
-              onAlert={setAlertModal}
+               onAlert={(data, pos) => setAlertModal({ ...data, ...pos })}
               searchQuery={searchQuery}
               sortBy={sortBy}
               showWatchlistOnly={showWatchlistOnly}
@@ -520,7 +520,7 @@ export function MainPage() {
               limit={10}
               colorClass="text-[var(--amber)]"
               onHistory={setHistoryModal}
-              onAlert={setAlertModal}
+               onAlert={(data, pos) => setAlertModal({ ...data, ...pos })}
               searchQuery={searchQuery}
               sortBy={sortBy}
               showWatchlistOnly={showWatchlistOnly}
@@ -539,7 +539,7 @@ export function MainPage() {
               limit={5}
               colorClass="text-[var(--text2)]"
               onHistory={setHistoryModal}
-              onAlert={setAlertModal}
+               onAlert={(data, pos) => setAlertModal({ ...data, ...pos })}
               searchQuery={searchQuery}
               sortBy={sortBy}
               showWatchlistOnly={showWatchlistOnly}
