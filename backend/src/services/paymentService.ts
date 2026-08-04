@@ -32,9 +32,9 @@ export const PLANS: Record<PlanId, Plan> = {
     features: ['20 бирж в скане', 'AI-анализ безлимита', 'Портфель + PnL', 'Безлимитный вотчлист', 'Приоритетные обновления', 'Экспорт данных'],
   },
   proplus: {
-    monthlyPrice: 149,
-    annualPrice: annualFromMonthly(149),
-    price: 149,
+    monthlyPrice: 1, // TEST PRICE – revert before launch
+    annualPrice: annualFromMonthly(1),
+    price: 1,
     name: 'Pro+',
     features: ['Все 21 биржа', 'Все функции Pro', 'Персональная поддержка', 'Ранний доступ к фичам', 'White-label'],
   },
