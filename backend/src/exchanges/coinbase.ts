@@ -19,7 +19,10 @@ export async function scanCoinbase(): Promise<ExchangeResult[]> {
         if (!Number.isFinite(funding)) return null;
         upsertContractMetadata({ exchange: 'coinbase', contract: name }).catch(() => {});
         // The quote timestamp is observation time, not a funding settlement time.
-        return toExchangeResult({ exchange: 'coinbase', contract: name, currentFunding: funding, fundingIntervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, fundingIntervalSource: 'default', fundingNextApply: 0, markPrice: safeParseFloat(quote?.mark_price), volume24hSettle: safeParseFloat(i.volume_24h ?? i.volume), });
+        // Coinbase International settles funding every 1 hour (instrument
+        // `funding_interval` is 3600000000000 ns = 1h) and `predicted_funding`
+        // is already a per-hour decimal — no scaling needed.
+        return toExchangeResult({ exchange: 'coinbase', contract: name, currentFunding: funding, fundingIntervalSeconds: KNOWN_INTERVALS.HOURLY, fundingIntervalSource: 'default', fundingNextApply: 0, markPrice: safeParseFloat(quote?.mark_price), volume24hSettle: safeParseFloat(i.volume_24h ?? i.volume), });
       } catch { return null; }
     });
     return results.filter((r): r is ExchangeResult => r !== null);

@@ -52,7 +52,7 @@ export async function scanBingX(): Promise<ExchangeResult[]> {
         const currentFunding = safeParseFloat(latest?.fundingRate);
         const lastFundingTime = Number(latest?.fundingTime) || 0;
         const markFromFr = safeParseFloat(latest?.markPrice) || mark;
-        const nextFunding = lastFundingTime > 0 ? lastFundingTime + BINGX_INTERVAL : 0;
+        const nextFunding = lastFundingTime > 0 ? lastFundingTime + BINGX_INTERVAL * 1000 : 0;
 
         upsertContractMetadata({ exchange: 'bingx', contract: symbol }).catch(() => {});
 

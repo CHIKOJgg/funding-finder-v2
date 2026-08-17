@@ -1,5 +1,5 @@
 import { ExchangeResult, KNOWN_INTERVALS } from '../types/index.js';
-import { cachedRequest, getOrCreateClient, mapWithConcurrency, retry, safeParseFloat } from '../utils/exchangeClient.js';
+import { cachedRequest, getOrCreateClient, mapWithConcurrency, retry, safeParseFloat, toMs } from '../utils/exchangeClient.js';
 import { toExchangeResult } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
@@ -16,7 +16,7 @@ export async function scanAevo(): Promise<ExchangeResult[]> {
         const rate = safeParseFloat(funding?.funding_rate, NaN);
         if (!name || !Number.isFinite(rate)) return null;
         upsertContractMetadata({ exchange: 'aevo', contract: name }).catch(() => {});
-        return toExchangeResult({ exchange: 'aevo', contract: name, currentFunding: rate, fundingIntervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, fundingIntervalSource: 'default', fundingNextApply: safeParseFloat(funding?.next_epoch), markPrice: safeParseFloat(m.mark_price), volume24hSettle: safeParseFloat(m.volume_24h ?? m.volume), });
+        return toExchangeResult({ exchange: 'aevo', contract: name, currentFunding: rate, fundingIntervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, fundingIntervalSource: 'default', fundingNextApply: toMs(funding?.next_epoch), markPrice: safeParseFloat(m.mark_price), volume24hSettle: safeParseFloat(m.volume_24h ?? m.volume), });
       } catch { return null; }
     });
     return results.filter((r): r is ExchangeResult => r !== null);

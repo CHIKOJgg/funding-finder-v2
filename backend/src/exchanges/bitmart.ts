@@ -1,6 +1,6 @@
 import { ExchangeResult } from '../types/index.js';
 import { KNOWN_INTERVALS } from '../types/index.js';
-import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest, safeParseFloat } from '../utils/exchangeClient.js';
+import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest, safeParseFloat, toMs } from '../utils/exchangeClient.js';
 import { toExchangeResult } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
@@ -45,7 +45,7 @@ export async function scanBitMart(): Promise<ExchangeResult[]> {
         if (!fd) return null;
 
         const currentFunding = safeParseFloat(fd.funding_rate);
-        const nextFunding = Number(fd.funding_time) || 0;
+        const nextFunding = toMs(fd.funding_time) || 0;
         const mark = safeParseFloat(tk?.last_price);
         const vol24 = safeParseFloat(tk?.volume_24h);
 

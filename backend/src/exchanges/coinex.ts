@@ -1,6 +1,6 @@
 import { ExchangeResult } from '../types/index.js';
 import { KNOWN_INTERVALS } from '../types/index.js';
-import { retry, getOrCreateClient, cachedRequest, safeParseFloat } from '../utils/exchangeClient.js';
+import { retry, getOrCreateClient, cachedRequest, safeParseFloat, toMs } from '../utils/exchangeClient.js';
 import { toExchangeResult } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
@@ -47,7 +47,7 @@ export async function scanCoinEx(): Promise<ExchangeResult[]> {
         if (!f) return null;
 
         const currentFunding = safeParseFloat(f.latest_funding_rate);
-        const nextFunding = Number(f.next_funding_time) || 0;
+        const nextFunding = toMs(f.next_funding_time) || 0;
         const mark = safeParseFloat(f.mark_price) || safeParseFloat(t?.last);
         const vol24 = safeParseFloat(t?.value);
 

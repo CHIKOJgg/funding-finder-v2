@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { logger } from '../utils/logger.js';
-import { cachedRequest } from '../utils/exchangeClient.js';
+import { cachedRequest, toMs } from '../utils/exchangeClient.js';
 import { normalizeFundingRate } from '../utils/helpers.js';
 import { KNOWN_INTERVALS } from '../types/index.js';
 import { toNative } from './priceService.js';
@@ -92,7 +92,7 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
         const d = r.data?.data;
         const rate = num(d?.fundingRate);
         if (rate == null) return null;
-        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: Number(d?.nextSettleTime) || 0 };
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: toMs(d?.nextSettleTime) || 0 };
       }
       case 'bitget': {
         const [tk, ct] = await Promise.all([
@@ -113,7 +113,7 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
         const rate = num(latest?.fundingRate);
         if (rate == null) return null;
         const last = Number(latest?.fundingTime) || 0;
-        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: last > 0 ? last + KNOWN_INTERVALS.EIGHT_HOUR : 0 };
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: last > 0 ? last + KNOWN_INTERVALS.EIGHT_HOUR * 1000 : 0 };
       }
       case 'phemex': {
         const r = await cachedRequest(`funding:phemex:${symbol}`, () =>
@@ -176,14 +176,14 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
         const fd = r.data?.data;
         const rate = num(fd?.funding_rate);
         if (rate == null) return null;
-        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: Number(fd?.funding_time) || 0 };
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: toMs(fd?.funding_time) || 0 };
       }
       case 'coinex': {
         const d = await getCachedList('fundinglist:coinex', 'https://api.coinex.com/v2/futures/funding-rate');
         const f = (d?.data || []).find((x: any) => x.market === symbol);
         const rate = num(f?.latest_funding_rate);
         if (rate == null) return null;
-        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: Number(f?.next_funding_time) || 0 };
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: toMs(f?.next_funding_time) || 0 };
       }
       case 'blofin': {
         const r = await cachedRequest(`funding:blofin:${symbol}`, () =>
@@ -191,7 +191,7 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
         const fd = r.data?.data?.[0];
         const rate = num(fd?.fundingRate);
         if (rate == null) return null;
-        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: Number(fd?.fundingTime) || 0 };
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: toMs(fd?.fundingTime) || 0 };
       }
       case 'bitmart': {
         const r = await cachedRequest(`funding:bitmart:${symbol}`, () =>
@@ -199,7 +199,7 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
         const fd = r.data?.data;
         const rate = num(fd?.funding_rate);
         if (rate == null) return null;
-        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: Number(fd?.funding_time) || 0 };
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: toMs(fd?.funding_time) || 0 };
       }
       case 'weex': {
         const r = await cachedRequest(`funding:weex:${symbol}`, () =>
@@ -207,7 +207,7 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
         const fd = r.data?.data;
         const rate = num(fd?.funding_rate);
         if (rate == null) return null;
-        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: Number(fd?.funding_time) || 0 };
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: toMs(fd?.funding_time) || 0 };
       }
       case 'coinw': {
         const r = await cachedRequest(`funding:coinw:${symbol}`, () =>
@@ -215,7 +215,7 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
         const fd = r.data?.data;
         const rate = num(fd?.funding_rate);
         if (rate == null) return null;
-        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: Number(fd?.funding_time) || Number(fd?.next_funding_time) || 0 };
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: toMs(fd?.funding_time) || toMs(fd?.next_funding_time) || 0 };
       }
       case 'drift': {
         const r = await cachedRequest(`funding:drift:${symbol}`, () =>

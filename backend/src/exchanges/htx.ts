@@ -1,6 +1,6 @@
 import { ExchangeResult } from '../types/index.js';
 import { KNOWN_INTERVALS } from '../types/index.js';
-import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest, safeParseFloat } from '../utils/exchangeClient.js';
+import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest, safeParseFloat, toMs } from '../utils/exchangeClient.js';
 import { toExchangeResult } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
@@ -64,7 +64,7 @@ export async function scanHtx(): Promise<ExchangeResult[]> {
         if (!fd) return null;
 
         const currentFunding = safeParseFloat(fd.funding_rate);
-        const nextFunding = Number(fd.funding_time) || 0;
+        const nextFunding = toMs(fd.funding_time) || 0;
         const mark = markMap.get(symbol) || 0;
         const vol24 = safeParseFloat(od?.value);
         const intervalHours = safeParseFloat(c.settlement_period, 8);

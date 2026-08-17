@@ -1,5 +1,5 @@
 import { ExchangeResult, KNOWN_INTERVALS } from '../types/index.js';
-import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest } from '../utils/exchangeClient.js';
+import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest, toMs } from '../utils/exchangeClient.js';
 import { normalizeFundingRate } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
@@ -85,7 +85,7 @@ export async function scanMEXC(): Promise<ExchangeResult[]> {
             parseFloat(ticker.fairPrice) || parseFloat(ticker.lastPrice) || 0;
           const vol24 = parseFloat(ticker.volume24) || 0;
           const nextFunding = fundingInfo?.nextSettleTime
-            ? Number(fundingInfo.nextSettleTime)
+            ? toMs(fundingInfo.nextSettleTime)
             : 0;
 
           if (!isFinite(currentFunding)) return null;

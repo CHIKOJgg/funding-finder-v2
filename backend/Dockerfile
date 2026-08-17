@@ -11,9 +11,11 @@ COPY frontend/package.json frontend/
 RUN npm ci
 
 COPY backend ./backend
+COPY frontend ./frontend
 
 RUN cd backend && npx prisma generate
 RUN cd backend && npm run build
+RUN cd frontend && npm run build
 
 FROM node:20-slim
 
@@ -32,6 +34,7 @@ RUN npm ci --omit=dev && \
     npm cache clean --force
 
 COPY --from=builder /app/backend/dist backend/dist
+COPY --from=builder /app/frontend/dist frontend/dist
 COPY --from=builder /app/node_modules/.prisma node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma node_modules/@prisma
 COPY backend/prisma backend/prisma

@@ -273,6 +273,21 @@ export function safeParseInt(value: unknown, fallback: number = 0): number {
   return Number.isNaN(n) ? fallback : n;
 }
 
+/**
+ * Coerce an exchange "next funding" timestamp to milliseconds.
+ *
+ * Exchanges are inconsistent: some return epoch SECONDS (e.g. 1.78e9), others
+ * epoch MILLISECONDS (e.g. 1.78e12). A bare `Number()` treats a seconds value
+ * as ms, pushing the time into 1970 and breaking every countdown. This helper
+ * detects the unit from magnitude and only multiplies when the value is clearly
+ * seconds, so it is safe for both. (Kraken's scanner already inlined this.)
+ */
+export function toMs(value: unknown): number {
+  const n = safeParseFloat(value, 0);
+  if (n > 0 && n < 1e12) return n * 1000;
+  return n;
+}
+
 // ==================== Cleanup ====================
 
 export function cleanupConnections(): void {
