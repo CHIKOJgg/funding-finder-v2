@@ -162,13 +162,13 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
     }
   };
 
-  const handleDevGuest = async () => {
+  const handleGuest = async () => {
     try {
       setLoading(true);
-      const res: any = await apiClient.devGuest();
-      if (res?.ok) onAuthenticated(res.token, res.user);
+      const res: any = await apiClient.guestLogin();
+      if (res?.ok && res.token && res.user) onAuthenticated(res.token, res.user);
     } catch (err) {
-      showToast(t('login.devError'), 'error');
+      showToast(t('login.devError') || 'Guest access error', 'error');
     } finally {
       setLoading(false);
     }
@@ -346,11 +346,9 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
           </p>
         )}
 
-        {import.meta.env.DEV && (
-          <button onClick={handleDevGuest} disabled={loading} className="btn btn-secondary w-full text-sm">
-              {t('login.devGuest')}
-          </button>
-        )}
+        <button onClick={handleGuest} disabled={loading} className="btn btn-secondary w-full text-sm">
+          {t('login.devGuest') || 'Продолжить как гость'}
+        </button>
 
         <p className="text-center text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
             {t('login.footerNote')}
