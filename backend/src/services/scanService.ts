@@ -57,29 +57,32 @@ async function saveToHistory(result: ScanResult): Promise<void> {
     if (uniqueItems.length === 0) return;
 
     const now = new Date();
+    const keys = uniqueItems.map((i) => `${i.exchange}:${i.contract}`);
 
-    // Phase 1: upsert all parent rows in parallel (not wrapped in a single
-    // transaction, since each upsert is independent) so the DB can pipeline them.
-    const parentIds: string[] = await Promise.all(
-      uniqueItems.map(async (item) => {
-        const key = `${item.exchange}:${item.contract}`;
-        const record = await prisma.fundingHistory.upsert({
-          where: { key },
-          create: { key },
-          update: {},
-          select: { id: true },
-        });
-        return record.id;
-      })
-    );
+    // Insert parent rows in ONE statement, ignoring rows that already exist
+    // (idempotent per unique `key`). This replaces a per-row `upsert` loop that
+    // fired thousands of parallel queries and starved the DB connection pool
+    // (the pool default is tiny), which made every authenticated request time
+    // out for seconds whenever a scan saved its history.
+    await prisma.fundingHistory.createMany({
+      data: keys.map((key) => ({ key })),
+      skipDuplicates: true,
+    });
 
-    // Phase 2: bulk-insert all child FundingRecord rows in one statement.
+    // Resolve the (possibly pre-existing) parent IDs in a single query.
+    const parents = await prisma.fundingHistory.findMany({
+      where: { key: { in: keys } },
+      select: { id: true, key: true },
+    });
+    const idByKey = new Map(parents.map((p) => [p.key, p.id]));
+
+    // Bulk-insert all child FundingRecord rows in ONE statement.
     await prisma.fundingRecord.createMany({
-      data: parentIds.map((fundingHistoryId, i) => ({
-        fundingHistoryId,
+      data: uniqueItems.map((item) => ({
+        fundingHistoryId: idByKey.get(`${item.exchange}:${item.contract}`) as string,
         timestamp: now,
-        funding: uniqueItems[i].currentFunding,
-        intervalHours: uniqueItems[i].funding_interval_hours || null,
+        funding: item.currentFunding,
+        intervalHours: item.funding_interval_hours || null,
       })),
     });
   } catch (e) {
