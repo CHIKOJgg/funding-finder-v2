@@ -128,4 +128,48 @@ export function WithdrawModal({ open, balance, onClose, onSuccess }: WithdrawMod
                 <option key={net.id} value={net.id}>
                   {net.name} (мин. {net.min} USDT)
                 </option>
-              ))}\n            </select>\n          </div>\n\n          <div>\n            <label className=\"block text-xs font-medium text-[var(--text-muted)] mb-1\">\n              Адрес кошелька ({network})\n            </label>\n            <input\n              type=\"text\"\n              placeholder={currentNetwork.placeholder}\n              value={address}\n              onChange={(e) => setAddress(e.target.value)}\n              className=\"input-field w-full font-mono text-xs\"\n              required\n            />\n          </div>\n\n          <div className=\"rounded-lg p-3 text-xs bg-[var(--surface-2)] text-[var(--text-muted)] space-y-1\">\n            <p>• Заявки обрабатываются администрацией в течение 24 часов.</p>\n            <p>• Убедитесь, что выбранная сеть совпадает с сетью вашего кошелька во избежание потери средств.</p>\n          </div>\n\n          <div className=\"flex gap-2 pt-1\">\n            <button\n              type=\"button\"\n              onClick={onClose}\n              className=\"btn btn-secondary flex-1 py-2.5 text-sm\"\n              disabled={submitting}\n            >\n              Отмена\n            </button>\n            <button\n              type=\"submit\"\n              className=\"btn btn-primary flex-1 py-2.5 text-sm font-semibold flex items-center justify-center gap-1.5\"\n              disabled={submitting || balance < minAmount}\n            >\n              {submitting ? 'Отправка...' : 'Вывести'}\n            </button>\n          </div>\n        </form>\n      </div>\n    </div>\n  );\n}\n
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
+              Адрес кошелька ({network})
+            </label>
+            <input
+              type="text"
+              placeholder={currentNetwork.placeholder}
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="input-field w-full font-mono text-xs"
+              required
+            />
+          </div>
+
+          <div className="rounded-lg p-3 text-xs bg-[var(--surface-2)] text-[var(--text-muted)] space-y-1">
+            <p>• Заявки обрабатываются администрацией в течение 24 часов.</p>
+            <p>• Убедитесь, что выбранная сеть совпадает с сетью вашего кошелька во избежание потери средств.</p>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn btn-secondary flex-1 py-2.5 text-sm"
+              disabled={submitting}
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary flex-1 py-2.5 text-sm font-semibold flex items-center justify-center gap-1.5"
+              disabled={submitting || balance < minAmount}
+            >
+              {submitting ? 'Отправка...' : 'Вывести'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
