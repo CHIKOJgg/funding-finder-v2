@@ -95,33 +95,26 @@ async function ensureUserExists(userId: string, authProvider: AuthProvider): Pro
 async function trackActivity(userId: string, authProvider: AuthProvider = 'telegram'): Promise<void> {
   try {
     // ZERO DB ops for a warm user (cached) — removes the per-request write.
-    const te0 = Date.now();
     await ensureUserExists(userId, authProvider);
-    console.log(`[PERF] trackActivity ensureUserExists ${Date.now() - te0}ms`);
 
     // Only refresh lastActive (and run the trial-expiry check) when stale.
     // Skip the DB query entirely for warm users — it costs ~420ms even when it
     // matches zero rows, and that is what serialises authed requests.
     const lastTrack = lastActiveTracked.get(userId);
     if (lastTrack !== undefined && Date.now() - lastTrack < TRACK_INTERVAL_MS) {
-      console.log(`[PERF] trackActivity updateMany SKIPPED (warm, ${Date.now() - lastTrack}ms ago)`);
       return;
     }
     const now = new Date();
     const staleCutoff = new Date(now.getTime() - TRACK_INTERVAL_MS);
-    const tu0 = Date.now();
     const updated = await prisma.user.updateMany({
       where: { telegramId: userId, lastActive: { lt: staleCutoff } },
       data: { lastActive: now },
     });
     lastActiveTracked.set(userId, Date.now());
-    console.log(`[PERF] trackActivity updateMany count=${updated.count} ${Date.now() - tu0}ms`);
     const tgId = userId.replace('tg_', '');
     const isDevUltimate = DEV_ULTIMATE_TELEGRAM_IDS.has(tgId);
     if (updated.count > 0 && !isDevUltimate) {
-      const tt0 = Date.now();
       await enforceTrialExpiry(userId);
-      console.log(`[PERF] trackActivity enforceTrialExpiry ${Date.now() - tt0}ms`);
     }
   } catch (err) {
     logger.debug({ err: (err as Error).message }, 'Failed to track user activity');
@@ -130,7 +123,6 @@ async function trackActivity(userId: string, authProvider: AuthProvider = 'teleg
 
 export async function validateTelegramInitData(req: Request, res: Response, next: NextFunction) {
   const initData = req.headers['x-telegram-init-data'] as string;
-  if ((req as any)._t0) console.log('[PERF] auth:start', Date.now() - (req as any)._t0, 'ms since rcv', req.method, req.path);
 
   if (!initData) {
     if (config.nodeEnv === 'development') {
@@ -192,11 +184,7 @@ export async function validateTelegramInitData(req: Request, res: Response, next
     (req as AuthenticatedRequest).userId = `tg_${user.id}`;
 
     // Ensure user exists in DB before any route handler
-    const preTrack = Date.now();
-    console.log(`[PERF] auth:preTrack ${(preTrack - (req as any)._t0)}ms since rcv`);
-    const tTrack = Date.now();
     await trackActivity((req as AuthenticatedRequest).userId!);
-    console.log(`[PERF] auth trackActivity ${Date.now() - tTrack}ms`);
 
     next();
   } catch (err) {

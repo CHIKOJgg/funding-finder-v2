@@ -37,12 +37,6 @@ const POOL_SIZE = 10;
 
 export async function connectDatabase(): Promise<void> {
   try {
-    try {
-      const u = new URL(config.databaseUrl);
-      console.log(`[DBHOST] ${u.protocol}//${u.hostname}:${u.port}${u.search}`);
-    } catch (e) {
-      console.log(`[DBHOST] unparseable: ${(e as Error).message}`);
-    }
     await prisma.$connect();
     logger.info('PostgreSQL connected via Prisma');
 

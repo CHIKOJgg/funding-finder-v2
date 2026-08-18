@@ -79,12 +79,6 @@ const app = express();
 const server = createServer(app);
 void initSentry();
 
-// PERF: mark when the HTTP request was received by Node (before any middleware).
-app.use((req, _res, next) => {
-  (req as any)._t0 = Date.now();
-  next();
-});
-
 // Trust the reverse proxy (Render/Nginx/etc.) so express-rate-limit and
 // req.ip work correctly with the X-Forwarded-For header.
 app.set('trust proxy', 1);
