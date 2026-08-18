@@ -573,4 +573,228 @@ export function AdminPage() {
           {totalPages > 1 && (
             <div className="flex justify-center gap-2 mt-4">
               <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}\n                disabled={page <= 1}\n                className=\"btn text-sm py-1 px-3 w-auto\"\n              >\n                <IconChevronLeft size={14} /> {t('admin.prev')}\n              </button>\n               <span className=\"py-1 text-sm text-[var(--text2)]\">{t('admin.page', { page, total: totalPages })}</span>\n              <button\n                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}\n                disabled={page >= totalPages}\n                className=\"btn text-sm py-1 px-3 w-auto\"\n              >\n                {t('admin.next')} <IconChevronRight size={14} />\n              </button>\n            </div>\n          )}\n        </div>\n      )}\n\n      {tab === 'withdrawals' && (\n        <div className=\"card\">\n          <div className=\"flex flex-wrap items-center justify-between gap-2 mb-4\">\n            <h2 className=\"text-lg font-semibold\">Управление выводами средств</h2>\n            <div className=\"flex gap-1 bg-[var(--surface-2)] p-1 rounded-lg\">\n              {(['pending', 'completed', 'rejected', 'all'] as const).map((st) => (\n                <button\n                  key={st}\n                  onClick={() => setWithdrawalFilter(st)}\n                  className={`text-xs px-2.5 py-1 rounded-md font-medium transition-all ${\n                    withdrawalFilter === st\n                      ? 'bg-[var(--cobalt)] text-[var(--on-brand)]'\n                      : 'text-[var(--text2)] hover:text-[var(--text)]'\n                  }`}\n                >\n                  {st === 'pending' ? 'Ожидают' : st === 'completed' ? 'Выполнены' : st === 'rejected' ? 'Отклонены' : 'Все'}\n                </button>\n              ))}\n            </div>\n          </div>\n\n          {loading ? (\n            <div className=\"text-center py-8 text-[var(--text3)]\">{t('common.loading')}</div>\n          ) : withdrawals.length === 0 ? (\n            <div className=\"text-center py-8 text-[var(--text3)]\">Заявок на вывод не найдено</div>\n          ) : (\n            <div className=\"space-y-3\">\n              {withdrawals.map((w) => {\n                const isPending = w.status === 'pending';\n                const isCompleted = w.status === 'completed';\n                const isRejected = w.status === 'rejected';\n                const statusColor = isCompleted ? 'var(--green)' : isRejected ? 'var(--red)' : 'var(--amber)';\n                const statusBg = isCompleted ? 'var(--green-soft)' : isRejected ? 'var(--red-soft)' : 'var(--amber-soft)';\n\n                return (\n                  <div key={w.id} className=\"p-3.5 border border-[var(--border)] rounded-xl text-sm bg-[var(--surface)]\">\n                    <div className=\"flex flex-wrap justify-between items-start gap-2\">\n                      <div className=\"flex-1 min-w-[200px]\">\n                        <div className=\"font-semibold text-base\">\n                          {w.amount} {w.currency} <span className=\"text-xs px-2 py-0.5 rounded bg-[var(--surface-2)] text-[var(--brand)] font-mono\">{w.network}</span>\n                        </div>\n                        <div className=\"text-xs text-[var(--text2)] mt-1\">\n                          Пользователь: <span className=\"font-medium text-[var(--text)]\">{w.user?.firstName || w.user?.username || w.userId}</span>\n                          {w.user?.username && ` (@${w.user.username})`} · Баланс: {w.user?.balance ?? 0} USDT\n                        </div>\n                        <div className=\"text-xs text-[var(--text3)] font-mono mt-1 break-all bg-[var(--surface-2)] p-1.5 rounded\">\n                          Адрес: {w.address}\n                        </div>\n                        {w.transactionId && (\n                          <div className=\"text-xs text-[var(--green)] font-mono mt-1 break-all\">\n                            TxID: {w.transactionId}\n                          </div>\n                        )}\n                        <div className=\"text-[11px] text-[var(--text3)] mt-1\">\n                          Создано: {new Date(w.createdAt).toLocaleString()}\n                        </div>\n                      </div>\n\n                      <div className=\"flex flex-col items-end gap-2\">\n                        <span\n                          className=\"text-xs px-2.5 py-1 rounded-full font-semibold\"\n                          style={{ color: statusColor, background: statusBg }}\n                        >\n                          {isPending ? 'Ожидает выплаты' : isCompleted ? 'Выплачено' : 'Отклонено'}\n                        </span>\n\n                        {isPending && (\n                          <div className=\"flex gap-1.5 mt-2\">\n                            <button\n                              onClick={() => {\n                                setCompleteModal({ id: w.id, amount: w.amount, user: w.user?.username || w.userId, address: w.address, network: w.network });\n                                setTxHash('');\n                              }}\n                              className=\"text-xs bg-[var(--green)] text-white px-3 py-1.5 rounded-lg font-semibold hover:opacity-90 active:opacity-80 transition-opacity\"\n                            >\n                              Подтвердить\n                            </button>\n                            <button\n                              onClick={() => setRejectConfirm({ id: w.id, amount: w.amount, user: w.user?.username || w.userId })}\n                              className=\"text-xs bg-[var(--red-soft)] text-[var(--red)] px-2.5 py-1.5 rounded-lg font-semibold hover:opacity-90 active:opacity-80 transition-opacity\"\n                            >\n                              Отклонить\n                            </button>\n                          </div>\n                        )}\n                      </div>\n                    </div>\n                  </div>\n                );\n              })}\n            </div>\n          )}\n        </div>\n      )}\n\n      {/* Complete Withdrawal Modal */}\n      {completeModal && (\n        <div className=\"fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4\">\n          <div className=\"bg-[var(--surface)] card rounded-xl max-w-md w-full p-5 shadow-2xl\">\n            <h2 className=\"text-lg font-bold mb-2 text-[var(--text)]\">Подтверждение выплаты</h2>\n            <p className=\"text-xs text-[var(--text2)] mb-4\">\n              Вы подтверждаете отправку <strong>{completeModal.amount} USDT</strong> пользователю {completeModal.user} в сети <strong>{completeModal.network}</strong>.\n            </p>\n\n            <div className=\"mb-4 bg-[var(--surface-2)] p-2.5 rounded-lg text-xs font-mono break-all text-[var(--text)]\">\n              {completeModal.address}\n            </div>\n\n            <div className=\"mb-4\">\n              <label className=\"block text-xs font-medium text-[var(--text2)] mb-1\">\n                Хэш транзакции (TxID / Tx Hash) — необязательно:\n              </label>\n              <input\n                type=\"text\"\n                placeholder=\"0x... или tx hash\"\n                value={txHash}\n                onChange={(e) => setTxHash(e.target.value)}\n                className=\"input-field w-full font-mono text-xs\"\n              />\n            </div>\n\n            <div className=\"flex gap-2\">\n              <button onClick={() => setCompleteModal(null)} className=\"btn btn-secondary flex-1 py-2 text-sm\">\n                Отмена\n              </button>\n              <button\n                onClick={() => handleCompleteWithdrawal(completeModal.id, txHash)}\n                className=\"btn btn-primary flex-1 py-2 text-sm font-semibold\"\n              >\n                Подтвердить перевод\n              </button>\n            </div>\n          </div>\n        </div>\n      )}\n\n      {/* Reject Withdrawal Modal */}\n      <ConfirmDialog\n        open={rejectConfirm !== null}\n        title=\"Отклонить вывод средств?\"\n        message={rejectConfirm ? `Вы уверены, что хотите отклонить заявку на ${rejectConfirm.amount} USDT? Сумма будет автоматически возвращена на баланс пользователя.` : ''}\n        confirmText=\"Отклонить и вернуть\"\n        cancelText=\"Отмена\"\n        variant=\"danger\"\n        onConfirm={handleRejectWithdrawal}\n        onCancel={() => setRejectConfirm(null)}\n      />\n\n      {editUser && (\n        <div className=\"fixed inset-0 bg-[rgba(5,7,12,0.6)] flex items-center justify-center z-50 p-4\">\n          <div className=\"bg-surface rounded-xl max-w-md w-full\" style={{ color: 'var(--text)' }}>\n            <div className=\"card\">\n              <h2 className=\"text-lg font-semibold mb-4\">\n                {editUser.field === 'subscription' ? t('admin.changeSubscription') : t('admin.editBalanceTitle')}\n              </h2>\n              {editUser.field === 'subscription' ? (\n                <select\n                  value={editUser.value}\n                  onChange={(e) => setEditUser({ ...editUser, value: e.target.value })}\n                  className=\"input-field mb-4\"\n                >\n                  <option value=\"free\">Free</option>\n                  <option value=\"pro\">Pro</option>\n                  <option value=\"proplus\">Pro+</option>\n                </select>\n              ) : (\n                <input\n                  type=\"number\"\n                  value={editUser.value}\n                  onChange={(e) => setEditUser({ ...editUser, value: e.target.value })}\n                  min={0}\n                  step={0.01}\n                  className=\"input-field mb-4\"\n                />\n              )}\n              <div className=\"flex gap-2\">\n                <button onClick={() => setEditUser(null)} className=\"btn btn-secondary flex-1\">{t('common.cancel')}</button>\n                <button\n                  onClick={() =>\n                    editUser.field === 'subscription'\n                      ? handleUpdateSubscription(editUser.id, editUser.value)\n                      : handleUpdateBalance(editUser.id, editUser.value)\n                  }\n                  className=\"btn btn-primary flex-1\"\n                >\n                  {t('common.save')}\n                </button>\n              </div>\n            </div>\n          </div>\n        </div>\n      )}\n\n      <ConfirmDialog\n        open={deleteConfirm !== null}\n        title={t('admin.deleteUserTitle')}\n        message={t('admin.deleteUserMessage')}\n        confirmText={t('common.delete')}\n        cancelText={t('common.cancel')}\n        variant=\"danger\"\n        onConfirm={handleDeleteUser}\n        onCancel={() => setDeleteConfirm(null)}\n      />\n    </div>\n  );\n}\n
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="btn text-sm py-1 px-3 w-auto"
+              >
+                <IconChevronLeft size={14} /> {t('admin.prev')}
+              </button>
+               <span className="py-1 text-sm text-[var(--text2)]">{t('admin.page', { page, total: totalPages })}</span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="btn text-sm py-1 px-3 w-auto"
+              >
+                {t('admin.next')} <IconChevronRight size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'withdrawals' && (
+        <div className="card">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h2 className="text-lg font-semibold">Управление выводами средств</h2>
+            <div className="flex gap-1 bg-[var(--surface-2)] p-1 rounded-lg">
+              {(['pending', 'completed', 'rejected', 'all'] as const).map((st) => (
+                <button
+                  key={st}
+                  onClick={() => setWithdrawalFilter(st)}
+                  className={`text-xs px-2.5 py-1 rounded-md font-medium transition-all ${
+                    withdrawalFilter === st
+                      ? 'bg-[var(--cobalt)] text-[var(--on-brand)]'
+                      : 'text-[var(--text2)] hover:text-[var(--text)]'
+                  }`}
+                >
+                  {st === 'pending' ? 'Ожидают' : st === 'completed' ? 'Выполнены' : st === 'rejected' ? 'Отклонены' : 'Все'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-8 text-[var(--text3)]">{t('common.loading')}</div>
+          ) : withdrawals.length === 0 ? (
+            <div className="text-center py-8 text-[var(--text3)]">Заявок на вывод не найдено</div>
+          ) : (
+            <div className="space-y-3">
+              {withdrawals.map((w) => {
+                const isPending = w.status === 'pending';
+                const isCompleted = w.status === 'completed';
+                const isRejected = w.status === 'rejected';
+                const statusColor = isCompleted ? 'var(--green)' : isRejected ? 'var(--red)' : 'var(--amber)';
+                const statusBg = isCompleted ? 'var(--green-soft)' : isRejected ? 'var(--red-soft)' : 'var(--amber-soft)';
+
+                return (
+                  <div key={w.id} className="p-3.5 border border-[var(--border)] rounded-xl text-sm bg-[var(--surface)]">
+                    <div className="flex flex-wrap justify-between items-start gap-2">
+                      <div className="flex-1 min-w-[200px]">
+                        <div className="font-semibold text-base">
+                          {w.amount} {w.currency} <span className="text-xs px-2 py-0.5 rounded bg-[var(--surface-2)] text-[var(--brand)] font-mono">{w.network}</span>
+                        </div>
+                        <div className="text-xs text-[var(--text2)] mt-1">
+                          Пользователь: <span className="font-medium text-[var(--text)]">{w.user?.firstName || w.user?.username || w.userId}</span>
+                          {w.user?.username && ` (@${w.user.username})`} · Баланс: {w.user?.balance ?? 0} USDT
+                        </div>
+                        <div className="text-xs text-[var(--text3)] font-mono mt-1 break-all bg-[var(--surface-2)] p-1.5 rounded">
+                          Адрес: {w.address}
+                        </div>
+                        {w.transactionId && (
+                          <div className="text-xs text-[var(--green)] font-mono mt-1 break-all">
+                            TxID: {w.transactionId}
+                          </div>
+                        )}
+                        <div className="text-[11px] text-[var(--text3)] mt-1">
+                          Создано: {new Date(w.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-2">
+                        <span
+                          className="text-xs px-2.5 py-1 rounded-full font-semibold"
+                          style={{ color: statusColor, background: statusBg }}
+                        >
+                          {isPending ? 'Ожидает выплаты' : isCompleted ? 'Выплачено' : 'Отклонено'}
+                        </span>
+
+                        {isPending && (
+                          <div className="flex gap-1.5 mt-2">
+                            <button
+                              onClick={() => {
+                                setCompleteModal({ id: w.id, amount: w.amount, user: w.user?.username || w.userId, address: w.address, network: w.network });
+                                setTxHash('');
+                              }}
+                              className="text-xs bg-[var(--green)] text-white px-3 py-1.5 rounded-lg font-semibold hover:opacity-90 active:opacity-80 transition-opacity"
+                            >
+                              Подтвердить
+                            </button>
+                            <button
+                              onClick={() => setRejectConfirm({ id: w.id, amount: w.amount, user: w.user?.username || w.userId })}
+                              className="text-xs bg-[var(--red-soft)] text-[var(--red)] px-2.5 py-1.5 rounded-lg font-semibold hover:opacity-90 active:opacity-80 transition-opacity"
+                            >
+                              Отклонить
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Complete Withdrawal Modal */}
+      {completeModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--surface)] card rounded-xl max-w-md w-full p-5 shadow-2xl">
+            <h2 className="text-lg font-bold mb-2 text-[var(--text)]">Подтверждение выплаты</h2>
+            <p className="text-xs text-[var(--text2)] mb-4">
+              Вы подтверждаете отправку <strong>{completeModal.amount} USDT</strong> пользователю {completeModal.user} в сети <strong>{completeModal.network}</strong>.
+            </p>
+
+            <div className="mb-4 bg-[var(--surface-2)] p-2.5 rounded-lg text-xs font-mono break-all text-[var(--text)]">
+              {completeModal.address}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-[var(--text2)] mb-1">
+                Хэш транзакции (TxID / Tx Hash) — необязательно:
+              </label>
+              <input
+                type="text"
+                placeholder="0x... или tx hash"
+                value={txHash}
+                onChange={(e) => setTxHash(e.target.value)}
+                className="input-field w-full font-mono text-xs"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={() => setCompleteModal(null)} className="btn btn-secondary flex-1 py-2 text-sm">
+                Отмена
+              </button>
+              <button
+                onClick={() => handleCompleteWithdrawal(completeModal.id, txHash)}
+                className="btn btn-primary flex-1 py-2 text-sm font-semibold"
+              >
+                Подтвердить перевод
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Withdrawal Modal */}
+      <ConfirmDialog
+        open={rejectConfirm !== null}
+        title="Отклонить вывод средств?"
+        message={rejectConfirm ? `Вы уверены, что хотите отклонить заявку на ${rejectConfirm.amount} USDT? Сумма будет автоматически возвращена на баланс пользователя.` : ''}
+        confirmText="Отклонить и вернуть"
+        cancelText="Отмена"
+        variant="danger"
+        onConfirm={handleRejectWithdrawal}
+        onCancel={() => setRejectConfirm(null)}
+      />
+
+      {editUser && (
+        <div className="fixed inset-0 bg-[rgba(5,7,12,0.6)] flex items-center justify-center z-50 p-4">
+          <div className="bg-surface rounded-xl max-w-md w-full" style={{ color: 'var(--text)' }}>
+            <div className="card">
+              <h2 className="text-lg font-semibold mb-4">
+                {editUser.field === 'subscription' ? t('admin.changeSubscription') : t('admin.editBalanceTitle')}
+              </h2>
+              {editUser.field === 'subscription' ? (
+                <select
+                  value={editUser.value}
+                  onChange={(e) => setEditUser({ ...editUser, value: e.target.value })}
+                  className="input-field mb-4"
+                >
+                  <option value="free">Free</option>
+                  <option value="pro">Pro</option>
+                  <option value="proplus">Pro+</option>
+                </select>
+              ) : (
+                <input
+                  type="number"
+                  value={editUser.value}
+                  onChange={(e) => setEditUser({ ...editUser, value: e.target.value })}
+                  min={0}
+                  step={0.01}
+                  className="input-field mb-4"
+                />
+              )}
+              <div className="flex gap-2">
+                <button onClick={() => setEditUser(null)} className="btn btn-secondary flex-1">{t('common.cancel')}</button>
+                <button
+                  onClick={() =>
+                    editUser.field === 'subscription'
+                      ? handleUpdateSubscription(editUser.id, editUser.value)
+                      : handleUpdateBalance(editUser.id, editUser.value)
+                  }
+                  className="btn btn-primary flex-1"
+                >
+                  {t('common.save')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        title={t('admin.deleteUserTitle')}
+        message={t('admin.deleteUserMessage')}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+        variant="danger"
+        onConfirm={handleDeleteUser}
+        onCancel={() => setDeleteConfirm(null)}
+      />
+    </div>
+  );
+}
