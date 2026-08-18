@@ -522,18 +522,10 @@ function DataProvider() {
     <AppContext.Provider value={contextValue}>
       <HashRouteBridge />
       {isWeb && !authenticated ? (
-        <BrowserRouter>
-          <Routes>
-            <Route path="/public" element={<Suspense fallback={<PageLoader />}><PublicPage /></Suspense>} />
-            <Route path="/terms" element={<Suspense fallback={<PageLoader />}><TermsPage /></Suspense>} />
-            <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><PrivacyPage /></Suspense>} />
-            <Route path="/qr-scan" element={<Suspense fallback={<PageLoader />}><QrScanPage /></Suspense>} />
-            <Route path="*" element={<LoginPage onAuthenticated={login} />} />
-          </Routes>
-        </BrowserRouter>
+        <PageLoader />
       ) : (
         <>
-          {isWeb && <WebHeader user={user} onLogout={logout} />}
+          {isWeb && <WebHeader user={user} onLogout={logout} onLogin={login} />}
           <div className={isWide ? 'web-shell' : ''}>
             <BrowserRouter>
               <div className="web-layout">
@@ -551,6 +543,7 @@ function DataProvider() {
                       <Route path="/portfolio" element={<ErrorBoundary><PortfolioPage /></ErrorBoundary>} />
                       <Route path="/qr-scan" element={<ErrorBoundary><QrScanPage /></ErrorBoundary>} />
                       <Route path="/public" element={<ErrorBoundary><PublicPage /></ErrorBoundary>} />
+                      <Route path="/login" element={<LoginPage onAuthenticated={login} />} />
                       <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                   </Suspense>
@@ -627,4 +620,3 @@ export default function App() {
     </ErrorBoundary>
   );
 }
-
