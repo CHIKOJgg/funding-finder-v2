@@ -136,7 +136,7 @@ describe('scanService — runScan coalescing & refresh', () => {
       await scan.runScan(['gate']);
       expect(scanExchanges).toHaveBeenCalledTimes(1);
 
-      jest.advanceTimersByTime(61_000);
+      jest.advanceTimersByTime(15 * 60_000);
       const res = await scan.runScan(['gate']);
       expect(res.scanned).toBe(1);
       // Allow the background refresh promise (and its nested timers) to flush.
@@ -158,7 +158,4 @@ describe('scanService — runScan coalescing & refresh', () => {
     scanExchanges.mockResolvedValue([mk({ exchange: 'binance', contract: 'BTCUSDT', funding_rate_per_hour: 0.0002, volume_24h_settle: 50_000_000 })]);
     await scan.runScan(['binance']);
     const d = scan.scanDebug();
-    expect(d.cacheKeys).toBeGreaterThanOrEqual(1);
-    expect(Array.isArray(d.inFlight)).toBe(true);
-  });
-});
+    expect(d.cacheKeys).toBeGreaterThanOrEqual(1);\n    expect(Array.isArray(d.inFlight)).toBe(true);\n  });\n});\n

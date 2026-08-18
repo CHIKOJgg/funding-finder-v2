@@ -18,13 +18,13 @@ describe('scanWeex', () => {
   it('returns normalized ExchangeResult[] for WEEX', async () => {
     const now = Date.now();
     mock.routeGet({
-      '/api/v1/futures/public/symbols': {
+      '/capi/v2/market/contracts': {
         data: [{ symbol: 'BTCUSDT' }],
       },
-      '/api/v1/futures/public/funding-rate': {
+      '/capi/v2/market/funding_rate': {
         data: { funding_rate: '0.0001', funding_time: now + 3600000, mark_price: '50000' },
       },
-      '/api/v1/futures/public/ticker': {
+      '/capi/v2/market/tickers': {
         data: { last_price: '50000', volume_24h: '1000', turnover_24h: '1000000' },
       },
     });

@@ -21,8 +21,8 @@ describe('contractMetadata', () => {
     jest.clearAllMocks();
   });
 
-  it('upserts metadata with the exchange:contract key', async () => {
-    (prismaMock.contractMetadata.upsert as jest.Mock).mockResolvedValue({ key: 'binance:BTCUSDT' });
+  it('buffers and creates metadata with the exchange:contract key', async () => {
+    (prismaMock.contractMetadata.createMany as jest.Mock).mockResolvedValue({ count: 1 });
     await upsertContractMetadata({
       exchange: 'binance',
       contract: 'BTCUSDT',
@@ -30,20 +30,35 @@ describe('contractMetadata', () => {
       quoteCurrency: 'USDT',
       maxLeverage: 20,
     });
-    const upsert = prismaMock.contractMetadata.upsert as jest.Mock;
-    expect(upsert).toHaveBeenCalledTimes(1);
-    const call = upsert.mock.calls[0][0];
-    expect(call.where.key).toBe('binance:BTCUSDT');
-    expect(call.create.exchange).toBe('binance');
-    expect(call.create.maxLeverage).toBe(20);
-    expect(call.update.lastUpdated).toBeDefined();
+    // Wait for the scheduled flush
+    await new Promise((r) => setImmediate(r));
+    const createMany = prismaMock.contractMetadata.createMany as jest.Mock;
+    expect(createMany).toHaveBeenCalled();
+    const call = createMany.mock.calls[0][0];
+    expect(call.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: 'binance:BTCUSDT',
+          exchange: 'binance',
+          contract: 'BTCUSDT',
+          maxLeverage: 20,
+        }),
+      ])
+    );
   });
 
   it('falls back to usdt settle currency when omitted', async () => {
-    (prismaMock.contractMetadata.upsert as jest.Mock).mockResolvedValue({});
+    (prismaMock.contractMetadata.createMany as jest.Mock).mockResolvedValue({ count: 1 });
     await upsertContractMetadata({ exchange: 'gate', contract: 'ETH_USDT' });
-    const call = (prismaMock.contractMetadata.upsert as jest.Mock).mock.calls[0][0];
-    expect(call.create.settleCurrency).toBe('usdt');
+    await new Promise((r) => setImmediate(r));
+    const call = (prismaMock.contractMetadata.createMany as jest.Mock).mock.calls[0][0];
+    expect(call.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          settleCurrency: 'usdt',
+        }),
+      ])
+    );
   });
 
   it('gets a single contract by key', async () => {

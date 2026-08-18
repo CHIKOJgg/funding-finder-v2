@@ -15,6 +15,7 @@ jest.mock('ioredis', () => {
     return {
       on: jest.fn(),
       quit: jest.fn(() => Promise.resolve('OK')),
+      setMaxListeners: jest.fn(),
     };
   });
   return { __esModule: true, default: RedisMock };
@@ -23,12 +24,18 @@ jest.mock('ioredis', () => {
 jest.mock('../config/index.js', () => ({
   config: {
     nodeEnv: 'test',
+    isProduction: false,
     redis: { url: 'redis://localhost:6379' },
   },
 }));
 
-import { getRedis } from '../utils/redis.js';
+import { getRedis, closeRedis } from '../utils/redis.js';
 import Redis from 'ioredis';
+
+beforeEach(async () => {
+  await closeRedis();
+  jest.clearAllMocks();
+});
 
 describe('getRedis', () => {
   test('constructs and returns a Redis client when url is configured', () => {
