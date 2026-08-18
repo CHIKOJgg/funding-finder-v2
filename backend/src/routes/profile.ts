@@ -14,8 +14,12 @@ router.get('/profile', async (req: AuthenticatedRequest, res) => {
       return sendError(res, 401, 'Authentication required', 'AUTH_REQUIRED');
     }
 
+    const t0 = Date.now();
     await enforceSubscriptionExpiry(userId);
+    console.log(`[PERF] profile enforceSubscriptionExpiry ${Date.now() - t0}ms`);
+    const t1 = Date.now();
     const user = await prisma.user.findUnique({ where: { telegramId: userId } });
+    console.log(`[PERF] profile findUnique ${Date.now() - t1}ms`);
     if (!user) {
       return sendError(res, 404, 'User not found', 'USER_NOT_FOUND');
     }
