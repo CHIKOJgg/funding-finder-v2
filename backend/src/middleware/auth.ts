@@ -177,6 +177,8 @@ export async function validateTelegramInitData(req: Request, res: Response, next
     (req as AuthenticatedRequest).userId = `tg_${user.id}`;
 
     // Ensure user exists in DB before any route handler
+    const preTrack = Date.now();
+    console.log(`[PERF] auth:preTrack ${(preTrack - (req as any)._t0)}ms since rcv`);
     const tTrack = Date.now();
     await trackActivity((req as AuthenticatedRequest).userId!);
     console.log(`[PERF] auth trackActivity ${Date.now() - tTrack}ms`);
