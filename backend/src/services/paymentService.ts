@@ -5,6 +5,7 @@ import { prisma } from './prisma.js';
 import { planRank } from '../utils/planRanks.js';
 import { logger } from '../utils/logger.js';
 import { Plan, PlanId } from '../types/index.js';
+import { clearSubscriptionCache } from '../middleware/subscription.js';
 
 // Annual price = 20% off the 12× monthly equivalent (billed once per year).
 const annualFromMonthly = (m: number) => Math.round(m * 12 * 0.8);
@@ -189,6 +190,7 @@ export async function createOrder(
         where: { telegramId },
         data: { subscription: planId, subscriptionSourceOrderId: null },
       });
+      clearSubscriptionCache(telegramId);
       return {
         ok: true,
         alreadyEntitled: true,
@@ -418,6 +420,7 @@ export async function updateOrderFromWebhook(
           data: { subscriptionExpiresAt, subscriptionSourceOrderId: order.id, subscriptionReminderSent: 0, trialEndsAt: null },
         });
       }
+      clearSubscriptionCache(order.userId);
 
       // Upsert the payment record so a replayed webhook can't create a duplicate.
       let history = await tx.paymentHistory.findUnique({ where: { userId: order.userId } });

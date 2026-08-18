@@ -15,6 +15,7 @@ jest.mock('../../middleware/subscription', () => {
     requireSubscription: jest.fn(() => (_req: any, _res: any, next: any) => next()),
     getSubscriptionLimits: jest.fn(),
     enforceTrialExpiry: jest.fn().mockResolvedValue(false),
+    clearSubscriptionCache: jest.fn(),
     getPlanTier: jest.fn((s: string) => s),
     getPlanLimitsForTier: jest.fn(() => ({})),
     TRIAL_DURATION_DAYS: 3,

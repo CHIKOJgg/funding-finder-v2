@@ -36,7 +36,7 @@ describe('subscription middleware - requireSubscription', () => {
 
   it('blocks a user below the required plan with 403', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ subscription: 'free' });
-    const req: any = { userId: 'u1' };
+    const req: any = { userId: 'u2' };
     const res = makeRes();
     const next = jest.fn();
 

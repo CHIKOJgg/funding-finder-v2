@@ -6,6 +6,42 @@ import { PLAN_HIERARCHY, PlanTier, getPlanTier, planRank } from '../utils/planRa
 
 export { getPlanTier, planRank };
 
+// In-memory cache of a user's effective subscription (after expiry/trial
+// enforcement). Collapses the 4 DB reads that `requireSubscription` and
+// `getSubscriptionLimits` performed on EVERY gated request (findUnique + enforce
+// expiry + enforce trial + re-read) into a single read per SUB_CACHE_TTL_MS
+// window. Busted explicitly on plan changes (see clearSubscriptionCache) so a
+// just-paid upgrade is reflected immediately, and self-heals after the TTL for
+// the rare downgrade case.
+const SUB_CACHE_TTL_MS = 30_000;
+const subCache = new Map<string, { user: any; cachedAt: number }>();
+
+/** Drop any cached subscription state for a user (call after plan changes). */
+export function clearSubscriptionCache(userId: string): void {
+  subCache.delete(userId);
+}
+
+/**
+ * Resolve the user (creating the row if missing) and run expiry/trial
+ * enforcement, returning the post-enforcement user. Cached per-user for
+ * SUB_CACHE_TTL_MS to avoid hammering the DB on every gated request.
+ */
+async function resolveSubscriptionUser(userId: string): Promise<any> {
+  const cached = subCache.get(userId);
+  if (cached && Date.now() - cached.cachedAt < SUB_CACHE_TTL_MS) {
+    return cached.user;
+  }
+  let user = await prisma.user.findUnique({ where: { telegramId: userId } });
+  if (!user) {
+    user = await prisma.user.create({ data: { telegramId: userId, lastActive: new Date() } });
+  }
+  await enforceSubscriptionExpiry(userId);
+  await enforceTrialExpiry(userId);
+  user = (await prisma.user.findUnique({ where: { telegramId: userId } })) ?? user;
+  subCache.set(userId, { user, cachedAt: Date.now() });
+  return user;
+}
+
 const PLAN_LIMITS: Record<PlanTier, {
   maxExchanges: number;
   aiEnabled: boolean;
@@ -114,18 +150,8 @@ export function requireSubscription(minimumTier: PlanTier) {
         return res.status(401).json({ ok: false, error: 'Authentication required' });
       }
 
-      let user = await prisma.user.findUnique({ where: { telegramId: userId } });
-      if (!user) {
-        user = await prisma.user.create({
-          data: { telegramId: userId, lastActive: new Date() },
-        });
-      }
-
-      // Revert any trial-derived Pro whose window has elapsed before checking
-      // the tier, so an expired trial can't pass a paid-feature gate.
-      await enforceSubscriptionExpiry(userId);
-      await enforceTrialExpiry(userId);
-      user = await prisma.user.findUnique({ where: { telegramId: userId } }) ?? user;
+      // Cached: a single read per SUB_CACHE_TTL_MS window instead of 4 reads.
+      const user = await resolveSubscriptionUser(userId);
 
       const userTier = getPlanTier(user.subscription);
       if (PLAN_HIERARCHY[userTier] < PLAN_HIERARCHY[minimumTier]) {
@@ -146,11 +172,7 @@ export function requireSubscription(minimumTier: PlanTier) {
 }
 
 export async function getSubscriptionLimits(userId: string) {
-  await enforceSubscriptionExpiry(userId);
-  const user = await prisma.user.findUnique({ where: { telegramId: userId } });
-  if (!user) {
-    return { tier: 'free', ...PLAN_LIMITS.free };
-  }
+  const user = await resolveSubscriptionUser(userId);
   const tier = getPlanTier(user.subscription);
   return { tier, ...PLAN_LIMITS[tier] };
 }

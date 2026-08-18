@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../services/prisma.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
-import { enforceTrialExpiry, TRIAL_DURATION_DAYS } from '../middleware/subscription.js';
+import { enforceTrialExpiry, TRIAL_DURATION_DAYS, clearSubscriptionCache } from '../middleware/subscription.js';
 import { logger } from '../utils/logger.js';
 import { sendError } from '../middleware/errorHandler.js';
 
@@ -22,6 +22,7 @@ router.post('/trial/activate', async (req: AuthenticatedRequest, res) => {
       where: { telegramId: userId, trialUsed: false, subscription: 'free' },
       data: { subscription: 'pro', trialUsed: true, trialEndsAt: endsAt },
     });
+    clearSubscriptionCache(userId);
 
     return res.json({
       ok: true,

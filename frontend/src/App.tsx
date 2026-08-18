@@ -16,6 +16,7 @@ import { LanguageProvider } from './i18n';
 import { useT } from './i18n';
 import type { ScanResult, TrialStatus, WatchlistItem } from './types';
 import { DebugLog, DebugToggle } from './components/DebugLog';
+import { SupportButton } from './components/SupportModal';
 import { logger as clientLogger } from './utils/logger';
 import { track } from './utils/analytics';
 
@@ -618,6 +619,7 @@ export default function App() {
       <ToastProvider>
         <LanguageProvider>
           <DataProvider />
+          <SupportButton />
         </LanguageProvider>
       </ToastProvider>
       {isDebugUser && <DebugToggle onOpen={() => setDebugOpen(true)} />}

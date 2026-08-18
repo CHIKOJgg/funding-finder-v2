@@ -26,43 +26,80 @@ const VALID_EXCHANGES = SUPPORTED_EXCHANGES;
 const DEV_ULTIMATE_TELEGRAM_IDS = new Set(config.admin.devUltimateTelegramIds);
 
 // Track user activity (ensures user exists before any route handler).
-// Writes are throttled: lastActive is only refreshed when stale, so the burst
-// of ~10-15 requests a Mini App fires per screen load no longer triggers a
-// write (and a trial-expiry check) on every single call.
+// Writes are throttled HARD: a DB write happens at most once per user per
+// ENSURE_TTL_MS window (to create the row if missing) plus a lastActive refresh
+// every TRACK_INTERVAL_MS. The old code ran `prisma.user.upsert` (a read+write)
+// on EVERY authenticated request — the ~10-15 requests a Mini App fires per
+// screen load all serialised behind a per-request write, which is what made
+// Profile / tabs feel like they took 3-5s to open. A warm user now costs ZERO
+// DB ops per request.
 const TRACK_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
+const ENSURE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
-async function trackActivity(userId: string, authProvider: AuthProvider = 'telegram'): Promise<void> {
+// userId -> last time we confirmed the row exists. Process-lifetime only; if the
+// process restarts we re-verify once (a cheap read), not on every request.
+const ensuredUsers = new Map<string, number>();
+
+async function ensureUserExists(userId: string, authProvider: AuthProvider): Promise<void> {
+  const cached = ensuredUsers.get(userId);
+  if (cached !== undefined && Date.now() - cached < ENSURE_TTL_MS) return;
+
+  const tgId = userId.replace('tg_', '');
+  const isAdmin = config.admin.telegramIds.includes(tgId);
+  const isDevUltimate = DEV_ULTIMATE_TELEGRAM_IDS.has(tgId);
+  const now = new Date();
+  const subscription = isDevUltimate ? 'proplus' : 'free';
+  const trialEndsAt = isDevUltimate ? null : undefined;
+
+  // Find first; only write (create) when the user is genuinely missing.
+  const existing = await prisma.user.findUnique({
+    where: { telegramId: userId },
+    select: { id: true, role: true },
+  });
+  if (existing) {
+    ensuredUsers.set(userId, Date.now());
+    // Promote to admin if configured (no-op for the vast majority of users).
+    if (isAdmin && existing.role !== 'admin') {
+      await prisma.user.updateMany({
+        where: { telegramId: userId, role: { not: 'admin' } },
+        data: { role: 'admin' },
+      });
+    }
+    return;
+  }
+
   try {
-    const tgId = userId.replace('tg_', '');
-    const isAdmin = config.admin.telegramIds.includes(tgId);
-    const isDevUltimate = DEV_ULTIMATE_TELEGRAM_IDS.has(tgId);
-    const now = new Date();
-    const trialEndsAt = isDevUltimate ? null : undefined;
-    const subscription = isDevUltimate ? 'proplus' : 'free';
-    await prisma.user.upsert({
-      where: { telegramId: userId },
-      create: {
+    await prisma.user.create({
+      data: {
         telegramId: userId,
         lastActive: now,
         role: isAdmin ? 'admin' : 'user',
         authProvider,
         subscription,
-        ...(trialEndsAt ? { trialEndsAt } : {}),
-      },
-      // Avoid touching lastActive on every request — refreshed via updateMany below.
-      update: {
-        role: isAdmin ? 'admin' : undefined,
-        ...(isDevUltimate ? { subscription: 'proplus' } : {}),
-        ...(trialEndsAt ? { trialEndsAt } : {}),
+        ...(trialEndsAt !== undefined ? { trialEndsAt } : {}),
       },
     });
+  } catch (e: any) {
+    // Race: another in-flight request created the user between our read and write.
+    if (e?.code !== 'P2002') throw e;
+  }
+  ensuredUsers.set(userId, Date.now());
+}
+
+async function trackActivity(userId: string, authProvider: AuthProvider = 'telegram'): Promise<void> {
+  try {
+    // ZERO DB ops for a warm user (cached) — removes the per-request write.
+    await ensureUserExists(userId, authProvider);
 
     // Only refresh lastActive (and run the trial-expiry check) when stale.
+    const now = new Date();
     const staleCutoff = new Date(now.getTime() - TRACK_INTERVAL_MS);
     const updated = await prisma.user.updateMany({
       where: { telegramId: userId, lastActive: { lt: staleCutoff } },
       data: { lastActive: now },
     });
+    const tgId = userId.replace('tg_', '');
+    const isDevUltimate = DEV_ULTIMATE_TELEGRAM_IDS.has(tgId);
     if (updated.count > 0 && !isDevUltimate) {
       await enforceTrialExpiry(userId);
     }
