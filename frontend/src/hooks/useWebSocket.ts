@@ -10,19 +10,21 @@ type MessageHandler = (data: any) => void;
  * then finally the current origin.
  */
 function resolveWsBase(): string {
+  const ensureWsPath = (base: string): string => {
+    const trimmed = base.replace(/^http/, 'ws').replace(/\/$/, '');
+    return trimmed.endsWith('/ws') ? trimmed : `${trimmed}/ws`;
+  };
+
   const explicit = import.meta.env.VITE_WS_URL as string | undefined;
-  if (explicit) return explicit.replace(/^http/, 'ws');
+  if (explicit) return ensureWsPath(explicit);
 
   const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
-  if (apiUrl) {
-    // https://host -> wss://host, http://host -> ws://host
-    return apiUrl.replace(/^http/, 'ws').replace(/\/$/, '');
-  }
+  if (apiUrl) return ensureWsPath(apiUrl);
 
   const secure = window.location.protocol === 'https:';
   const proto = secure ? 'wss:' : 'ws:';
-  // Same-origin fallback (no explicit port; assumes reverse-proxied /ws)
-  return `${proto}//${window.location.host}`;
+  // Same-origin fallback; the backend WebSocket server listens on `/ws`.
+  return `${proto}//${window.location.host}/ws`;
 }
 
 const RECONNECT_DELAY_MS = 5000;

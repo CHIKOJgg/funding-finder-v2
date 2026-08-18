@@ -84,25 +84,31 @@ export function SupportButton() {
                 Опишите вашу задачу или вопрос — мы свяжемся с вами в ближайшее время.
               </p>
 
-              <label className="block text-sm mb-1">Имя (необязательно)</label>
+              <label htmlFor="support-name" className="block text-sm mb-1">Имя (необязательно)</label>
               <input
                 ref={firstFieldRef}
+                id="support-name"
+                name="name"
                 className="input-field w-full mb-3"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ваше имя"
               />
 
-              <label className="block text-sm mb-1">Контакт (Telegram / email)</label>
+              <label htmlFor="support-contact" className="block text-sm mb-1">Контакт (Telegram / email)</label>
               <input
+                id="support-contact"
+                name="contact"
                 className="input-field w-full mb-3"
                 value={contact}
                 onChange={(e) => setContact(e.target.value)}
                 placeholder="@username или email"
               />
 
-              <label className="block text-sm mb-1">Сообщение</label>
+              <label htmlFor="support-message" className="block text-sm mb-1">Сообщение</label>
               <textarea
+                id="support-message"
+                name="message"
                 className="input-field w-full mb-4"
                 rows={4}
                 value={message}
