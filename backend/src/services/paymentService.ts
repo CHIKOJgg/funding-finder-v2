@@ -83,4 +83,548 @@ export async function handleReferral(newTelegramId: string, referralCode: string
   const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const alreadyHasTrial = newUser.trialUsed || newUser.subscription !== 'free';
 
-  const updates: any[] = [\n    prisma.user.update({\n      where: { telegramId: newTelegramId },\n      data: { referredBy: referrer.id },\n    }),\n    prisma.user.update({\n      where: { id: referrer.id },\n      data: { trialScans: { increment: 1 } },\n    }),\n  ];\n\n  if (!alreadyHasTrial) {\n    updates.push(\n      prisma.user.update({\n        where: { telegramId: newTelegramId },\n        data: { subscription: 'pro', trialUsed: true, trialEndsAt },\n      })\n    );\n  }\n\n  await prisma.$transaction(updates);\n\n  return true;\n}\n\nexport async function createCryptoPayInvoice(planId: PlanId, currency: string, orderId: string, telegramId: string, amount?: number) {\n  const plan = PLANS[planId];\n  const chargeAmount = amount ?? plan.monthlyPrice;\n\n  if (!config.cryptoPay.apiToken) {\n    logger.warn('Crypto Pay token missing → simulation mode');\n    return {\n      invoice_id: 'sim_' + Date.now(),\n      hash: 'simulated',\n      bot_invoice_url: `https://t.me/${config.cryptoPay.botUsername}?start=invoice_${orderId}`,\n      mini_app_invoice_url: `https://t.me/${config.cryptoPay.botUsername}?start=invoice_${orderId}`,\n      web_app_invoice_url: `https://t.me/${config.cryptoPay.botUsername}?start=invoice_${orderId}`,\n      status: 'active',\n    };\n  }\n\n  const description = `Подписка ${plan.name} — Funding Finder`;\n  const payload = JSON.stringify({ orderId, telegramId, plan: plan.name });\n\n  const res = await axios.post(\n    `${getApiBaseUrl()}/api/createInvoice`,\n    {\n      asset: currency.toUpperCase(),\n      amount: chargeAmount,\n      description,\n      payload,\n      paid_btn_name: 'openBot',\n      paid_btn_url: `https://t.me/${config.cryptoPay.botUsername}?start=ff_${orderId}`,\n      allow_comments: false,\n      allow_anonymous: false,\n      expires_in: 3600,\n    },\n    {\n      headers: { 'Crypto-Pay-API-Token': config.cryptoPay.apiToken },\n      timeout: 30000,\n    }\n  );\n\n  if (res.data.ok) {\n    const result = res.data.result;\n    result.invoice_id = String(result.invoice_id);\n    return result;\n  }\n  throw new Error(res.data.error?.message || 'Crypto Pay error');\n}\n\nexport async function createOrder(\n  planId: PlanId,\n  currency: string = 'USDT',\n  telegramId: string,\n  options?: {\n    provider?: 'crypto_pay' | 'nowpayments';\n    payCurrency?: string;\n    billingPeriod?: 'monthly' | 'annual';\n    promoCode?: string;\n  }\n) {\n  const plan = PLANS[planId];\n  if (!plan) throw new Error('Invalid plan');\n\n  const billingPeriod = options?.billingPeriod || 'monthly';\n  let amount = billingPeriod === 'annual' ? plan.annualPrice : plan.monthlyPrice;\n\n  // Apply a time-limited promo code to the regular price.\n const promoDiscount = getPromoDiscount(options?.promoCode);\n if (promoDiscount > 0) {\n   amount = Math.round(amount * (1 - promoDiscount) * 100) / 100;\n }\n\n  const provider = options?.provider || 'crypto_pay';\n  const orderId = `order_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;\n\n  try {\n    // Ensure the user row exists (Order.userId is an FK to User.telegramId)\n    const user = await getUser(telegramId);\n\n    // A higher active tier already includes every lower tier. Switch down\n    // immediately without creating a second invoice or charging the user.\n    if (planRank(user.subscription) > planRank(planId)) {\n      await prisma.user.update({\n        where: { telegramId },\n        data: { subscription: planId, subscriptionSourceOrderId: null },\n      });\n      clearSubscriptionCache(telegramId);\n      return {\n        ok: true,\n        alreadyEntitled: true,\n        switched: true,\n        orderId: null,\n        planId,\n        amount: 0,\n        billingPeriod,\n        currency,\n      };\n    }\n\n    // Reuse a recent open checkout instead of creating multiple payable\n    // invoices when a user closes and reopens the payment dialog.\n    const existing = await prisma.order.findFirst({\n      where: {\n        userId: telegramId,\n        planId,\n        status: { in: ['pending', 'waiting', 'confirming'] },\n        createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },\n        invoice: { provider },\n      },\n      include: { invoice: true },\n      orderBy: { createdAt: 'desc' },\n    });\n    if (existing?.invoice) {\n      return {\n        ok: true,\n        existing: true,\n        orderId: existing.id,\n        provider,\n        invoiceId: existing.invoice.invoiceId,\n        paymentId: existing.invoice.paymentId,\n        amount: existing.amount,\n        billingPeriod: existing.billingPeriod,\n        currency: existing.currency,\n        botInvoiceUrl: existing.invoice.botInvoiceUrl,\n        miniAppInvoiceUrl: existing.invoice.miniAppInvoiceUrl,\n        webAppInvoiceUrl: existing.invoice.webAppInvoiceUrl,\n        invoiceUrl: existing.invoice.webAppInvoiceUrl,\n        payAddress: existing.invoice.payAddress,\n        payAmount: existing.invoice.payAmount,\n        payCurrency: existing.invoice.payCurrency,\n        status: existing.invoice.status,\n      };\n    }\n\n    // ---- NOWPayments (website / non-Telegram crypto checkout) ----\n    if (provider === 'nowpayments') {\n      const { createNowPaymentsPayment } = await import('./nowPaymentsService.js');\n      const payCurrency = (options?.payCurrency || 'usdt').toLowerCase();\n      const np = await createNowPaymentsPayment(plan, planId, payCurrency, orderId, amount);\n\n      await prisma.$transaction(async (tx) => {\n        await tx.order.create({\n          data: {\n            id: orderId,\n            planId,\n            userId: telegramId,\n            amount,\n            currency: payCurrency,\n            invoiceId: np.paymentId,\n            billingPeriod,\n            status: 'waiting',\n          },\n        });\n\n        await tx.invoice.create({\n          data: {\n            orderId,\n            provider: 'nowpayments',\n            invoiceId: np.paymentId,\n            paymentId: np.paymentId,\n            payAddress: np.payAddress,\n            payCurrency: np.payCurrency,\n            payAmount: np.payAmount,\n            orderDescription: `Funding Finder — ${plan.name}`,\n            status: np.status,\n          },\n        });\n      });\n\n      return {\n        ok: true,\n        orderId,\n        provider: 'nowpayments',\n        invoiceId: np.paymentId,\n        paymentId: np.paymentId,\n        amount,\n        billingPeriod,\n        currency: payCurrency,\n        payAddress: np.payAddress,\n        payAmount: np.payAmount,\n        payCurrency: np.payCurrency,\n        invoiceUrl: np.invoiceUrl,\n        status: np.status,\n        simulated: np.simulated,\n      };\n    }\n\n    // ---- Crypto Pay (Telegram mini-app) ----\n    const invoiceData = await createCryptoPayInvoice(planId, currency, orderId, telegramId, amount);\n\n    await prisma.$transaction(async (tx) => {\n      await tx.order.create({\n        data: {\n          id: orderId,\n          planId,\n          userId: telegramId,\n          amount,\n          currency,\n          billingPeriod,\n          invoiceId: invoiceData.invoice_id,\n        },\n      });\n\n      await tx.invoice.create({\n        data: {\n          orderId,\n          provider: 'crypto_pay',\n          invoiceId: invoiceData.invoice_id,\n          hash: invoiceData.hash,\n          botInvoiceUrl: invoiceData.bot_invoice_url,\n          miniAppInvoiceUrl: invoiceData.mini_app_invoice_url,\n          webAppInvoiceUrl: invoiceData.web_app_invoice_url,\n          status: invoiceData.status,\n        },\n      });\n    });\n\n    return {\n      ok: true,\n      orderId,\n      provider: 'crypto_pay',\n      invoiceId: invoiceData.invoice_id,\n      amount,\n      billingPeriod,\n      currency,\n      botInvoiceUrl: invoiceData.bot_invoice_url,\n      miniAppInvoiceUrl: invoiceData.mini_app_invoice_url,\n      webAppInvoiceUrl: invoiceData.web_app_invoice_url,\n    };\n  } catch (err: any) {\n    logger.error({ err }, 'Order creation failed');\n    return { ok: false, error: err.message, orderId };\n  }\n}\n\nexport async function getOrder(orderId: string) {\n  return prisma.order.findUnique({ where: { id: orderId } });\n}\n\nexport async function getInvoice(orderId: string) {\n  return prisma.invoice.findUnique({ where: { orderId } });\n}\n\nexport async function updateOrderFromWebhook(\n  lookup: string,\n  status: string = 'paid',\n  provider?: string\n) {\n  // `lookup` may be the order id (NOWPayments / generic webhook) or the\n  // Crypto Pay invoice id — resolve either way.\n  let order = await prisma.order.findUnique({ where: { id: lookup } });\n  if (!order) order = await prisma.order.findFirst({ where: { invoiceId: lookup } });\n  if (!order) return null;\n\n  if (status === 'refunded' || status === 'failed') {\n    // Refund / failed payment: revoke the granted plan if the user is still on\n    // it (never downgrade a user who has since upgraded to a higher tier).\n    const result = await prisma.$transaction(async (tx) => {\n      const user = await tx.user.findUnique({ where: { telegramId: order.userId } });\n      if (!user) return null;\n      if (user.subscription === order.planId && user.subscriptionSourceOrderId === order.id && order.planId !== 'free') {\n        await tx.user.update({\n          where: { telegramId: order.userId },\n          data: { subscription: 'free', subscriptionExpiresAt: null, subscriptionSourceOrderId: null, subscriptionReminderSent: 0 },\n        });\n        logger.info({ userId: order.userId, plan: order.planId }, 'Subscription revoked after refund/failure');\n      }\n      await tx.order.update({\n        where: { id: order.id },\n        data: { status, updatedAt: new Date() },\n      });\n      await tx.invoice.updateMany({ where: { orderId: order.id }, data: { status } });\n      return order;\n    });\n    return result;\n  }\n\n  if (status === 'paid') {\n    // Idempotent grant. The whole thing runs in one transaction so concurrent\n    // calls (webhook + status poll + reconcile) cannot double-credit. The\n    // PaymentRecord.orderId unique index is the ultimate guard, but we also\n    // short-circuit when the order is already marked paid.\n    const result = await prisma.$transaction(async (tx) => {\n      const currentOrder = await tx.order.findUnique({ where: { id: order.id } });\n      if (!currentOrder) return null;\n      if (currentOrder.status === 'paid') return currentOrder;\n\n      // Re-read inside the transaction to get the freshest subscription.\n      const user = await tx.user.findUnique({ where: { telegramId: order.userId } });\n      if (!user) return null;\n\n      const newRank = planRank(order.planId);\n      const currentRank = planRank(user.subscription);\n      const periodDays = order.billingPeriod === 'annual' ? 365 : 30;\n      const baseTime = user.subscriptionExpiresAt && user.subscriptionExpiresAt.getTime() > Date.now()\n        ? user.subscriptionExpiresAt.getTime()\n        : Date.now();\n      const subscriptionExpiresAt = new Date(baseTime + periodDays * 24 * 60 * 60 * 1000);\n\n      await tx.order.update({\n        where: { id: order.id },\n        data: { status: 'paid', updatedAt: new Date() },\n      });\n\n      // Only upgrade (never downgrade) the subscription.\n      if (newRank > currentRank) {\n        await tx.user.update({\n          where: { telegramId: order.userId },\n          data: { subscription: order.planId, subscriptionExpiresAt, subscriptionSourceOrderId: order.id, subscriptionReminderSent: 0, trialEndsAt: null },\n        });\n      } else {\n        await tx.user.update({\n          where: { telegramId: order.userId },\n          data: { subscriptionExpiresAt, subscriptionSourceOrderId: order.id, subscriptionReminderSent: 0, trialEndsAt: null },\n        });\n      }\n      clearSubscriptionCache(order.userId);\n\n      // Upsert the payment record so a replayed webhook can't create a duplicate.\n      let history = await tx.paymentHistory.findUnique({ where: { userId: order.userId } });\n      if (!history) {\n        history = await tx.paymentHistory.create({ data: { userId: order.userId } });\n      }\n\n      const existing = await tx.paymentRecord.findUnique({ where: { orderId: order.id } });\n      if (!existing) {\n        await tx.paymentRecord.create({\n          data: {\n            paymentHistoryId: history.id,\n            orderId: order.id,\n            plan: PLANS[order.planId as PlanId]?.name || order.planId,\n            amount: order.amount,\n            currency: order.currency,\n          },\n        });\n      }\n\n      await tx.invoice.updateMany({\n        where: { orderId: order.id },\n        data: { status: 'paid' },\n      });\n\n      // Credit the referrer a percentage of the referral's FIRST payment.\n      // A percentage (vs the old flat $5) gives ambassadors real upside and a\n      // stronger incentive to drive paying users. Guarded by an ATOMIC\n      // conditional flip of `referralCredited` (updateMany + count check) so\n      // concurrent webhook/poll/reconcile calls can never double-pay: only one\n      // transaction can win the `referralCredited: false` claim. Amount is\n      // capped at the plan price (no negative or absurd values).\n      if (user.referredBy) {\n        const claimed = await tx.user.updateMany({\n          where: { id: user.id, referralFirstPaymentCredited: false },\n          data: { referralFirstPaymentCredited: true },\n        });\n        if (claimed.count === 1) {\n          const REFERRAL_RATE = 0.2; // 20% of first payment\n          const bonus = Math.max(0, Math.min(REFERRAL_RATE * order.amount, order.amount));\n          await tx.user.update({\n            where: { id: user.referredBy },\n            data: { balance: { increment: bonus } },\n          });\n          logger.info({ referrerId: user.referredBy, orderId: order.id, bonus }, 'Referral bonus (20% of first payment) credited to balance');\n        }\n        await tx.order.updateMany({ where: { id: order.id, referralCredited: false }, data: { referralCredited: true } });\n      }\n\n      return currentOrder;\n    });\n\n    return result;\n  }\n\n  await prisma.invoice.updateMany({\n    where: { orderId: order.id },\n    data: { status },\n  });\n\n  return prisma.order.update({\n    where: { id: order.id },\n    data: { status, updatedAt: new Date() },\n  });\n}\n\n/**\n * Verify the Crypto Pay webhook signature.\n *\n * Crypto Pay signs the *raw bytes* of the request body with HMAC-SHA256 using\n * SHA256(API_TOKEN) as the key (header `Crypto-Pay-API-Signature`). We must\n * verify against the raw body, not a re-serialized copy, since re-stringifying\n * a parsed object can reorder keys / change whitespace and break the check.\n */\nexport function verifyCryptoPaySignature(rawBody: string | Buffer, signature: string) {\n  const token = config.cryptoPay.apiToken;\n  if (!token) {\n    logger.warn('Crypto Pay token not configured — skipping signature verification');\n    return false;\n  }\n  if (!signature || typeof signature !== 'string') return false;\n\n  const payload = Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(String(rawBody));\n  const secret = crypto.createHash('sha256').update(token).digest();\n  const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex');\n  if (hmac.length !== signature.length) return false;\n  return crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(signature));\n}\n\n/** Allow a tiny float tolerance when comparing paid vs expected amounts. */\nfunction amountsMatch(expected: number, paid: number): boolean {\n  return Number.isFinite(paid) && Math.abs(expected - paid) < 0.01;\n}\n\nexport async function handleCryptoPayWebhook(update: any) {\n  if (update?.update_type === 'invoice_paid') {\n    const payload = update.payload || {};\n    const invoiceId = String(payload.invoice_id);\n    const paidAmount = parseFloat(String(payload.paid_amount ?? payload.amount));\n    const paidAsset = String(payload.paid_asset ?? payload.asset ?? '').toUpperCase();\n\n    const order = await prisma.order.findFirst({ where: { invoiceId }, include: { invoice: true } });\n    if (!order) {\n      logger.warn({ invoiceId }, 'Crypto Pay webhook: order not found');\n      return { success: false };\n    }\n\n    // Never grant a subscription if the paid amount doesn't match the plan.\n    if (!amountsMatch(order.amount, paidAmount)) {\n      logger.error(\n        { invoiceId, paidAmount, expected: order.amount },\n        'Crypto Pay webhook: paid amount does not match order'\n      );\n      return { success: false };\n    }\n    if (order.invoice?.provider !== 'crypto_pay' || paidAsset !== String(order.currency).toUpperCase()) {\n      logger.error({ invoiceId, paidAsset, expectedAsset: order.currency }, 'Crypto Pay webhook: provider or asset mismatch');\n      return { success: false };\n    }\n\n    await updateOrderFromWebhook(invoiceId, 'paid');\n    return { success: true };\n  }\n  return { success: false };\n}\n\n/** Reconcile a Crypto Pay invoice using the same validation as webhooks. */\nexport async function reconcileCryptoPayInvoice(invoiceId: string, invoice: any) {\n  const order = await prisma.order.findFirst({ where: { invoiceId }, include: { invoice: true } });\n  if (!order || order.invoice?.provider !== 'crypto_pay') return false;\n  if (invoice?.status === 'paid') {\n    const paidAmount = parseFloat(String(invoice.paid_amount ?? invoice.amount));\n    const paidAsset = String(invoice.paid_asset ?? invoice.asset ?? '').toUpperCase();\n    if (!amountsMatch(order.amount, paidAmount) || paidAsset !== String(order.currency).toUpperCase()) return false;\n  }\n  await updateOrderFromWebhook(invoiceId, invoice.status);\n  return true;\n}\n\nexport async function getWithdrawalHistory(userId: string, limit: number = 50, offset: number = 0) {\n  const safeLimit = Math.min(Math.max(limit, 1), 200);\n  const safeOffset = Math.max(offset, 0);\n  const [withdrawals, total] = await Promise.all([\n    prisma.withdrawal.findMany({\n      where: { userId },\n      orderBy: { createdAt: 'desc' },\n      take: safeLimit,\n      skip: safeOffset,\n    }),\n    prisma.withdrawal.count({ where: { userId } }),\n  ]);\n  return { withdrawals, total, limit: safeLimit, offset: safeOffset };\n}\n\nexport async function getPaymentHistory(userId: string, limit: number = 50, offset: number = 0) {\n  const safeLimit = Math.min(Math.max(limit, 1), 200);\n  const safeOffset = Math.max(offset, 0);\n  const history = await prisma.paymentHistory.findUnique({\n    where: { userId },\n    include: {\n      payments: {\n        orderBy: { date: 'desc' },\n        take: safeLimit,\n        skip: safeOffset,\n      },\n    },\n  });\n  const total = history\n    ? await prisma.paymentRecord.count({ where: { paymentHistoryId: history.id } })\n    : 0;\n  return { payments: history?.payments || [], total, limit: safeLimit, offset: safeOffset };\n}\n\nexport async function getUserBalance(userId: string) {\n  const user = await getUser(userId);\n  return user.balance;\n}\n\nexport async function updateUserBalance(userId: string, amount: number) {\n  return prisma.user.update({\n    where: { telegramId: userId },\n    data: { balance: { increment: amount } },\n  });\n}\n\nexport async function getInvoiceStatus(invoiceId: string) {\n  if (!config.cryptoPay.apiToken) return null;\n\n  try {\n    const res = await axios.get(\n      `${getApiBaseUrl()}/api/getInvoices`,\n      {\n        params: { invoice_ids: invoiceId },\n        headers: { 'Crypto-Pay-API-Token': config.cryptoPay.apiToken },\n        timeout: 10000,\n      }\n    );\n\n    if (res.data.ok && res.data.result?.items?.length > 0) {\n      return res.data.result.items[0];\n    }\n    return null;\n  } catch {\n    return null;\n  }\n}\n
+  const updates: any[] = [
+    prisma.user.update({
+      where: { telegramId: newTelegramId },
+      data: { referredBy: referrer.id },
+    }),
+    prisma.user.update({
+      where: { id: referrer.id },
+      data: { trialScans: { increment: 1 } },
+    }),
+  ];
+
+  if (!alreadyHasTrial) {
+    updates.push(
+      prisma.user.update({
+        where: { telegramId: newTelegramId },
+        data: { subscription: 'pro', trialUsed: true, trialEndsAt },
+      })
+    );
+  }
+
+  await prisma.$transaction(updates);
+
+  return true;
+}
+
+export async function createCryptoPayInvoice(planId: PlanId, currency: string, orderId: string, telegramId: string, amount?: number) {
+  const plan = PLANS[planId];
+  const chargeAmount = amount ?? plan.monthlyPrice;
+
+  if (!config.cryptoPay.apiToken) {
+    logger.warn('Crypto Pay token missing → simulation mode');
+    return {
+      invoice_id: 'sim_' + Date.now(),
+      hash: 'simulated',
+      bot_invoice_url: `https://t.me/${config.cryptoPay.botUsername}?start=invoice_${orderId}`,
+      mini_app_invoice_url: `https://t.me/${config.cryptoPay.botUsername}?start=invoice_${orderId}`,
+      web_app_invoice_url: `https://t.me/${config.cryptoPay.botUsername}?start=invoice_${orderId}`,
+      status: 'active',
+    };
+  }
+
+  const description = `Подписка ${plan.name} — Funding Finder`;
+  const payload = JSON.stringify({ orderId, telegramId, plan: plan.name });
+
+  const res = await axios.post(
+    `${getApiBaseUrl()}/api/createInvoice`,
+    {
+      asset: currency.toUpperCase(),
+      amount: chargeAmount,
+      description,
+      payload,
+      paid_btn_name: 'openBot',
+      paid_btn_url: `https://t.me/${config.cryptoPay.botUsername}?start=ff_${orderId}`,
+      allow_comments: false,
+      allow_anonymous: false,
+      expires_in: 3600,
+    },
+    {
+      headers: { 'Crypto-Pay-API-Token': config.cryptoPay.apiToken },
+      timeout: 30000,
+    }
+  );
+
+  if (res.data.ok) {
+    const result = res.data.result;
+    result.invoice_id = String(result.invoice_id);
+    return result;
+  }
+  throw new Error(res.data.error?.message || 'Crypto Pay error');
+}
+
+export async function createOrder(
+  planId: PlanId,
+  currency: string = 'USDT',
+  telegramId: string,
+  options?: {
+    provider?: 'crypto_pay' | 'nowpayments';
+    payCurrency?: string;
+    billingPeriod?: 'monthly' | 'annual';
+    promoCode?: string;
+  }
+) {
+  const plan = PLANS[planId];
+  if (!plan) throw new Error('Invalid plan');
+
+  const billingPeriod = options?.billingPeriod || 'monthly';
+  let amount = billingPeriod === 'annual' ? plan.annualPrice : plan.monthlyPrice;
+
+  // Apply a time-limited promo code to the regular price.
+ const promoDiscount = getPromoDiscount(options?.promoCode);
+ if (promoDiscount > 0) {
+   amount = Math.round(amount * (1 - promoDiscount) * 100) / 100;
+ }
+
+  const provider = options?.provider || 'crypto_pay';
+  const orderId = `order_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+
+  try {
+    // Ensure the user row exists (Order.userId is an FK to User.telegramId)
+    const user = await getUser(telegramId);
+
+    // A higher active tier already includes every lower tier. Switch down
+    // immediately without creating a second invoice or charging the user.
+    if (planRank(user.subscription) > planRank(planId)) {
+      await prisma.user.update({
+        where: { telegramId },
+        data: { subscription: planId, subscriptionSourceOrderId: null },
+      });
+      clearSubscriptionCache(telegramId);
+      return {
+        ok: true,
+        alreadyEntitled: true,
+        switched: true,
+        orderId: null,
+        planId,
+        amount: 0,
+        billingPeriod,
+        currency,
+      };
+    }
+
+    // Reuse a recent open checkout instead of creating multiple payable
+    // invoices when a user closes and reopens the payment dialog.
+    const existing = await prisma.order.findFirst({
+      where: {
+        userId: telegramId,
+        planId,
+        status: { in: ['pending', 'waiting', 'confirming'] },
+        createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
+        invoice: { provider },
+      },
+      include: { invoice: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (existing?.invoice) {
+      return {
+        ok: true,
+        existing: true,
+        orderId: existing.id,
+        provider,
+        invoiceId: existing.invoice.invoiceId,
+        paymentId: existing.invoice.paymentId,
+        amount: existing.amount,
+        billingPeriod: existing.billingPeriod,
+        currency: existing.currency,
+        botInvoiceUrl: existing.invoice.botInvoiceUrl,
+        miniAppInvoiceUrl: existing.invoice.miniAppInvoiceUrl,
+        webAppInvoiceUrl: existing.invoice.webAppInvoiceUrl,
+        invoiceUrl: existing.invoice.webAppInvoiceUrl,
+        payAddress: existing.invoice.payAddress,
+        payAmount: existing.invoice.payAmount,
+        payCurrency: existing.invoice.payCurrency,
+        status: existing.invoice.status,
+      };
+    }
+
+    // ---- NOWPayments (website / non-Telegram crypto checkout) ----
+    if (provider === 'nowpayments') {
+      const { createNowPaymentsPayment } = await import('./nowPaymentsService.js');
+      const payCurrency = (options?.payCurrency || 'usdt').toLowerCase();
+      const np = await createNowPaymentsPayment(plan, planId, payCurrency, orderId, amount);
+
+      await prisma.$transaction(async (tx) => {
+        await tx.order.create({
+          data: {
+            id: orderId,
+            planId,
+            userId: telegramId,
+            amount,
+            currency: payCurrency,
+            invoiceId: np.paymentId,
+            billingPeriod,
+            status: 'waiting',
+          },
+        });
+
+        await tx.invoice.create({
+          data: {
+            orderId,
+            provider: 'nowpayments',
+            invoiceId: np.paymentId,
+            paymentId: np.paymentId,
+            payAddress: np.payAddress,
+            payCurrency: np.payCurrency,
+            payAmount: np.payAmount,
+            orderDescription: `Funding Finder — ${plan.name}`,
+            status: np.status,
+          },
+        });
+      });
+
+      return {
+        ok: true,
+        orderId,
+        provider: 'nowpayments',
+        invoiceId: np.paymentId,
+        paymentId: np.paymentId,
+        amount,
+        billingPeriod,
+        currency: payCurrency,
+        payAddress: np.payAddress,
+        payAmount: np.payAmount,
+        payCurrency: np.payCurrency,
+        invoiceUrl: np.invoiceUrl,
+        status: np.status,
+        simulated: np.simulated,
+      };
+    }
+
+    // ---- Crypto Pay (Telegram mini-app) ----
+    const invoiceData = await createCryptoPayInvoice(planId, currency, orderId, telegramId, amount);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.order.create({
+        data: {
+          id: orderId,
+          planId,
+          userId: telegramId,
+          amount,
+          currency,
+          billingPeriod,
+          invoiceId: invoiceData.invoice_id,
+        },
+      });
+
+      await tx.invoice.create({
+        data: {
+          orderId,
+          provider: 'crypto_pay',
+          invoiceId: invoiceData.invoice_id,
+          hash: invoiceData.hash,
+          botInvoiceUrl: invoiceData.bot_invoice_url,
+          miniAppInvoiceUrl: invoiceData.mini_app_invoice_url,
+          webAppInvoiceUrl: invoiceData.web_app_invoice_url,
+          status: invoiceData.status,
+        },
+      });
+    });
+
+    return {
+      ok: true,
+      orderId,
+      provider: 'crypto_pay',
+      invoiceId: invoiceData.invoice_id,
+      amount,
+      billingPeriod,
+      currency,
+      botInvoiceUrl: invoiceData.bot_invoice_url,
+      miniAppInvoiceUrl: invoiceData.mini_app_invoice_url,
+      webAppInvoiceUrl: invoiceData.web_app_invoice_url,
+    };
+  } catch (err: any) {
+    logger.error({ err }, 'Order creation failed');
+    return { ok: false, error: err.message, orderId };
+  }
+}
+
+export async function getOrder(orderId: string) {
+  return prisma.order.findUnique({ where: { id: orderId } });
+}
+
+export async function getInvoice(orderId: string) {
+  return prisma.invoice.findUnique({ where: { orderId } });
+}
+
+export async function updateOrderFromWebhook(
+  lookup: string,
+  status: string = 'paid',
+  provider?: string
+) {
+  // `lookup` may be the order id (NOWPayments / generic webhook) or the
+  // Crypto Pay invoice id — resolve either way.
+  let order = await prisma.order.findUnique({ where: { id: lookup } });
+  if (!order) order = await prisma.order.findFirst({ where: { invoiceId: lookup } });
+  if (!order) return null;
+
+  if (status === 'refunded' || status === 'failed') {
+    // Refund / failed payment: revoke the granted plan if the user is still on
+    // it (never downgrade a user who has since upgraded to a higher tier).
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({ where: { telegramId: order.userId } });
+      if (!user) return null;
+      if (user.subscription === order.planId && user.subscriptionSourceOrderId === order.id && order.planId !== 'free') {
+        await tx.user.update({
+          where: { telegramId: order.userId },
+          data: { subscription: 'free', subscriptionExpiresAt: null, subscriptionSourceOrderId: null, subscriptionReminderSent: 0 },
+        });
+        logger.info({ userId: order.userId, plan: order.planId }, 'Subscription revoked after refund/failure');
+      }
+      await tx.order.update({
+        where: { id: order.id },
+        data: { status, updatedAt: new Date() },
+      });
+      await tx.invoice.updateMany({ where: { orderId: order.id }, data: { status } });
+      return order;
+    });
+    return result;
+  }
+
+  if (status === 'paid') {
+    // Idempotent grant. The whole thing runs in one transaction so concurrent
+    // calls (webhook + status poll + reconcile) cannot double-credit. The
+    // PaymentRecord.orderId unique index is the ultimate guard, but we also
+    // short-circuit when the order is already marked paid.
+    const result = await prisma.$transaction(async (tx) => {
+      const currentOrder = await tx.order.findUnique({ where: { id: order.id } });
+      if (!currentOrder) return null;
+      if (currentOrder.status === 'paid') return currentOrder;
+
+      // Re-read inside the transaction to get the freshest subscription.
+      const user = await tx.user.findUnique({ where: { telegramId: order.userId } });
+      if (!user) return null;
+
+      const newRank = planRank(order.planId);
+      const currentRank = planRank(user.subscription);
+      const periodDays = order.billingPeriod === 'annual' ? 365 : 30;
+      const baseTime = user.subscriptionExpiresAt && user.subscriptionExpiresAt.getTime() > Date.now()
+        ? user.subscriptionExpiresAt.getTime()
+        : Date.now();
+      const subscriptionExpiresAt = new Date(baseTime + periodDays * 24 * 60 * 60 * 1000);
+
+      await tx.order.update({
+        where: { id: order.id },
+        data: { status: 'paid', updatedAt: new Date() },
+      });
+
+      // Only upgrade (never downgrade) the subscription.
+      if (newRank > currentRank) {
+        await tx.user.update({
+          where: { telegramId: order.userId },
+          data: { subscription: order.planId, subscriptionExpiresAt, subscriptionSourceOrderId: order.id, subscriptionReminderSent: 0, trialEndsAt: null },
+        });
+      } else {
+        await tx.user.update({
+          where: { telegramId: order.userId },
+          data: { subscriptionExpiresAt, subscriptionSourceOrderId: order.id, subscriptionReminderSent: 0, trialEndsAt: null },
+        });
+      }
+      clearSubscriptionCache(order.userId);
+
+      // Upsert the payment record so a replayed webhook can't create a duplicate.
+      let history = await tx.paymentHistory.findUnique({ where: { userId: order.userId } });
+      if (!history) {
+        history = await tx.paymentHistory.create({ data: { userId: order.userId } });
+      }
+
+      const existing = await tx.paymentRecord.findUnique({ where: { orderId: order.id } });
+      if (!existing) {
+        await tx.paymentRecord.create({
+          data: {
+            paymentHistoryId: history.id,
+            orderId: order.id,
+            plan: PLANS[order.planId as PlanId]?.name || order.planId,
+            amount: order.amount,
+            currency: order.currency,
+          },
+        });
+      }
+
+      await tx.invoice.updateMany({
+        where: { orderId: order.id },
+        data: { status: 'paid' },
+      });
+
+      // Credit the referrer a percentage of the referral's FIRST payment.
+      // A percentage (vs the old flat $5) gives ambassadors real upside and a
+      // stronger incentive to drive paying users. Guarded by an ATOMIC
+      // conditional flip of `referralCredited` (updateMany + count check) so
+      // concurrent webhook/poll/reconcile calls can never double-pay: only one
+      // transaction can win the `referralCredited: false` claim. Amount is
+      // capped at the plan price (no negative or absurd values).
+      if (user.referredBy) {
+        const claimed = await tx.user.updateMany({
+          where: { id: user.id, referralFirstPaymentCredited: false },
+          data: { referralFirstPaymentCredited: true },
+        });
+        if (claimed.count === 1) {
+          const REFERRAL_RATE = 0.2; // 20% of first payment
+          const bonus = Math.max(0, Math.min(REFERRAL_RATE * order.amount, order.amount));
+          await tx.user.update({
+            where: { id: user.referredBy },
+            data: { balance: { increment: bonus } },
+          });
+          logger.info({ referrerId: user.referredBy, orderId: order.id, bonus }, 'Referral bonus (20% of first payment) credited to balance');
+        }
+        await tx.order.updateMany({ where: { id: order.id, referralCredited: false }, data: { referralCredited: true } });
+      }
+
+      return currentOrder;
+    });
+
+    return result;
+  }
+
+  await prisma.invoice.updateMany({
+    where: { orderId: order.id },
+    data: { status },
+  });
+
+  return prisma.order.update({
+    where: { id: order.id },
+    data: { status, updatedAt: new Date() },
+  });
+}
+
+/**
+ * Verify the Crypto Pay webhook signature.
+ *
+ * Crypto Pay signs the *raw bytes* of the request body with HMAC-SHA256 using
+ * SHA256(API_TOKEN) as the key (header `Crypto-Pay-API-Signature`). We must
+ * verify against the raw body, not a re-serialized copy, since re-stringifying
+ * a parsed object can reorder keys / change whitespace and break the check.
+ */
+export function verifyCryptoPaySignature(rawBody: string | Buffer, signature: string) {
+  const token = config.cryptoPay.apiToken;
+  if (!token) {
+    logger.warn('Crypto Pay token not configured — skipping signature verification');
+    return false;
+  }
+  if (!signature || typeof signature !== 'string') return false;
+
+  const payload = Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(String(rawBody));
+  const secret = crypto.createHash('sha256').update(token).digest();
+  const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  if (hmac.length !== signature.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(signature));
+}
+
+/** Allow a tiny float tolerance when comparing paid vs expected amounts. */
+function amountsMatch(expected: number, paid: number): boolean {
+  return Number.isFinite(paid) && Math.abs(expected - paid) < 0.01;
+}
+
+export async function handleCryptoPayWebhook(update: any) {
+  if (update?.update_type === 'invoice_paid') {
+    const payload = update.payload || {};
+    const invoiceId = String(payload.invoice_id);
+    const paidAmount = parseFloat(String(payload.paid_amount ?? payload.amount));
+    const paidAsset = String(payload.paid_asset ?? payload.asset ?? '').toUpperCase();
+
+    const order = await prisma.order.findFirst({ where: { invoiceId }, include: { invoice: true } });
+    if (!order) {
+      logger.warn({ invoiceId }, 'Crypto Pay webhook: order not found');
+      return { success: false };
+    }
+
+    // Never grant a subscription if the paid amount doesn't match the plan.
+    if (!amountsMatch(order.amount, paidAmount)) {
+      logger.error(
+        { invoiceId, paidAmount, expected: order.amount },
+        'Crypto Pay webhook: paid amount does not match order'
+      );
+      return { success: false };
+    }
+    if (order.invoice?.provider !== 'crypto_pay' || paidAsset !== String(order.currency).toUpperCase()) {
+      logger.error({ invoiceId, paidAsset, expectedAsset: order.currency }, 'Crypto Pay webhook: provider or asset mismatch');
+      return { success: false };
+    }
+
+    await updateOrderFromWebhook(invoiceId, 'paid');
+    return { success: true };
+  }
+  return { success: false };
+}
+
+/** Reconcile a Crypto Pay invoice using the same validation as webhooks. */
+export async function reconcileCryptoPayInvoice(invoiceId: string, invoice: any) {
+  const order = await prisma.order.findFirst({ where: { invoiceId }, include: { invoice: true } });
+  if (!order || order.invoice?.provider !== 'crypto_pay') return false;
+  if (invoice?.status === 'paid') {
+    const paidAmount = parseFloat(String(invoice.paid_amount ?? invoice.amount));
+    const paidAsset = String(invoice.paid_asset ?? invoice.asset ?? '').toUpperCase();
+    if (!amountsMatch(order.amount, paidAmount) || paidAsset !== String(order.currency).toUpperCase()) return false;
+  }
+  await updateOrderFromWebhook(invoiceId, invoice.status);
+  return true;
+}
+
+export async function getWithdrawalHistory(userId: string, limit: number = 50, offset: number = 0) {
+  const safeLimit = Math.min(Math.max(limit, 1), 200);
+  const safeOffset = Math.max(offset, 0);
+  const [withdrawals, total] = await Promise.all([
+    prisma.withdrawal.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: safeLimit,
+      skip: safeOffset,
+    }),
+    prisma.withdrawal.count({ where: { userId } }),
+  ]);
+  return { withdrawals, total, limit: safeLimit, offset: safeOffset };
+}
+
+export async function getPaymentHistory(userId: string, limit: number = 50, offset: number = 0) {
+  const safeLimit = Math.min(Math.max(limit, 1), 200);
+  const safeOffset = Math.max(offset, 0);
+  const history = await prisma.paymentHistory.findUnique({
+    where: { userId },
+    include: {
+      payments: {
+        orderBy: { date: 'desc' },
+        take: safeLimit,
+        skip: safeOffset,
+      },
+    },
+  });
+  const total = history
+    ? await prisma.paymentRecord.count({ where: { paymentHistoryId: history.id } })
+    : 0;
+  return { payments: history?.payments || [], total, limit: safeLimit, offset: safeOffset };
+}
+
+export async function getUserBalance(userId: string) {
+  const user = await getUser(userId);
+  return user.balance;
+}
+
+export async function updateUserBalance(userId: string, amount: number) {
+  return prisma.user.update({
+    where: { telegramId: userId },
+    data: { balance: { increment: amount } },
+  });
+}
+
+export async function getInvoiceStatus(invoiceId: string) {
+  if (!config.cryptoPay.apiToken) return null;
+
+  try {
+    const res = await axios.get(
+      `${getApiBaseUrl()}/api/getInvoices`,
+      {
+        params: { invoice_ids: invoiceId },
+        headers: { 'Crypto-Pay-API-Token': config.cryptoPay.apiToken },
+        timeout: 10000,
+      }
+    );
+
+    if (res.data.ok && res.data.result?.items?.length > 0) {
+      return res.data.result.items[0];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
