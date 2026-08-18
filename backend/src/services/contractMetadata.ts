@@ -24,8 +24,21 @@ function enqueueUpsert(fn: () => Promise<void>): void {
   upsertQueue = upsertQueue.then(fn, fn);
 }
 
+// Contract metadata (tick size, leverage, open interest, ...) changes very slowly.
+// Upserting all ~3700 contracts on EVERY scan flooded the DB and made every
+// authenticated request take 3-5s while a scan was running. We only write when a
+// contract is new or its cached entry is older than the TTL, so recurring scans
+// perform almost no metadata writes and stay light.
+const metadataUpsertedAt = new Map<string, number>();
+const METADATA_UPSERT_TTL_MS = 60 * 60 * 1000; // 1 hour
+
 export async function upsertContractMetadata(info: ContractInfo): Promise<void> {
   const key = `${info.exchange}:${info.contract}`;
+  const now = Date.now();
+  const last = metadataUpsertedAt.get(key);
+  if (last !== undefined && now - last < METADATA_UPSERT_TTL_MS) {
+    return; // already fresh — skip the DB write entirely
+  }
   enqueueUpsert(async () => {
   try {
     await prisma.contractMetadata.upsert({
@@ -59,6 +72,7 @@ export async function upsertContractMetadata(info: ContractInfo): Promise<void> 
   } catch (err) {
     logger.debug(`Failed to upsert metadata for ${key}: ${(err as Error).message}`);
   }
+    metadataUpsertedAt.set(key, Date.now());
   });
 }
 
