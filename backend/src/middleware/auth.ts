@@ -25,7 +25,12 @@ const VALID_EXCHANGES = SUPPORTED_EXCHANGES;
 // (empty by default) so it is never hardcoded.
 const DEV_ULTIMATE_TELEGRAM_IDS = new Set(config.admin.devUltimateTelegramIds);
 
-// Track user activity (blocking — ensures user exists before any route handler)
+// Track user activity (ensures user exists before any route handler).
+// Writes are throttled: lastActive is only refreshed when stale, so the burst
+// of ~10-15 requests a Mini App fires per screen load no longer triggers a
+// write (and a trial-expiry check) on every single call.
+const TRACK_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
+
 async function trackActivity(userId: string, authProvider: AuthProvider = 'telegram'): Promise<void> {
   try {
     const tgId = userId.replace('tg_', '');
@@ -44,15 +49,21 @@ async function trackActivity(userId: string, authProvider: AuthProvider = 'teleg
         subscription,
         ...(trialEndsAt ? { trialEndsAt } : {}),
       },
+      // Avoid touching lastActive on every request — refreshed via updateMany below.
       update: {
-        lastActive: now,
         role: isAdmin ? 'admin' : undefined,
         ...(isDevUltimate ? { subscription: 'proplus' } : {}),
         ...(trialEndsAt ? { trialEndsAt } : {}),
       },
     });
-    // Revert trial-derived Pro once the window has elapsed (skip for dev proplus).
-    if (!isDevUltimate) {
+
+    // Only refresh lastActive (and run the trial-expiry check) when stale.
+    const staleCutoff = new Date(now.getTime() - TRACK_INTERVAL_MS);
+    const updated = await prisma.user.updateMany({
+      where: { telegramId: userId, lastActive: { lt: staleCutoff } },
+      data: { lastActive: now },
+    });
+    if (updated.count > 0 && !isDevUltimate) {
       await enforceTrialExpiry(userId);
     }
   } catch (err) {

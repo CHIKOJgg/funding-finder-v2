@@ -220,17 +220,18 @@ router.get('/arbitrage', async (_req, res) => {
     // Prefer the warm full-set cache (already covers all supported exchanges).
     let scan = getCachedScan(SUPPORTED_EXCHANGES);
     if (!scan) {
-      // Cold start: ride the running warm-up instead of launching our own scan.
+      // Cold start: ride the running warm-up, but never block the client on a
+      // (possibly slow) full scan. The background warmup keeps the cache fresh
+      // and the next poll serves instantly.
       const warm = getWarmupPromise();
       if (warm) {
-        await warm;
+        await Promise.race([warm, new Promise((r) => setTimeout(r, 2500))]);
         scan = getCachedScan(SUPPORTED_EXCHANGES);
       }
     }
     if (!scan) {
-      // Last resort: a single full scan (very rare — only before first warm-up).
-      const result = await runScan(SUPPORTED_EXCHANGES);
-      scan = { result, ts: Date.now(), ageMs: 0 };
+      // Cache still cold — serve degraded instead of hanging the request.
+      throw new Error('scan cache cold');
     }
 
     const allResults = [
@@ -288,13 +289,12 @@ router.get('/heatmap', async (_req, res) => {
     if (!scan) {
       const warm = getWarmupPromise();
       if (warm) {
-        await warm;
+        await Promise.race([warm, new Promise((r) => setTimeout(r, 2500))]);
         scan = getCachedScan(SUPPORTED_EXCHANGES);
       }
     }
     if (!scan) {
-      const result = await runScan(SUPPORTED_EXCHANGES);
-      scan = { result, ts: Date.now(), ageMs: 0 };
+      throw new Error('scan cache cold');
     }
 
     const allResults = [

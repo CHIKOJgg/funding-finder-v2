@@ -134,8 +134,11 @@ export async function scanOKX(): Promise<ExchangeResult[]> {
              const res = await retry(() => client.get('/api/v5/public/funding-rate', { params: { instId: symbol } }));
              return res.data?.data?.[0] || null;
            }, 60_000);
-           const currentFunding = parseFloat(funding?.fundingRate) || 0;
-           const nextFundingTime = funding?.nextFundingTime ? Number(funding.nextFundingTime) : 0;
+            const currentFunding = parseFloat(funding?.fundingRate) || 0;
+            // OKX returns nextFundingTime/fundingTime as ISO-8601 strings; parse
+            // them properly (Number() on an ISO string yields NaN → 0).
+            const nextRaw = funding?.nextFundingTime || funding?.fundingTime;
+            const nextFundingTime = nextRaw ? new Date(nextRaw).getTime() : 0;
 
            const mark = parseFloat(ticker.last) || 0;
            const vol24 = parseFloat(ticker.volCcy24h) || parseFloat(ticker.vol24h) || 0;

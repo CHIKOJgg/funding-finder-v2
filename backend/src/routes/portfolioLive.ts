@@ -1,9 +1,7 @@
 import { Router } from 'express';
-import { z } from 'zod';
 import { prisma } from '../services/prisma.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { requireSubscription } from '../middleware/subscription.js';
-import { validate } from '../middleware/validation.js';
 import { decryptJson } from '../services/exchangeKeys.js';
 import { getAdapter, supportedExchanges } from '../services/exchangeClients/index.js';
 import { logger } from '../utils/logger.js';
@@ -131,92 +129,10 @@ router.get('/portfolio/live/export', requireSubscription('pro'), async (req: Aut
   }
 });
 
-const executeSchema = z.object({
-  exchange: z.enum(['binance', 'bybit', 'okx']),
-  symbol: z.string().min(2),
-  side: z.enum(['long', 'short']),
-  notionalUsd: z.number().positive().max(1_000_000),
-  maxSlippageBps: z.number().int().min(1).max(5000).optional().default(100),
-  confirm: z.literal(true), // explicit confirmation required
-});
-
-// Map an exchange order status to our internal lifecycle status. Exchanges use
-// different vocabularies, so we normalize the common ones; anything ambiguous
-// stays 'sent' (placed but unconfirmed) rather than being falsely reported.
-function deriveOrderStatus(order: any): 'filled' | 'sent' | 'failed' {
-  if (!order) return 'failed';
-  const raw = String(order.status ?? order.orderStatus ?? '').toUpperCase();
-  if (['FILLED', 'CLOSED', 'COMPLETED', 'PARTIALLY_FILLED'].includes(raw)) return 'filled';
-  if (['REJECTED', 'CANCELED', 'CANCELLED', 'EXPIRED', 'FAILED', 'NEW_REJECTED'].includes(raw)) {
-    return 'failed';
-  }
-  return 'sent';
-}
-
-// POST /api/portfolio/auto-execute — place a market order via the user's
-// trade-permission API key. Gated behind Pro + a 'trade' key + confirm:true.
-router.post('/portfolio/auto-execute', requireSubscription('pro'), validate(executeSchema), async (req: AuthenticatedRequest, res) => {
-  const userId = req.userId;
-  const { exchange, symbol, side, notionalUsd, maxSlippageBps } = req.body;
-  try {
-    if (!userId) return res.status(401).json({ ok: false, error: 'Authentication required' });
-
-    const key = await prisma.apiKey.findFirst({
-      where: { userId, exchange, permissions: 'trade' },
-    });
-    if (!key) {
-      return res.status(403).json({ ok: false, error: 'Нет ключа с правами торговли для этой биржи' });
-    }
-
-    const creds = decryptJson<{ apiKey: string; secret: string; passphrase?: string }>(key.encPayload);
-    let adapter;
-    try {
-      adapter = getAdapter(exchange);
-    } catch {
-      return res.status(400).json({ ok: false, error: 'Эта биржа пока не поддерживается для авто-исполнения' });
-    }
-    if (!adapter.placeMarketOrder) {
-      return res.status(400).json({ ok: false, error: 'Эта биржа не поддерживает авто-исполнение' });
-    }
-
-    const order = await adapter.placeMarketOrder(creds, { symbol, side, notionalUsd, maxSlippageBps });
-
-    await prisma.apiKey.update({ where: { id: key.id }, data: { lastUsedAt: new Date() } }).catch(() => {});
-
-    // Persist for the in-app order history (audit trail of copy-trades),
-    // recording the derived fill status so the user sees real outcomes.
-    const status = deriveOrderStatus(order);
-    try {
-      await prisma.executedOrder.create({
-        data: {
-          userId,
-          exchange,
-          symbol,
-          side,
-          notionalUsd,
-          status,
-          orderId: order?.orderId?.toString() || order?.id?.toString() || null,
-          raw: JSON.stringify(order ?? null),
-        },
-      });
-    } catch (persistErr) {
-      logger.warn({ err: (persistErr as Error).message }, 'Failed to persist executed order');
-    }
-
-    res.json({ ok: true, order, status });
-  } catch (err) {
-    // Record failed attempts too, so the user sees what didn't go through.
-    try {
-      const { exchange, symbol, side, notionalUsd } = req.body;
-      if (userId) {
-        await prisma.executedOrder.create({
-          data: { userId, exchange, symbol, side, notionalUsd, status: 'failed', raw: JSON.stringify({ error: (err as Error).message }) },
-        });
-      }
-    } catch { /* ignore persistence failure */ }
-    logger.error({ err: (err as Error).message }, 'Auto-execute failed');
-    res.status(502).json({ ok: false, error: (err as Error).message || 'Не удалось исполнить ордер' });
-  }
+// POST /api/portfolio/auto-execute — DISABLED. Trading via API keys is now
+// read-only for safety. Kept as a 403 so existing clients fail closed.
+router.post('/portfolio/auto-execute', requireSubscription('pro'), async (_req: AuthenticatedRequest, res) => {
+  return res.status(403).json({ ok: false, error: 'Trading via API keys is disabled. Portfolio connections are read-only.' });
 });
 
 // GET /api/portfolio/orders — history of auto-executed (copy-trade) orders.

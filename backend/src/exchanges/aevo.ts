@@ -16,7 +16,9 @@ export async function scanAevo(): Promise<ExchangeResult[]> {
         const rate = safeParseFloat(funding?.funding_rate, NaN);
         if (!name || !Number.isFinite(rate)) return null;
         upsertContractMetadata({ exchange: 'aevo', contract: name }).catch(() => {});
-        return toExchangeResult({ exchange: 'aevo', contract: name, currentFunding: rate, fundingIntervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, fundingIntervalSource: 'default', fundingNextApply: toMs(funding?.next_epoch), markPrice: safeParseFloat(m.mark_price), volume24hSettle: safeParseFloat(m.volume_24h ?? m.volume), });
+        // Aevo's next_epoch is returned in NANOSECONDS; convert to ms.
+        const nextApplyMs = funding?.next_epoch ? Number(funding.next_epoch) / 1e6 : 0;
+        return toExchangeResult({ exchange: 'aevo', contract: name, currentFunding: rate, fundingIntervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, fundingIntervalSource: 'default', fundingNextApply: nextApplyMs, markPrice: safeParseFloat(m.mark_price), volume24hSettle: safeParseFloat(m.volume_24h ?? m.volume), });
       } catch { return null; }
     });
     return results.filter((r): r is ExchangeResult => r !== null);

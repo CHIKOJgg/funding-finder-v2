@@ -23,7 +23,7 @@ describe('fundingService — getLiveFundingBatch', () => {
   });
 
   it('returns an empty map for an unsupported exchange', async () => {
-    const map = await getLiveFundingBatch('kraken', ['TESTCOINUSDT']);
+    const map = await getLiveFundingBatch('bitmex', ['TESTCOINUSDT']);
     expect(map).toEqual({});
     expect(axiosMock.get).not.toHaveBeenCalled();
   });

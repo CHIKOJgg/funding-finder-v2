@@ -26,7 +26,7 @@ describe('new public funding scanners', () => {
   });
 
   it('parses Bitunix per-symbol funding data', async () => {
-    mock.routeGet({ trading_pairs: { code: 0, data: [{ symbol: 'BTCUSDT' }] }, tickers: { code: 0, data: [{ symbol: 'BTCUSDT', markPrice: '50000', volume: '10' }] }, funding_rate: { code: 0, data: { fundingRate: '0.0003', fundingInterval: 4, nextFundingTime: 1700000000000 } } });
+    mock.routeGet({ trading_pairs: { code: 0, data: [{ symbol: 'BTCUSDT' }] }, tickers: { code: 0, data: [{ symbol: 'BTCUSDT', markPrice: '50000', volume: '10' }] }, funding_rate: { code: 0, data: { fundingRate: '0.03', fundingInterval: 4, nextFundingTime: 1700000000000 } } });
     const result = await scanBitunix();
     expect(result[0]).toMatchObject({ exchange: 'bitunix', contract: 'BTCUSDT', currentFunding: 0.0003, funding_interval_seconds: 14400 });
   });

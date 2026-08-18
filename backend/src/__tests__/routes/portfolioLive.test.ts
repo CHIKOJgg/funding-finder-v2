@@ -44,11 +44,11 @@ describe('portfolioLive routes', () => {
     expect(res.body.ok).toBe(false);
   });
 
-  it('POST /portfolio/auto-execute returns 400 when confirm missing', async () => {
+  it('POST /portfolio/auto-execute returns 403 (trading disabled, read-only keys only)', async () => {
     const res = await request(mkApp())
       .post('/portfolio/auto-execute')
       .send({ exchange: 'binance', symbol: 'BTCUSDT', side: 'long', notionalUsd: 100, confirm: false });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(403);
     expect(res.body.ok).toBe(false);
   });
 });

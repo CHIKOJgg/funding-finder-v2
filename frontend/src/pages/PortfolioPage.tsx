@@ -8,7 +8,7 @@ import { PortfolioPosition } from '../types';
 import { openExchange, exchangeLabel } from '../utils/exchanges';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { useT, useI18n } from '../i18n';
-import { IconWallet, IconChartLine, IconLink2, IconDownload, IconExternalLink, IconAlertTriangle, IconCopy } from '../components/icons';
+import { IconWallet, IconChartLine, IconLink2, IconDownload, IconExternalLink, IconAlertTriangle } from '../components/icons';
 
 const EXCHANGES = ['binance', 'bybit', 'okx', 'gate', 'mexc', 'bitget', 'phemex', 'htx', 'hyperliquid', 'bingx', 'woo', 'coinex', 'weex', 'coinw', 'bitmart', 'blofin', 'apex', 'aster'] as const;
 const SIM_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'] as const;
@@ -39,7 +39,7 @@ export function PortfolioPage() {
   const [live, setLive] = useState<any>(null);
   const [liveLoading, setLiveLoading] = useState(false);
   const [showKeyForm, setShowKeyForm] = useState(false);
-  const [autoTarget, setAutoTarget] = useState<any>(null);
+
 
   const loadSim = useCallback(async () => {
     try {
@@ -239,7 +239,6 @@ export function PortfolioPage() {
             if (res?.ok) { setShowKeyForm(false); loadKeys(); loadLive(); }
             return res;
           }}
-          onAuto={setAutoTarget}
           showKeyForm={showKeyForm}
           setShowKeyForm={setShowKeyForm}
         />
@@ -247,33 +246,7 @@ export function PortfolioPage() {
 
       <PaywallModal open={paywall !== null} feature={paywall || 'portfolio'} onClose={() => setPaywall(null)} />
 
-      {autoTarget && (
-        <AutoExecuteDialog
-          target={autoTarget}
-          onClose={() => setAutoTarget(null)}
-          onConfirm={async (notional) => {
-            try {
-              const res: any = await apiClient.autoExecuteOrder({
-                exchange: autoTarget.exchange,
-                symbol: autoTarget.symbol,
-                side: autoTarget.side,
-                notionalUsd: notional,
-                confirm: true,
-              });
-              if (res?.ok) {
-                showToast(t('portfolio.orderSent'), 'success');
-                loadLive();
-              } else {
-                showToast(res?.error || t('portfolio.execFailed'), 'error');
-              }
-              return res;
-            } catch (err: any) {
-              showToast(err?.message || t('portfolio.execFailed'), 'error');
-              throw err;
-            }
-          }}
-        />
-      )}
+      {/* Trading via API keys is disabled — portfolio connections are read-only. */}
     </div>
   );
 }
@@ -285,7 +258,6 @@ const LiveTab = memo(function LiveTab({
   onRefresh,
   onDeleteKey,
   onAddKey,
-  onAuto,
   showKeyForm,
   setShowKeyForm,
 }: {
@@ -295,7 +267,6 @@ const LiveTab = memo(function LiveTab({
   onRefresh: () => void;
   onDeleteKey: (id: string) => void;
   onAddKey: (data: any) => Promise<any>;
-  onAuto: (pos: any) => void;
   showKeyForm: boolean;
   setShowKeyForm: (v: boolean) => void;
 }) {
@@ -421,10 +392,7 @@ const LiveTab = memo(function LiveTab({
             )}
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs text-muted">{t('portfolio.permissions')}</span>
-              <select value={form.permissions} onChange={(e) => setForm({ ...form, permissions: e.target.value as 'read' | 'trade' })} className="input-field text-sm flex-1">
-                <option value="read">{t('portfolio.permRead')}</option>
-                <option value="trade">{t('portfolio.permTrade')}</option>
-              </select>
+              <span className="chip text-xs flex-1 text-center">read-only</span>
             </div>
             <button onClick={submitKey} disabled={saving} className="btn btn-primary w-full text-sm py-2">
               {saving ? t('portfolio.savingKey') : t('portfolio.saveKey')}
@@ -530,13 +498,7 @@ const LiveTab = memo(function LiveTab({
                           <span className={`font-bold ${p.unrealizedPnl >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]'}`}>
                             {p.unrealizedPnl >= 0 ? '+' : ''}{formatUsd(p.unrealizedPnl)} USDT
                           </span>
-                          {ex.permissions === 'trade' && ex.supportsTrading && (
-                            <button
-                              onClick={() => onAuto({ exchange: ex.exchange, symbol: p.symbol, side: p.side, notional: p.notional })}
-                              className="text-xs text-[var(--cobalt)] flex items-center gap-1"
-                              title={t('portfolio.mirrorTitle')}
-                            ><IconCopy className="w-3.5 h-3.5" aria-hidden /> {t('portfolio.openCopy')}</button>
-                          )}
+
                         </div>
                       </div>
                     ))}
@@ -569,58 +531,6 @@ const LiveTab = memo(function LiveTab({
         )}
       </div>
     </>
-  );
-});
-
-const AutoExecuteDialog = memo(function AutoExecuteDialog({
-  target,
-  onClose,
-  onConfirm,
-}: {
-  target: any;
-  onClose: () => void;
-  onConfirm: (notional: number) => Promise<any>;
-}) {
-  const [notional, setNotional] = useState(Math.round(target.notional || 100));
-  const [busy, setBusy] = useState(false);
-  const t = useT();
-
-  const confirm = async () => {
-    setBusy(true);
-    try {
-      await onConfirm(notional);
-      onClose();
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-[rgba(5,7,12,0.5)] flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
-      <div className="bg-surface rounded-xl max-w-md w-full">
-        <div className="card">
-          <h2 className="text-lg font-semibold mb-1">{t('portfolio.autoTitle')}</h2>
-          <p className="text-sm text-muted mb-3">
-            {t('portfolio.autoDesc', { side: target.side === 'long' ? t('portfolio.long') : t('portfolio.short'), symbol: target.symbol, exchange: exchangeLabel(target.exchange) })}
-          </p>
-              <label className="block text-sm font-medium text-[var(--text2)] mb-1">{t('portfolio.sizeUsdt')}</label>
-          <input
-            type="number"
-            min={1}
-            value={notional}
-            onChange={(e) => setNotional(Math.max(1, Number(e.target.value) || 1))}
-            className="input-field mb-3"
-          />
-          <div className="flex gap-2">
-            <button onClick={onClose} className="btn btn-secondary flex-1">{t('common.cancel')}</button>
-            <button onClick={confirm} disabled={busy} className="btn btn-primary flex-1">
-              {busy ? t('portfolio.opening') : t('portfolio.openConfirm')}
-            </button>
-          </div>
-          <p className="text-xs text-[var(--text2)] mt-2">{t('portfolio.autoWarn')}</p>
-        </div>
-      </div>
-    </div>
   );
 });
 

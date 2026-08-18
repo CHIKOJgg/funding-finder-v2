@@ -19,7 +19,8 @@ const addSchema = z.object({
   apiKey: z.string().min(1),
   secret: z.string().min(1),
   passphrase: z.string().optional(),
-  permissions: z.enum(['read', 'trade']).default('read'),
+  // Portfolio API keys are read-only for safety — trading is disabled.
+  permissions: z.enum(['read']).default('read'),
 });
 
 const deleteSchema = z.object({

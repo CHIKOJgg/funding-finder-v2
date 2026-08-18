@@ -1,6 +1,6 @@
 import { ExchangeResult } from '../types/index.js';
 import { KNOWN_INTERVALS } from '../types/index.js';
-import { retry, getOrCreateClient, cachedRequest, safeParseFloat } from '../utils/exchangeClient.js';
+import { retry, getOrCreateClient, cachedRequest, safeParseFloat, toMs } from '../utils/exchangeClient.js';
 import { toExchangeResult } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
@@ -33,7 +33,7 @@ export async function scanHelix(): Promise<ExchangeResult[]> {
         const currentFunding = safeParseFloat(m.fundingRate);
         const mark = safeParseFloat(m.markPrice) || safeParseFloat(m.oraclePrice);
         const vol24 = safeParseFloat(m.volume24h) || safeParseFloat(m.takerVolume) || 0;
-        const nextFunding = Number(m.nextFundingTimestamp) || 0;
+        const nextFunding = toMs(m.nextFundingTimestamp) || 0;
 
         upsertContractMetadata({ exchange: 'helix', contract: symbol }).catch(() => {});
 

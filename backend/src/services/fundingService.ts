@@ -223,14 +223,72 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
         const d = r.data?.data ?? r.data;
         const rate = num(d?.fundingRate);
         if (rate == null) return null;
-        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.HOURLY, nextApply: Number(d?.nextFundingTimestamp) || 0 };
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.HOURLY, nextApply: toMs(d?.nextFundingTimestamp) || 0 };
       }
       case 'helix': {
         const d = await getCachedList('fundinglist:helix', 'https://k8s.mainnet.exchange.gm.injective.network/api/exchange/v1/perpetual-markets');
         const m = (d?.data || d || []).find((x: any) => x.marketId === symbol);
         const rate = num(m?.fundingRate);
         if (rate == null) return null;
-        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.HOURLY, nextApply: Number(m?.nextFundingTimestamp) || 0 };
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.HOURLY, nextApply: toMs(m?.nextFundingTimestamp) || 0 };
+      }
+      case 'aevo': {
+        const r = await cachedRequest(`funding:aevo:${symbol}`, () =>
+          axios.get('https://api.aevo.xyz/funding', { params: { instrument_name: symbol }, timeout: 10000 }), FUNDING_CACHE_TTL_MS);
+        const fr = r.data;
+        const rate = num(fr?.funding_rate);
+        if (rate == null) return null;
+        // Aevo's next_epoch is in nanoseconds.
+        const next = fr?.next_epoch ? Number(fr.next_epoch) / 1e6 : 0;
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: next };
+      }
+      case 'kucoin': {
+        const all = await getCachedList('fundinglist:kucoin', 'https://api-futures.kucoin.com/api/v1/contracts/active');
+        const arr = all?.data || [];
+        const c = arr.find((x: any) => x.symbol === symbol);
+        if (!c) return null;
+        const rate = num(c?.fundingRate ?? c?.fundingFeeRate ?? c?.predictedFundingFeeRate);
+        if (rate == null) return null;
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: 0 };
+      }
+      case 'kraken': {
+        const d = await getCachedList('fundinglist:kraken', 'https://futures.kraken.com/derivatives/api/v3/tickers');
+        const list = d?.tickers || [];
+        const t = list.find((x: any) => x.symbol === symbol);
+        if (!t) return null;
+        const rate = num(t?.fundingRate);
+        if (rate == null) return null;
+        const iv = num(t?.fundingIntervalHours ?? t?.funding_interval_hours) ?? 8;
+        const next = toMs(t?.nextFundingTime ?? t?.next_funding_time) || 0;
+        return { rawRate: rate, intervalSeconds: iv * 3600, nextApply: next };
+      }
+      case 'coinbase': {
+        const r = await cachedRequest(`funding:coinbase:${symbol}`, () =>
+          axios.get(`https://api.international.coinbase.com/api/v1/instruments/${encodeURIComponent(symbol)}/quote`, { timeout: 10000 }), FUNDING_CACHE_TTL_MS);
+        const q = r.data;
+        const rate = num(q?.predicted_funding);
+        if (rate == null) return null;
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.HOURLY, nextApply: 0 };
+      }
+      case 'bitunix': {
+        const r = await cachedRequest(`funding:bitunix:${symbol}`, () =>
+          axios.get('https://fapi.bitunix.com/api/v1/futures/market/funding_rate', { params: { symbol }, timeout: 10000 }), FUNDING_CACHE_TTL_MS);
+        const d = r.data?.data;
+        const rate = num(d?.fundingRate);
+        if (rate == null) return null;
+        const iv = num(d?.fundingInterval) ?? 8;
+        return { rawRate: rate / 100, intervalSeconds: iv * 3600, nextApply: toMs(d?.nextFundingTime) || 0 };
+      }
+      case 'orderly': {
+        const r = await cachedRequest('fundinglist:orderly', () =>
+          axios.post('https://api.orderly.org/v1/public/query', { type: 'marketSummary' }, { timeout: 10000 }), FUNDING_CACHE_TTL_MS);
+        const markets = r.data?.data?.markets;
+        if (!Array.isArray(markets)) return null;
+        const m = markets.find((x: any) => x.symbol === symbol);
+        if (!m) return null;
+        const rate = num(m?.last_funding_rate ?? m?.est_funding_rate);
+        if (rate == null) return null;
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: toMs(m?.next_funding_time) || 0 };
       }
       case 'apex': {
         const r = await cachedRequest(`funding:apex:${symbol}`, () =>
