@@ -55,6 +55,10 @@ export async function connectDatabase(): Promise<void> {
     // rest go cold and every authenticated request pays a ~1s reconnect PER
     // query (profile = 3 queries => 3-5s). So we ping all `POOL_SIZE`
     // connections concurrently on a tight interval and never let any idle out.
+    if (process.env.DISABLE_KEEPALIVE === 'true') {
+      logger.info('DB keepalive disabled via DISABLE_KEEPALIVE env');
+      return;
+    }
     if (keepAliveTimer) clearInterval(keepAliveTimer);
     keepAliveTimer = setInterval(() => {
       Promise.all(

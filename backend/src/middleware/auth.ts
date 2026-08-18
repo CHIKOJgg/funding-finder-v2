@@ -116,6 +116,7 @@ async function trackActivity(userId: string, authProvider: AuthProvider = 'teleg
 
 export async function validateTelegramInitData(req: Request, res: Response, next: NextFunction) {
   const initData = req.headers['x-telegram-init-data'] as string;
+  if ((req as any)._t0) console.log('[PERF] auth:start', Date.now() - (req as any)._t0, 'ms since rcv', req.method, req.path);
 
   if (!initData) {
     if (config.nodeEnv === 'development') {
