@@ -21,6 +21,16 @@ import { scanCoinbase } from './coinbase.js';
 import { scanBitunix } from './bitunix.js';
 import { scanOrderly } from './orderly.js';
 import { scanAevo } from './aevo.js';
+import { scanApex } from './apex.js';
+import { scanBitMart } from './bitmart.js';
+import { scanCoinEx } from './coinex.js';
+import { scanCoinW } from './coinw.js';
+import { scanCryptoCom } from './cryptocom.js';
+import { scanDeribit } from './deribit.js';
+import { scanDrift } from './drift.js';
+import { scanHelix } from './helix.js';
+import { scanParadex } from './paradex.js';
+import { scanWeex } from './weex.js';
 import { sleep, circuitBreaker, cleanupConnections } from '../utils/exchangeClient.js';
 import { logger } from '../utils/logger.js';
 
@@ -49,18 +59,22 @@ const EXCHANGE_SCANNERS: Record<string, () => Promise<ExchangeResult[]>> = {
   bitunix: scanBitunix,
   orderly: scanOrderly,
   aevo: scanAevo,
+  apex: scanApex,
+  bitmart: scanBitMart,
+  coinex: scanCoinEx,
+  coinw: scanCoinW,
+  cryptocom: scanCryptoCom,
+  deribit: scanDeribit,
+  drift: scanDrift,
+  helix: scanHelix,
+  paradex: scanParadex,
+  weex: scanWeex,
 };
 
-/** Single source of truth for every supported exchange id. */
-export const SUPPORTED_EXCHANGES = Object.keys(EXCHANGE_SCANNERS);
+export const SUPPORTED_EXCHANGES: string[] = Object.keys(EXCHANGE_SCANNERS);
 
 /**
  * Scan multiple exchanges in parallel with circuit breaker protection.
- * 
- * Improvements:
- * - Parallel scanning (2-3 exchanges at a time to avoid rate limits)
- * - Circuit breaker to skip failing exchanges
- * - Graceful degradation on errors
  */
 export async function scanExchanges(exchanges: string[]): Promise<ExchangeResult[]> {
   const allResults: ExchangeResult[] = [];
@@ -135,4 +149,4 @@ export function cleanup(): void {
   logger.info('Cleaned up all exchange connections');
 }
 
-export { scanGate, scanBinance, scanBybit, scanKuCoin, scanMEXC, scanOKX, scanBitget, scanBingX, scanPhemex, scanWOO, scanHyperliquid, scanDydx, scanHtx, scanBloFin, scanAster, scanBluefin, scanKraken, scanCoinbase, scanBitunix, scanOrderly, scanAevo };
+export { scanGate, scanBinance, scanBybit, scanKuCoin, scanMEXC, scanOKX, scanBitget, scanBingX, scanPhemex, scanWOO, scanHyperliquid, scanDydx, scanHtx, scanBloFin, scanAster, scanBluefin, scanKraken, scanCoinbase, scanBitunix, scanOrderly, scanAevo, scanApex, scanBitMart, scanCoinEx, scanCoinW, scanCryptoCom, scanDeribit, scanDrift, scanHelix, scanParadex, scanWeex };

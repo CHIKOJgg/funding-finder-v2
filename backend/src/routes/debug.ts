@@ -18,7 +18,7 @@ const router = Router();
 router.get('/price-probe', requireAdmin, async (_req, res) => {
   const symbol = (typeof _req.query.symbol === 'string' && _req.query.symbol) || 'BTC/USDT';
   const results = await Promise.all(
-    SUPPORTED_EXCHANGES.map(async (ex) => {
+    SUPPORTED_EXCHANGES.map(async (ex: string) => {
       try {
         const prices = await getLivePriceBatch(ex, [symbol]);
         const price = prices[symbol.toUpperCase()];
@@ -28,7 +28,7 @@ router.get('/price-probe', requireAdmin, async (_req, res) => {
       }
     })
   );
-  const okCount = results.filter((r) => r.ok).length;
+  const okCount = results.filter((r: { ok: boolean }) => r.ok).length;
   res.json({
     ok: true,
     symbol,
