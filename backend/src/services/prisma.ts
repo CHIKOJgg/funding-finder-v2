@@ -20,7 +20,7 @@ function runtimeDatabaseUrl(url: string): string {
 }
 
 export const prisma = new PrismaClient({
-  log: isProd ? ['error'] : ['error', 'warn'],
+  log: ['error', 'warn', 'query'],
   datasources: {
     db: {
       url: runtimeDatabaseUrl(config.databaseUrl),
