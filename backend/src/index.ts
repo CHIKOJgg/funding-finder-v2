@@ -50,11 +50,11 @@ import portfolioRoutes from './routes/portfolio.js';
 import portfolioLiveRoutes from './routes/portfolioLive.js';
 import keysRoutes from './routes/keys.js';
 import webhookRoutes from './routes/webhook.js';
-import { getInvoiceStatus, reconcileCryptoPayInvoice, updateOrderFromWebhook } from './services/paymentService.js';
 import adminRoutes from './routes/admin.js';
 import debugRoutes from './routes/debug.js';
 import publicRoutes from './routes/public.js';
 import { requireAdmin } from './middleware/admin.js';
+import { getInvoiceStatus, reconcileCryptoPayInvoice, updateOrderFromWebhook } from './services/paymentService.js';
 
 async function initSentry() {
   if (config.sentry.dsn) {
@@ -90,9 +90,9 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com', 'https://telegram.org'],
-      styleSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com', 'https://fonts.googleapis.com'],
       imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
-      fontSrc: ["'self'", 'data:'],
+      fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
       connectSrc: ["'self'", 'wss:', 'https:', 'https://accounts.google.com'],
       frameSrc: ["'self'", 'https://accounts.google.com', 'https://web.telegram.org'],
       frameAncestors: ["'self'", 'https://web.telegram.org', 'https://t.me'],
