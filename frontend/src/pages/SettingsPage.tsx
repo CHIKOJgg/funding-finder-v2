@@ -161,4 +161,390 @@ function NotificationPreview({
           : t('settings.noChannelsActive')}
       </p>
       <div className="flex gap-2">
-        {features.map((f) => (\n          <span\n            key={f.key}\n            className=\"inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium\"\n            style={\n              f.enabled\n                ? { background: 'var(--green-soft)', color: 'var(--green)' }\n                : { background: 'var(--surface-2)', color: 'var(--text3)' }\n            }\n          >\n            {f.enabled ? (\n              <IconCheck size={11} className=\"shrink-0\" />\n            ) : (\n              <span className=\"w-[7px] h-[7px] rounded-full shrink-0\" style={{ background: 'var(--text3)' }} />\n            )}\n            {f.label}\n          </span>\n        ))}\n      </div>\n      {settings.dailySummary && (\n        <p className=\"text-xs mt-2\" style={{ color: 'var(--text-muted)' }}>\n          {t('settings.dailySummaryTime')}\n        </p>\n      )}\n      {settings.spreadNotifications && (\n        <p className=\"text-xs mt-1\" style={{ color: 'var(--text-muted)' }}>\n          {t('settings.spreadAlertHint', { threshold: (settings.spreadMinThreshold * 100).toFixed(2) })}\n        </p>\n      )}\n    </div>\n  );\n}\n\nlet memorySettingsCache: UserSettings | null = null;\n\nexport function SettingsPage() {\n  const { showToast } = useToast();\n  const t = useT();\n  const [settings, setSettings] = useState<UserSettings>(() => memorySettingsCache || DEFAULT_SETTINGS);\n  const [loading, setLoading] = useState(() => !memorySettingsCache);\n  const [saving, setSaving] = useState(false);\n  const fileInputRef = useRef<HTMLInputElement>(null);\n\n  useEffect(() => {\n    loadSettings(!memorySettingsCache);\n  }, []);\n\n  const loadSettings = async (showLoading = false) => {\n    try {\n      if (showLoading) setLoading(true);\n      const res: any = await apiClient.getSettings();\n      if (res?.ok && res.settings) {\n        const merged = { ...DEFAULT_SETTINGS, ...res.settings };\n        setSettings(merged);\n        memorySettingsCache = merged;\n      }\n    } catch {\n      if (!memorySettingsCache) {\n        showToast(t('settings.loadError'), 'error');\n      }\n    } finally {\n      setLoading(false);\n    }\n  };\n\n  const handleSave = useCallback(async () => {\n    setSaving(true);\n    memorySettingsCache = { ...settings };\n    try {\n      const res: any = await apiClient.updateSettings(settings);\n      if (res?.ok) {\n        showToast(t('settings.saved'), 'success');\n      } else {\n        showToast(t('settings.saveError'), 'error');\n      }\n    } catch {\n      showToast(t('settings.networkError'), 'error');\n    } finally {\n      setSaving(false);\n    }\n  }, [settings, showToast, t]);\n\n  const handleReset = useCallback(async () => {\n    try {\n      const res: any = await apiClient.resetSettings();\n      if (res?.ok) {\n        setSettings(DEFAULT_SETTINGS);\n        memorySettingsCache = DEFAULT_SETTINGS;\n        showToast(t('settings.resetDone'), 'success');\n      }\n    } catch {\n      showToast(t('settings.resetError'), 'error');\n    }\n  }, [showToast, t]);\n\n  const handleExport = useCallback(() => {\n    const data = JSON.stringify(settings, null, 2);\n    const blob = new Blob([data], { type: 'application/json' });\n    const url = URL.createObjectURL(blob);\n    const a = document.createElement('a');\n    a.href = url;\n    a.download = `funding-finder-settings-${new Date().toISOString().slice(0, 10)}.json`;\n    a.click();\n    URL.revokeObjectURL(url);\n    showToast(t('settings.exportDone'), 'success');\n  }, [settings, showToast]);\n\n  const handleImport = useCallback(() => {\n    fileInputRef.current?.click();\n  }, []);\n\n  const handleFileChange = useCallback(\n    (e: React.ChangeEvent<HTMLInputElement>) => {\n      const file = e.target.files?.[0];\n      if (!file) return;\n      const reader = new FileReader();\n      reader.onload = () => {\n        try {\n          const imported = JSON.parse(reader.result as string) as Partial<UserSettings>;\n          setSettings((prev) => ({ ...prev, ...imported }));\n          showToast(t('settings.importDone'), 'success');\n        } catch {\n          showToast(t('settings.importError'), 'error');\n        }\n      };\n      reader.readAsText(file);\n      e.target.value = '';\n    },\n    [showToast]\n  );\n\n  if (loading) {\n    return (\n      <div className=\"p-4 space-y-3\">\n        <CardSkeleton />\n        <CardSkeleton />\n      </div>\n    );\n  }\n\n  return (\n    <div className=\"px-3 py-4 sm:px-4 sm:max-w-2xl mx-auto\">\n      <div className=\"card\">\n        <h1 className=\"text-xl font-bold mb-2 text-[var(--text)]\">{t('settings.title')}</h1>\n        <p className=\"text-sm mb-0\" style={{ color: 'var(--text2)' }}>{t('settings.subtitle')}</p>\n      </div>\n\n      <NotificationPreview settings={settings} />\n\n      <AccordionSection title={t('settings.notifications')} icon=\"Bell\" defaultOpen badge={`${[settings.telegramNotifications, settings.emailNotifications, settings.pushoverNotifications].filter(Boolean).length}`}>\n        <div className=\"space-y-3\">\n          <label className=\"flex items-center justify-between min-h-[44px]\">\n            <span className=\"text-sm\">{t('settings.telegram')}</span>\n            <Toggle\n              checked={settings.telegramNotifications}\n              onChange={(v) => setSettings((prev) => ({ ...prev, telegramNotifications: v }))}\n              label={t('settings.telegram')}\n            />\n          </label>\n\n          <label className=\"flex items-center justify-between min-h-[44px]\">\n            <span className=\"text-sm\">{t('settings.email')}</span>\n            <Toggle\n              checked={settings.emailNotifications}\n              onChange={(v) => setSettings((prev) => ({ ...prev, emailNotifications: v }))}\n              label={t('settings.email')}\n            />\n          </label>\n\n          {settings.emailNotifications && (\n            <div>\n              <label className=\"block text-sm font-medium mb-1\" style={{ color: 'var(--text2)' }} htmlFor=\"email-address\">\n                {t('settings.emailAddress')}\n              </label>\n              <input\n                id=\"email-address\"\n                type=\"email\"\n                value={settings.emailAddress}\n                onChange={(e) => setSettings((prev) => ({ ...prev, emailAddress: e.target.value }))}\n                className=\"input-field\"\n                placeholder=\"user@example.com\"\n              />\n            </div>\n          )}\n\n          <label className=\"flex items-center justify-between min-h-[44px]\">\n            <span className=\"text-sm\">{t('settings.dailySummary')}</span>\n            <Toggle\n              checked={settings.dailySummary}\n              onChange={(v) => setSettings((prev) => ({ ...prev, dailySummary: v }))}\n              label={t('settings.dailySummary')}\n            />\n          </label>\n\n          <label className=\"flex items-center justify-between min-h-[44px]\">\n            <span className=\"text-sm\">{t('settings.alertSound')}</span>\n            <Toggle\n              checked={settings.alertSound}\n              onChange={(v) => setSettings((prev) => ({ ...prev, alertSound: v }))}\n              label={t('settings.alertSound')}\n            />\n          </label>\n\n          <label className=\"flex items-center justify-between min-h-[44px]\">\n            <span className=\"text-sm\">{t('settings.spreadPush')}</span>\n            <Toggle\n              checked={settings.spreadNotifications}\n              onChange={(v) => setSettings((prev) => ({ ...prev, spreadNotifications: v }))}\n              label={t('settings.spreadPush')}\n            />\n          </label>\n\n          {settings.spreadNotifications && (\n            <div>\n              <label className=\"block text-sm font-medium mb-1\" style={{ color: 'var(--text2)' }} htmlFor=\"spread-threshold\">\n                {t('settings.spreadThreshold')}\n              </label>\n              <input\n                id=\"spread-threshold\"\n                type=\"number\"\n                value={Number((settings.spreadMinThreshold * 100).toFixed(4))}\n                onChange={(e) => setSettings((prev) => ({ ...prev, spreadMinThreshold: (Number(e.target.value) || 0) / 100 }))}\n                step={0.01}\n                min={0}\n                className=\"input-field\"\n              />\n              <p className=\"text-xs mt-1\" style={{ color: 'var(--text3)' }}>{t('settings.spreadThresholdHint')}</p>\n            </div>\n          )}\n        </div>\n      </AccordionSection>\n\n      <AccordionSection title={t('settings.pushover')} icon=\"Smartphone\" defaultOpen={false}>\n        <p className=\"text-xs mb-3\" style={{ color: 'var(--text3)' }}>{t('settings.pushoverHint')}</p>\n        <div className=\"space-y-3\">\n          <label className=\"flex items-center justify-between min-h-[44px]\">\n            <span className=\"text-sm\">{t('settings.pushoverEnable')}</span>\n            <Toggle\n              checked={settings.pushoverNotifications}\n              onChange={(v) => setSettings((prev) => ({ ...prev, pushoverNotifications: v }))}\n              label={t('settings.pushoverEnable')}\n            />\n          </label>\n\n          {settings.pushoverNotifications && (\n            <>\n              <div>\n                <label className=\"block text-sm font-medium mb-1\" style={{ color: 'var(--text2)' }} htmlFor=\"pushover-key\">\n                  {t('settings.pushoverKey')}\n                </label>\n                <input\n                  id=\"pushover-key\"\n                  type=\"text\"\n                  value={settings.pushoverKey}\n                  onChange={(e) => setSettings((prev) => ({ ...prev, pushoverKey: e.target.value }))}\n                  placeholder=\"uQiPBb1Rgc...\"\n                  className=\"input-field\"\n                />\n              </div>\n\n              <div>\n                <label className=\"block text-sm font-medium mb-1\" style={{ color: 'var(--text2)' }} htmlFor=\"pushover-device\">\n                  {t('settings.pushoverDevice')}\n                </label>\n                <input\n                  id=\"pushover-device\"\n                  type=\"text\"\n                  value={settings.pushoverDevice}\n                  onChange={(e) => setSettings((prev) => ({ ...prev, pushoverDevice: e.target.value }))}\n                  placeholder={t('settings.pushoverDevicePlaceholder')}\n                  className=\"input-field\"\n                />\n              </div>\n            </>\n          )}\n        </div>\n      </AccordionSection>\n\n      <AccordionSection title={t('settings.defaultExchanges')} icon=\"Wallet\" defaultOpen={false}>\n        <ExchangeSelector\n          value={settings.defaultExchanges}\n          onChange={(next) => setSettings((prev) => ({ ...prev, defaultExchanges: next }))}\n          title={t('settings.defaultExchanges')}\n        />\n      </AccordionSection>\n\n      <AccordionSection title={t('settings.filters')} icon=\"Search\" defaultOpen={false}>\n        <div className=\"space-y-3\">\n          <div>\n            <label className=\"block text-sm font-medium mb-1\" style={{ color: 'var(--text2)' }} htmlFor=\"min-volume\">\n              {t('settings.minVolume')}\n            </label>\n            <input\n              id=\"min-volume\"\n              type=\"number\"\n              value={settings.minVolumeFilter}\n              onChange={(e) => setSettings((prev) => ({ ...prev, minVolumeFilter: Number(e.target.value) || 0 }))}\n              min={0}\n              className=\"input-field\"\n            />\n          </div>\n\n          <div>\n            <label className=\"block text-sm font-medium mb-1\" style={{ color: 'var(--text2)' }} htmlFor=\"min-rate\">\n              {t('settings.minRate')}\n            </label>\n            <input\n              id=\"min-rate\"\n              type=\"number\"\n              value={settings.minRateFilter}\n              onChange={(e) => setSettings((prev) => ({ ...prev, minRateFilter: Number(e.target.value) || 0 }))}\n              step={0.001}\n              min={0}\n              className=\"input-field\"\n            />\n          </div>\n        </div>\n      </AccordionSection>\n\n      <AccordionSection title={t('settings.language')} icon=\"Globe\" defaultOpen={false}>\n        <LanguageSwitcher\n          onChange={(l) => setSettings((prev) => ({ ...prev, language: l }))}\n        />\n      </AccordionSection>\n\n      <AccordionSection title={t('settings.appearance')} icon=\"Palette\" defaultOpen={false}>\n        <div className=\"space-y-3\">\n          <div>\n            <label className=\"block text-sm font-medium mb-1\" style={{ color: 'var(--text2)' }} htmlFor=\"settings-timezone\">{t('settings.timezone')}</label>\n            <select\n              id=\"settings-timezone\"\n              value={settings.timezone}\n              onChange={(e) => setSettings((prev) => ({ ...prev, timezone: e.target.value }))}\n              className=\"input-field\"\n            >\n              <option value=\"Europe/Moscow\">{t('settings.tzMsk')}</option>\n              <option value=\"Europe/Kaliningrad\">{t('settings.tzKaliningrad')}</option>\n              <option value=\"Europe/Samara\">{t('settings.tzSamara')}</option>\n              <option value=\"Asia/Yekaterinburg\">{t('settings.tzYekaterinburg')}</option>\n              <option value=\"Asia/Omsk\">{t('settings.tzOmsk')}</option>\n              <option value=\"Asia/Krasnoyarsk\">{t('settings.tzKrasnoyarsk')}</option>\n              <option value=\"Asia/Irkutsk\">{t('settings.tzIrkutsk')}</option>\n              <option value=\"Asia/Vladivostok\">{t('settings.tzVladivostok')}</option>\n              <option value=\"Asia/Kamchatka\">{t('settings.tzKamchatka')}</option>\n              <option value=\"UTC\">{t('settings.tzUtc')}</option>\n              <option value=\"Europe/London\">{t('settings.tzLondon')}</option>\n              <option value=\"America/New_York\">\n                {t('settings.tzNy')}\n              </option>\n              <option value=\"Asia/Tokyo\">{t('settings.tzTokyo')}</option>\n              <option value=\"Asia/Singapore\">{t('settings.tzSingapore')}</option>\n              <option value=\"Asia/Dubai\">{t('settings.tzDubai')}</option>\n            </select>\n          </div>\n        </div>\n      </AccordionSection>\n\n      <div className=\"flex items-center justify-between gap-3 pt-4 border-t\" style={{ borderColor: 'var(--border)' }}>\n        <button\n          type=\"button\"\n          onClick={handleReset}\n          className=\"btn btn-secondary min-h-[44px]\"\n        >\n          {t('settings.reset')}\n        </button>\n        <div className=\"flex items-center gap-2\">\n          <button\n            type=\"button\"\n            onClick={handleExport}\n            className=\"btn btn-secondary min-h-[44px]\"\n          >\n            {t('settings.export')}\n          </button>\n          <button\n            type=\"button\"\n            onClick={handleImport}\n            className=\"btn btn-secondary min-h-[44px]\"\n          >\n            {t('settings.import')}\n          </button>\n          <input\n            ref={fileInputRef}\n            type=\"file\"\n            accept=\".json\"\n            onChange={handleFileChange}\n            className=\"hidden\"\n          />\n          <button\n            type=\"button\"\n            onClick={handleSave}\n            disabled={saving}\n            className=\"btn btn-primary min-h-[44px]\"\n          >\n            {saving ? t('settings.saving') : t('settings.save')}\n          </button>\n        </div>\n      </div>\n    </div>\n  );\n}\n
+        {features.map((f) => (
+          <span
+            key={f.key}
+            className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium"
+            style={
+              f.enabled
+                ? { background: 'var(--green-soft)', color: 'var(--green)' }
+                : { background: 'var(--surface-2)', color: 'var(--text3)' }
+            }
+          >
+            {f.enabled ? (
+              <IconCheck size={11} className="shrink-0" />
+            ) : (
+              <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: 'var(--text3)' }} />
+            )}
+            {f.label}
+          </span>
+        ))}
+      </div>
+      {settings.dailySummary && (
+        <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+          {t('settings.dailySummaryTime')}
+        </p>
+      )}
+      {settings.spreadNotifications && (
+        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+          {t('settings.spreadAlertHint', { threshold: (settings.spreadMinThreshold * 100).toFixed(2) })}
+        </p>
+      )}
+    </div>
+  );
+}
+
+let memorySettingsCache: UserSettings | null = null;
+
+export function SettingsPage() {
+  const { showToast } = useToast();
+  const t = useT();
+  const [settings, setSettings] = useState<UserSettings>(() => memorySettingsCache || DEFAULT_SETTINGS);
+  const [loading, setLoading] = useState(() => !memorySettingsCache);
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    loadSettings(!memorySettingsCache);
+  }, []);
+
+  const loadSettings = async (showLoading = false) => {
+    try {
+      if (showLoading) setLoading(true);
+      const res: any = await apiClient.getSettings();
+      if (res?.ok && res.settings) {
+        const merged = { ...DEFAULT_SETTINGS, ...res.settings };
+        setSettings(merged);
+        memorySettingsCache = merged;
+      }
+    } catch {
+      if (!memorySettingsCache) {
+        showToast(t('settings.loadError'), 'error');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    memorySettingsCache = { ...settings };
+    try {
+      const res: any = await apiClient.updateSettings(settings);
+      if (res?.ok) {
+        showToast(t('settings.saved'), 'success');
+      } else {
+        showToast(t('settings.saveError'), 'error');
+      }
+    } catch {
+      showToast(t('settings.networkError'), 'error');
+    } finally {
+      setSaving(false);
+    }
+  }, [settings, showToast, t]);
+
+  const handleReset = useCallback(async () => {
+    try {
+      const res: any = await apiClient.resetSettings();
+      if (res?.ok) {
+        setSettings(DEFAULT_SETTINGS);
+        memorySettingsCache = DEFAULT_SETTINGS;
+        showToast(t('settings.resetDone'), 'success');
+      }
+    } catch {
+      showToast(t('settings.resetError'), 'error');
+    }
+  }, [showToast, t]);
+
+  const handleExport = useCallback(() => {
+    const data = JSON.stringify(settings, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `funding-finder-settings-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(t('settings.exportDone'), 'success');
+  }, [settings, showToast]);
+
+  const handleImport = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const imported = JSON.parse(reader.result as string) as Partial<UserSettings>;
+          setSettings((prev) => ({ ...prev, ...imported }));
+          showToast(t('settings.importDone'), 'success');
+        } catch {
+          showToast(t('settings.importError'), 'error');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    },
+    [showToast]
+  );
+
+  if (loading) {
+    return (
+      <div className="p-4 space-y-3">
+        <CardSkeleton />
+        <CardSkeleton />
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-3 py-4 sm:px-4 sm:max-w-2xl mx-auto">
+      <div className="card">
+        <h1 className="text-xl font-bold mb-2 text-[var(--text)]">{t('settings.title')}</h1>
+        <p className="text-sm mb-0" style={{ color: 'var(--text2)' }}>{t('settings.subtitle')}</p>
+      </div>
+
+      <NotificationPreview settings={settings} />
+
+      <AccordionSection title={t('settings.notifications')} icon="Bell" defaultOpen badge={`${[settings.telegramNotifications, settings.emailNotifications, settings.pushoverNotifications].filter(Boolean).length}`}>
+        <div className="space-y-3">
+          <label className="flex items-center justify-between min-h-[44px]">
+            <span className="text-sm">{t('settings.telegram')}</span>
+            <Toggle
+              checked={settings.telegramNotifications}
+              onChange={(v) => setSettings((prev) => ({ ...prev, telegramNotifications: v }))}
+              label={t('settings.telegram')}
+            />
+          </label>
+
+          <label className="flex items-center justify-between min-h-[44px]">
+            <span className="text-sm">{t('settings.email')}</span>
+            <Toggle
+              checked={settings.emailNotifications}
+              onChange={(v) => setSettings((prev) => ({ ...prev, emailNotifications: v }))}
+              label={t('settings.email')}
+            />
+          </label>
+
+          {settings.emailNotifications && (
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text2)' }} htmlFor="email-address">
+                {t('settings.emailAddress')}
+              </label>
+              <input
+                id="email-address"
+                type="email"
+                value={settings.emailAddress}
+                onChange={(e) => setSettings((prev) => ({ ...prev, emailAddress: e.target.value }))}
+                className="input-field"
+                placeholder="user@example.com"
+              />
+            </div>
+          )}
+
+          <label className="flex items-center justify-between min-h-[44px]">
+            <span className="text-sm">{t('settings.dailySummary')}</span>
+            <Toggle
+              checked={settings.dailySummary}
+              onChange={(v) => setSettings((prev) => ({ ...prev, dailySummary: v }))}
+              label={t('settings.dailySummary')}
+            />
+          </label>
+
+          <label className="flex items-center justify-between min-h-[44px]">
+            <span className="text-sm">{t('settings.alertSound')}</span>
+            <Toggle
+              checked={settings.alertSound}
+              onChange={(v) => setSettings((prev) => ({ ...prev, alertSound: v }))}
+              label={t('settings.alertSound')}
+            />
+          </label>
+
+          <label className="flex items-center justify-between min-h-[44px]">
+            <span className="text-sm">{t('settings.spreadPush')}</span>
+            <Toggle
+              checked={settings.spreadNotifications}
+              onChange={(v) => setSettings((prev) => ({ ...prev, spreadNotifications: v }))}
+              label={t('settings.spreadPush')}
+            />
+          </label>
+
+          {settings.spreadNotifications && (
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text2)' }} htmlFor="spread-threshold">
+                {t('settings.spreadThreshold')}
+              </label>
+              <input
+                id="spread-threshold"
+                type="number"
+                value={Number((settings.spreadMinThreshold * 100).toFixed(4))}
+                onChange={(e) => setSettings((prev) => ({ ...prev, spreadMinThreshold: (Number(e.target.value) || 0) / 100 }))}
+                step={0.01}
+                min={0}
+                className="input-field"
+              />
+              <p className="text-xs mt-1" style={{ color: 'var(--text3)' }}>{t('settings.spreadThresholdHint')}</p>
+            </div>
+          )}
+        </div>
+      </AccordionSection>
+
+      <AccordionSection title={t('settings.pushover')} icon="Smartphone" defaultOpen={false}>
+        <p className="text-xs mb-3" style={{ color: 'var(--text3)' }}>{t('settings.pushoverHint')}</p>
+        <div className="space-y-3">
+          <label className="flex items-center justify-between min-h-[44px]">
+            <span className="text-sm">{t('settings.pushoverEnable')}</span>
+            <Toggle
+              checked={settings.pushoverNotifications}
+              onChange={(v) => setSettings((prev) => ({ ...prev, pushoverNotifications: v }))}
+              label={t('settings.pushoverEnable')}
+            />
+          </label>
+
+          {settings.pushoverNotifications && (
+            <>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text2)' }} htmlFor="pushover-key">
+                  {t('settings.pushoverKey')}
+                </label>
+                <input
+                  id="pushover-key"
+                  type="text"
+                  value={settings.pushoverKey}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, pushoverKey: e.target.value }))}
+                  placeholder="uQiPBb1Rgc..."
+                  className="input-field"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text2)' }} htmlFor="pushover-device">
+                  {t('settings.pushoverDevice')}
+                </label>
+                <input
+                  id="pushover-device"
+                  type="text"
+                  value={settings.pushoverDevice}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, pushoverDevice: e.target.value }))}
+                  placeholder={t('settings.pushoverDevicePlaceholder')}
+                  className="input-field"
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </AccordionSection>
+
+      <AccordionSection title={t('settings.defaultExchanges')} icon="Wallet" defaultOpen={false}>
+        <ExchangeSelector
+          value={settings.defaultExchanges}
+          onChange={(next) => setSettings((prev) => ({ ...prev, defaultExchanges: next }))}
+          title={t('settings.defaultExchanges')}
+        />
+      </AccordionSection>
+
+      <AccordionSection title={t('settings.filters')} icon="Search" defaultOpen={false}>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text2)' }} htmlFor="min-volume">
+              {t('settings.minVolume')}
+            </label>
+            <input
+              id="min-volume"
+              type="number"
+              value={settings.minVolumeFilter}
+              onChange={(e) => setSettings((prev) => ({ ...prev, minVolumeFilter: Number(e.target.value) || 0 }))}
+              min={0}
+              className="input-field"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text2)' }} htmlFor="min-rate">
+              {t('settings.minRate')}
+            </label>
+            <input
+              id="min-rate"
+              type="number"
+              value={settings.minRateFilter}
+              onChange={(e) => setSettings((prev) => ({ ...prev, minRateFilter: Number(e.target.value) || 0 }))}
+              step={0.001}
+              min={0}
+              className="input-field"
+            />
+          </div>
+        </div>
+      </AccordionSection>
+
+      <AccordionSection title={t('settings.language')} icon="Globe" defaultOpen={false}>
+        <LanguageSwitcher
+          onChange={(l) => setSettings((prev) => ({ ...prev, language: l }))}
+        />
+      </AccordionSection>
+
+      <AccordionSection title={t('settings.appearance')} icon="Palette" defaultOpen={false}>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text2)' }} htmlFor="settings-timezone">{t('settings.timezone')}</label>
+            <select
+              id="settings-timezone"
+              value={settings.timezone}
+              onChange={(e) => setSettings((prev) => ({ ...prev, timezone: e.target.value }))}
+              className="input-field"
+            >
+              <option value="Europe/Moscow">{t('settings.tzMsk')}</option>
+              <option value="Europe/Kaliningrad">{t('settings.tzKaliningrad')}</option>
+              <option value="Europe/Samara">{t('settings.tzSamara')}</option>
+              <option value="Asia/Yekaterinburg">{t('settings.tzYekaterinburg')}</option>
+              <option value="Asia/Omsk">{t('settings.tzOmsk')}</option>
+              <option value="Asia/Krasnoyarsk">{t('settings.tzKrasnoyarsk')}</option>
+              <option value="Asia/Irkutsk">{t('settings.tzIrkutsk')}</option>
+              <option value="Asia/Vladivostok">{t('settings.tzVladivostok')}</option>
+              <option value="Asia/Kamchatka">{t('settings.tzKamchatka')}</option>
+              <option value="UTC">{t('settings.tzUtc')}</option>
+              <option value="Europe/London">{t('settings.tzLondon')}</option>
+              <option value="America/New_York">{t('settings.tzNewYork')}</option>
+              <option value="America/Chicago">{t('settings.tzChicago')}</option>
+              <option value="America/Los_Angeles">{t('settings.tzLa')}</option>
+              <option value="Asia/Shanghai">{t('settings.tzShanghai')}</option>
+              <option value="Asia/Tokyo">{t('settings.tzTokyo')}</option>
+            </select>
+          </div>
+          <p className="text-xs" style={{ color: 'var(--text3)' }}>{t('settings.themeFixed')}</p>
+        </div>
+      </AccordionSection>
+
+      <AccordionSection title={t('settings.exportImport')} icon="Package" defaultOpen={false}>
+        <p className="text-xs mb-3" style={{ color: 'var(--text3)' }}>{t('settings.exportImportHint')}</p>
+        <div className="flex gap-2">
+          <button onClick={handleExport} className="btn btn-secondary flex-1 text-sm">
+            {t('settings.export')}
+          </button>
+          <button onClick={handleImport} className="btn btn-secondary flex-1 text-sm">
+            {t('settings.import')}
+          </button>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+      </AccordionSection>
+
+      <div className="flex gap-2 mt-2">
+        <button onClick={handleSave} disabled={saving} className="btn btn-primary flex-1">
+          {saving ? t('settings.saving') : t('settings.save')}
+        </button>
+        <button onClick={handleReset} className="btn btn-secondary flex-1">
+          {t('common.reset')}
+        </button>
+      </div>
+    </div>
+  );
+}
