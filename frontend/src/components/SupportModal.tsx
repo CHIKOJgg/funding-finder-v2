@@ -55,36 +55,44 @@ export function SupportButton() {
         onClick={() => setOpen(true)}
         aria-label="Оставить заявку"
         title="Оставить заявку"
-        className="fixed right-4 bottom-20 z-50 flex h-11 w-11 items-center justify-center rounded-full text-white shadow-lg transition-opacity hover:opacity-100"
-        style={{ background: 'var(--cobalt)', opacity: 0.9 }}
+        className="fixed right-4 bottom-20 md:bottom-6 md:right-6 z-50 flex h-11 w-11 items-center justify-center rounded-full text-white shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
+        style={{
+          background: 'var(--cobalt)',
+          boxShadow: '0 4px 14px rgba(61, 99, 255, 0.35)',
+          opacity: 0.9,
+        }}
       >
         <IconMessageCircle size={22} />
       </button>
 
       {open && (
         <div
-          className="fixed inset-0 bg-[rgba(5,7,12,0.5)] flex items-center justify-center z-[100] p-2 sm:p-4"
+          className="fixed inset-0 bg-[rgba(5,7,12,0.7)] backdrop-blur-sm flex items-center justify-center z-[100] p-3 sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="support-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setOpen(false);
+          }}
         >
-          <div className="rounded-xl max-w-md w-full" style={{ background: 'var(--bg)' }}>
-            <div className="card">
+          <div className="rounded-2xl max-w-md w-full overflow-hidden shadow-2xl animate-fade-in" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+            <div className="p-5">
               <div className="flex items-center justify-between mb-2">
-                <h2 id="support-title" className="text-lg font-semibold">Оставить заявку</h2>
+                <h2 id="support-title" className="text-lg font-semibold text-[var(--text)]">Оставить заявку</h2>
                 <button
                   onClick={() => setOpen(false)}
                   aria-label="Закрыть"
-                  className="text-muted hover:text-white"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-white transition-colors"
+                  style={{ background: 'var(--surface-2)' }}
                 >
-                  <IconX size={20} />
+                  <IconX size={18} />
                 </button>
               </div>
               <p className="text-sm text-muted mb-4">
                 Опишите вашу задачу или вопрос — мы свяжемся с вами в ближайшее время.
               </p>
 
-              <label htmlFor="support-name" className="block text-sm mb-1">Имя (необязательно)</label>
+              <label htmlFor="support-name" className="block text-xs font-medium text-muted mb-1">Имя (необязательно)</label>
               <input
                 ref={firstFieldRef}
                 id="support-name"
@@ -95,7 +103,7 @@ export function SupportButton() {
                 placeholder="Ваше имя"
               />
 
-              <label htmlFor="support-contact" className="block text-sm mb-1">Контакт (Telegram / email)</label>
+              <label htmlFor="support-contact" className="block text-xs font-medium text-muted mb-1">Контакт (Telegram / email)</label>
               <input
                 id="support-contact"
                 name="contact"
@@ -105,7 +113,7 @@ export function SupportButton() {
                 placeholder="@username или email"
               />
 
-              <label htmlFor="support-message" className="block text-sm mb-1">Сообщение</label>
+              <label htmlFor="support-message" className="block text-xs font-medium text-muted mb-1">Сообщение</label>
               <textarea
                 id="support-message"
                 name="message"
@@ -118,7 +126,7 @@ export function SupportButton() {
               />
 
               <button
-                className="btn btn-primary w-full flex items-center justify-center gap-2"
+                className="btn btn-primary w-full flex items-center justify-center gap-2 py-2.5"
                 onClick={submit}
                 disabled={submitting}
               >

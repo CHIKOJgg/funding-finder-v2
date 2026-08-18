@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowDown,
   ArrowLeftRight,
+  ArrowUpRight,
   Bell,
   BellOff,
   Bot,
@@ -88,6 +89,7 @@ const ICONS = {
   Gauge,
   ArrowDown,
   ArrowLeftRight,
+  ArrowUpRight,
   Wallet,
   User,
   Bell,
@@ -164,6 +166,7 @@ export function Icon({ name, size = 20, strokeWidth = 2, fill, className, style 
 
 export const IconGauge = (props: IconProps) => <Icon name="Gauge" {...props} />;
 export const IconArrowLeftRight = (props: IconProps) => <Icon name="ArrowLeftRight" {...props} />;
+export const IconArrowUpRight = (props: IconProps) => <Icon name="ArrowUpRight" {...props} />;
 export const IconWallet = (props: IconProps) => <Icon name="Wallet" {...props} />;
 export const IconUser = (props: IconProps) => <Icon name="User" {...props} />;
 export const IconBell = (props: IconProps) => <Icon name="Bell" {...props} />;
