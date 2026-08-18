@@ -31,6 +31,10 @@ export function getWarmupPromise(): Promise<void> | null {
  * selections are served non-blocking and trigger their own background refresh.
  */
 export function startFundingWarmup(): void {
+  if (process.env.DISABLE_WARMUP === 'true') {
+    logger.info('Funding warm-up DISABLED via DISABLE_WARMUP env');
+    return;
+  }
   if (warmupPromise) return;
 
   const run = async () => {
