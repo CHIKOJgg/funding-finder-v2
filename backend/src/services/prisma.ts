@@ -30,6 +30,11 @@ export const prisma = new PrismaClient({
 
 let keepAliveTimer: NodeJS.Timeout | null = null;
 
+// Must match the Prisma pool size (see runtimeDatabaseUrl). We ping every
+// pooled connection concurrently so NONE of them goes idle-long-enough for
+// Railway's Postgres to close it.
+const POOL_SIZE = 10;
+
 export async function connectDatabase(): Promise<void> {
   try {
     await prisma.$connect();
@@ -39,19 +44,22 @@ export async function connectDatabase(): Promise<void> {
     await prisma.$queryRaw`SELECT 1 as alive`;
     logger.info('PostgreSQL connection verified');
 
-    // Keep the connection pool warm. Background work (e.g. the periodic
-    // funding warm-up scan) can leave the pool idle for minutes at a time;
-    // Railway's Postgres then closes those idle connections and the next
-    // authenticated request pays a ~1s reconnect PER query — which made
-    // Profile / tabs feel like they took 3-5s to open every time the pool
-    // went cold. A cheap periodic ping keeps every pooled connection alive.
+    // Keep the WHOLE connection pool warm. Railway's Postgres closes idle
+    // connections after a short timeout; if only one connection is pinged, the
+    // rest go cold and every authenticated request pays a ~1s reconnect PER
+    // query (profile = 3 queries => 3-5s). So we ping all `POOL_SIZE`
+    // connections concurrently on a tight interval and never let any idle out.
     if (keepAliveTimer) clearInterval(keepAliveTimer);
     keepAliveTimer = setInterval(() => {
-      prisma
-        .$queryRaw`SELECT 1`
-        .then(() => {})
-        .catch((e) => logger.debug({ err: (e as Error).message }, 'DB keepalive ping failed'));
-    }, 30_000);
+      Promise.all(
+        Array.from({ length: POOL_SIZE }, () =>
+          prisma
+            .$queryRaw`SELECT 1`
+            .then(() => {})
+            .catch((e) => logger.debug({ err: (e as Error).message }, 'DB keepalive ping failed'))
+        )
+      ).catch(() => {});
+    }, 8_000);
   } catch (err) {
     logger.error('PostgreSQL connection error:', err);
     throw err;
