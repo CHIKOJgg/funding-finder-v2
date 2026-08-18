@@ -25,12 +25,51 @@ function enqueueUpsert(fn: () => Promise<void>): void {
 }
 
 // Contract metadata (tick size, leverage, open interest, ...) changes very slowly.
-// Upserting all ~3700 contracts on EVERY scan flooded the DB and made every
-// authenticated request take 3-5s while a scan was running. We only write when a
-// contract is new or its cached entry is older than the TTL, so recurring scans
-// perform almost no metadata writes and stay light.
+// Per-contract upserts for all ~3700 contracts on EVERY scan flooded the DB and
+// made every authenticated request take 3-5s while a scan was running. Instead we
+// buffer the writes and flush them in bulk `createMany(skipDuplicates)` batches,
+// and we skip anything written within the TTL so recurring scans stay light.
 const metadataUpsertedAt = new Map<string, number>();
 const METADATA_UPSERT_TTL_MS = 60 * 60 * 1000; // 1 hour
+const metadataBuffer: ContractInfo[] = [];
+let metadataFlushScheduled = false;
+
+function toRow(info: ContractInfo) {
+  return {
+    key: `${info.exchange}:${info.contract}`,
+    exchange: info.exchange,
+    contract: info.contract,
+    settleCurrency: info.settleCurrency || 'usdt',
+    baseCurrency: info.baseCurrency,
+    quoteCurrency: info.quoteCurrency,
+    tickSize: info.tickSize,
+    minQty: info.minQty,
+    maxLeverage: info.maxLeverage,
+    fundingCap: info.fundingCap,
+    fundingFloor: info.fundingFloor,
+    openInterest: info.openInterest,
+  };
+}
+
+function flushMetadataBuffer(): void {
+  metadataFlushScheduled = false;
+  if (metadataBuffer.length === 0) return;
+  const batch = metadataBuffer.splice(0, metadataBuffer.length);
+  const now = Date.now();
+  enqueueUpsert(async () => {
+    try {
+      await prisma.contractMetadata.createMany({
+        data: batch.map(toRow),
+        skipDuplicates: true,
+      });
+      for (const info of batch) {
+        metadataUpsertedAt.set(`${info.exchange}:${info.contract}`, now);
+      }
+    } catch (err) {
+      logger.debug(`Failed to bulk upsert metadata: ${(err as Error).message}`);
+    }
+  });
+}
 
 export async function upsertContractMetadata(info: ContractInfo): Promise<void> {
   const key = `${info.exchange}:${info.contract}`;
@@ -39,41 +78,11 @@ export async function upsertContractMetadata(info: ContractInfo): Promise<void> 
   if (last !== undefined && now - last < METADATA_UPSERT_TTL_MS) {
     return; // already fresh — skip the DB write entirely
   }
-  enqueueUpsert(async () => {
-  try {
-    await prisma.contractMetadata.upsert({
-      where: { key },
-      create: {
-        key,
-        exchange: info.exchange,
-        contract: info.contract,
-        settleCurrency: info.settleCurrency || 'usdt',
-        baseCurrency: info.baseCurrency,
-        quoteCurrency: info.quoteCurrency,
-        tickSize: info.tickSize,
-        minQty: info.minQty,
-        maxLeverage: info.maxLeverage,
-        fundingCap: info.fundingCap,
-        fundingFloor: info.fundingFloor,
-        openInterest: info.openInterest,
-      },
-      update: {
-        baseCurrency: info.baseCurrency,
-        quoteCurrency: info.quoteCurrency,
-        tickSize: info.tickSize,
-        minQty: info.minQty,
-        maxLeverage: info.maxLeverage,
-        fundingCap: info.fundingCap,
-        fundingFloor: info.fundingFloor,
-        openInterest: info.openInterest,
-        lastUpdated: new Date(),
-      },
-    });
-  } catch (err) {
-    logger.debug(`Failed to upsert metadata for ${key}: ${(err as Error).message}`);
+  metadataBuffer.push(info);
+  if (!metadataFlushScheduled) {
+    metadataFlushScheduled = true;
+    setImmediate(flushMetadataBuffer);
   }
-    metadataUpsertedAt.set(key, Date.now());
-  });
 }
 
 export async function getContractMetadata(key: string) {
