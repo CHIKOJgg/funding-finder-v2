@@ -28,6 +28,8 @@ export const prisma = new PrismaClient({
   },
 });
 
+let keepAliveTimer: NodeJS.Timeout | null = null;
+
 export async function connectDatabase(): Promise<void> {
   try {
     await prisma.$connect();
@@ -36,6 +38,20 @@ export async function connectDatabase(): Promise<void> {
     // Verify connection with a test query
     await prisma.$queryRaw`SELECT 1 as alive`;
     logger.info('PostgreSQL connection verified');
+
+    // Keep the connection pool warm. Background work (e.g. the periodic
+    // funding warm-up scan) can leave the pool idle for minutes at a time;
+    // Railway's Postgres then closes those idle connections and the next
+    // authenticated request pays a ~1s reconnect PER query — which made
+    // Profile / tabs feel like they took 3-5s to open every time the pool
+    // went cold. A cheap periodic ping keeps every pooled connection alive.
+    if (keepAliveTimer) clearInterval(keepAliveTimer);
+    keepAliveTimer = setInterval(() => {
+      prisma
+        .$queryRaw`SELECT 1`
+        .then(() => {})
+        .catch((e) => logger.debug({ err: (e as Error).message }, 'DB keepalive ping failed'));
+    }, 30_000);
   } catch (err) {
     logger.error('PostgreSQL connection error:', err);
     throw err;
@@ -44,6 +60,10 @@ export async function connectDatabase(): Promise<void> {
 
 export async function disconnectDatabase(): Promise<void> {
   try {
+    if (keepAliveTimer) {
+      clearInterval(keepAliveTimer);
+      keepAliveTimer = null;
+    }
     await prisma.$disconnect();
     logger.info('PostgreSQL disconnected');
   } catch (err) {

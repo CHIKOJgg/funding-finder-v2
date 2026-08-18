@@ -100,6 +100,13 @@ async function saveToHistory(result: ScanResult): Promise<void> {
  * 
  * To compare fairly, we MUST normalize all rates to hourly basis.
  */
+// How often the full funding history is persisted. The warm-up scan runs every
+// 5 minutes; saving the ~3700-row history on each pass was the dominant DB-write
+// load during scans and starved authenticated requests. 15 minutes is enough for
+// the rate-history charts and keeps every scan cheap.
+const HISTORY_SAVE_INTERVAL_MS = 15 * 60 * 1000;
+let lastHistorySaveAt = 0;
+
 export async function processScanResults(all: ExchangeResult[]): Promise<ScanResult> {
   logger.info(`Processing ${all.length} total records from all exchanges`);
 
@@ -187,8 +194,14 @@ export async function processScanResults(all: ExchangeResult[]): Promise<ScanRes
     },
   };
 
-  // Save history in background (don't await)
-  saveToHistory(result).catch((e) => logger.error('History save failed:', e));
+  // Save history in background (don't await). Throttled: writing the full
+  // 3700-row funding history on EVERY 5-minute warm-up scan saturated the DB
+  // connection pool and starved authenticated requests. Once per 15 minutes is
+  // plenty for the rate-history charts and keeps scans light.
+  if (Date.now() - lastHistorySaveAt > HISTORY_SAVE_INTERVAL_MS) {
+    lastHistorySaveAt = Date.now();
+    saveToHistory(result).catch((e) => logger.error('History save failed:', e));
+  }
 
   return result;
 }
