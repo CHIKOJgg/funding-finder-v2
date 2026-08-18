@@ -157,9 +157,7 @@ export function ProfilePage() {
   }, [applyProfileData, showToast, t]);
 
   useEffect(() => {
-    if (user?.id) {
-      loadUserData(!cachedProfileData);
-    }
+    loadUserData(!cachedProfileData);
   }, [user?.id, ctxSubscription, loadUserData]);
 
   // Scroll to the subscription section when arriving from a paywall link
