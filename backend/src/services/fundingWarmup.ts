@@ -4,7 +4,12 @@ import { runScan } from './scanService.js';
 import { wsManager } from './websocket.js';
 
 const ALL_EXCHANGES = SUPPORTED_EXCHANGES;
-const WARMUP_INTERVAL_MS = 5 * 60 * 1000; // align with scan cache TTL
+// Funding rates settle every 1-8h, so re-scanning the full set every 5 minutes is
+// wasteful AND it saturates the single Node event loop (≈3700 external API calls
+// per scan) for ~2.5 min, which made every authenticated request take 3-5s while
+// a scan was running. 15 minutes is plenty fresh and cuts the degraded window from
+// ~50% of the time to ~17%.
+const WARMUP_INTERVAL_MS = 15 * 60 * 1000;
 
 let timer: NodeJS.Timeout | null = null;
 // Resolves when the FIRST (startup) warm-up scan finishes and the full-set

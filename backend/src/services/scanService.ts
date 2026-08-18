@@ -7,7 +7,9 @@ import { cache } from '../utils/exchangeClient.js';
 
 // How long a cached scan result is served before it is considered expired and
 // a fresh scan is required (NOT for SWR — background refresh happens sooner).
-const SCAN_CACHE_TTL_MS = 5 * 60 * 1000;
+// Aligned with the 15-minute warm-up cadence (see fundingWarmup.ts) so the
+// scheduled warm-up refreshes the cache before any background refresh would fire.
+const SCAN_CACHE_TTL_MS = 15 * 60 * 1000;
 
 export function scanCacheKey(exchanges: string[]): string {
   return `scan:${[...exchanges].sort().join(',')}`;
@@ -235,8 +237,10 @@ function normalizeExchangeResults(results: ExchangeResult[]): ExchangeResult[] {
 const inFlightScans = new Map<string, Promise<ScanResult>>();
 
 // Once a cached result is older than this, a background refresh is kicked off
-// so the store stays fresh between the scheduled warm-ups.
-const SCAN_REFRESH_AFTER_MS = 60_000;
+// so the store stays fresh between the scheduled warm-ups. Kept just under the
+// 15-minute warm-up cadence so the scheduled warm-up always wins and we never
+// run two full scans back-to-back.
+const SCAN_REFRESH_AFTER_MS = 14 * 60_000;
 
 async function doLiveScan(exchanges: string[]): Promise<ScanResult> {
   const all = await scanExchanges(exchanges);
