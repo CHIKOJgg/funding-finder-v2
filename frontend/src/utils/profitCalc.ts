@@ -26,6 +26,14 @@ const EXCHANGE_FEES: Record<string, { taker: number }> = {
   apex:        { taker: 0.0004 },
   aster:       { taker: 0.0004 },
   bluefin:     { taker: 0.0004 },
+  kraken:      { taker: 0.0005 },
+  coinbase:    { taker: 0.0004 },
+  bitunix:     { taker: 0.0006 },
+  orderly:     { taker: 0.0006 },
+  aevo:        { taker: 0.0005 },
+  kucoin:      { taker: 0.0006 },
+  cryptocom:   { taker: 0.0005 },
+  deribit:     { taker: 0.0005 },
 };
 
 function calcSlippage(volumeA: number, volumeB: number): number {
@@ -79,19 +87,19 @@ export function profitCalcClient(
   const netHourly = grossHourly - oneTime;
   const netDaily = grossDaily - oneTime;
   const grossWeekly = grossDaily * 7;
-  const netWeekly = grossDaily * 7 - oneTime;
+  const netWeekly = grossWeekly - oneTime;
   const grossAnnual = grossDaily * 365;
-  const netAnnual = grossDaily * 365 - oneTime;
+  const netAnnual = grossAnnual - oneTime;
 
   const netApr = (netAnnual / capital) * 100;
-  const paybackDays = oneTime > 0 ? oneTime / (netDaily || 1) : Infinity;
+  const paybackDays = grossDaily > 0 ? oneTime / grossDaily : (oneTime === 0 ? 0 : Infinity);
 
   const vol = Math.min(opp.volumeA || 0, opp.volumeB || 0);
-  const score = netApr * Math.min(1, vol / 1_000_000);
+  const score = Math.max(0, netApr * Math.min(1, vol / 1_000_000));
   const accumulated = {
-    d1: netAnnual / 365,
-    d7: (netAnnual / 365) * 7,
-    d30: (netAnnual / 365) * 30,
+    d1: netDaily,
+    d7: netWeekly,
+    d30: grossDaily * 30 - oneTime,
     y1: netAnnual,
   };
   return {

@@ -162,21 +162,21 @@ export async function getSpotFutures(exchange: string, pair: string): Promise<Sp
 
     const basisPct = r.spotPrice > 0 ? ((r.perpMark - r.spotPrice) / r.spotPrice) * 100 : 0;
     const taker = EXCHANGE_FEES[exchange]?.taker ?? 0.0005;
-    // One full round-trip (long spot + short perp) costs ~4 taker fees. If you
-    // collect funding and re-enter each interval, that fee repeats per interval.
-    const perIntervalFee = 4 * taker;
-    const netPerInterval = r.fundingRate - perIntervalFee;
+    // One full round-trip (entry + exit on both spot and perp) costs ~4 taker fees total.
+    // Trading fees are a one-time position cost amortized over a 30-day holding baseline.
+    const roundTripFeePct = 4 * taker * 100; // e.g. 0.20%
+    const annualHoldingCostPct = (roundTripFeePct / 30) * 365; // ~2.4% / yr amortized
     const fundingApy = r.fundingRate * annualIntervals * 100;
-    const netApy = netPerInterval * annualIntervals * 100;
+    const netApy = fundingApy >= 0 ? fundingApy - annualHoldingCostPct : fundingApy + annualHoldingCostPct;
 
     // Strategy direction must respect the SIGN of the funding rate: with
-    // negative funding, longs are PAID — the old copy always advertised
-    // "collect funding" even when netApy was negative (~-8%/yr).
+    // negative funding, longs are PAID.
     let strategy: string;
-    if (netApy > 0) {
+    if (netApy > 0 && fundingApy > 0) {
       strategy = `Long spot + Short perp — collect funding (~${netApy.toFixed(1)}%/yr net)`;
-    } else if (fundingApy < 0) {
-      strategy = `Short spot + Long perp — earn the negative funding (~${(-netApy).toFixed(1)}%/yr net)`;
+    } else if (fundingApy < 0 && -fundingApy > annualHoldingCostPct) {
+      const netShortApy = -fundingApy - annualHoldingCostPct;
+      strategy = `Short spot + Long perp — earn the negative funding (~${netShortApy.toFixed(1)}%/yr net)`;
     } else {
       strategy = `Funding too low to cover fees (~${netApy.toFixed(1)}%/yr net) — not worth opening`;
     }

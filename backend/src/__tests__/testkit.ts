@@ -194,8 +194,10 @@ export function createTestApp(router: express.Router, opts: TestAppOptions = {})
 export function makeAuthUser(overrides: Record<string, any> = {}): any {
   return {
     id: 'test-user-id',
+    telegramId: 'test-user-id',
     email: 'test@example.com',
     plan: 'pro',
+    subscription: 'pro',
     role: 'user',
     isAdmin: false,
     ...overrides,

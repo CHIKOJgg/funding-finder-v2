@@ -59,6 +59,6 @@ export async function closeRedis(): Promise<void> {
       logger.warn({ err: (err as Error).message }, 'Error closing Redis connection');
     }
     client = null;
-    initialized = false;
   }
+  initialized = false;
 }

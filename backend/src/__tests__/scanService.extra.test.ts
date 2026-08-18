@@ -136,7 +136,7 @@ describe('scanService — runScan coalescing & refresh', () => {
       await scan.runScan(['gate']);
       expect(scanExchanges).toHaveBeenCalledTimes(1);
 
-      jest.advanceTimersByTime(61_000);
+      jest.advanceTimersByTime(15 * 60_000);
       const res = await scan.runScan(['gate']);
       expect(res.scanned).toBe(1);
       // Allow the background refresh promise (and its nested timers) to flush.

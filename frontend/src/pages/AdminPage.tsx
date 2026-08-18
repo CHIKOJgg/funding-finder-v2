@@ -106,11 +106,16 @@ export function AdminPage() {
   const { user } = useApp();
   const { showToast } = useToast();
   const t = useT();
-  const [tab, setTab] = useState<'users' | 'stats' | 'metrics' | 'funnel'>('stats');
+  const [tab, setTab] = useState<'users' | 'stats' | 'metrics' | 'funnel' | 'withdrawals'>('stats');
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [funnel, setFunnel] = useState<Funnel | null>(null);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [withdrawalFilter, setWithdrawalFilter] = useState<'pending' | 'completed' | 'rejected' | 'all'>('pending');
+  const [completeModal, setCompleteModal] = useState<any | null>(null);
+  const [txHash, setTxHash] = useState('');
+  const [rejectConfirm, setRejectConfirm] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
   const [search, setSearch] = useState('');
@@ -155,6 +160,15 @@ export function AdminPage() {
     } catch { /* ignore */ }
   }, []);
 
+  const fetchWithdrawals = useCallback(async (status: string) => {
+    try {
+      const res: any = await apiClient.getAdminWithdrawals(status, 100);
+      if (res.ok) {
+        setWithdrawals(res.withdrawals || []);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     setLoading(true);
     Promise.all([fetchStats(), fetchUsers(page, search)]).finally(() => setLoading(false));
@@ -165,7 +179,8 @@ export function AdminPage() {
     if (tab === 'stats') fetchStats();
     if (tab === 'metrics') fetchMetrics();
     if (tab === 'funnel') fetchFunnel();
-  }, [tab, page, search, fetchUsers, fetchStats, fetchMetrics, fetchFunnel]);
+    if (tab === 'withdrawals') fetchWithdrawals(withdrawalFilter);
+  }, [tab, page, search, withdrawalFilter, fetchUsers, fetchStats, fetchMetrics, fetchFunnel, fetchWithdrawals]);
 
   const handleUpdateSubscription = useCallback(async (userId: string, subscription: string) => {
     try {
@@ -212,6 +227,38 @@ export function AdminPage() {
     setDeleteConfirm(null);
   }, [deleteConfirm, page, search, fetchUsers, showToast]);
 
+  const handleCompleteWithdrawal = useCallback(async (id: string, transactionId?: string) => {
+    try {
+      const res: any = await apiClient.completeAdminWithdrawal(id, transactionId);
+      if (res.ok) {
+        showToast('Вывод успешно подтверждён!', 'success');
+        fetchWithdrawals(withdrawalFilter);
+      } else {
+        showToast(res.error || 'Ошибка подтверждения вывода', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Ошибка сети', 'error');
+    }
+    setCompleteModal(null);
+    setTxHash('');
+  }, [withdrawalFilter, fetchWithdrawals, showToast]);
+
+  const handleRejectWithdrawal = useCallback(async () => {
+    if (!rejectConfirm) return;
+    try {
+      const res: any = await apiClient.rejectAdminWithdrawal(rejectConfirm.id);
+      if (res.ok) {
+        showToast(`Вывод отклонён, ${rejectConfirm.amount} USDT возвращены пользователю`, 'success');
+        fetchWithdrawals(withdrawalFilter);
+      } else {
+        showToast(res.error || 'Ошибка отклонения вывода', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Ошибка сети', 'error');
+    }
+    setRejectConfirm(null);
+  }, [rejectConfirm, withdrawalFilter, fetchWithdrawals, showToast]);
+
   const formatUptime = (seconds: number) => {
     const d = Math.floor(seconds / 86400);
     const h = Math.floor((seconds % 86400) / 3600);
@@ -239,28 +286,34 @@ export function AdminPage() {
       <div className="card">
         <h1 className="text-xl font-bold mb-2 text-[var(--text)]">Admin Panel</h1>
           <p className="text-sm text-[var(--text2)] mb-4">{t('admin.subtitle')}</p>
-        <div className="flex gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4">
           <button
             onClick={() => setTab('stats')}
-            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'stats' ? 'bg-[var(--cobalt)] text-[var(--on-brand)]' : 'bg-[var(--surface-2)] text-[var(--text3)]'}`}
+            className={`flex-1 min-w-[100px] py-2 rounded-lg font-medium ${tab === 'stats' ? 'bg-[var(--cobalt)] text-[var(--on-brand)]' : 'bg-[var(--surface-2)] text-[var(--text3)]'}`}
           >
             {t('admin.stats')}
           </button>
           <button
             onClick={() => setTab('users')}
-            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'users' ? 'bg-[var(--cobalt)] text-[var(--on-brand)]' : 'bg-[var(--surface-2)] text-[var(--text3)]'}`}
+            className={`flex-1 min-w-[100px] py-2 rounded-lg font-medium ${tab === 'users' ? 'bg-[var(--cobalt)] text-[var(--on-brand)]' : 'bg-[var(--surface-2)] text-[var(--text3)]'}`}
           >
             {t('admin.users')}
           </button>
           <button
+            onClick={() => setTab('withdrawals')}
+            className={`flex-1 min-w-[100px] py-2 rounded-lg font-medium ${tab === 'withdrawals' ? 'bg-[var(--cobalt)] text-[var(--on-brand)]' : 'bg-[var(--surface-2)] text-[var(--text3)]'}`}
+          >
+            Выводы
+          </button>
+          <button
             onClick={() => setTab('metrics')}
-            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'metrics' ? 'bg-[var(--cobalt)] text-[var(--on-brand)]' : 'bg-[var(--surface-2)] text-[var(--text3)]'}`}
+            className={`flex-1 min-w-[100px] py-2 rounded-lg font-medium ${tab === 'metrics' ? 'bg-[var(--cobalt)] text-[var(--on-brand)]' : 'bg-[var(--surface-2)] text-[var(--text3)]'}`}
           >
             {t('admin.metrics')}
           </button>
           <button
             onClick={() => setTab('funnel')}
-            className={`flex-1 py-2 rounded-lg font-medium ${tab === 'funnel' ? 'bg-[var(--cobalt)] text-[var(--on-brand)]' : 'bg-[var(--surface-2)] text-[var(--text3)]'}`}
+            className={`flex-1 min-w-[100px] py-2 rounded-lg font-medium ${tab === 'funnel' ? 'bg-[var(--cobalt)] text-[var(--on-brand)]' : 'bg-[var(--surface-2)] text-[var(--text3)]'}`}
           >
             {t('admin.funnel')}
           </button>
@@ -538,6 +591,154 @@ export function AdminPage() {
           )}
         </div>
       )}
+
+      {tab === 'withdrawals' && (
+        <div className="card">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h2 className="text-lg font-semibold">Управление выводами средств</h2>
+            <div className="flex gap-1 bg-[var(--surface-2)] p-1 rounded-lg">
+              {(['pending', 'completed', 'rejected', 'all'] as const).map((st) => (
+                <button
+                  key={st}
+                  onClick={() => setWithdrawalFilter(st)}
+                  className={`text-xs px-2.5 py-1 rounded-md font-medium transition-all ${
+                    withdrawalFilter === st
+                      ? 'bg-[var(--cobalt)] text-[var(--on-brand)]'
+                      : 'text-[var(--text2)] hover:text-[var(--text)]'
+                  }`}
+                >
+                  {st === 'pending' ? 'Ожидают' : st === 'completed' ? 'Выполнены' : st === 'rejected' ? 'Отклонены' : 'Все'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-8 text-[var(--text3)]">{t('common.loading')}</div>
+          ) : withdrawals.length === 0 ? (
+            <div className="text-center py-8 text-[var(--text3)]">Заявок на вывод не найдено</div>
+          ) : (
+            <div className="space-y-3">
+              {withdrawals.map((w) => {
+                const isPending = w.status === 'pending';
+                const isCompleted = w.status === 'completed';
+                const isRejected = w.status === 'rejected';
+                const statusColor = isCompleted ? 'var(--green)' : isRejected ? 'var(--red)' : 'var(--amber)';
+                const statusBg = isCompleted ? 'var(--green-soft)' : isRejected ? 'var(--red-soft)' : 'var(--amber-soft)';
+
+                return (
+                  <div key={w.id} className="p-3.5 border border-[var(--border)] rounded-xl text-sm bg-[var(--surface)]">
+                    <div className="flex flex-wrap justify-between items-start gap-2">
+                      <div className="flex-1 min-w-[200px]">
+                        <div className="font-semibold text-base">
+                          {w.amount} {w.currency} <span className="text-xs px-2 py-0.5 rounded bg-[var(--surface-2)] text-[var(--brand)] font-mono">{w.network}</span>
+                        </div>
+                        <div className="text-xs text-[var(--text2)] mt-1">
+                          Пользователь: <span className="font-medium text-[var(--text)]">{w.user?.firstName || w.user?.username || w.userId}</span>
+                          {w.user?.username && ` (@${w.user.username})`} · Баланс: {w.user?.balance ?? 0} USDT
+                        </div>
+                        <div className="text-xs text-[var(--text3)] font-mono mt-1 break-all bg-[var(--surface-2)] p-1.5 rounded">
+                          Адрес: {w.address}
+                        </div>
+                        {w.transactionId && (
+                          <div className="text-xs text-[var(--green)] font-mono mt-1 break-all">
+                            TxID: {w.transactionId}
+                          </div>
+                        )}
+                        <div className="text-[11px] text-[var(--text3)] mt-1">
+                          Создано: {new Date(w.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-2">
+                        <span
+                          className="text-xs px-2.5 py-1 rounded-full font-semibold"
+                          style={{ color: statusColor, background: statusBg }}
+                        >
+                          {isPending ? 'Ожидает выплаты' : isCompleted ? 'Выплачено' : 'Отклонено'}
+                        </span>
+
+                        {isPending && (
+                          <div className="flex gap-1.5 mt-2">
+                            <button
+                              onClick={() => {
+                                setCompleteModal({ id: w.id, amount: w.amount, user: w.user?.username || w.userId, address: w.address, network: w.network });
+                                setTxHash('');
+                              }}
+                              className="text-xs bg-[var(--green)] text-white px-3 py-1.5 rounded-lg font-semibold hover:opacity-90 active:opacity-80 transition-opacity"
+                            >
+                              Подтвердить
+                            </button>
+                            <button
+                              onClick={() => setRejectConfirm({ id: w.id, amount: w.amount, user: w.user?.username || w.userId })}
+                              className="text-xs bg-[var(--red-soft)] text-[var(--red)] px-2.5 py-1.5 rounded-lg font-semibold hover:opacity-90 active:opacity-80 transition-opacity"
+                            >
+                              Отклонить
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Complete Withdrawal Modal */}
+      {completeModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--surface)] card rounded-xl max-w-md w-full p-5 shadow-2xl">
+            <h2 className="text-lg font-bold mb-2 text-[var(--text)]">Подтверждение выплаты</h2>
+            <p className="text-xs text-[var(--text2)] mb-4">
+              Вы подтверждаете отправку <strong>{completeModal.amount} USDT</strong> пользователю {completeModal.user} в сети <strong>{completeModal.network}</strong>.
+            </p>
+
+            <div className="mb-4 bg-[var(--surface-2)] p-2.5 rounded-lg text-xs font-mono break-all text-[var(--text)]">
+              {completeModal.address}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-[var(--text2)] mb-1">
+                Хэш транзакции (TxID / Tx Hash) — необязательно:
+              </label>
+              <input
+                type="text"
+                placeholder="0x... или tx hash"
+                value={txHash}
+                onChange={(e) => setTxHash(e.target.value)}
+                className="input-field w-full font-mono text-xs"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={() => setCompleteModal(null)} className="btn btn-secondary flex-1 py-2 text-sm">
+                Отмена
+              </button>
+              <button
+                onClick={() => handleCompleteWithdrawal(completeModal.id, txHash)}
+                className="btn btn-primary flex-1 py-2 text-sm font-semibold"
+              >
+                Подтвердить перевод
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Withdrawal Modal */}
+      <ConfirmDialog
+        open={rejectConfirm !== null}
+        title="Отклонить вывод средств?"
+        message={rejectConfirm ? `Вы уверены, что хотите отклонить заявку на ${rejectConfirm.amount} USDT? Сумма будет автоматически возвращена на баланс пользователя.` : ''}
+        confirmText="Отклонить и вернуть"
+        cancelText="Отмена"
+        variant="danger"
+        onConfirm={handleRejectWithdrawal}
+        onCancel={() => setRejectConfirm(null)}
+      />
 
       {editUser && (
         <div className="fixed inset-0 bg-[rgba(5,7,12,0.6)] flex items-center justify-center z-50 p-4">

@@ -6,7 +6,7 @@ import { logger } from '../utils/logger';
 // Once the server rate-limits us we stop hammering it: every request is paused
 // for `backoffUntil`, then we slow to one request per `minIntervalMs`. This is
 // what prevents a 429 from escalating into a retry storm that keeps the limiter
-// permanently tripped (the old behaviour with the per-exchange batch calls).
+// permanently tripped.
 // ---------------------------------------------------------------------------
 let backoffUntil = 0;
 let minIntervalMs = 0;
@@ -16,17 +16,23 @@ function onRateLimited(retryAfterHeader?: string) {
   const retry = retryAfterHeader ? Number(retryAfterHeader) * 1000 : 0;
   const wait = Math.max(retry, 30_000);
   backoffUntil = Date.now() + wait;
-  // After a backoff, never fire requests faster than every 2s.
   minIntervalMs = 2000;
   logger.warn('net', `429 rate-limited — backing off ${wait}ms, throttling to 1 req/2s`);
 }
 
 export function isBackingOff(): boolean {
-  return Date.now() < backoffUntil;
+  if (Date.now() >= backoffUntil) {
+    minIntervalMs = 0;
+    return false;
+  }
+  return true;
 }
 
-async function throttled(fn: () => Promise<any>): Promise<any> {
+async function throttled<T>(fn: () => Promise<T>): Promise<T> {
   const now = Date.now();
+  if (now >= backoffUntil) {
+    minIntervalMs = 0;
+  }
   const waitFor = Math.max(backoffUntil - now, minIntervalMs ? minIntervalMs - (now - lastRequestAt.t) : 0);
   if (waitFor > 0) await new Promise((r) => setTimeout(r, waitFor));
   lastRequestAt.t = Date.now();
@@ -219,6 +225,18 @@ api.interceptors.response.use(
 );
 
 export const apiClient = {
+  // Client-side cache for instant profile / settings rendering
+  _profileCache: null as { data: any; at: number } | null,
+  _settingsCache: null as { data: any; at: number } | null,
+
+  clearProfileCache() {
+    this._profileCache = null;
+  },
+
+  clearSettingsCache() {
+    this._settingsCache = null;
+  },
+
   async scan(exchanges: string[]) {
     // Scans hit many exchange APIs (hundreds of contracts) and can take a while
     // on a cold cache, so allow a much longer timeout than the global default.
@@ -253,6 +271,7 @@ export const apiClient = {
   },
 
   async createOrder(planId: string, options?: { provider?: 'crypto_pay' | 'nowpayments'; payCurrency?: string; currency?: string }) {
+    this.clearProfileCache();
     return api.post('/createOrder', {
       planId,
       provider: options?.provider || 'crypto_pay',
@@ -266,6 +285,7 @@ export const apiClient = {
   },
 
   async withdraw(amount: number, currency: string, address: string, network: string) {
+    this.clearProfileCache();
     return api.post('/withdraw', { amount, currency, address, network });
   },
 
@@ -328,8 +348,16 @@ export const apiClient = {
     return api.delete(`/alerts/arbitrage/${alertId}`);
   },
 
-  async getProfile() {
-    return retryRequest(() => api.get('/profile'));
+  async getProfile(force = false) {
+    const now = Date.now();
+    if (!force && this._profileCache && now - this._profileCache.at < 10000) {
+      return this._profileCache.data;
+    }
+    const res = await retryRequest(() => api.get('/profile'));
+    if (res && (res as any).ok) {
+      this._profileCache = { data: res, at: now };
+    }
+    return res;
   },
 
   async getAlertHistory(alertId: string, limit: number = 50) {
@@ -343,15 +371,29 @@ export const apiClient = {
   },
 
   // Settings
-  async getSettings() {
-    return retryRequest(() => api.get('/settings'));
+  async getSettings(force = false) {
+    const now = Date.now();
+    if (!force && this._settingsCache && now - this._settingsCache.at < 15000) {
+      return this._settingsCache.data;
+    }
+    const res = await retryRequest(() => api.get('/settings'));
+    if (res && (res as any).ok) {
+      this._settingsCache = { data: res, at: now };
+    }
+    return res;
   },
 
   async updateSettings(settings: Record<string, any>) {
-    return api.put('/settings', settings);
+    this._settingsCache = { data: { ok: true, settings }, at: Date.now() };
+    const res = await api.put('/settings', settings);
+    if (res && (res as any).ok) {
+      this._settingsCache = { data: res, at: Date.now() };
+    }
+    return res;
   },
 
   async resetSettings() {
+    this.clearSettingsCache();
     return api.post('/settings/reset');
   },
 
@@ -398,8 +440,24 @@ export const apiClient = {
     return api.delete(url) as Promise<T>;
   },
 
+  // Admin Withdrawals
+  async getAdminWithdrawals(status?: string, limit: number = 50, offset: number = 0) {
+    const params: any = { limit, offset };
+    if (status && status !== 'all') params.status = status;
+    return api.get('/admin/withdrawals', { params }) as Promise<any>;
+  },
+
+  async completeAdminWithdrawal(id: string, transactionId?: string) {
+    return api.patch(`/admin/withdrawals/${id}/complete`, { transactionId }) as Promise<any>;
+  },
+
+  async rejectAdminWithdrawal(id: string) {
+    return api.patch(`/admin/withdrawals/${id}/reject`) as Promise<any>;
+  },
+
   // ---- Trial ----
   async activateTrial() {
+    this.clearProfileCache();
     return retryRequest(() => api.post('/trial/activate'));
   },
 
@@ -455,6 +513,7 @@ export const apiClient = {
 
   // Dev-only: simulate a successful crypto payment (no real gateway).
   async simulatePayment(orderId: string) {
+    this.clearProfileCache();
     return api.post(`/payments/simulate/${orderId}`);
   },
 

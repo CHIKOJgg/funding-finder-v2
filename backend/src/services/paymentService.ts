@@ -59,7 +59,8 @@ export async function generateReferralLink(telegramId: string) {
   const user = await getUser(telegramId);
   // Deep link into the app's Telegram bot so /start ref_<code> fires
   // handleReferral (link + bonus) — not the Crypto Pay bot.
-  return `https://t.me/${config.telegram.botUsername}?start=ref_${user.referralCode}`;
+  const botUser = (config.telegram.botUsername || '').replace(/^@/, '').trim();
+  return `https://t.me/${botUser}?start=ref_${user.referralCode}`;
 }
 
 export async function handleReferral(newTelegramId: string, referralCode: string) {

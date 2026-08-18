@@ -31,15 +31,16 @@ async function resolveSubscriptionUser(userId: string): Promise<any> {
   if (cached && Date.now() - cached.cachedAt < SUB_CACHE_TTL_MS) {
     return cached.user;
   }
-  let user = await prisma.user.findUnique({ where: { telegramId: userId } });
+  let user = await prisma.user.findUnique({ where: { telegramId: userId } }).catch(() => null);
   if (!user) {
-    user = await prisma.user.create({ data: { telegramId: userId, lastActive: new Date() } });
+    user = await prisma.user.create({ data: { telegramId: userId, lastActive: new Date() } }).catch(() => null);
   }
-  await enforceSubscriptionExpiry(userId);
-  await enforceTrialExpiry(userId);
-  user = (await prisma.user.findUnique({ where: { telegramId: userId } })) ?? user;
-  subCache.set(userId, { user, cachedAt: Date.now() });
-  return user;
+  await enforceSubscriptionExpiry(userId).catch(() => {});
+  await enforceTrialExpiry(userId).catch(() => {});
+  user = (await prisma.user.findUnique({ where: { telegramId: userId } }).catch(() => null)) ?? user;
+  const safeUser = user || { telegramId: userId, subscription: 'free' };
+  subCache.set(userId, { user: safeUser, cachedAt: Date.now() });
+  return safeUser;
 }
 
 const PLAN_LIMITS: Record<PlanTier, {
@@ -152,13 +153,14 @@ export function requireSubscription(minimumTier: PlanTier) {
 
       // Cached: a single read per SUB_CACHE_TTL_MS window instead of 4 reads.
       const user = await resolveSubscriptionUser(userId);
+      const sub = (req as any).user?.subscription || (req as any).user?.plan || user?.subscription || 'free';
+      const userTier = getPlanTier(sub);
 
-      const userTier = getPlanTier(user.subscription);
       if (PLAN_HIERARCHY[userTier] < PLAN_HIERARCHY[minimumTier]) {
         return res.status(403).json({
           ok: false,
           error: `This feature requires ${minimumTier} subscription or higher`,
-          currentPlan: user.subscription,
+          currentPlan: sub,
           requiredPlan: minimumTier,
         });
       }
@@ -173,7 +175,7 @@ export function requireSubscription(minimumTier: PlanTier) {
 
 export async function getSubscriptionLimits(userId: string) {
   const user = await resolveSubscriptionUser(userId);
-  const tier = getPlanTier(user.subscription);
+  const tier = getPlanTier(user?.subscription || 'free');
   return { tier, ...PLAN_LIMITS[tier] };
 }
 

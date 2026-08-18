@@ -194,26 +194,33 @@ function NotificationPreview({
   );
 }
 
+let memorySettingsCache: UserSettings | null = null;
+
 export function SettingsPage() {
   const { showToast } = useToast();
   const t = useT();
-  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
-  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<UserSettings>(() => memorySettingsCache || DEFAULT_SETTINGS);
+  const [loading, setLoading] = useState(() => !memorySettingsCache);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    loadSettings();
+    loadSettings(!memorySettingsCache);
   }, []);
 
-  const loadSettings = async () => {
+  const loadSettings = async (showLoading = false) => {
     try {
+      if (showLoading) setLoading(true);
       const res: any = await apiClient.getSettings();
-      if (res.ok && res.settings) {
-        setSettings({ ...DEFAULT_SETTINGS, ...res.settings });
+      if (res?.ok && res.settings) {
+        const merged = { ...DEFAULT_SETTINGS, ...res.settings };
+        setSettings(merged);
+        memorySettingsCache = merged;
       }
     } catch {
-      showToast(t('settings.loadError'), 'error');
+      if (!memorySettingsCache) {
+        showToast(t('settings.loadError'), 'error');
+      }
     } finally {
       setLoading(false);
     }
@@ -221,9 +228,10 @@ export function SettingsPage() {
 
   const handleSave = useCallback(async () => {
     setSaving(true);
+    memorySettingsCache = { ...settings };
     try {
       const res: any = await apiClient.updateSettings(settings);
-      if (res.ok) {
+      if (res?.ok) {
         showToast(t('settings.saved'), 'success');
       } else {
         showToast(t('settings.saveError'), 'error');
@@ -233,19 +241,20 @@ export function SettingsPage() {
     } finally {
       setSaving(false);
     }
-  }, [settings, showToast]);
+  }, [settings, showToast, t]);
 
   const handleReset = useCallback(async () => {
     try {
       const res: any = await apiClient.resetSettings();
-      if (res.ok) {
+      if (res?.ok) {
         setSettings(DEFAULT_SETTINGS);
+        memorySettingsCache = DEFAULT_SETTINGS;
         showToast(t('settings.resetDone'), 'success');
       }
     } catch {
       showToast(t('settings.resetError'), 'error');
     }
-  }, [showToast]);
+  }, [showToast, t]);
 
   const handleExport = useCallback(() => {
     const data = JSON.stringify(settings, null, 2);

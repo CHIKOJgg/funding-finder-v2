@@ -92,6 +92,14 @@ export const EXCHANGE_FEES: Record<string, { taker: number; maker: number }> = {
   apex: { taker: 0.0004, maker: 0.0001 },
   aster: { taker: 0.0004, maker: 0.0002 },
   bluefin: { taker: 0.0004, maker: 0.0001 },
+  kraken: { taker: 0.0005, maker: 0.0002 },
+  coinbase: { taker: 0.0004, maker: 0.00015 },
+  bitunix: { taker: 0.0006, maker: 0.0002 },
+  orderly: { taker: 0.0006, maker: 0.0003 },
+  aevo: { taker: 0.0005, maker: 0.0002 },
+  kucoin: { taker: 0.0006, maker: 0.0002 },
+  cryptocom: { taker: 0.0005, maker: 0.0002 },
+  deribit: { taker: 0.0005, maker: 0.0001 },
 };
 
 function calculateSlippage(volumeA: number, volumeB: number): number {
@@ -313,12 +321,15 @@ export function calculatePaybackDays(
   dailySpread: number,
   exchangeA: string,
   exchangeB: string,
+  volumeA: number = 1_000_000,
+  volumeB: number = 1_000_000,
 ): number {
   const feeA = getTakerFee(exchangeA);
   const feeB = getTakerFee(exchangeB);
-  const totalFees = (feeA + feeB) * 2; // entry + exit, fraction of capital
+  const slippage = calculateSlippage(volumeA, volumeB);
+  const totalOneTimeCostPct = (feeA + feeB) * 2 + slippage * 2; // entry + exit fees + slippage, fraction of capital
   if (dailySpread <= 0) return Infinity;
-  return totalFees / dailySpread;
+  return totalOneTimeCostPct / dailySpread;
 }
 
 /** Stability grade A-F based on how consistently the spread has been positive.
@@ -458,7 +469,7 @@ export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): Arb
             // Attach new metrics v2
             const dailySpread = opp.difference_per_day || 0;
             opp.netApr = calculateNetApr(opp.profit?.annualReturn || 0);
-            opp.paybackDays = calculatePaybackDays(dailySpread, opp.exchangeA, opp.exchangeB);
+            opp.paybackDays = calculatePaybackDays(dailySpread, opp.exchangeA, opp.exchangeB, opp.volumeA, opp.volumeB);
             const pg = getPersistenceGrade(opp.pair, opp.exchangeA, opp.exchangeB);
             opp.persistenceGrade = pg;
             opp.stabilityGrade = calculateStabilityGrade(pg, estimateAliveHours(pg));

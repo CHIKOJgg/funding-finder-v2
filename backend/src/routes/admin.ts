@@ -432,4 +432,109 @@ router.post('/ab/promote', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
+// GET /admin/withdrawals — list withdrawals with filters and user details
+router.get('/withdrawals', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const status = req.query.status as string;
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 50, 1), 200);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
+
+    const where: any = {};
+    if (status && status !== 'all') {
+      where.status = status;
+    }
+
+    const [withdrawals, total] = await Promise.all([
+      prisma.withdrawal.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              telegramId: true,
+              username: true,
+              firstName: true,
+              balance: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.withdrawal.count({ where }),
+    ]);
+
+    res.json({ ok: true, withdrawals, total, limit, offset });
+  } catch (err) {
+    logger.error('Admin get withdrawals error:', err);
+    res.status(500).json({ ok: false, error: 'Failed to fetch withdrawals' });
+  }
+});
+
+// PATCH /admin/withdrawals/:id/complete — mark withdrawal as completed with transaction hash
+router.patch('/withdrawals/:id/complete', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { transactionId } = req.body;
+
+    const withdrawal = await prisma.withdrawal.findUnique({ where: { id } });
+    if (!withdrawal) {
+      return res.status(404).json({ ok: false, error: 'Withdrawal not found' });
+    }
+    if (withdrawal.status !== 'pending') {
+      return res.status(400).json({ ok: false, error: `Cannot complete withdrawal with status ${withdrawal.status}` });
+    }
+
+    const updated = await prisma.withdrawal.update({
+      where: { id },
+      data: {
+        status: 'completed',
+        transactionId: transactionId || null,
+      },
+    });
+
+    logger.info({ adminId: req.userId, withdrawalId: id, transactionId }, 'Admin completed withdrawal');
+    res.json({ ok: true, withdrawal: updated });
+  } catch (err) {
+    logger.error('Admin complete withdrawal error:', err);
+    res.status(500).json({ ok: false, error: 'Failed to complete withdrawal' });
+  }
+});
+
+// PATCH /admin/withdrawals/:id/reject — reject withdrawal and refund balance atomically
+router.patch('/withdrawals/:id/reject', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const withdrawal = await prisma.withdrawal.findUnique({ where: { id } });
+    if (!withdrawal) {
+      return res.status(404).json({ ok: false, error: 'Withdrawal not found' });
+    }
+    if (withdrawal.status !== 'pending') {
+      return res.status(400).json({ ok: false, error: `Cannot reject withdrawal with status ${withdrawal.status}` });
+    }
+
+    const [updatedWithdrawal, updatedUser] = await prisma.$transaction([
+      prisma.withdrawal.update({
+        where: { id },
+        data: { status: 'rejected' },
+      }),
+      prisma.user.update({
+        where: { telegramId: withdrawal.userId },
+        data: { balance: { increment: withdrawal.amount } },
+      }),
+    ]);
+
+    logger.info(
+      { adminId: req.userId, withdrawalId: id, refundedUserId: withdrawal.userId, amount: withdrawal.amount },
+      'Admin rejected withdrawal and refunded balance'
+    );
+    res.json({ ok: true, withdrawal: updatedWithdrawal, newBalance: updatedUser.balance });
+  } catch (err) {
+    logger.error('Admin reject withdrawal error:', err);
+    res.status(500).json({ ok: false, error: 'Failed to reject withdrawal' });
+  }
+});
+
 export default router;
