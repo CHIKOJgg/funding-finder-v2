@@ -40,6 +40,12 @@ const ENSURE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 // process restarts we re-verify once (a cheap read), not on every request.
 const ensuredUsers = new Map<string, number>();
 
+// userId -> last time we ran the lastActive refresh (updateMany). Lets us skip
+// the per-request DB query entirely for warm users — the query itself costs
+// ~420ms even when it matches zero rows, so we must avoid issuing it, not just
+// make it a no-op write.
+const lastActiveTracked = new Map<string, number>();
+
 async function ensureUserExists(userId: string, authProvider: AuthProvider): Promise<void> {
   const cached = ensuredUsers.get(userId);
   if (cached !== undefined && Date.now() - cached < ENSURE_TTL_MS) return;
@@ -94,6 +100,13 @@ async function trackActivity(userId: string, authProvider: AuthProvider = 'teleg
     console.log(`[PERF] trackActivity ensureUserExists ${Date.now() - te0}ms`);
 
     // Only refresh lastActive (and run the trial-expiry check) when stale.
+    // Skip the DB query entirely for warm users — it costs ~420ms even when it
+    // matches zero rows, and that is what serialises authed requests.
+    const lastTrack = lastActiveTracked.get(userId);
+    if (lastTrack !== undefined && Date.now() - lastTrack < TRACK_INTERVAL_MS) {
+      console.log(`[PERF] trackActivity updateMany SKIPPED (warm, ${Date.now() - lastTrack}ms ago)`);
+      return;
+    }
     const now = new Date();
     const staleCutoff = new Date(now.getTime() - TRACK_INTERVAL_MS);
     const tu0 = Date.now();
@@ -101,6 +114,7 @@ async function trackActivity(userId: string, authProvider: AuthProvider = 'teleg
       where: { telegramId: userId, lastActive: { lt: staleCutoff } },
       data: { lastActive: now },
     });
+    lastActiveTracked.set(userId, Date.now());
     console.log(`[PERF] trackActivity updateMany count=${updated.count} ${Date.now() - tu0}ms`);
     const tgId = userId.replace('tg_', '');
     const isDevUltimate = DEV_ULTIMATE_TELEGRAM_IDS.has(tgId);
