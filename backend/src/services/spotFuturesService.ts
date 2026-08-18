@@ -1,207 +1,371 @@
 import axios from 'axios';
 import { logger } from '../utils/logger.js';
-import { cachedRequest } from '../utils/exchangeClient.js';
 import { EXCHANGE_FEES } from './arbitrageService.js';
 
-// Cache raw exchange responses briefly so the Spot-Futures panel polling reuses
-// data instead of re-hitting exchange APIs every tick.
-const CACHE_TTL_MS = 15_000;
-
-// Known funding intervals per exchange (hours). Most USDT perps settle every
-// 8h; this is used to annualize the collected funding.
-const INTERVAL_HOURS: Record<string, number> = {
-  binance: 8,
-  bybit: 8,
-  okx: 8,
-  gate: 8,
-  mexc: 8,
-};
-
-const SUPPORTED = new Set(['binance', 'bybit', 'okx', 'gate', 'mexc']);
-
-interface RawSF {
-  symbol: string;
-  spotPrice: number;
-  perpMark: number;
-  fundingRate: number; // per-interval fraction, e.g. 0.0001
-}
-
-async function binanceSF(pair: string): Promise<RawSF> {
-  const symbol = pair.toUpperCase();
-  const [funding, spot] = await Promise.all([
-    axios.get('https://fapi.binance.com/fapi/v1/premiumIndex', { params: { symbol }, timeout: 10000 }),
-    axios.get('https://api.binance.com/api/v3/ticker/price', { params: { symbol }, timeout: 10000 }),
-  ]);
-  return {
-    symbol,
-    spotPrice: parseFloat(spot.data.price),
-    perpMark: parseFloat(funding.data.markPrice),
-    fundingRate: parseFloat(funding.data.lastFundingRate),
-  };
-}
-
-async function bybitSF(pair: string): Promise<RawSF> {
-  const symbol = pair.toUpperCase();
-  const [perp, spot] = await Promise.all([
-    axios.get('https://api.bybit.com/v5/market/tickers', { params: { category: 'linear', symbol }, timeout: 10000 }),
-    axios.get('https://api.bybit.com/v5/market/tickers', { params: { category: 'spot', symbol }, timeout: 10000 }),
-  ]);
-  const p = perp.data?.result?.list?.[0];
-  const s = spot.data?.result?.list?.[0];
-  return {
-    symbol,
-    spotPrice: parseFloat(s?.lastPrice) || 0,
-    perpMark: parseFloat(p?.markPrice) || 0,
-    fundingRate: parseFloat(p?.fundingRate) || 0,
-  };
-}
-
-async function okxSF(pair: string): Promise<RawSF> {
-  const instId = pair.toUpperCase().includes('-')
-    ? pair.toUpperCase()
-    : (() => {
-        const m = pair.toUpperCase().match(/^(.*?)(USDT|USDC|USD)$/);
-        return m ? `${m[1]}-${m[2]}` : pair.toUpperCase();
-      })();
-  const [funding, spot, mark] = await Promise.all([
-    axios.get('https://www.okx.com/api/v5/public/funding-rate', { params: { instId }, timeout: 10000 }),
-    axios.get('https://www.okx.com/api/v5/market/ticker', { params: { instId }, timeout: 10000 }),
-    axios.get('https://www.okx.com/api/v5/public/mark-price', { params: { instType: 'SWAP', instId }, timeout: 10000 }),
-  ]);
-  const f = funding.data?.data?.[0];
-  const s = spot.data?.data?.[0];
-  const mp = mark.data?.data?.[0];
-  return {
-    symbol: instId,
-    spotPrice: parseFloat(s?.last) || 0,
-    perpMark: parseFloat(mp?.markPx) || parseFloat(s?.last) || 0,
-    fundingRate: parseFloat(f?.fundingRate) || 0,
-  };
-}
-
-async function gateSF(pair: string): Promise<RawSF> {
-  const cp = pair.toUpperCase().includes('_') ? pair.toUpperCase() : (() => {
-    const m = pair.toUpperCase().match(/^(.*?)(USDT|USDC|USD)$/);
-    return m ? `${m[1]}_${m[2]}` : pair.toUpperCase();
-  })();
-  const [perp, spot] = await Promise.all([
-    axios.get(`https://fx-api.gateio.ws/api/v4/futures/usdt/contracts/${cp}`, { timeout: 10000 }),
-    axios.get('https://api.gateio.ws/api/v4/spot/tickers', { params: { currency_pair: cp }, timeout: 10000 }),
-  ]);
-  const s = spot.data?.[0];
-  return {
-    symbol: cp,
-    spotPrice: parseFloat(s?.last) || 0,
-    perpMark: parseFloat(perp.data?.mark_price) || 0,
-    fundingRate: parseFloat(perp.data?.funding_rate) || 0,
-  };
-}
-
-async function mexcSF(pair: string): Promise<RawSF> {
-  const symbol = pair.toUpperCase();
-  const [perp, spot, funding] = await Promise.all([
-    axios.get('https://contract.mexc.com/api/v1/contract/ticker', { params: { symbol }, timeout: 10000 }),
-    axios.get('https://api.mexc.com/api/v3/ticker/price', { params: { symbol }, timeout: 10000 }),
-    axios.get('https://contract.mexc.com/api/v1/contract/funding_rate', { params: { symbol }, timeout: 10000 }),
-  ]);
-  return {
-    symbol,
-    spotPrice: parseFloat(spot.data?.price) || 0,
-    perpMark: parseFloat(perp.data?.data?.fairPrice) || parseFloat(perp.data?.data?.lastPrice) || 0,
-    fundingRate: parseFloat(funding.data?.data?.fundingRate) || 0,
-  };
-}
-
-async function fetchRaw(exchange: string, pair: string): Promise<RawSF> {
-  if (exchange === 'binance') return binanceSF(pair);
-  if (exchange === 'bybit') return bybitSF(pair);
-  if (exchange === 'okx') return okxSF(pair);
-  if (exchange === 'gate') return gateSF(pair);
-  return mexcSF(pair);
-}
-
-// Short in-memory basis time-series for the sparkline.
-const basisStore = new Map<string, { t: number; basis: number }[]>();
-const MAX_SAMPLES = 60;
-
-export interface SpotFuturesResult {
-  exchange: string;
+export interface SpotFuturesOpportunity {
   pair: string;
-  symbol: string;
-  supported: boolean;
-  spotPrice: number | null;
-  perpMark: number | null;
-  basisPct: number | null;
-  fundingRate: number | null;
-  intervalHours: number;
-  annualIntervals: number;
-  fundingApy: number | null;
-  netApy: number | null;
-  strategy: string | null;
-  timestamp: number;
-  series: { t: number; basis: number }[];
+  exchange: string;
+  spotPrice: number;
+  futuresPrice: number;
+  basis: number; // basis = (futuresPrice - spotPrice) / spotPrice * 100
+  fundingRate: number; // current 8h rate in %
+  fundingRateHourly: number; // normalized hourly rate in %
+  fundingIntervalHours: number;
+  estAnnualFundingYield: number; // annualized funding %
+  estAnnualTotalYield: number; // funding + basis yield
+  netAnnualYield: number; // net of trading fees
+  risk: 'LOW' | 'MEDIUM' | 'HIGH';
+  direction: 'CASH_AND_CARRY' | 'REVERSE_CASH_AND_CARRY';
+  volume24h: number;
 }
 
-export async function getSpotFutures(exchange: string, pair: string): Promise<SpotFuturesResult> {
-  const key = `${exchange}:${pair}`;
-  const timestamp = Date.now();
-  const intervalHours = INTERVAL_HOURS[exchange] || 8;
-  const annualIntervals = Math.round((365 * 24) / intervalHours);
+const SUPPORTED_SF_EXCHANGES = ['binance', 'bybit', 'okx', 'gate'] as const;
 
-  if (!SUPPORTED.has(exchange)) {
-    return {
-      exchange, pair, symbol: pair, supported: false,
-      spotPrice: null, perpMark: null, basisPct: null, fundingRate: null,
-      intervalHours, annualIntervals, fundingApy: null, netApy: null, strategy: null,
-      timestamp, series: basisStore.get(key) || [],
-    };
-  }
+/**
+ * Scan spot-futures basis and funding arbitrage opportunities.
+ * Strategy:
+ * - When funding > 0 and futures > spot: Buy Spot + Short Futures (Cash & Carry)
+ *   Earns funding rate + basis convergence at expiry/settlement.
+ * - When funding < 0 and futures < spot: Sell/Short Spot + Long Futures (Reverse)
+ */
+export async function scanSpotFuturesOpportunities(
+  exchanges: string[] = ['binance', 'bybit', 'okx', 'gate'],
+  minYield: number = 5 // minimum 5% annual yield
+): Promise<SpotFuturesOpportunity[]> {
+  const opportunities: SpotFuturesOpportunity[] = [];
+  const targetExchanges = exchanges.filter((e) =>
+    SUPPORTED_SF_EXCHANGES.includes(e as any)
+  );
 
-  try {
-    const r = await cachedRequest(`sf:${exchange}:${pair}`, () => fetchRaw(exchange, pair), CACHE_TTL_MS);
+  const results = await Promise.allSettled(
+    targetExchanges.map((ex) => fetchExchangeSpotFutures(ex))
+  );
 
-    const basisPct = r.spotPrice > 0 ? ((r.perpMark - r.spotPrice) / r.spotPrice) * 100 : 0;
-    const taker = EXCHANGE_FEES[exchange]?.taker ?? 0.0005;
-    // One full round-trip (long spot + short perp) costs ~4 taker fees. If you
-    // collect funding and re-enter each interval, that fee repeats per interval.
-    const perIntervalFee = 4 * taker;
-    const netPerInterval = r.fundingRate - perIntervalFee;
-    const fundingApy = r.fundingRate * annualIntervals * 100;
-    const netApy = netPerInterval * annualIntervals * 100;
-
-    // Strategy direction must respect the SIGN of the funding rate: with
-    // negative funding, longs are PAID — the old copy always advertised
-    // "collect funding" even when netApy was negative (~-8%/yr).
-    let strategy: string;
-    if (netApy > 0) {
-      strategy = `Long spot + Short perp — collect funding (~${netApy.toFixed(1)}%/yr net)`;
-    } else if (fundingApy < 0) {
-      strategy = `Short spot + Long perp — earn the negative funding (~${(-netApy).toFixed(1)}%/yr net)`;
-    } else {
-      strategy = `Funding too low to cover fees (~${netApy.toFixed(1)}%/yr net) — not worth opening`;
+  for (const res of results) {
+    if (res.status === 'fulfilled' && Array.isArray(res.value)) {
+      for (const opp of res.value) {
+        if (Math.abs(opp.netAnnualYield) >= minYield) {
+          opportunities.push(opp);
+        }
+      }
     }
+  }
 
-    const arr = basisStore.get(key) || [];
-    arr.push({ t: timestamp, basis: basisPct });
-    if (arr.length > MAX_SAMPLES) arr.shift();
-    basisStore.set(key, arr);
+  return opportunities.sort(
+    (a, b) => Math.abs(b.netAnnualYield) - Math.abs(a.netAnnualYield)
+  );
+}
 
-    return {
-      exchange, pair, symbol: r.symbol, supported: true,
-      spotPrice: r.spotPrice, perpMark: r.perpMark, basisPct,
-      fundingRate: r.fundingRate, intervalHours, annualIntervals,
-      fundingApy, netApy, strategy,
-      timestamp, series: arr,
-    };
-  } catch (err) {
-    logger.warn({ err: (err as Error).message, exchange, pair }, 'Spot-futures fetch failed');
-    return {
-      exchange, pair, symbol: pair, supported: true,
-      spotPrice: null, perpMark: null, basisPct: null, fundingRate: null,
-      intervalHours, annualIntervals, fundingApy: null, netApy: null, strategy: null,
-      timestamp, series: basisStore.get(key) || [],
-    };
+async function fetchExchangeSpotFutures(
+  exchange: string
+): Promise<SpotFuturesOpportunity[]> {
+  try {
+    switch (exchange) {
+      case 'binance':
+        return await fetchBinanceSpotFutures();
+      case 'bybit':
+        return await fetchBybitSpotFutures();
+      case 'okx':
+        return await fetchOkxSpotFutures();
+      case 'gate':
+        return await fetchGateSpotFutures();
+      default:
+        return [];
+    }
+  } catch (err: any) {
+    logger.warn({ exchange, err: err.message }, 'Spot-futures fetch failed');
+    return [];
   }
 }
 
-export const SF_SUPPORTED_EXCHANGES = Array.from(SUPPORTED);
+// --------------------------------------------------------------------------
+// Binance Spot + Futures
+// --------------------------------------------------------------------------
+async function fetchBinanceSpotFutures(): Promise<SpotFuturesOpportunity[]> {
+  const [spotRes, futRes, premiumRes] = await Promise.all([
+    axios.get('https://api.binance.com/api/v3/ticker/price', { timeout: 10000 }),
+    axios.get('https://fapi.binance.com/fapi/v1/ticker/price', { timeout: 10000 }),
+    axios.get('https://fapi.binance.com/fapi/v1/premiumIndex', { timeout: 10000 }),
+  ]);
+
+  const spotMap = new Map<string, number>();
+  for (const s of spotRes.data || []) {
+    if (s.symbol.endsWith('USDT')) {
+      spotMap.set(s.symbol, parseFloat(s.price));
+    }
+  }
+
+  const fundingMap = new Map<string, { rate: number; nextTime: number }>();
+  for (const p of premiumRes.data || []) {
+    if (p.symbol.endsWith('USDT')) {
+      fundingMap.set(p.symbol, {
+        rate: parseFloat(p.lastFundingRate || '0') * 100, // into %
+        nextTime: p.nextFundingTime || 0,
+      });
+    }
+  }
+
+  const opps: SpotFuturesOpportunity[] = [];
+
+  for (const f of futRes.data || []) {
+    if (!f.symbol.endsWith('USDT')) continue;
+    const spotPrice = spotMap.get(f.symbol);
+    const futPrice = parseFloat(f.price);
+    const fundInfo = fundingMap.get(f.symbol);
+
+    if (!spotPrice || spotPrice <= 0 || !futPrice || futPrice <= 0 || !fundInfo)
+      continue;
+
+    const baseAsset = f.symbol.replace('USDT', '');
+    const pair = `${baseAsset}/USDT`;
+
+    const opp = buildOpportunity({
+      pair,
+      exchange: 'binance',
+      spotPrice,
+      futuresPrice: futPrice,
+      fundingRate8h: fundInfo.rate,
+      intervalHours: 8,
+      volume24h: 10_000_000,
+    });
+
+    if (opp) opps.push(opp);
+  }
+
+  return opps;
+}
+
+// --------------------------------------------------------------------------
+// Bybit Spot + Futures
+// --------------------------------------------------------------------------
+async function fetchBybitSpotFutures(): Promise<SpotFuturesOpportunity[]> {
+  const [spotRes, futRes] = await Promise.all([
+    axios.get('https://api.bybit.com/v5/market/tickers?category=spot', {
+      timeout: 10000,
+    }),
+    axios.get('https://api.bybit.com/v5/market/tickers?category=linear', {
+      timeout: 10000,
+    }),
+  ]);
+
+  const spotMap = new Map<string, number>();
+  for (const s of spotRes.data?.result?.list || []) {
+    if (s.symbol.endsWith('USDT')) {
+      spotMap.set(s.symbol, parseFloat(s.lastPrice));
+    }
+  }
+
+  const opps: SpotFuturesOpportunity[] = [];
+
+  for (const f of futRes.data?.result?.list || []) {
+    if (!f.symbol.endsWith('USDT')) continue;
+    const spotPrice = spotMap.get(f.symbol);
+    const futPrice = parseFloat(f.lastPrice);
+    const fundingRate = parseFloat(f.fundingRate || '0') * 100;
+    const intervalHours = parseInt(f.fundingIntervalHour || '8') || 8;
+    const turnover = parseFloat(f.turnover24h || '0');
+
+    if (!spotPrice || spotPrice <= 0 || !futPrice || futPrice <= 0) continue;
+
+    const baseAsset = f.symbol.replace('USDT', '');
+    const pair = `${baseAsset}/USDT`;
+
+    const opp = buildOpportunity({
+      pair,
+      exchange: 'bybit',
+      spotPrice,
+      futuresPrice: futPrice,
+      fundingRate8h: fundingRate,
+      intervalHours,
+      volume24h: turnover,
+    });
+
+    if (opp) opps.push(opp);
+  }
+
+  return opps;
+}
+
+// --------------------------------------------------------------------------
+// OKX Spot + Futures
+// --------------------------------------------------------------------------
+async function fetchOkxSpotFutures(): Promise<SpotFuturesOpportunity[]> {
+  const [spotRes, swapRes] = await Promise.all([
+    axios.get('https://www.okx.com/api/v5/market/tickers?instType=SPOT', {
+      timeout: 10000,
+    }),
+    axios.get('https://www.okx.com/api/v5/market/tickers?instType=SWAP', {
+      timeout: 10000,
+    }),
+  ]);
+
+  const spotMap = new Map<string, number>();
+  for (const s of spotRes.data?.data || []) {
+    if (s.instId.endsWith('-USDT')) {
+      const base = s.instId.replace('-USDT', '');
+      spotMap.set(base, parseFloat(s.last));
+    }
+  }
+
+  const opps: SpotFuturesOpportunity[] = [];
+
+  for (const f of swapRes.data?.data || []) {
+    if (!f.instId.endsWith('-USDT-SWAP')) continue;
+    const base = f.instId.replace('-USDT-SWAP', '');
+    const spotPrice = spotMap.get(base);
+    const futPrice = parseFloat(f.last);
+    const fundingRate = parseFloat(f.fundingRate || '0') * 100;
+    const turnover = parseFloat(f.volCcy24h || '0');
+
+    if (!spotPrice || spotPrice <= 0 || !futPrice || futPrice <= 0) continue;
+
+    const pair = `${base}/USDT`;
+
+    const opp = buildOpportunity({
+      pair,
+      exchange: 'okx',
+      spotPrice,
+      futuresPrice: futPrice,
+      fundingRate8h: fundingRate,
+      intervalHours: 8,
+      volume24h: turnover,
+    });
+
+    if (opp) opps.push(opp);
+  }
+
+  return opps;
+}
+
+// --------------------------------------------------------------------------
+// Gate.io Spot + Futures
+// --------------------------------------------------------------------------
+async function fetchGateSpotFutures(): Promise<SpotFuturesOpportunity[]> {
+  const [spotRes, futRes] = await Promise.all([
+    axios.get('https://api.gateio.ws/api/v4/spot/tickers', { timeout: 10000 }),
+    axios.get('https://api.gateio.ws/api/v4/futures/usdt/tickers', {
+      timeout: 10000,
+    }),
+  ]);
+
+  const spotMap = new Map<string, number>();
+  for (const s of spotRes.data || []) {
+    if (s.currency_pair?.endsWith('_USDT')) {
+      const base = s.currency_pair.replace('_USDT', '');
+      spotMap.set(base, parseFloat(s.last));
+    }
+  }
+
+  const opps: SpotFuturesOpportunity[] = [];
+
+  for (const f of futRes.data || []) {
+    if (!f.contract?.endsWith('_USDT')) continue;
+    const base = f.contract.replace('_USDT', '');
+    const spotPrice = spotMap.get(base);
+    const futPrice = parseFloat(f.last);
+    const fundingRate = parseFloat(f.funding_rate || '0') * 100;
+    const volume = parseFloat(f.volume_24h_base || '0') * futPrice;
+
+    if (!spotPrice || spotPrice <= 0 || !futPrice || futPrice <= 0) continue;
+
+    const pair = `${base}/USDT`;
+
+    const opp = buildOpportunity({
+      pair,
+      exchange: 'gate',
+      spotPrice,
+      futuresPrice: futPrice,
+      fundingRate8h: fundingRate,
+      intervalHours: 8,
+      volume24h: volume,
+    });
+
+    if (opp) opps.push(opp);
+  }
+
+  return opps;
+}
+
+// --------------------------------------------------------------------------
+// Helper: Build standardized opportunity
+// --------------------------------------------------------------------------
+function buildOpportunity(params: {
+  pair: string;
+  exchange: string;
+  spotPrice: number;
+  futuresPrice: number;
+  fundingRate8h: number; // in %
+  intervalHours: number;
+  volume24h: number;
+}): SpotFuturesOpportunity | null {
+  const {
+    pair,
+    exchange,
+    spotPrice,
+    futuresPrice,
+    fundingRate8h,
+    intervalHours,
+    volume24h,
+  } = params;
+
+  // Basis %: how much futures trade above/below spot
+  const basis = ((futuresPrice - spotPrice) / spotPrice) * 100;
+
+  // Normalized hourly funding rate %
+  const fundingRateHourly = fundingRate8h / intervalHours;
+
+  // Annualized funding yield %
+  const intervalsPerYear = (365 * 24) / intervalHours;
+  const estAnnualFundingYield = fundingRate8h * intervalsPerYear;
+
+  // Basis annual yield (assuming ~30 day holding horizon)
+  const basisAnnualized = basis * (365 / 30);
+
+  // Direction logic
+  const isCashAndCarry = fundingRate8h > 0;
+  const direction: 'CASH_AND_CARRY' | 'REVERSE_CASH_AND_CARRY' = isCashAndCarry
+    ? 'CASH_AND_CARRY'
+    : 'REVERSE_CASH_AND_CARRY';
+
+  // Fee calculation (spot taker + futures taker, round-trip: open + close)
+  const spotTaker = 0.001; // ~0.1% spot fee
+  const futTaker = EXCHANGE_FEES[exchange]?.taker || 0.0005;
+  const totalRoundTripFeePct = (spotTaker + futTaker) * 2 * 100; // in %
+
+  // Total annual gross yield
+  // For cash & carry: earn funding, basis converges to 0 at settlement
+  const estAnnualTotalYield = isCashAndCarry
+    ? estAnnualFundingYield + basis
+    : -estAnnualFundingYield - basis;
+
+  // Net annual yield: Subtract the ONE-TIME round-trip entry/exit fee amortized
+  // over a standard 30-day holding horizon. (Previously deducted per 8h interval,
+  // which erroneously subtracted ~260% APR in fees).
+  const amortizedAnnualFee = totalRoundTripFeePct * (365 / 30);
+  const netAnnualYield = estAnnualTotalYield - amortizedAnnualFee;
+
+  // Risk assessment
+  let risk: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
+  if (Math.abs(basis) > 5 || volume24h < 500_000) {
+    risk = 'HIGH';
+  } else if (Math.abs(basis) > 2 || volume24h < 2_000_000) {
+    risk = 'MEDIUM';
+  }
+
+  return {
+    pair,
+    exchange,
+    spotPrice,
+    futuresPrice,
+    basis: Number(basis.toFixed(3)),
+    fundingRate: Number(fundingRate8h.toFixed(4)),
+    fundingRateHourly: Number(fundingRateHourly.toFixed(6)),
+    fundingIntervalHours: intervalHours,
+    estAnnualFundingYield: Number(estAnnualFundingYield.toFixed(2)),
+    estAnnualTotalYield: Number(estAnnualTotalYield.toFixed(2)),
+    netAnnualYield: Number(netAnnualYield.toFixed(2)),
+    risk,
+    direction,
+    volume24h: Math.round(volume24h),
+  };
+}
