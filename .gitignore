@@ -65,3 +65,6 @@ rltest*.js
 
 # Telegram MiniApp
 *.local
+
+# Local opencode config (contains dev secrets — never commit)
+opencode.json
