@@ -3,4 +3,577 @@ import { normalizeFundingRate } from '../utils/helpers.js';
 import { prisma } from './prisma.js';
 import { logger } from '../utils/logger.js';
 
-// ==================== Persistence Score ====================\n\n// Tracks how often a specific (pair, exchangeA, exchangeB) opportunity appears\n// across recent scans. The score reflects \"persistence\" — how stable/consistent\n// the arbitrage spread is. A persistent opportunity is more actionable than a\n// one-off spike.\n\ninterface PersistenceEntry {\n  pair: string;\n  exchangeA: string;\n  exchangeB: string;\n}\n\nconst PERSISTENCE_WINDOW = 20;  // last N scans to consider\nconst persistenceHistory: PersistenceEntry[][] = [];\nlet persistenceScores: Record<string, number> = {};\n\nfunction persistenceKey(p: PersistenceEntry): string {\n  // Normalise order so A-B == B-A\n  const [a, b] = [p.exchangeA, p.exchangeB].sort();\n  return `${p.pair}:${a}:${b}`;\n}\n\nfunction recordScan(opportunities: ArbitrageOpportunity[]): void {\n  const entries: PersistenceEntry[] = opportunities.map(o => ({\n    pair: o.pair,\n    exchangeA: o.exchangeA,\n    exchangeB: o.exchangeB,\n  }));\n  persistenceHistory.push(entries);\n  if (persistenceHistory.length > PERSISTENCE_WINDOW) {\n    persistenceHistory.shift();\n  }\n  // Recompute scores\n  const counts: Record<string, number> = {};\n  for (const scan of persistenceHistory) {\n    const unique = new Set(scan.map(persistenceKey));\n    for (const k of unique) {\n      counts[k] = (counts[k] || 0) + 1;\n    }\n  }\n  const total = persistenceHistory.length || 1;\n  const next: Record<string, number> = {};\n  for (const [k, v] of Object.entries(counts)) {\n    next[k] = v / total;\n  }\n  persistenceScores = next;\n}\n\n/** Persistence grade A-F based on how often this pair appeared in recent scans. */\nexport function getPersistenceGrade(pair: string, exchangeA: string, exchangeB: string): string {\n  const k = persistenceKey({ pair, exchangeA, exchangeB });\n  const pct = (persistenceScores[k] ?? 0) * 100;\n  if (pct >= 80) return 'A';\n  if (pct >= 60) return 'B';\n  if (pct >= 40) return 'C';\n  if (pct >= 20) return 'D';\n  return 'F';\n}\n\n// Exchange fee structures (taker fees)\nexport const EXCHANGE_FEES: Record<string, { taker: number; maker: number }> = {\n  binance: { taker: 0.0004, maker: 0.0002 },   // 0.04%\n  gate: { taker: 0.0005, maker: 0.00025 },      // 0.05%\n  bybit: { taker: 0.00055, maker: 0.0002 },     // 0.055%\n  okx: { taker: 0.0006, maker: 0.0003 },        // 0.06%\n  mexc: { taker: 0.0006, maker: 0.0002 },       // 0.06%\n  // New CEX additions (standard public taker/maker tiers)\n  bitget: { taker: 0.0004, maker: 0.0002 },      // 0.04%\n  bingx: { taker: 0.00045, maker: 0.0002 },      // 0.045%\n  phemex: { taker: 0.0001, maker: 0.00006 },     // 0.01%\n  woo: { taker: 0.0005, maker: 0.0002 },         // 0.05%\n  // DEX additions (perp taker/maker tiers)\n  hyperliquid: { taker: 0.00055, maker: 0.0001 },  // 0.055% / 0.01%\n  dydx: { taker: 0.0005, maker: 0.0002 },          // 0.05%\n  paradex: { taker: 0.00045, maker: 0.00015 },     // 0.045%\n  // Phase-2 CEX additions\n  htx: { taker: 0.00045, maker: 0.0002 },\n  coinex: { taker: 0.0005, maker: 0.0002 },\n  blofin: { taker: 0.0006, maker: 0.0002 },\n  bitmart: { taker: 0.0004, maker: 0.0002 },\n  weex: { taker: 0.0006, maker: 0.0002 },\n  coinw: { taker: 0.0005, maker: 0.0002 },\n  // Phase-2 DEX additions\n  drift: { taker: 0.0005, maker: 0.0001 },\n  helix: { taker: 0.0004, maker: 0.0002 },\n  apex: { taker: 0.0004, maker: 0.0001 },\n  aster: { taker: 0.0004, maker: 0.0002 },\n  bluefin: { taker: 0.0004, maker: 0.0001 },\n  kraken: { taker: 0.0005, maker: 0.0002 },\n  coinbase: { taker: 0.0004, maker: 0.00015 },\n  bitunix: { taker: 0.0006, maker: 0.0002 },\n  orderly: { taker: 0.0006, maker: 0.0003 },\n  aevo: { taker: 0.0005, maker: 0.0002 },\n  kucoin: { taker: 0.0006, maker: 0.0002 },\n  cryptocom: { taker: 0.0005, maker: 0.0002 },\n  deribit: { taker: 0.0005, maker: 0.0001 },\n};\n\nfunction calculateSlippage(volumeA: number, volumeB: number): number {\n  const minVolume = Math.min(volumeA, volumeB);\n  if (minVolume > 10_000_000) return 0.0001;   // 0.01%\n  if (minVolume > 1_000_000) return 0.0003;    // 0.03%\n  if (minVolume > 100_000) return 0.0008;      // 0.08%\n  return 0.0015;                               // 0.15%\n}\n\n/**\n * Calculate real profit for an arbitrage opportunity.\n * Uses normalized hourly rates for accurate comparison.\n */\nfunction calculateRealProfit(\n  opportunity: {\n    exchangeA: string;\n    exchangeB: string;\n    difference: number;          // hourly rate difference\n    difference_per_day: number;  // daily rate difference\n    volumeA: number;\n    volumeB: number;\n  },\n  capital: number = 1000\n): ProfitCalculation {\n  const feesA = EXCHANGE_FEES[opportunity.exchangeA]?.taker || 0.0005;\n  const feesB = EXCHANGE_FEES[opportunity.exchangeB]?.taker || 0.0005;\n  const slippage = calculateSlippage(opportunity.volumeA, opportunity.volumeB);\n\n  // Recurring funding income per hour (from the normalized rate differential).\n  const grossHourlyProfit = capital * opportunity.difference;\n\n  // One-time round-trip costs: open + close on BOTH legs, plus entry + exit\n  // slippage. These are paid ONCE per position, not every hour.\n  const totalFees = capital * (feesA + feesB) * 2;\n  const totalSlippage = capital * slippage * 2;\n  const oneTimeCost = totalFees + totalSlippage;\n\n  // Gross funding income by horizon (before one-time costs).\n  const grossDaily = grossHourlyProfit * 24;\n  const grossWeekly = grossDaily * 7;\n  const grossAnnual = grossDaily * 365;\n\n  // Net profit assumes a single entry/exit per horizon, so the one-time cost is\n  // subtracted ONCE (not annualized). This is the key fix — previously the\n  // one-time cost was baked into the hourly figure and then multiplied by 8760,\n  // producing absurd negative APY values.\n  const netHourly = grossHourlyProfit - oneTimeCost;\n  const netDaily = grossDaily - oneTimeCost;\n  const netWeekly = grossWeekly - oneTimeCost;\n  const netAnnual = grossAnnual - oneTimeCost;\n\n  const hourlyReturn = (netHourly / capital) * 100;\n  const dailyReturn = (netDaily / capital) * 100;\n  const weeklyReturn = (netWeekly / capital) * 100;\n  const annualReturn = (netAnnual / capital) * 100;\n\n  return {\n    grossHourly: grossHourlyProfit,\n    netHourly,\n    grossDaily,\n    netDaily,\n    fees: totalFees,\n    slippage: totalSlippage,\n    hourlyReturn,\n    dailyReturn,\n    weeklyReturn,\n    annualReturn,\n    netWeekly,\n    netAnnual,\n  };\n}\n\n/**\n * Assess risk of an arbitrage opportunity.\n * Now includes interval mismatch as a risk factor.\n */\nfunction assessRisk(opportunity: {\n  volumeA: number;\n  volumeB: number;\n  percentageDiff: number;\n  difference: number;\n  intervalA_hours: number;\n  intervalB_hours: number;\n  intervalMismatch: boolean;\n}): RiskAssessment {\n  let riskScore = 0;\n  const reasons: string[] = [];\n\n  // Risk from liquidity\n  const minVolume = Math.min(opportunity.volumeA, opportunity.volumeB);\n  if (minVolume < 500_000) {\n    riskScore += 3;\n    reasons.push('Очень низкая ликвидность');\n  } else if (minVolume < 2_000_000) {\n    riskScore += 1;\n    reasons.push('Низкая ликвидность');\n  }\n\n  // Risk from rate volatility\n  if (opportunity.percentageDiff > 100) {\n    riskScore += 2;\n    reasons.push('Высокая волатильность ставок');\n  } else if (opportunity.percentageDiff > 50) {\n    riskScore += 1;\n    reasons.push('Умеренная волатильность');\n  }\n\n  // Risk from absolute difference (too high = anomaly)\n  if (opportunity.difference > 0.001) { // > 0.1% per hour\n    riskScore += 2;\n    reasons.push('Возможная временная аномалия');\n  }\n\n  // Risk from interval mismatch\n  if (opportunity.intervalMismatch) {\n    riskScore += 2;\n    reasons.push(`Несовпадение интервалов: ${opportunity.intervalA_hours}h vs ${opportunity.intervalB_hours}h`);\n  }\n\n  // Determine risk level\n  let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';\n  if (riskScore >= 4) riskLevel = 'HIGH';\n  else if (riskScore >= 2) riskLevel = 'MEDIUM';\n  else riskLevel = 'LOW';\n\n  return { score: riskScore, level: riskLevel, reasons };\n}\n\n/**\n * Calculate opportunity score for sorting (profitability / risk).\n */\nfunction calculateOpportunityScore(opportunity: ArbitrageOpportunity): number {\n  let score = opportunity.profit.annualReturn;\n\n  // Risk adjustments\n  if (opportunity.risk.level === 'HIGH') score *= 0.3;\n  else if (opportunity.risk.level === 'MEDIUM') score *= 0.7;\n\n  // Liquidity bonus\n  const minVolume = Math.min(opportunity.volumeA, opportunity.volumeB);\n  if (minVolume > 5_000_000) score *= 1.2;\n\n  // Interval mismatch penalty\n  if (opportunity.intervalMismatch) {\n    score *= 0.5;\n  }\n\n  return score;\n}\n\n/**\n * Detect arbitrage opportunities using normalized hourly rates.\n * \n * Key improvement: Uses normalized rates for fair comparison across\n * different funding intervals. Flags interval mismatches as risk.\n */\nconst QUOTE_CURRENCIES = ['USDT', 'USDC', 'USD', 'BTC', 'ETH', 'DAI'];\n\n/**\n * Normalize an exchange-specific contract symbol to a canonical key so the same\n * market can be matched across exchanges. Examples:\n *   gate  BTC_USDT       -> BTCUSDT\n *   bybit BTCUSDT        -> BTCUSDT\n *   okx   BTC-USDT-SWAP  -> BTCUSDT\n *   mexc  BTC_USDT       -> BTCUSDT\n */\nexport function canonicalPairKey(contract: string): string {\n  let key = (contract || '')\n    .toUpperCase()\n    .replace(/[-_/]/g, ' ')          // separators -> space\n    .replace(/\\bSWAP\\b/g, ' ')       // OKX suffix\n    .replace(/\\bPERP\\b/g, ' ')       // perp suffix\n    .replace(/[^A-Z0-9]/g, '');      // strip everything else\n  // Treat USD-quoted perps (dYdX, Paradex) as matching USDT perps so cross-exchange\n  // funding-rate comparison includes DEX pairs.\n  if (key.endsWith('USD')) key += 'T';\n  // Hyperliquid and Drift return bare coin names (e.g. \"BTC\", \"SOL\").\n  // Append USDT so they match CEX pairs like \"BTCUSDT\".\n  if (key.length <= 5 && !key.endsWith('USDT') && !key.endsWith('USDC')) key += 'USDT';\n  return key;\n}\n\n/**\n * Human-readable pair (e.g. \"BTC/USDT\") derived from the canonical key.\n */\nfunction formatPair(contract: string): string {\n  const key = canonicalPairKey(contract);\n  for (const q of QUOTE_CURRENCIES) {\n    if (key.endsWith(q) && key.length > q.length) {\n      return `${key.slice(0, -q.length)}/${q}`;\n    }\n  }\n  return key;\n}\n\n// ==================== New Metrics v2 ====================\n\n/** Reuse the canonical fee map so new metrics stay consistent with calculateRealProfit. */\nfunction getTakerFee(exchange: string): number {\n  return EXCHANGE_FEES[exchange]?.taker || 0.0005;\n}\n\n/**\n * Net APR = profit.annualReturn is already net of one-time entry/exit fees\n * (as computed by calculateRealProfit). This wrapper exists for clarity;\n * it does NOT deduct fees a second time.\n */\nexport function calculateNetApr(annualReturn: number): number {\n  return annualReturn;\n}\n\n/**\n * Days to recover the one-time entry/exit fees from the daily spread.\n * Formula: (feeA + feeB) * 2 / dailySpread\n * (fees are paid once, spread accrues daily — no recurring fee assumption).\n */\nexport function calculatePaybackDays(\n  dailySpread: number,\n  exchangeA: string,\n  exchangeB: string,\n  volumeA: number = 1_000_000,\n  volumeB: number = 1_000_000,\n): number {\n  const feeA = getTakerFee(exchangeA);\n  const feeB = getTakerFee(exchangeB);\n  const slippage = calculateSlippage(volumeA, volumeB);\n  const totalOneTimeCostPct = (feeA + feeB) * 2 + slippage * 2; // entry + exit fees + slippage, fraction of capital\n  if (dailySpread <= 0) return Infinity;\n  return totalOneTimeCostPct / dailySpread;\n}\n\n/** Stability grade A-F based on how consistently the spread has been positive.\n *  Uses the persistence grade as a proxy when detailed history isn't available. */\nexport function calculateStabilityGrade(\n  persistenceGrade?: string,\n  aliveHours?: number,\n): string {\n  if (aliveHours !== undefined && aliveHours >= 168) return 'A';\n  if (aliveHours !== undefined && aliveHours >= 72) return 'B';\n  if (persistenceGrade === 'A' || persistenceGrade === 'B') return persistenceGrade;\n  if (persistenceGrade === 'C') return 'C';\n  if (persistenceGrade === 'D') return 'D';\n  return 'F';\n}\n\n/** Estimate alive hours from persistence grade. */\nexport function estimateAliveHours(persistenceGrade?: string): number {\n  switch (persistenceGrade) {\n    case 'A': return 168; // 7d\n    case 'B': return 72;  // 3d\n    case 'C': return 24;  // 1d\n    case 'D': return 6;\n    default: return 0;\n  }\n}\n\n/** Win rate mapped from persistence grade. */\nexport function estimateWinRate30d(persistenceGrade?: string): number {\n  switch (persistenceGrade) {\n    case 'A': return 0.85;\n    case 'B': return 0.70;\n    case 'C': return 0.50;\n    case 'D': return 0.30;\n    default: return 0.10;\n  }\n}\n\nexport function detectArbitrageOpportunities(scanResults: ExchangeResult[]): ArbitrageOpportunity[] {\n  const opportunities: ArbitrageOpportunity[] = [];\n\n  // Group by canonical pair key (so different exchange symbol formats match)\n  const pairsMap = new Map<string, ExchangeResult[]>();\n  scanResults.forEach((item) => {\n    const key = canonicalPairKey(item.contract);\n    if (!key) return;\n    if (!pairsMap.has(key)) {\n      pairsMap.set(key, []);\n    }\n    pairsMap.get(key)!.push(item);\n  });\n\n  pairsMap.forEach((items) => {\n    if (items.length < 2) return;\n\n    const pair = formatPair(items[0].contract);\n\n    // Compare each exchange pair\n    for (let i = 0; i < items.length; i++) {\n      for (let j = i + 1; j < items.length; j++) {\n        const a = items[i];\n        const b = items[j];\n\n        // Don't compare an exchange against itself\n        if (a.exchange === b.exchange) continue;\n        // Use normalized hourly rates for comparison\n        const fundingA_per_hour = a.funding_rate_per_hour || 0;\n        const fundingB_per_hour = b.funding_rate_per_hour || 0;\n        const fundingA_per_day = a.funding_rate_per_day || 0;\n        const fundingB_per_day = b.funding_rate_per_day || 0;\n\n        // Calculate difference using normalized rates\n        const difference = Math.abs(fundingA_per_hour - fundingB_per_hour);\n        const difference_per_day = Math.abs(fundingA_per_day - fundingB_per_day);\n        \n        // Percentage difference (relative to smaller rate)\n        const minRate = Math.min(Math.abs(fundingA_per_hour), Math.abs(fundingB_per_hour));\n        const percentageDiff = minRate > 0 ? (difference / minRate) * 100 : 0;\n\n        // Interval info\n        const intervalA_hours = a.funding_interval_hours || 8;\n        const intervalB_hours = b.funding_interval_hours || 8;\n        const intervalMismatch = Math.abs(intervalA_hours - intervalB_hours) > 1;\n\n        // Only compare contracts with the SAME funding interval. Comparing e.g.\n        // an 8h contract against a 24h one via per-hour normalization produces\n        // misleading, non-collectible \"opportunities\", so skip mismatches.\n        if (intervalMismatch) continue;\n\n        // Minimum threshold: 0.001% per hour difference\n        if (difference > 0.00001) {\n          const opp: ArbitrageOpportunity = {\n            pair,\n            exchangeA: a.exchange,\n            exchangeB: b.exchange,\n            fundingA: a.currentFunding,\n            fundingB: b.currentFunding,\n            fundingA_per_hour,\n            fundingB_per_hour,\n            fundingA_per_day,\n            fundingB_per_day,\n            intervalA_hours,\n            intervalB_hours,\n            intervalMismatch,\n            difference,\n            difference_per_day,\n            percentageDiff,\n            volumeA: a.volume_24h_settle,\n            volumeB: b.volume_24h_settle,\n            markPriceA: a.mark_price,\n            markPriceB: b.mark_price,\n            opportunity:\n              fundingA_per_hour > fundingB_per_hour\n                ? `SHORT on ${a.exchange}, LONG on ${b.exchange}`\n                : `LONG on ${a.exchange}, SHORT on ${b.exchange}`,\n            profit: calculateRealProfit({\n              exchangeA: a.exchange,\n              exchangeB: b.exchange,\n              difference,\n              difference_per_day,\n              volumeA: a.volume_24h_settle,\n              volumeB: b.volume_24h_settle,\n            }),\n            risk: assessRisk({\n              volumeA: a.volume_24h_settle,\n              volumeB: b.volume_24h_settle,\n              percentageDiff,\n              difference,\n              intervalA_hours,\n              intervalB_hours,\n              intervalMismatch,\n            }),\n            score: 0,\n            timestamp: Date.now(),\n          };\n            opp.score = calculateOpportunityScore(opp);\n            // Attach new metrics v2\n            const dailySpread = opp.difference_per_day || 0;\n            opp.netApr = calculateNetApr(opp.profit?.annualReturn || 0);\n            opp.paybackDays = calculatePaybackDays(dailySpread, opp.exchangeA, opp.exchangeB, opp.volumeA, opp.volumeB);\n            const pg = getPersistenceGrade(opp.pair, opp.exchangeA, opp.exchangeB);\n            opp.persistenceGrade = pg;\n            opp.stabilityGrade = calculateStabilityGrade(pg, estimateAliveHours(pg));\n            opp.aliveHours = estimateAliveHours(pg);\n            opp.winRate30d = estimateWinRate30d(pg);\n          opportunities.push(opp);\n        }\n      }\n    }\n  });\n\n  // Sort by score (best opportunities first)\n  const sorted = opportunities.sort((a, b) => b.score - a.score);\n  // Record this scan for persistence tracking\n  recordScan(sorted);\n  return sorted;\n}\n\n// ==================== Alert Management ====================\n\nexport async function createArbitrageAlert(\n  userId: string,\n  data: {\n    pair: string;\n    exchangeA: string;\n    exchangeB: string;\n    condition?: string;\n    threshold?: number;\n    direction?: string;\n    cooldown?: number;\n  }\n) {\n  const count = await prisma.arbitrageAlert.count({ where: { userId } });\n  if (count >= 50) {\n    throw new Error('Maximum 50 arbitrage alerts per user');\n  }\n\n  return prisma.arbitrageAlert.create({\n    data: {\n      userId,\n      pair: data.pair,\n      exchangeA: data.exchangeA,\n      exchangeB: data.exchangeB,\n      condition: data.condition || 'difference',\n      threshold: data.threshold || 0.002,\n      direction: data.direction || 'both',\n      cooldown: data.cooldown || 300000,\n    },\n  });\n}\n\nexport async function getUserArbitrageAlerts(userId: string, limit: number = 50, offset: number = 0) {\n  const safeLimit = Math.min(Math.max(limit, 1), 200);\n  const safeOffset = Math.max(offset, 0);\n  const [alerts, total] = await Promise.all([\n    prisma.arbitrageAlert.findMany({\n      where: { userId },\n      orderBy: { createdAt: 'desc' },\n      take: safeLimit,\n      skip: safeOffset,\n    }),\n    prisma.arbitrageAlert.count({ where: { userId } }),\n  ]);\n  return { alerts, total, limit: safeLimit, offset: safeOffset };\n}\n\nexport async function deleteArbitrageAlert(userId: string, alertId: string) {\n  const result = await prisma.arbitrageAlert.deleteMany({\n    where: { id: alertId, userId },\n  });\n  return result.count > 0;\n}\n\nexport async function toggleArbitrageAlert(userId: string, alertId: string) {\n  const alert = await prisma.arbitrageAlert.findFirst({\n    where: { id: alertId, userId },\n  });\n  if (!alert) return null;\n\n  return prisma.arbitrageAlert.update({\n    where: { id: alertId },\n    data: { isActive: !alert.isActive },\n  });\n}\n\nexport async function calculateProfit(opportunity: ArbitrageOpportunity, capital: number) {\n  const profit = calculateRealProfit({\n    exchangeA: opportunity.exchangeA,\n    exchangeB: opportunity.exchangeB,\n    difference: opportunity.difference,\n    difference_per_day: opportunity.difference_per_day,\n    volumeA: opportunity.volumeA,\n    volumeB: opportunity.volumeB,\n  }, capital);\n  \n  const risk = assessRisk({\n    volumeA: opportunity.volumeA,\n    volumeB: opportunity.volumeB,\n    percentageDiff: opportunity.percentageDiff,\n    difference: opportunity.difference,\n    intervalA_hours: opportunity.intervalA_hours,\n    intervalB_hours: opportunity.intervalB_hours,\n    intervalMismatch: opportunity.intervalMismatch,\n  });\n\n  return { profit, risk };\n}\n
+// ==================== Persistence Score ====================
+
+// Tracks how often a specific (pair, exchangeA, exchangeB) opportunity appears
+// across recent scans. The score reflects "persistence" — how stable/consistent
+// the arbitrage spread is. A persistent opportunity is more actionable than a
+// one-off spike.
+
+interface PersistenceEntry {
+  pair: string;
+  exchangeA: string;
+  exchangeB: string;
+}
+
+const PERSISTENCE_WINDOW = 20;  // last N scans to consider
+const persistenceHistory: PersistenceEntry[][] = [];
+let persistenceScores: Record<string, number> = {};
+
+function persistenceKey(p: PersistenceEntry): string {
+  // Normalise order so A-B == B-A
+  const [a, b] = [p.exchangeA, p.exchangeB].sort();
+  return `${p.pair}:${a}:${b}`;
+}
+
+function recordScan(opportunities: ArbitrageOpportunity[]): void {
+  const entries: PersistenceEntry[] = opportunities.map(o => ({
+    pair: o.pair,
+    exchangeA: o.exchangeA,
+    exchangeB: o.exchangeB,
+  }));
+  persistenceHistory.push(entries);
+  if (persistenceHistory.length > PERSISTENCE_WINDOW) {
+    persistenceHistory.shift();
+  }
+  // Recompute scores
+  const counts: Record<string, number> = {};
+  for (const scan of persistenceHistory) {
+    const unique = new Set(scan.map(persistenceKey));
+    for (const k of unique) {
+      counts[k] = (counts[k] || 0) + 1;
+    }
+  }
+  const total = persistenceHistory.length || 1;
+  const next: Record<string, number> = {};
+  for (const [k, v] of Object.entries(counts)) {
+    next[k] = v / total;
+  }
+  persistenceScores = next;
+}
+
+/** Persistence grade A-F based on how often this pair appeared in recent scans. */
+export function getPersistenceGrade(pair: string, exchangeA: string, exchangeB: string): string {
+  const k = persistenceKey({ pair, exchangeA, exchangeB });
+  const pct = (persistenceScores[k] ?? 0) * 100;
+  if (pct >= 80) return 'A';
+  if (pct >= 60) return 'B';
+  if (pct >= 40) return 'C';
+  if (pct >= 20) return 'D';
+  return 'F';
+}
+
+// Exchange fee structures (taker fees)
+export const EXCHANGE_FEES: Record<string, { taker: number; maker: number }> = {
+  binance: { taker: 0.0004, maker: 0.0002 },   // 0.04%
+  gate: { taker: 0.0005, maker: 0.00025 },      // 0.05%
+  bybit: { taker: 0.00055, maker: 0.0002 },     // 0.055%
+  okx: { taker: 0.0006, maker: 0.0003 },        // 0.06%
+  mexc: { taker: 0.0006, maker: 0.0002 },       // 0.06%
+  // New CEX additions (standard public taker/maker tiers)
+  bitget: { taker: 0.0004, maker: 0.0002 },      // 0.04%
+  bingx: { taker: 0.00045, maker: 0.0002 },      // 0.045%
+  phemex: { taker: 0.0001, maker: 0.00006 },     // 0.01%
+  woo: { taker: 0.0005, maker: 0.0002 },         // 0.05%
+  // DEX additions (perp taker/maker tiers)
+  hyperliquid: { taker: 0.00055, maker: 0.0001 },  // 0.055% / 0.01%
+  dydx: { taker: 0.0005, maker: 0.0002 },          // 0.05%
+  paradex: { taker: 0.00045, maker: 0.00015 },     // 0.045%
+  // Phase-2 CEX additions
+  htx: { taker: 0.00045, maker: 0.0002 },
+  coinex: { taker: 0.0005, maker: 0.0002 },
+  blofin: { taker: 0.0006, maker: 0.0002 },
+  bitmart: { taker: 0.0004, maker: 0.0002 },
+  weex: { taker: 0.0006, maker: 0.0002 },
+  coinw: { taker: 0.0005, maker: 0.0002 },
+  // Phase-2 DEX additions
+  drift: { taker: 0.0005, maker: 0.0001 },
+  helix: { taker: 0.0004, maker: 0.0002 },
+  apex: { taker: 0.0004, maker: 0.0001 },
+  aster: { taker: 0.0004, maker: 0.0002 },
+  bluefin: { taker: 0.0004, maker: 0.0001 },
+  kraken: { taker: 0.0005, maker: 0.0002 },
+  coinbase: { taker: 0.0004, maker: 0.00015 },
+  bitunix: { taker: 0.0006, maker: 0.0002 },
+  orderly: { taker: 0.0006, maker: 0.0003 },
+  aevo: { taker: 0.0005, maker: 0.0002 },
+  kucoin: { taker: 0.0006, maker: 0.0002 },
+  cryptocom: { taker: 0.0005, maker: 0.0002 },
+  deribit: { taker: 0.0005, maker: 0.0001 },
+};
+
+function calculateSlippage(volumeA: number, volumeB: number): number {
+  const minVolume = Math.min(volumeA, volumeB);
+  if (minVolume > 10_000_000) return 0.0001;   // 0.01%
+  if (minVolume > 1_000_000) return 0.0003;    // 0.03%
+  if (minVolume > 100_000) return 0.0008;      // 0.08%
+  return 0.0015;                               // 0.15%
+}
+
+/**
+ * Calculate real profit for an arbitrage opportunity.
+ * Uses normalized hourly rates for accurate comparison.
+ */
+function calculateRealProfit(
+  opportunity: {
+    exchangeA: string;
+    exchangeB: string;
+    difference: number;          // hourly rate difference
+    difference_per_day: number;  // daily rate difference
+    volumeA: number;
+    volumeB: number;
+  },
+  capital: number = 1000
+): ProfitCalculation {
+  const feesA = EXCHANGE_FEES[opportunity.exchangeA]?.taker || 0.0005;
+  const feesB = EXCHANGE_FEES[opportunity.exchangeB]?.taker || 0.0005;
+  const slippage = calculateSlippage(opportunity.volumeA, opportunity.volumeB);
+
+  // Recurring funding income per hour (from the normalized rate differential).
+  const grossHourlyProfit = capital * opportunity.difference;
+
+  // One-time round-trip costs: open + close on BOTH legs, plus entry + exit
+  // slippage. These are paid ONCE per position, not every hour.
+  const totalFees = capital * (feesA + feesB) * 2;
+  const totalSlippage = capital * slippage * 2;
+  const oneTimeCost = totalFees + totalSlippage;
+
+  // Gross funding income by horizon (before one-time costs).
+  const grossDaily = grossHourlyProfit * 24;
+  const grossWeekly = grossDaily * 7;
+  const grossAnnual = grossDaily * 365;
+
+  // Net profit assumes a single entry/exit per horizon, so the one-time cost is
+  // subtracted ONCE (not annualized). This is the key fix — previously the
+  // one-time cost was baked into the hourly figure and then multiplied by 8760,
+  // producing absurd negative APY values.
+  const netHourly = grossHourlyProfit - oneTimeCost;
+  const netDaily = grossDaily - oneTimeCost;
+  const netWeekly = grossWeekly - oneTimeCost;
+  const netAnnual = grossAnnual - oneTimeCost;
+
+  const hourlyReturn = (netHourly / capital) * 100;
+  const dailyReturn = (netDaily / capital) * 100;
+  const weeklyReturn = (netWeekly / capital) * 100;
+  const annualReturn = (netAnnual / capital) * 100;
+
+  return {
+    grossHourly: grossHourlyProfit,
+    netHourly,
+    grossDaily,
+    netDaily,
+    fees: totalFees,
+    slippage: totalSlippage,
+    hourlyReturn,
+    dailyReturn,
+    weeklyReturn,
+    annualReturn,
+    netWeekly,
+    netAnnual,
+  };
+}
+
+/**
+ * Assess risk of an arbitrage opportunity.
+ * Now includes interval mismatch as a risk factor.
+ */
+function assessRisk(opportunity: {
+  volumeA: number;
+  volumeB: number;
+  percentageDiff: number;
+  difference: number;
+  intervalA_hours: number;
+  intervalB_hours: number;
+  intervalMismatch: boolean;
+}): RiskAssessment {
+  let riskScore = 0;
+  const reasons: string[] = [];
+
+  // Risk from liquidity
+  const minVolume = Math.min(opportunity.volumeA, opportunity.volumeB);
+  if (minVolume < 500_000) {
+    riskScore += 3;
+    reasons.push('Очень низкая ликвидность');
+  } else if (minVolume < 2_000_000) {
+    riskScore += 1;
+    reasons.push('Низкая ликвидность');
+  }
+
+  // Risk from rate volatility
+  if (opportunity.percentageDiff > 100) {
+    riskScore += 2;
+    reasons.push('Высокая волатильность ставок');
+  } else if (opportunity.percentageDiff > 50) {
+    riskScore += 1;
+    reasons.push('Умеренная волатильность');
+  }
+
+  // Risk from absolute difference (too high = anomaly)
+  if (opportunity.difference > 0.001) { // > 0.1% per hour
+    riskScore += 2;
+    reasons.push('Возможная временная аномалия');
+  }
+
+  // Risk from interval mismatch
+  if (opportunity.intervalMismatch) {
+    riskScore += 2;
+    reasons.push(`Несовпадение интервалов: ${opportunity.intervalA_hours}h vs ${opportunity.intervalB_hours}h`);
+  }
+
+  // Determine risk level
+  let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  if (riskScore >= 4) riskLevel = 'HIGH';
+  else if (riskScore >= 2) riskLevel = 'MEDIUM';
+  else riskLevel = 'LOW';
+
+  return { score: riskScore, level: riskLevel, reasons };
+}
+
+/**
+ * Calculate opportunity score for sorting (profitability / risk).
+ */
+function calculateOpportunityScore(opportunity: ArbitrageOpportunity): number {
+  let score = opportunity.profit.annualReturn;
+
+  // Risk adjustments
+  if (opportunity.risk.level === 'HIGH') score *= 0.3;
+  else if (opportunity.risk.level === 'MEDIUM') score *= 0.7;
+
+  // Liquidity bonus
+  const minVolume = Math.min(opportunity.volumeA, opportunity.volumeB);
+  if (minVolume > 5_000_000) score *= 1.2;
+
+  // Interval mismatch penalty
+  if (opportunity.intervalMismatch) {
+    score *= 0.5;
+  }
+
+  return score;
+}
+
+/**
+ * Detect arbitrage opportunities using normalized hourly rates.
+ * 
+ * Key improvement: Uses normalized rates for fair comparison across
+ * different funding intervals. Flags interval mismatches as risk.
+ */
+const QUOTE_CURRENCIES = ['USDT', 'USDC', 'USD', 'BTC', 'ETH', 'DAI'];
+
+/**
+ * Normalize an exchange-specific contract symbol to a canonical key so the same
+ * market can be matched across exchanges. Examples:
+ *   gate  BTC_USDT       -> BTCUSDT
+ *   bybit BTCUSDT        -> BTCUSDT
+ *   okx   BTC-USDT-SWAP  -> BTCUSDT
+ *   mexc  BTC_USDT       -> BTCUSDT
+ */
+export function canonicalPairKey(contract: string): string {
+  let key = (contract || '')
+    .toUpperCase()
+    .replace(/[-_/]/g, ' ')          // separators -> space
+    .replace(/\bSWAP\b/g, ' ')       // OKX suffix
+    .replace(/\bPERP\b/g, ' ')       // perp suffix
+    .replace(/[^A-Z0-9]/g, '');      // strip everything else
+  // Treat USD-quoted perps (dYdX, Paradex) as matching USDT perps so cross-exchange
+  // funding-rate comparison includes DEX pairs.
+  if (key.endsWith('USD')) key += 'T';
+  // Hyperliquid and Drift return bare coin names (e.g. "BTC", "SOL").
+  // Append USDT so they match CEX pairs like "BTCUSDT".
+  if (key.length <= 5 && !key.endsWith('USDT') && !key.endsWith('USDC')) key += 'USDT';
+  return key;
+}
+
+/**
+ * Human-readable pair (e.g. "BTC/USDT") derived from the canonical key.
+ */
+function formatPair(contract: string): string {
+  const key = canonicalPairKey(contract);
+  for (const q of QUOTE_CURRENCIES) {
+    if (key.endsWith(q) && key.length > q.length) {
+      return `${key.slice(0, -q.length)}/${q}`;
+    }
+  }
+  return key;
+}
+
+// ==================== New Metrics v2 ====================
+
+/** Reuse the canonical fee map so new metrics stay consistent with calculateRealProfit. */
+function getTakerFee(exchange: string): number {
+  return EXCHANGE_FEES[exchange]?.taker || 0.0005;
+}
+
+/**
+ * Net APR = profit.annualReturn is already net of one-time entry/exit fees
+ * (as computed by calculateRealProfit). This wrapper exists for clarity;
+ * it does NOT deduct fees a second time.
+ */
+export function calculateNetApr(annualReturn: number): number {
+  return annualReturn;
+}
+
+/**
+ * Days to recover the one-time entry/exit fees from the daily spread.
+ * Formula: (feeA + feeB) * 2 / dailySpread
+ * (fees are paid once, spread accrues daily — no recurring fee assumption).
+ */
+export function calculatePaybackDays(
+  dailySpread: number,
+  exchangeA: string,
+  exchangeB: string,
+  volumeA: number = 1_000_000,
+  volumeB: number = 1_000_000,
+): number {
+  const feeA = getTakerFee(exchangeA);
+  const feeB = getTakerFee(exchangeB);
+  const slippage = calculateSlippage(volumeA, volumeB);
+  const totalOneTimeCostPct = (feeA + feeB) * 2 + slippage * 2; // entry + exit fees + slippage, fraction of capital
+  if (dailySpread <= 0) return Infinity;
+  return totalOneTimeCostPct / dailySpread;
+}
+
+/** Stability grade A-F based on how consistently the spread has been positive.
+ *  Uses the persistence grade as a proxy when detailed history isn't available. */
+export function calculateStabilityGrade(
+  persistenceGrade?: string,
+  aliveHours?: number,
+): string {
+  if (aliveHours !== undefined && aliveHours >= 168) return 'A';
+  if (aliveHours !== undefined && aliveHours >= 72) return 'B';
+  if (persistenceGrade === 'A' || persistenceGrade === 'B') return persistenceGrade;
+  if (persistenceGrade === 'C') return 'C';
+  if (persistenceGrade === 'D') return 'D';
+  return 'F';
+}
+
+/** Estimate alive hours from persistence grade. */
+export function estimateAliveHours(persistenceGrade?: string): number {
+  switch (persistenceGrade) {
+    case 'A': return 168; // 7d
+    case 'B': return 72;  // 3d
+    case 'C': return 24;  // 1d
+    case 'D': return 6;
+    default: return 0;
+  }
+}
+
+/** Win rate mapped from persistence grade. */
+export function estimateWinRate30d(persistenceGrade?: string): number {
+  switch (persistenceGrade) {
+    case 'A': return 0.85;
+    case 'B': return 0.70;
+    case 'C': return 0.50;
+    case 'D': return 0.30;
+    default: return 0.10;
+  }
+}
+
+export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): ArbitrageOpportunity[] {
+  const opportunities: ArbitrageOpportunity[] = [];
+
+  // Group by canonical pair key (so different exchange symbol formats match)
+  const pairsMap = new Map<string, ExchangeResult[]>();
+  scanResults.forEach((item) => {
+    const key = canonicalPairKey(item.contract);
+    if (!key) return;
+    if (!pairsMap.has(key)) {
+      pairsMap.set(key, []);
+    }
+    pairsMap.get(key)!.push(item);
+  });
+
+  pairsMap.forEach((items) => {
+    if (items.length < 2) return;
+
+    const pair = formatPair(items[0].contract);
+
+    // Compare each exchange pair
+    for (let i = 0; i < items.length; i++) {
+      for (let j = i + 1; j < items.length; j++) {
+        const a = items[i];
+        const b = items[j];
+
+        // Don't compare an exchange against itself
+        if (a.exchange === b.exchange) continue;
+        // Use normalized hourly rates for comparison
+        const fundingA_per_hour = a.funding_rate_per_hour || 0;
+        const fundingB_per_hour = b.funding_rate_per_hour || 0;
+        const fundingA_per_day = a.funding_rate_per_day || 0;
+        const fundingB_per_day = b.funding_rate_per_day || 0;
+
+        // Calculate difference using normalized rates
+        const difference = Math.abs(fundingA_per_hour - fundingB_per_hour);
+        const difference_per_day = Math.abs(fundingA_per_day - fundingB_per_day);
+        
+        // Percentage difference (relative to smaller rate)
+        const minRate = Math.min(Math.abs(fundingA_per_hour), Math.abs(fundingB_per_hour));
+        const percentageDiff = minRate > 0 ? (difference / minRate) * 100 : 0;
+
+        // Interval info
+        const intervalA_hours = a.funding_interval_hours || 8;
+        const intervalB_hours = b.funding_interval_hours || 8;
+        const intervalMismatch = Math.abs(intervalA_hours - intervalB_hours) > 1;
+
+        // Only compare contracts with the SAME funding interval. Comparing e.g.
+        // an 8h contract against a 24h one via per-hour normalization produces
+        // misleading, non-collectible "opportunities", so skip mismatches.
+        if (intervalMismatch) continue;
+
+        // Minimum threshold: 0.001% per hour difference
+        if (difference > 0.00001) {
+          const opp: ArbitrageOpportunity = {
+            pair,
+            exchangeA: a.exchange,
+            exchangeB: b.exchange,
+            fundingA: a.currentFunding,
+            fundingB: b.currentFunding,
+            fundingA_per_hour,
+            fundingB_per_hour,
+            fundingA_per_day,
+            fundingB_per_day,
+            intervalA_hours,
+            intervalB_hours,
+            intervalMismatch,
+            difference,
+            difference_per_day,
+            percentageDiff,
+            volumeA: a.volume_24h_settle,
+            volumeB: b.volume_24h_settle,
+            markPriceA: a.mark_price,
+            markPriceB: b.mark_price,
+            opportunity:
+              fundingA_per_hour > fundingB_per_hour
+                ? `SHORT on ${a.exchange}, LONG on ${b.exchange}`
+                : `LONG on ${a.exchange}, SHORT on ${b.exchange}`,
+            profit: calculateRealProfit({
+              exchangeA: a.exchange,
+              exchangeB: b.exchange,
+              difference,
+              difference_per_day,
+              volumeA: a.volume_24h_settle,
+              volumeB: b.volume_24h_settle,
+            }),
+            risk: assessRisk({
+              volumeA: a.volume_24h_settle,
+              volumeB: b.volume_24h_settle,
+              percentageDiff,
+              difference,
+              intervalA_hours,
+              intervalB_hours,
+              intervalMismatch,
+            }),
+            score: 0,
+            timestamp: Date.now(),
+          };
+            opp.score = calculateOpportunityScore(opp);
+            // Attach new metrics v2
+            const dailySpread = opp.difference_per_day || 0;
+            opp.netApr = calculateNetApr(opp.profit?.annualReturn || 0);
+            opp.paybackDays = calculatePaybackDays(dailySpread, opp.exchangeA, opp.exchangeB, opp.volumeA, opp.volumeB);
+            const pg = getPersistenceGrade(opp.pair, opp.exchangeA, opp.exchangeB);
+            opp.persistenceGrade = pg;
+            opp.stabilityGrade = calculateStabilityGrade(pg, estimateAliveHours(pg));
+            opp.aliveHours = estimateAliveHours(pg);
+            opp.winRate30d = estimateWinRate30d(pg);
+          opportunities.push(opp);
+        }
+      }
+    }
+  });
+
+  // Sort by score (best opportunities first)
+  const sorted = opportunities.sort((a, b) => b.score - a.score);
+  // Record this scan for persistence tracking
+  recordScan(sorted);
+  return sorted;
+}
+
+// ==================== Alert Management ====================
+
+export async function createArbitrageAlert(
+  userId: string,
+  data: {
+    pair: string;
+    exchangeA: string;
+    exchangeB: string;
+    condition?: string;
+    threshold?: number;
+    direction?: string;
+    cooldown?: number;
+  }
+) {
+  const count = await prisma.arbitrageAlert.count({ where: { userId } });
+  if (count >= 50) {
+    throw new Error('Maximum 50 arbitrage alerts per user');
+  }
+
+  return prisma.arbitrageAlert.create({
+    data: {
+      userId,
+      pair: data.pair,
+      exchangeA: data.exchangeA,
+      exchangeB: data.exchangeB,
+      condition: data.condition || 'difference',
+      threshold: data.threshold || 0.002,
+      direction: data.direction || 'both',
+      cooldown: data.cooldown || 300000,
+    },
+  });
+}
+
+export async function getUserArbitrageAlerts(userId: string, limit: number = 50, offset: number = 0) {
+  const safeLimit = Math.min(Math.max(limit, 1), 200);
+  const safeOffset = Math.max(offset, 0);
+  const [alerts, total] = await Promise.all([
+    prisma.arbitrageAlert.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: safeLimit,
+      skip: safeOffset,
+    }),
+    prisma.arbitrageAlert.count({ where: { userId } }),
+  ]);
+  return { alerts, total, limit: safeLimit, offset: safeOffset };
+}
+
+export async function deleteArbitrageAlert(userId: string, alertId: string) {
+  const result = await prisma.arbitrageAlert.deleteMany({
+    where: { id: alertId, userId },
+  });
+  return result.count > 0;
+}
+
+export async function toggleArbitrageAlert(userId: string, alertId: string) {
+  const alert = await prisma.arbitrageAlert.findFirst({
+    where: { id: alertId, userId },
+  });
+  if (!alert) return null;
+
+  return prisma.arbitrageAlert.update({
+    where: { id: alertId },
+    data: { isActive: !alert.isActive },
+  });
+}
+
+export async function calculateProfit(opportunity: ArbitrageOpportunity, capital: number) {
+  const profit = calculateRealProfit({
+    exchangeA: opportunity.exchangeA,
+    exchangeB: opportunity.exchangeB,
+    difference: opportunity.difference,
+    difference_per_day: opportunity.difference_per_day,
+    volumeA: opportunity.volumeA,
+    volumeB: opportunity.volumeB,
+  }, capital);
+  
+  const risk = assessRisk({
+    volumeA: opportunity.volumeA,
+    volumeB: opportunity.volumeB,
+    percentageDiff: opportunity.percentageDiff,
+    difference: opportunity.difference,
+    intervalA_hours: opportunity.intervalA_hours,
+    intervalB_hours: opportunity.intervalB_hours,
+    intervalMismatch: opportunity.intervalMismatch,
+  });
+
+  return { profit, risk };
+}
