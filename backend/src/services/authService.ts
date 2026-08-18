@@ -5,7 +5,7 @@ import { config } from '../config/index.js';
 import { getRedis } from '../utils/redis.js';
 import { logger } from '../utils/logger.js';
 
-export type AuthProvider = 'telegram' | 'wallet' | 'google' | 'email';
+export type AuthProvider = 'telegram' | 'wallet' | 'google' | 'email' | 'guest';
 
 export interface AuthTokenPayload {
   sub: string; // user.telegramId
@@ -99,195 +99,184 @@ export interface ParsedSiweMessage {
   version: string;
   chainId?: string;
   nonce: string;
-  issuedAt?: string;
+  issuedAt: string;
   expirationTime?: string;
-  notBefore?: string;
 }
 
 /**
- * Parse an EIP-4361 SIWE message. We deliberately keep this minimal but strict:
- * a malformed message fails closed rather than silently accepting a login.
+ * Minimal SIWE (EIP-4361) message parser. Extracts the fields needed to verify
+ * the nonce, domain, and expiration before checking the signature.
  */
 export function parseSiweMessage(message: string): ParsedSiweMessage | null {
   try {
     const lines = message.split('\n');
-    // Line 1: "<domain> wants you to sign in with your Ethereum account:"
-    const domainMatch = lines[0]?.match(/^(.+?) wants you to sign in with your Ethereum account:$/);
+    if (lines.length < 5) return null;
+
+    // Line 0: "<domain> wants you to sign in with your Ethereum account:"
+    const domainMatch = lines[0].match(/^([^\s]+) wants you to sign in with your Ethereum account:$/);
     if (!domainMatch) return null;
-    const domain = domainMatch[1].trim();
+    const domain = domainMatch[1];
 
-    // Line 2: the wallet address (may be followed by a " (optional)" suffix).
-    const addressLine = (lines[1] || '').trim();
-    const address = addressLine.split(/\s+/)[0];
-    if (!address || !isAddress(address)) return null;
+    // Line 1: "<address>"
+    const address = lines[1].trim();
+    if (!isAddress(address)) return null;
 
-    // Remaining lines are an optional blank separator, then key: value fields.
-    const fields: Record<string, string> = {};
+    const result: Partial<ParsedSiweMessage> = {
+      domain,
+      address: getAddress(address.toLowerCase()),
+    };
+
+    // Subsequent key-value lines
     for (let i = 2; i < lines.length; i++) {
-      const line = lines[i];
-      if (!line.includes(':')) continue;
-      const idx = line.indexOf(':');
-      const key = line.slice(0, idx).trim();
-      const value = line.slice(idx + 1).trim();
-      if (key) fields[key] = value;
+      const line = lines[i].trim();
+      if (!line) continue;
+      const [k, ...vParts] = line.split(': ');
+      const v = vParts.join(': ');
+      if (!k || !v) continue;
+
+      switch (k) {
+        case 'URI':
+          result.uri = v;
+          break;
+        case 'Version':
+          result.version = v;
+          break;
+        case 'Chain ID':
+          result.chainId = v;
+          break;
+        case 'Nonce':
+          result.nonce = v;
+          break;
+        case 'Issued At':
+          result.issuedAt = v;
+          break;
+        case 'Expiration Time':
+          result.expirationTime = v;
+          break;
+      }
     }
 
-    if (!fields['Nonce']) return null;
-
-    return {
-      domain,
-      address,
-      statement: fields['Statement'],
-      uri: fields['URI'] || '',
-      version: fields['Version'] || '',
-      chainId: fields['Chain ID'],
-      nonce: fields['Nonce'],
-      issuedAt: fields['Issued At'],
-      expirationTime: fields['Expiration Time'],
-      notBefore: fields['Not Before'],
-    };
-  } catch {
-    // Malformed JWT — always returns null (safe default).
+    if (!result.nonce || !result.uri || !result.version || !result.issuedAt) {
+      return null;
+    }
+    return result as ParsedSiweMessage;
+  } catch (err) {
+    logger.debug({ err: (err as Error).message }, 'Failed to parse SIWE message');
     return null;
   }
 }
 
-export interface SiweVerifyResult {
-  ok: boolean;
-  address?: string;
-  reason?: string;
-}
-
-const MAX_SIWE_MESSAGE_LENGTH = 4096;
-
-/**
- * Verify a SIWE signature. Recovers the signer address from the personal_sign
- * signature and checks it against the address in the message, the stored nonce,
- * the expected domain, and the message expiry.
- */
 export async function verifySiweSignature(
   message: string,
   signature: string
-): Promise<SiweVerifyResult> {
-  if (message.length > MAX_SIWE_MESSAGE_LENGTH) {
-    return { ok: false, reason: 'Message too long' };
-  }
+): Promise<{ ok: boolean; address?: string; reason?: string }> {
   const parsed = parseSiweMessage(message);
-  if (!parsed) return { ok: false, reason: 'Malformed SIWE message' };
-
-  if (parsed.domain !== config.webAuth.domain) {
-    return { ok: false, reason: `Unexpected domain: ${parsed.domain}` };
+  if (!parsed) {
+    return { ok: false, reason: 'Invalid SIWE message format' };
   }
 
-  if (parsed.version !== '1') {
-    return { ok: false, reason: 'Unsupported SIWE version' };
+  // Domain check: ensure the signature was created for OUR website.
+  if (config.webAuth.domain && parsed.domain !== config.webAuth.domain) {
+    // In dev / preview environments accept localhost / 127.0.0.1 as well.
+    const isLocal =
+      config.nodeEnv !== 'production' &&
+      (parsed.domain.startsWith('localhost') || parsed.domain.startsWith('127.0.0.1'));
+    if (!isLocal) {
+      return { ok: false, reason: `Domain mismatch: expected ${config.webAuth.domain}, got ${parsed.domain}` };
+    }
   }
 
-  // Expiry / not-before checks.
-  const nowMs = Date.now();
-  if (parsed.notBefore && new Date(parsed.notBefore).getTime() > nowMs) {
-    return { ok: false, reason: 'Message not yet valid' };
-  }
+  // Expiration check (if specified in message)
   if (parsed.expirationTime) {
-    const expMs = new Date(parsed.expirationTime).getTime();
-    if (!Number.isNaN(expMs) && expMs < nowMs) {
-      return { ok: false, reason: 'Message expired' };
-    }
-  } else if (parsed.issuedAt) {
-    // Fallback: enforce a max age even when an explicit Expiration Time is absent.
-    const issued = new Date(parsed.issuedAt).getTime();
-    if (!Number.isNaN(issued) && nowMs - issued > config.webAuth.siweExpirationMinutes * 60 * 1000) {
-      return { ok: false, reason: 'Message too old' };
+    const expires = new Date(parsed.expirationTime).getTime();
+    if (Date.now() > expires) {
+      return { ok: false, reason: 'SIWE message expired' };
     }
   }
 
-  // Recover the signer.
-  let recovered: string;
-  try {
-    recovered = verifyMessage(message, signature);
-  } catch (err) {
-    return { ok: false, reason: `Invalid signature: ${(err as Error).message}` };
-  }
-
-  const expected = getAddress(parsed.address.toLowerCase());
-  if (getAddress(recovered.toLowerCase()) !== expected) {
-    return { ok: false, reason: 'Signature does not match address' };
-  }
-
-  // Nonce must match (and is single-use).
-  const nonceOk = await consumeSiweNonce(expected, parsed.nonce);
-  if (!nonceOk) {
+  // Nonce check — consume single-use nonce from Redis/memory.
+  const nonceValid = await consumeSiweNonce(parsed.address, parsed.nonce);
+  if (!nonceValid) {
     return { ok: false, reason: 'Invalid or expired nonce' };
   }
 
-  return { ok: true, address: expected };
-}
+  // Cryptographic signature recovery via ethers
+  try {
+    const recoveredAddress = verifyMessage(message, signature);
+    const normalizedRecovered = getAddress(recoveredAddress.toLowerCase());
+    const normalizedExpected = getAddress(parsed.address.toLowerCase());
 
-// ---------------------------------------------------------------------------
-// Google id_token verification
-// ---------------------------------------------------------------------------
-
-const GOOGLE_CERTS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
-let googleCertsCache: { keys: Record<string, crypto.KeyObject>; fetchedAt: number } | null = null;
-
-async function getGoogleSigningKeys(): Promise<Record<string, crypto.KeyObject>> {
-  const now = Date.now();
-  if (googleCertsCache && now - googleCertsCache.fetchedAt < 60 * 60 * 1000) {
-    return googleCertsCache.keys;
-  }
-  const res = await fetch(GOOGLE_CERTS_URL);
-  if (!res.ok) throw new Error(`Failed to fetch Google certs: ${res.status}`);
-  const data = (await res.json()) as { keys: Array<{ kid: string; kty: string; n?: string; e?: string; alg?: string }> };
-  const keys: Record<string, crypto.KeyObject> = {};
-  for (const k of data.keys) {
-    if (k.kty === 'RSA' && k.n && k.e) {
-      try {
-        keys[k.kid] = crypto.createPublicKey({ format: 'jwk', key: { kty: 'RSA', n: k.n, e: k.e } });
-      } catch {
-        /* skip unusable key */
-      }
+    if (normalizedRecovered !== normalizedExpected) {
+      return { ok: false, reason: 'Recovered address does not match message address' };
     }
+    return { ok: true, address: normalizedRecovered };
+  } catch (err) {
+    return { ok: false, reason: `Signature recovery failed: ${(err as Error).message}` };
   }
-  googleCertsCache = { keys, fetchedAt: now };
-  return keys;
 }
 
-export interface GoogleVerifyResult {
-  ok: boolean;
-  sub?: string;
+// ---------------------------------------------------------------------------
+// Google Sign-In (ID token verification via tokeninfo endpoint)
+// ---------------------------------------------------------------------------
+
+export interface GoogleProfile {
+  sub: string; // unique Google user ID
   email?: string;
-  reason?: string;
+  emailVerified?: boolean;
+  name?: string;
+  picture?: string;
 }
 
-export async function verifyGoogleIdToken(idToken: string): Promise<GoogleVerifyResult> {
+/**
+ * Verify a Google ID token by calling Google's tokeninfo endpoint. Does not
+ * require the heavy google-auth-library SDK (zero extra dependencies).
+ */
+export async function verifyGoogleIdToken(idToken: string): Promise<GoogleProfile | null> {
   if (!config.google.clientId) {
-    return { ok: false, reason: 'Google login is not configured' };
+    logger.warn('Google Sign-In attempted but GOOGLE_CLIENT_ID is not configured');
+    return null;
   }
 
   try {
-    const headerB64 = idToken.split('.')[0];
-    if (!headerB64) return { ok: false, reason: 'Malformed id_token' };
-    const header = JSON.parse(Buffer.from(headerB64, 'base64').toString('utf8')) as { kid?: string; alg?: string };
-    if (header.alg !== 'RS256') return { ok: false, reason: 'Unexpected algorithm' };
-
-    const keys = await getGoogleSigningKeys();
-    const key = header.kid ? keys[header.kid] : undefined;
-    if (!key) return { ok: false, reason: 'Unknown signing key' };
-
-    const payload = jwt.verify(idToken, key, {
-      algorithms: ['RS256'],
-      audience: config.google.clientId,
-      issuer: ['https://accounts.google.com', 'accounts.google.com'],
-    }) as { sub: string; email?: string; email_verified?: boolean };
-
-    // Reject unverified Google accounts — otherwise anyone could forge an
-    // id_token claim with a random sub and impersonate a user.
-    if (payload.email_verified !== true) {
-      return { ok: false, reason: 'Google email is not verified' };
+    const url = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`;
+    const res = await fetch(url, { method: 'GET' });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      logger.warn({ status: res.status, body }, 'Google tokeninfo endpoint returned error');
+      return null;
     }
 
-    return { ok: true, sub: payload.sub, email: payload.email };
+    const payload = (await res.json()) as any;
+
+    // Verify audience matches our Client ID
+    if (payload.aud !== config.google.clientId) {
+      logger.warn({ aud: payload.aud, expected: config.google.clientId }, 'Google token audience mismatch');
+      return null;
+    }
+
+    // Verify issuer is Google
+    const validIssuers = ['accounts.google.com', 'https://accounts.google.com'];
+    if (!validIssuers.includes(payload.iss)) {
+      logger.warn({ iss: payload.iss }, 'Google token issuer invalid');
+      return null;
+    }
+
+    // Expiry check
+    const exp = parseInt(payload.exp, 10) * 1000;
+    if (Date.now() > exp) {
+      logger.warn('Google ID token expired');
+      return null;
+    }
+
+    return {
+      sub: payload.sub,
+      email: payload.email,
+      emailVerified: payload.email_verified === 'true' || payload.email_verified === true,
+      name: payload.name || payload.given_name,
+      picture: payload.picture,
+    };
   } catch (err) {
-    return { ok: false, reason: `Google verification failed: ${(err as Error).message}` };
+    logger.error({ err: (err as Error).message }, 'Failed to verify Google ID token');
+    return null;
   }
 }
