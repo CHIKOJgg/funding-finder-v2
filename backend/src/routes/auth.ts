@@ -265,7 +265,7 @@ const credentialLimiter = rateLimit({
     if (typeof email === 'string' && email.trim()) {
       return `cred:${email.trim().toLowerCase()}`;
     }
-    return `cred:ip:${ipKeyGenerator(req.ip || 'unknown')}` logic;
+    return `cred:ip:${ipKeyGenerator(req.ip || 'unknown')}`;
   },
   message: { ok: false, error: 'Too many attempts. Try again later.' },
 });
