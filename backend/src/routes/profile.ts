@@ -3,9 +3,10 @@ import { prisma } from '../services/prisma.js';
 import { AuthenticatedRequest } from '../middleware/auth.js';
 import { logger } from '../utils/logger.js';
 import { sendError } from '../middleware/errorHandler.js';
-import { enforceSubscriptionExpiry } from '../middleware/subscription.js';
+import { enforceSubscriptionExpiry, getSubscriptionLimits } from '../middleware/subscription.js';
 import { getPaymentHistory, getWithdrawalHistory } from '../services/paymentService.js';
 import { config } from '../config/index.js';
+import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 
 const router = Router();
 
@@ -21,6 +22,9 @@ router.get('/profile', async (req: AuthenticatedRequest, res) => {
     if (!user) {
       return sendError(res, 404, 'User not found', 'USER_NOT_FOUND');
     }
+
+    const limits = await getSubscriptionLimits(userId).catch(() => ({ maxExchanges: 4 }));
+    const allowedExchanges = limits.maxExchanges || 4;
 
     // Parallelize all secondary lookups so total DB latency is minimal
     const [referralCount, referredUsers, paymentsRes, withdrawalsRes, arbAlertsCount, genAlertsCount] = await Promise.all([
@@ -60,7 +64,9 @@ router.get('/profile', async (req: AuthenticatedRequest, res) => {
         trialEndsAt: user.trialEndsAt,
         totalScans: Math.max(user.trialScans || 0, 1),
         totalAlerts,
-        uniqueExchanges: 21,
+        uniqueExchanges: allowedExchanges,
+        allowedExchanges,
+        totalSupportedExchanges: SUPPORTED_EXCHANGES.length,
       },
       subscription: user.subscription,
       subscriptionExpiresAt: user.subscriptionExpiresAt,

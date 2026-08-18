@@ -23,7 +23,7 @@ const SCAN_STALE_MS = 60_000;
 const VALID_EXCHANGES = SUPPORTED_EXCHANGES;
 
 const scanSchema = z.object({
-  exchanges: z.array(z.enum(SUPPORTED_EXCHANGES as [string, ...string[]])).min(1).max(25).default(['gate']),
+  exchanges: z.array(z.enum(SUPPORTED_EXCHANGES as [string, ...string[]])).min(1).max(SUPPORTED_EXCHANGES.length).default(['gate']),
 });
 
 router.post('/scan', requireSubscription('free'), validate(scanSchema), validateExchangeList, async (req: AuthenticatedRequest, res) => {
