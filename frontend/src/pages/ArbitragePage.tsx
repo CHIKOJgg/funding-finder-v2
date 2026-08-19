@@ -76,7 +76,7 @@ interface LiveFunding {
   nextApply: number;
 }
 
-function useArbLivePrices(opps: any[]): {
+function useArbLivePrices(opps: any[], enabled = true): {
   prices: Record<string, number>;
   funding: Record<string, LiveFunding>;
   exchangeLatencies: Record<string, number>;
@@ -101,19 +101,19 @@ function useArbLivePrices(opps: any[]): {
 
   // One request per tick for ALL exchanges via the unified /live/batch
   // endpoint — this is the fix that stops per-exchange polling from tripping
-  // the rate limiter when many exchanges are selected. The response is keyed by
-  // `${exchange}:${SYMBOL}` so it maps straight onto livePriceKey.
+  // the rate limiter when many exchanges are selected.
   const depKey = useMemo(
     () => Object.entries(byExchange).map(([ex, syms]) => `${ex}:${[...syms].sort().join(',')}`).sort().join('|'),
     [byExchange]
   );
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     const requests = Object.entries(byExchange).map(([ex, syms]) => ({ exchange: ex, symbols: syms }));
     const load = async () => {
       try {
-        if (requests.length === 0) return;
+        if (requests.length === 0 || !enabled || document.hidden) return;
         const res: any = await apiClient.getLiveBatch(requests);
         if (!res?.ok) return;
         const nextPrices: Record<string, number> = {};
@@ -140,12 +140,12 @@ function useArbLivePrices(opps: any[]): {
       }
     };
     load();
-    const id = setInterval(load, 10_000);
+    const id = setInterval(load, 15_000);
     return () => {
       cancelled = true;
       clearInterval(id);
     };
-  }, [depKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [depKey, enabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { prices, funding, exchangeLatencies, latencyMs, lastUpdated };
 }
@@ -319,7 +319,7 @@ export function ArbitragePage() {
     () => (isGuest ? filteredOpportunities.slice(0, 1) : filteredOpportunities.slice(0, visibleCount)),
     [filteredOpportunities, visibleCount, isGuest]
   );
-  const { prices: priceMap, funding: fundingMap, exchangeLatencies, latencyMs: liveLatency, lastUpdated: liveFetchedAt } = useArbLivePrices(visibleOpportunities);
+  const { prices: priceMap, funding: fundingMap, exchangeLatencies, latencyMs: liveLatency, lastUpdated: liveFetchedAt } = useArbLivePrices(visibleOpportunities, activeTab === 'opportunities');
 
   return (
     <div className="px-3 py-4 sm:px-4">

@@ -20,14 +20,15 @@ import { SupportButton } from './components/SupportModal';
 import { logger as clientLogger } from './utils/logger';
 import { track } from './utils/analytics';
 
-const MainPage = React.lazy(() => import('./pages/MainPage').then(m => ({ default: m.MainPage })));
-const ArbitragePage = React.lazy(() => import('./pages/ArbitragePage').then(m => ({ default: m.ArbitragePage })));
-const ProfilePage = React.lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
+import { MainPage } from './pages/MainPage';
+import { ArbitragePage } from './pages/ArbitragePage';
+import { ProfilePage } from './pages/ProfilePage';
+import { PortfolioPage } from './pages/PortfolioPage';
+import { SettingsPage } from './pages/SettingsPage';
+
 const TermsPage = React.lazy(() => import('./pages/TermsPage').then(m => ({ default: m.TermsPage })));
 const PrivacyPage = React.lazy(() => import('./pages/PrivacyPage').then(m => ({ default: m.PrivacyPage })));
 const AdminPage = React.lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
-const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
-const PortfolioPage = React.lazy(() => import('./pages/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
 const QrScanPage = React.lazy(() => import('./pages/QrScanPage').then(m => ({ default: m.QrScanPage })));
 const PublicPage = React.lazy(() => import('./pages/PublicPage').then(m => ({ default: m.PublicPage })));
 

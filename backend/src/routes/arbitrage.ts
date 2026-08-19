@@ -241,12 +241,11 @@ router.get('/arbitrage/opportunities', async (req, res) => {
     // (the warm full-set cache counts as a superset), refresh in the background.
     let cached = getCachedScan(exchanges);
     if (!cached) {
-      // Cold start: a warm-up scan may already be running (or about to). Ride
-      // it instead of firing our own cold live scan — otherwise the user's
-      // request and the warm-up would scan concurrently and saturate the box.
+      // Cold start: a warm-up scan may already be running. Wait up to 2s for it,
+      // then proceed with a fast scan if still cold.
       const warm = getWarmupPromise();
       if (warm) {
-        await warm;
+        await Promise.race([warm, new Promise((r) => setTimeout(r, 2000))]);
         cached = getCachedScan(exchanges);
       }
     }
