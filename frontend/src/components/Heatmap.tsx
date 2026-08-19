@@ -109,7 +109,14 @@ export function Heatmap() {
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-lg font-semibold">{t('heatmap.title')}</h2>
         <span className="text-xs text-[var(--text-muted)]">
-          {data && <span>{t('heatmap.updated')} {new Date(data.generatedAt).toLocaleTimeString()}</span>}
+          {data && (
+            <span>
+              {t('heatmap.updated')}{' '}
+              {data.generatedAt && !isNaN(new Date(data.generatedAt).getTime())
+                ? new Date(data.generatedAt).toLocaleTimeString()
+                : '—'}
+            </span>
+          )}
         </span>
       </div>
 
