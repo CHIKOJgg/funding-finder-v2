@@ -13,7 +13,7 @@ import { logger } from './utils/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestId, requestLogger } from './middleware/requestLogger.js';
 import { perUserLimiter, createRateLimitStore } from './middleware/rateLimit.js';
-import { authenticate } from './middleware/auth.js';
+import { authenticate, optionalAuth } from './middleware/auth.js';
 import authRoutes from './routes/auth.js';
 import { startAlertEvaluator, stopAlertEvaluator } from './services/alertEvaluator.js';
 import { startDailySummary, stopDailySummary } from './services/dailySummary.js';
@@ -376,25 +376,12 @@ app.use('/api', qrPublicRouter);             // /api/qr-login/verify (no auth)
 // the webhook router itself.
 app.use('/api/webhook', webhookRoutes);
 
-// Routes with auth
 // Scan hits many exchange APIs and AI calls cost money, so each route group
 // carries its own strict per-user cap (defined inside the route files so the
 // limit only counts that group's requests).
 app.use('/api', authLimiter, authenticate, scanRoutes);
 app.use('/api', authLimiter, authenticate, aiRoutes);
 app.use('/api', authLimiter, authenticate, historyRoutes);
-app.use('/api', authLimiter, authenticate, analyticsRoutes);
-
-// Unified live price+funding snapshot: ONE request per poll tick (all
-// exchanges), so it must be allowed far more often than the per-exchange
-// /price/batch + /funding/batch it replaced. Cap is sized for ~1 call/10s
-// per visible tab with generous headroom. Auth + global limiter still apply.
-app.use('/api/live/batch', authLimiter, authenticate, perUserLimiter(200, 15 * 60 * 1000, 'live-batch'));
-
-// Admin routes (require admin role). Mounted under /api/admin so the global
-// `requireAdmin` inside admin.ts only guards /api/admin/* and does NOT swallow
-// ordinary /api routes (profile, watchlist, trial, funding, …) mounted later.
-app.use('/api/admin', authenticate, adminRoutes);
 
 // Debug/diagnostics routes (require admin role)
 app.use('/api/debug', authenticate, requireAdmin, debugRoutes);
@@ -408,7 +395,7 @@ app.use('/api/v1', authLimiter, authenticate, v1Routes);
 
 // Protected routes (auth required)
 app.use('/api/alerts', authLimiter, authenticate, alertsRoutes);
-app.use('/api', authLimiter, authenticate, arbitrageRoutes);
+app.use('/api', authLimiter, optionalAuth, arbitrageRoutes);
 app.use('/api', authLimiter, authenticate, paymentsRoutes);
 app.use('/api', authLimiter, authenticate, referralsRoutes);
 app.use('/api', authLimiter, authenticate, profileRoutes);
@@ -424,10 +411,17 @@ app.use('/api', authLimiter, authenticate, portfolioLiveRoutes);
 app.use('/api', authLimiter, authenticate, watchlistRoutes);
 app.use('/api', authLimiter, authenticate, portfolioRoutes);
 
-// Serve frontend in production only if a built frontend exists.
-// On Render the frontend is deployed as a separate Static Site, so the
-// API service runs without a local frontend/dist — in that case we expose
-// a small JSON status page at "/" instead of 404-ing.
+// Unified live price+funding snapshot: ONE request per poll tick (all
+// exchanges), so it must be allowed far more often than the per-exchange
+// /price/batch + /funding/batch it replaced. Cap is sized for ~1 call/10s
+// per visible tab with generous headroom. Auth + global limiter still apply.
+app.use('/api/live/batch', authLimiter, authenticate, perUserLimiter(200, 15 * 60 * 1000, 'live-batch'));
+
+// Admin routes (require admin role). Mounted under /api/admin so the global
+// `requireAdmin` inside admin.ts only guards /api/admin/* and does NOT swallow
+// ordinary /api routes (profile, watchlist, trial, funding, …) mounted later.
+app.use('/api/admin', authenticate, adminRoutes);
+
 const frontendPath = path.join(__dirname, '../../frontend/dist');
 const hasFrontend = fs.existsSync(path.join(frontendPath, 'index.html'));
 
