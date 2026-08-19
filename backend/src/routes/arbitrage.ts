@@ -122,8 +122,11 @@ router.post('/alerts/arbitrage', validate(createAlertSchema), async (req, res) =
       direction,
       cooldown,
     });
-    res.json({ ok: true, alert, message: 'Оповещение создано' });
+    logger.info(`Created arbitrage alert for user ${userId}: ${pair} ${exchangeA} vs ${exchangeB}`);
+    res.json({ ok: true, alert, message: 'Арбитражное оповещение создано успешно' });
   } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Create arbitrage alert error');
     sendError(res, 500, 'Failed to create alert', 'ARBITRAGE_ALERT_CREATE_ERROR');
   }
 });
@@ -131,10 +134,13 @@ router.post('/alerts/arbitrage', validate(createAlertSchema), async (req, res) =
 router.get('/alerts/arbitrage', async (req, res) => {
   try {
     const userId = (req as AuthenticatedRequest).userId!;
-    const alerts = await getUserArbitrageAlerts(userId);
-    res.json({ ok: true, alerts });
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+    const result = await getUserArbitrageAlerts(userId, limit, offset);
+    res.json({ ok: true, ...result });
   } catch (e) {
-    sendError(res, 500, 'Failed to fetch alerts', 'ARBITRAGE_ALERTS_FETCH_ERROR');
+    const error = e as Error;
+    sendError(res, 500, 'Failed to fetch alerts', 'ARBITRAGE_ALERT_FETCH_ERROR');
   }
 });
 
@@ -302,170 +308,344 @@ router.get('/arbitrage/opportunities', async (req, res) => {
 router.post('/arbitrage/calculate-profit', requireSubscription('pro'), validate(calculateProfitSchema), async (req, res) => {
   try {
     const { opportunity, capital } = req.body;
-    const profit = calculateProfit(opportunity, capital);
-    res.json({ ok: true, profit });
+    const result = await calculateProfit(opportunity, capital);
+    res.json({
+      ok: true,
+      profit: result.profit,
+      risk: result.risk,
+      calculation: {
+        capital,
+        netHourly: result.profit.netHourly,
+        netDaily: result.profit.netDaily,
+        netAnnual: result.profit.netAnnual,
+        hourlyROI: result.profit.hourlyReturn,
+        annualROI: result.profit.annualReturn,
+      },
+    });
   } catch (e) {
-    sendError(res, 500, 'Failed to calculate profit', 'ARBITRAGE_PROFIT_CALC_ERROR');
+    const error = e as Error;
+    logger.error({ err: error }, 'Profit calculation error');
+    sendError(res, 500, 'Profit calculation failed', 'PROFIT_CALC_ERROR');
   }
 });
 
-router.get('/arbitrage/backtest', async (req: Request, res: Response, next: NextFunction) => {
+const backtestSchema = z.object({
+  pair: z.string().min(1),
+  exchangeA: z.string().min(1),
+  exchangeB: z.string().min(1),
+  days: z.coerce.number().min(7).max(90).optional().default(30),
+  capital: z.coerce.number().min(100).max(1_000_000).optional().default(1000),
+});
+
+// Pair-specific backtest: compute historical arbitrage returns for a specific
+// pair + exchange combination using the FundingHistory data the scanner stores.
+// GET /api/arbitrage/backtest?pair=BTC/USDT&exchangeA=binance&exchangeB=bybit&days=30&capital=1000
+router.get('/arbitrage/backtest', requireSubscription('pro'), validate(backtestSchema, 'query'), async (req, res) => {
   try {
-    const pair = (req.query.pair as string || '').toUpperCase();
-    const exchangeA = (req.query.exchangeA as string || '').toLowerCase();
-    const exchangeB = (req.query.exchangeB as string || '').toLowerCase();
-    const capital = parseFloat(req.query.capital as string) || 1000;
-    const days = Math.min(parseInt(req.query.days as string) || 30, 90);
+    const { pair, exchangeA, exchangeB, days, capital } = req.query as unknown as {
+      pair: string;
+      exchangeA: string;
+      exchangeB: string;
+      days: number;
+      capital: number;
+    };
 
     if (!pair || !exchangeA || !exchangeB) {
-      return sendError(res, 400, 'pair, exchangeA, exchangeB required', 'VALIDATION_ERROR');
+      return res.status(400).json({ ok: false, error: 'pair, exchangeA, exchangeB are required' });
     }
 
-    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    // Pro users capped at 30 days; Pro+ gets the full 90-day range.
+    const authUserId = (req as AuthenticatedRequest).userId!;
+    const planLimits = await getSubscriptionLimits(authUserId);
+    const effectiveDays = Math.min(days || 30, planLimits.tier === 'proplus' ? 90 : 30);
+    if (effectiveDays < (days || 30)) {
+      logger.info({ userId: authUserId, requestedDays: days, capped: effectiveDays, tier: planLimits.tier }, 'Backtest days capped by plan tier');
+    }
+
+    // Derive the canonical contract key from the pair. FundingHistory keys are
+    // stored under the exchanges' NATIVE contract names (gate:BTC_USDT,
+    // okx:BTC-USDT-SWAP, hyperliquid:BTC), so we canonicalize the stored keys
+    // and match the requested canonical pair ("BTC/USDT" -> "BTCUSDT").
+    const canonicalPair = canonicalPairKey(pair);
+    const since = new Date(Date.now() - effectiveDays * 24 * 60 * 60 * 1000);
 
     const [keyA, keyB] = await Promise.all([
-      resolveNativeKey(exchangeA, canonicalPairKey(pair)),
-      resolveNativeKey(exchangeB, canonicalPairKey(pair)),
+      resolveNativeKey(exchangeA, canonicalPair),
+      resolveNativeKey(exchangeB, canonicalPair),
     ]);
 
-    const [rowsA, rowsB] = await Promise.all([
-      prisma.fundingHistory.findMany({
-        where: {
-          key: keyA ?? { startsWith: `${exchangeA}:` },
-          timestamp: { gte: since },
-        },
-        orderBy: { timestamp: 'asc' },
-      }),
-      prisma.fundingHistory.findMany({
-        where: {
-          key: keyB ?? { startsWith: `${exchangeB}:` },
-          timestamp: { gte: since },
-        },
-        orderBy: { timestamp: 'asc' },
-      }),
-    ]);
-
-    if (rowsA.length === 0 && rowsB.length === 0) {
+    if (!keyA || !keyB) {
       return res.json({
         ok: true,
+        available: false,
         pair,
         exchangeA,
         exchangeB,
-        days,
-        dataPoints: 0,
-        totalProfit: 0,
-        avgSpreadPercent: 0,
-        winRate: 0,
-        dailyHistory: [],
-        message: 'No historical funding data found for this pair/exchange combination',
+        days: effectiveDays,
+        capital,
+        message: 'Insufficient history data',
       });
     }
 
-    const mapA = latestPerDay(rowsA);
-    const mapB = latestPerDay(rowsB);
+    const [histA, histB] = await Promise.all([
+      prisma.fundingHistory.findUnique({
+        where: { key: keyA },
+        include: {
+          records: {
+            where: { timestamp: { gte: since } },
+            orderBy: { timestamp: 'asc' },
+          },
+        },
+      }),
+      prisma.fundingHistory.findUnique({
+        where: { key: keyB },
+        include: {
+          records: {
+            where: { timestamp: { gte: since } },
+            orderBy: { timestamp: 'asc' },
+          },
+        },
+      }),
+    ]);
 
-    const allDays = Array.from(new Set([...mapA.keys(), ...mapB.keys()])).sort();
+    const recordsA = histA?.records || [];
+    const recordsB = histB?.records || [];
 
-    let totalProfit = 0;
-    let winningDays = 0;
-    let spreadSum = 0;
-    let matchedDays = 0;
+    if (recordsA.length === 0 || recordsB.length === 0) {
+      return res.json({
+        ok: true,
+        available: false,
+        pair,
+        exchangeA,
+        exchangeB,
+        days: effectiveDays,
+        capital,
+        message: 'Insufficient history data',
+      });
+    }
 
-    const dailyHistory: Array<{
-      date: string;
-      rateA: number;
-      rateB: number;
-      spread: number;
-      profitUsdt: number;
-    }> = [];
+    // Group records by day, taking the latest rate each day per exchange
+    const dayMapA = latestPerDay(recordsA);
+    const dayMapB = latestPerDay(recordsB);
 
-    for (const d of allDays) {
-      const rateA = mapA.get(d) ?? 0;
-      const rateB = mapB.get(d) ?? 0;
+    // Compute daily spread (abs difference) and cumulative profit
+    const dailyResults: { date: string; spread: number; profitUsd: number }[] = [];
+    let cumulativeSpread = 0;
+    let daysWithSpread = 0;
+    let daysWithData = 0;
+    let maxDrawdown = 0;
+    let peak = 0;
+
+    // Fee constants (taker)
+    const feeA = 0.0005; // default
+    const feeB = 0.0005;
+    const oneTimeCostPct = (feeA + feeB) * 2; // entry + exit on both legs
+
+    // Entry+exit fees are a ONE-TIME cost per position, not per day: deduct
+    // them from the first profitable day only (the old code charged them every
+    // day, understating total profit by (days-1) x fees).
+    let oneTimeCostApplied = false;
+
+    for (const [day, rateA] of dayMapA) {
+      const rateB = dayMapB.get(day);
+      if (rateB == null) continue;
+      daysWithData += 1;
+
       const spread = Math.abs(rateA - rateB);
+      if (spread <= 0) continue;
 
-      if (mapA.has(d) && mapB.has(d)) {
-        matchedDays++;
-        spreadSum += spread;
+      cumulativeSpread += spread;
+      daysWithSpread += 1;
+
+      const grossProfit = capital * spread;
+      let netProfit = grossProfit;
+      if (!oneTimeCostApplied) {
+        netProfit = grossProfit - capital * oneTimeCostPct;
+        oneTimeCostApplied = true;
       }
 
-      const profitUsdt = capital * spread;
-      totalProfit += profitUsdt;
-      if (spread > 0) winningDays++;
+      dailyResults.push({ date: day, spread, profitUsd: netProfit });
 
-      dailyHistory.push({
-        date: d,
-        rateA,
-        rateB,
-        spread,
-        profitUsdt,
-      });
+      // Drawdown tracking
+      const totalPnl = dailyResults.reduce((s, d) => s + d.profitUsd, 0);
+      if (totalPnl > peak) peak = totalPnl;
+      const dd = peak - totalPnl;
+      if (dd > maxDrawdown) maxDrawdown = dd;
     }
 
-    const dataPoints = dailyHistory.length;
-    const avgSpreadPercent = matchedDays > 0 ? (spreadSum / matchedDays) * 100 : 0;
-    const winRate = dataPoints > 0 ? (winningDays / dataPoints) * 100 : 0;
+    const totalProfit = dailyResults.reduce((s, d) => s + d.profitUsd, 0);
+    const winDays = dailyResults.filter(d => d.profitUsd > 0).length;
+    const winRate = dailyResults.length > 0 ? (winDays / dailyResults.length) * 100 : 0;
+    const cumulativePct = (cumulativeSpread * 100);
+    // Annualize over the whole observation window (days where both exchanges
+    // had data), not just the days with a positive spread — the old formula
+    // inflated the result by ignoring flat/zero-spread days.
+    const annualizedPct = daysWithData > 0 ? (cumulativePct / daysWithData) * 365 : 0;
 
     return res.json({
       ok: true,
+      available: true,
       pair,
       exchangeA,
       exchangeB,
-      days,
+      days: effectiveDays,
       capital,
-      dataPoints,
-      totalProfit: Math.round(totalProfit * 100) / 100,
-      avgSpreadPercent: Math.round(avgSpreadPercent * 10000) / 10000,
-      winRate: Math.round(winRate * 10) / 10,
-      dailyHistory,
+      daysWithSpread,
+      totalDays: dailyResults.length,
+      cumulativeSpread,
+      cumulativePct,
+      annualizedPct,
+      totalProfit,
+      winRate,
+      maxDrawdown,
+      daily: dailyResults.slice(-30), // last 30 days max for payload size
     });
-  } catch (err) {
-    logger.error('Backtest error:', err);
-    return sendError(res, 500, 'Failed to compute backtest', 'BACKTEST_ERROR');
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Backtest error');
+    sendError(res, 500, 'Backtest failed', 'BACKTEST_ERROR');
   }
 });
 
-const SPOT_FUTURES_STALE_MS = 60_000;
-let sfCache: { data: any[]; ts: number } | null = null;
-
-router.get('/spot-futures', async (req: Request, res: Response, next: NextFunction) => {
+// Spot-Futures (cash-and-carry) snapshot for a single pair: spot price, perp
+// mark, basis %, funding rate and the annualized yield of longing spot +
+// shorting the perp to collect funding.
+router.get('/arbitrage/spot-futures', requireSubscription('pro'), async (req, res) => {
   try {
-    const rawExchanges = req.query.exchanges as string;
-    let requestedExchanges: string[] | undefined;
+    const exchange = (req.query.exchange as string) || 'binance';
+    const pair = (req.query.pair as string) || 'BTCUSDT';
+    const data = await getSpotFutures(exchange, pair);
+    res.json({ ok: true, ...data, supportedExchanges: SF_SUPPORTED_EXCHANGES });
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Spot-futures error');
+    sendError(res, 500, 'Spot-futures query failed', 'SPOT_FUTURES_ERROR');
+  }
+});
 
-    if (rawExchanges) {
-      const requested = rawExchanges.split(',').map((e) => e.trim().toLowerCase());
-      const valid = requested.filter((e) => SF_SUPPORTED_EXCHANGES.includes(e));
-      if (valid.length === 0) {
-        return res.status(400).json({
-          ok: false,
-          error: `None of the requested exchanges are supported for spot-futures. Supported: ${SF_SUPPORTED_EXCHANGES.join(', ')}`,
-        });
-      }
-      requestedExchanges = valid;
+// Unified live snapshot: ONE request that resolves the live price AND funding
+// rate for every (exchange, symbol) the client is currently showing, across all
+// exchanges. This collapses what used to be N separate /price/batch + N
+// /funding/batch GETs (one pair per exchange) into a single call per tick —
+// the core fix for the 429 storm that previously tripped any per-user budget
+// the moment more than a handful of exchanges were selected.
+//
+// Body: { requests: [{ exchange, symbols: [...] }] }
+// Response: {
+//   prices:  { "binance:BTCUSDT": 12345.6, ... },
+//   funding: { "binance:BTCUSDT": { ratePerHour, intervalHours, rawRate, nextApply }, ... }
+// }
+// Keys are `${exchange}:${SYMBOL.toUpperCase()}` so the frontend can index
+// directly without re-keying per exchange.
+const LIVE_BATCH_MAX_EXCHANGES = 30;
+const LIVE_BATCH_MAX_SYMBOLS_PER_EXCHANGE = 50;
+
+const liveBatchSchema = z.object({
+  requests: z.array(z.object({
+    exchange: z.string().min(1),
+    symbols: z.array(z.string().min(1)).max(LIVE_BATCH_MAX_SYMBOLS_PER_EXCHANGE),
+  })).max(LIVE_BATCH_MAX_EXCHANGES),
+});
+
+function validateLiveBatchExchanges(req: Request, res: Response, next: NextFunction) {
+  const requests = (req as any).body?.requests as Array<{ exchange: string; symbols: string[] }> | undefined;
+  if (!requests) return next();
+  const invalid = requests.filter((r) => !SUPPORTED_EXCHANGES.includes(r.exchange));
+  if (invalid.length > 0) {
+    return res.status(400).json({ ok: false, error: 'Invalid exchanges', invalid: invalid.map((r) => r.exchange) });
+  }
+  next();
+}
+
+router.post('/live/batch', validate(liveBatchSchema), validateLiveBatchExchanges, async (req, res) => {
+  try {
+    const requests = req.body.requests;
+    const prices: Record<string, number> = {};
+    const funding: Record<string, any> = {};
+
+    await Promise.all(
+      requests.map(async (r: any) => {
+        const exchange = r.exchange;
+        if (!SUPPORTED_EXCHANGES.includes(exchange)) return;
+        const symbols = r.symbols.map((s: string) => s.trim()).filter(Boolean);
+        if (symbols.length === 0) return;
+
+        const [priceMap, fundingMap] = await Promise.all([
+          getLivePriceBatch(exchange, symbols),
+          getLiveFundingBatch(exchange, symbols),
+        ]);
+        for (const [s, p] of Object.entries(priceMap as Record<string, number>)) {
+          if (typeof p === 'number' && isFinite(p) && p > 0) prices[`${exchange}:${s.toUpperCase()}`] = p;
+        }
+        for (const [s, f] of Object.entries(fundingMap as Record<string, any>)) {
+          if (f && typeof f.ratePerHour === 'number' && isFinite(f.ratePerHour)) {
+            funding[`${exchange}:${s.toUpperCase()}`] = f;
+          }
+        }
+      })
+    );
+
+    res.json({ ok: true, prices, funding });
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Live batch error');
+    sendError(res, 500, 'Live batch failed', 'LIVE_BATCH_ERROR');
+  }
+});
+
+// Batch live perp prices for the symbols the user is currently viewing on the
+// Funding list. Keys are the (uppercased) symbols passed in; only visible rows
+// are ever requested, so this stays cheap.
+router.get('/price/batch', async (req, res) => {
+  try {
+    const exchange = (req.query.exchange as string) || 'binance';
+    const symbolsParam = req.query.symbols as string;
+    const symbols = symbolsParam
+      ? symbolsParam.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 50)
+      : [];
+    if (symbols.length === 0) {
+      return res.json({ ok: true, prices: {} });
     }
-
-    if (
-      !requestedExchanges &&
-      sfCache &&
-      Date.now() - sfCache.ts < SPOT_FUTURES_STALE_MS
-    ) {
-      return res.json({ ok: true, basis: sfCache.data, cached: true });
+    const prices = await getLivePriceBatch(exchange, symbols);
+    const missing = symbols.filter((s) => prices[s.toUpperCase()] == null);
+    if (missing.length) {
+      // A missing price almost always means the exchange API is unreachable
+      // from this host (datacenter IP blocked / DNS / WAF) — not a code bug.
+      // Surfacing it makes "prices aren't live" diagnosable at a glance.
+      logger.warn({ exchange, missing }, `Live price batch: ${missing.length}/${symbols.length} symbols returned no price`);
     }
+    res.json({ ok: true, prices });
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Price batch error');
+    res.status(500).json({ ok: false, error: error.message || String(error) });
+  }
+});
 
-    const opportunities = await getSpotFutures(requestedExchanges);
-
-    if (!requestedExchanges) {
-      sfCache = { data: opportunities, ts: Date.now() };
+// Batch live funding rates for the symbols the user is currently viewing on the
+// Arbitrage cards. Returns { symbol: { ratePerHour, intervalHours, rawRate,
+// nextApply } } for every symbol that resolved. Keys are the (uppercased)
+// symbols passed in; only visible rows are ever requested, so this stays cheap.
+router.get('/funding/batch', async (req, res) => {
+  try {
+    const exchange = (req.query.exchange as string) || 'binance';
+    const symbolsParam = req.query.symbols as string;
+    const symbols = symbolsParam
+      ? symbolsParam.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 50)
+      : [];
+    if (symbols.length === 0) {
+      return res.json({ ok: true, funding: {} });
     }
-
-    return res.json({ ok: true, basis: opportunities });
-  } catch (err) {
-    logger.error('Spot-futures endpoint error:', err);
-    if (sfCache) {
-      return res.json({ ok: true, basis: sfCache.data, stale: true });
+    const funding = await getLiveFundingBatch(exchange, symbols);
+    const missing = symbols.filter((s) => funding[s.toUpperCase()] == null);
+    if (missing.length) {
+      logger.warn({ exchange, missing }, `Live funding batch: ${missing.length}/${symbols.length} symbols returned no rate`);
     }
-    return sendError(res, 500, 'Failed to fetch spot-futures opportunities', 'SPOT_FUTURES_ERROR');
+    res.json({ ok: true, funding });
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Funding batch error');
+    res.status(500).json({ ok: false, error: error.message || String(error) });
   }
 });
 

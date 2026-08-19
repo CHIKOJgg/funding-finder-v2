@@ -101,162 +101,127 @@ function withAffiliate(exchange: string, url: string): string {
   }
 }
 
-export function exchangeLabel(id: string): string {
-  return EXCHANGE_LABELS[id.toLowerCase()] || id.toUpperCase();
+/** Single source of truth — must match backend SUPPORTED_EXCHANGES. */
+export const ALL_EXCHANGES = [
+  'gate', 'binance', 'bybit', 'kucoin', 'mexc', 'okx',
+  'bitget', 'bingx', 'phemex', 'woo', 'hyperliquid', 'dydx',
+  'htx', 'blofin', 'aster', 'bluefin', 'kraken', 'coinbase',
+  'bitunix', 'orderly', 'aevo', 'apex', 'bitmart', 'coinex',
+  'coinw', 'cryptocom', 'deribit', 'drift', 'helix', 'paradex', 'weex',
+];
+// homepage instead of opening the trading pair.
+function normalizePerpSymbol(pair: string): string {
+  const base = normalizeBase(pair);
+  return base ? `${base}USDT` : '';
 }
 
-/**
- * Direct link to open a perpetual futures pair on an exchange.
- * Normalizes common pair formats (e.g. BTC_USDT, BTCUSDT, BTC-USDT)
- * to the exchange's specific URL structure.
- */
-export function getExchangeTradeUrl(exchange: string, pair: string): string {
-  const ex = exchange.toLowerCase();
-  // Strip slashes/underscores/dashes to get the clean symbols (BTC, USDT)
-  const clean = pair.replace(/[-/_]/g, '').toUpperCase();
-  const base = clean.replace(/USDT$|USD$|PERP$/i, '');
-  const quote = clean.endsWith('USD') ? 'USD' : 'USDT';
-
-  let rawUrl: string;
-  switch (ex) {
-    case 'gate':
-      rawUrl = `https://www.gate.io/futures_trade/USDT/${base}_${quote}`;
-      break;
-    case 'binance':
-      rawUrl = `https://www.binance.com/en/futures/${base}${quote}`;
-      break;
-    case 'bybit':
-      rawUrl = `https://www.bybit.com/trade/usdt/${base}${quote}`;
-      break;
-    case 'kucoin':
-      rawUrl = `https://www.kucoin.com/futures/trade/${base}${quote}M`;
-      break;
-    case 'mexc':
-      rawUrl = `https://futures.mexc.com/exchange/${base}_${quote}`;
-      break;
-    case 'okx':
-      rawUrl = `https://www.okx.com/trade-swap/${base.toLowerCase()}-${quote.toLowerCase()}-swap`;
-      break;
-    case 'bitget':
-      rawUrl = `https://www.bitget.com/mix/usdt/${base}${quote}_UMCBL`;
-      break;
-    case 'bingx':
-      rawUrl = `https://bingx.com/en-us/futures/forward/${base}${quote}/`;
-      break;
-    case 'phemex':
-      rawUrl = `https://phemex.com/trade/${base}${quote}`;
-      break;
-    case 'woo':
-      rawUrl = `https://x.woo.org/en/trade/PERP_${base}_${quote}`;
-      break;
-    case 'hyperliquid':
-      rawUrl = `https://app.hyperliquid.xyz/trade/${base}`;
-      break;
-    case 'dydx':
-      rawUrl = `https://dydx.exchange/trade/${base}-${quote}`;
-      break;
-    case 'paradex':
-      rawUrl = `https://app.paradex.trade/trade/${base}-USD-PERP`;
-      break;
-    case 'htx':
-      rawUrl = `https://www.htx.com/en-us/futures/linear_swap/exchange#contract_code=${base}-${quote}`;
-      break;
-    case 'blofin':
-      rawUrl = `https://blofin.com/futures/${base}-${quote}`;
-      break;
-    case 'bitmart':
-      rawUrl = `https://www.bitmart.com/futures/en-US?symbol=${base}${quote}`;
-      break;
-    case 'weex':
-      rawUrl = `https://www.weex.com/futures/${base}_${quote}`;
-      break;
-    case 'coinw':
-      rawUrl = `https://www.coinw.com/front/futures?symbol=${base}${quote}`;
-      break;
-    case 'coinex':
-      rawUrl = `https://www.coinex.com/futures/${base}${quote}`;
-      break;
-    case 'drift':
-      rawUrl = `https://app.drift.trade/trade/${base}-PERP`;
-      break;
-    case 'helix':
-      rawUrl = `https://helixapp.com/futures/${base.toLowerCase()}-usdt-perp`;
-      break;
-    case 'apex':
-      rawUrl = `https://pro.apex.exchange/trade/${base}-${quote}`;
-      break;
-    case 'aster':
-      rawUrl = `https://aster.finance/trade/${base}-${quote}`;
-      break;
-    case 'bluefin':
-      rawUrl = `https://trade.bluefin.io/trade/${base}-${quote}`;
-      break;
-    case 'kraken':
-      rawUrl = `https://pro.kraken.com/app/trade/${base.toLowerCase()}-${quote.toLowerCase()}`;
-      break;
-    case 'coinbase':
-      rawUrl = `https://international.coinbase.com/trade/${base}-PERP`;
-      break;
-    case 'bitunix':
-      rawUrl = `https://www.bitunix.com/contract-trading/${base}${quote}`;
-      break;
-    case 'orderly':
-      rawUrl = `https://orderly.network/`;
-      break;
-    case 'aevo':
-      rawUrl = `https://app.aevo.xyz/perpetual/${base.toLowerCase()}`;
-      break;
-    case 'cryptocom':
-      rawUrl = `https://crypto.com/exchange/trade/${base}_${quote}`;
-      break;
-    case 'deribit':
-      rawUrl = `https://www.deribit.com/futures/${base}-PERPETUAL`;
-      break;
-    default:
-      rawUrl = `https://www.google.com/search?q=${encodeURIComponent(`${exchange} ${pair} futures trading`)}`;
+function normalizeBase(pair: string): string {
+  let cleaned = (pair || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!cleaned) return '';
+  cleaned = cleaned.replace(/(SWAP|PERP)$/, '');
+  for (const quote of ['USDT', 'USDC', 'USD']) {
+    if (cleaned.endsWith(quote) && cleaned.length > quote.length) {
+      return cleaned.slice(0, -quote.length);
+    }
   }
-
-  return withAffiliate(ex, rawUrl);
+  return cleaned;
 }
 
-/** Opens the exchange trading pair in a new tab/window. */
+export function getExchangeTradeUrl(exchange: string, pair: string): string {
+  const symbol = normalizePerpSymbol(pair);
+  const base = symbol.replace(/USDT$/i, '');
+  const url = buildBaseTradeUrl(exchange, pair, symbol, base);
+  return withAffiliate(exchange, url);
+}
+
+function buildBaseTradeUrl(exchange: string, _pair: string, symbol: string, base: string): string {
+  switch (exchange.toLowerCase()) {
+    case 'binance':
+      return symbol ? `https://www.binance.com/en/futures/${symbol}` : 'https://www.binance.com/en/futures';
+    case 'bybit':
+      return symbol ? `https://www.bybit.com/en/trade/usdt/${symbol}` : 'https://www.bybit.com/en/trade/usdt';
+    case 'okx':
+      return symbol ? `https://www.okx.com/trade-futures/${base}-USDT-SWAP` : 'https://www.okx.com/trade-futures';
+    case 'gate':
+      return symbol ? `https://www.gate.io/futures/USDT/${base}_USDT` : 'https://www.gate.io/futures/USDT';
+    case 'mexc':
+      // MEXC requires the underscore form (BTC_USDT); the concatenated form
+      // (BTCUSDT) 404s and the exchange autoredirects to its homepage.
+      return symbol ? `https://futures.mexc.com/exchange/${base}_USDT` : 'https://futures.mexc.com';
+    case 'bitget':
+      return symbol ? `https://www.bitget.com/futures/usdt/${symbol}` : 'https://www.bitget.com/futures/usdt';
+    case 'bingx':
+      return symbol ? `https://www.bingx.com/futures/${base}-USDT` : 'https://www.bingx.com/futures';
+    case 'phemex':
+      return symbol ? `https://www.phemex.com/futures/${symbol}` : 'https://www.phemex.com/futures';
+    case 'woo':
+      return symbol ? `https://app.woox.io/markets/${base}_USDT` : 'https://app.woox.io/markets';
+    case 'hyperliquid':
+      return base ? `https://hyperliquid.xyz/trade/${base}` : 'https://hyperliquid.xyz/trade';
+    case 'dydx':
+      return base ? `https://dydx.trade/markets/${base}-USD` : 'https://dydx.trade/markets';
+    case 'paradex':
+      return base ? `https://paradex.io/trade/${base}-USD-PERP` : 'https://paradex.io/trade';
+    case 'htx':
+      return symbol ? `https://www.htx.com/en-us/futures/USDT/${base}-USDT` : 'https://www.htx.com/en-us/futures';
+    case 'coinex':
+      return symbol ? `https://www.coinex.com/futures/${symbol}` : 'https://www.coinex.com/futures';
+    case 'blofin':
+      return symbol ? `https://blofin.com/futures/${base}-USDT` : 'https://blofin.com/futures';
+    case 'bitmart':
+      return symbol ? `https://www.bitmart.com/contract/${symbol}` : 'https://www.bitmart.com/contract';
+    case 'weex':
+      return symbol ? `https://www.weex.com/futures/${symbol}` : 'https://www.weex.com/futures';
+    case 'coinw':
+      return symbol ? `https://www.coinw.com/futures/${symbol}` : 'https://www.coinw.com/futures';
+    case 'drift':
+      return base ? `https://drift.trade/market/${base}-PERP` : 'https://drift.trade';
+    case 'helix':
+      return base ? `https://helixapp.com/trade/${base.toLowerCase()}usdt-perp` : 'https://helixapp.com/trade';
+    case 'apex':
+      return symbol ? `https://pro.apex.exchange/market/${symbol}` : 'https://pro.apex.exchange';
+    case 'aster':
+      return symbol ? `https://www.asterdex.com/futures/${symbol}` : 'https://www.asterdex.com/futures';
+    case 'bluefin':
+      return base ? `https://bluefin.io/trade/${base}-PERP` : 'https://bluefin.io/trade';
+    case 'kucoin':
+      return symbol ? `https://futures.kucoin.com/trade/${symbol}` : 'https://futures.kucoin.com';
+    case 'cryptocom':
+      return symbol ? `https://crypto.com/exchange/trade/${base}_USDT-PERP` : 'https://crypto.com/exchange';
+    case 'deribit':
+      return symbol ? `https://www.deribit.com/main#/markets/${base}-USDT` : 'https://www.deribit.com';
+    case 'kraken':
+      return 'https://futures.kraken.com/trade';
+    case 'coinbase':
+      return 'https://www.coinbase.com/advanced-trade';
+    case 'bitunix':
+      return 'https://www.bitunix.com';
+    case 'orderly':
+      return 'https://orderly.network';
+    case 'aevo':
+      return 'https://app.aevo.xyz';
+    default:
+      return symbol ? `https://www.binance.com/en/futures/${symbol}` : 'https://www.binance.com/en/futures';
+  }
+}
+
+// Open an exchange trading page. Inside Telegram we must use the native
+// openLink so the link opens in an external browser instead of being blocked.
 export function openExchange(exchange: string, pair: string): void {
   const url = getExchangeTradeUrl(exchange, pair);
-  if (typeof window !== 'undefined') {
+  // Mark that the user took the "open a position" step (used by the
+  // first-profit onboarding checklist). No personal data is stored.
+  try {
+    localStorage.setItem('ff_opened_position', '1');
+  } catch { /* storage may be unavailable — non-critical */ }
+  const tg = (window as any).Telegram?.WebApp;
+  if (tg?.openLink) {
+    tg.openLink(url);
+  } else {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 }
 
-export const ALL_EXCHANGES = [
-  'gate',
-  'binance',
-  'bybit',
-  'kucoin',
-  'mexc',
-  'okx',
-  'bitget',
-  'bingx',
-  'phemex',
-  'woo',
-  'hyperliquid',
-  'dydx',
-  'htx',
-  'blofin',
-  'aster',
-  'bluefin',
-  'kraken',
-  'coinbase',
-  'bitunix',
-  'orderly',
-  'aevo',
-  'apex',
-  'bitmart',
-  'coinex',
-  'coinw',
-  'cryptocom',
-  'deribit',
-  'drift',
-  'helix',
-  'paradex',
-  'weex',
-];
+export function exchangeLabel(exchange: string): string {
+  return EXCHANGE_LABELS[exchange.toLowerCase()] || exchange;
+}

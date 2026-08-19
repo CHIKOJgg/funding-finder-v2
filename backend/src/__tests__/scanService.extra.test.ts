@@ -158,4 +158,7 @@ describe('scanService — runScan coalescing & refresh', () => {
     scanExchanges.mockResolvedValue([mk({ exchange: 'binance', contract: 'BTCUSDT', funding_rate_per_hour: 0.0002, volume_24h_settle: 50_000_000 })]);
     await scan.runScan(['binance']);
     const d = scan.scanDebug();
-    expect(d.cacheKeys).toBeGreaterThanOrEqual(1);\n    expect(Array.isArray(d.inFlight)).toBe(true);\n  });\n});\n
+    expect(d.cacheKeys).toBeGreaterThanOrEqual(1);
+    expect(Array.isArray(d.inFlight)).toBe(true);
+  });
+});

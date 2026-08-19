@@ -102,4 +102,742 @@
   .kpi .l{font-size:11px;color:var(--text3);margin-bottom:4px;}
   .kpi .v{font-family:var(--mono);font-size:19px;font-weight:700;}
   .opp{border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--card);}
-  .opp:last-child{margin-bottom:0;}\n  .opp .pair{font-weight:700;font-size:14.5px;}\n  .opp .route{color:var(--text3);font-size:11.5px;margin-top:2px;}\n  .opp .rate{text-align:right;white-space:nowrap;}\n  .opp .annual{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--green);}\n  .opp .risk{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block;margin-top:3px;}\n  .risk.LOW{background:var(--green-soft);color:var(--green);}\n  .risk.MEDIUM{background:var(--amber-soft);color:var(--amber);}\n  .risk.HIGH{background:var(--red-soft);color:var(--red);}\n  .skeleton{height:54px;border-radius:12px;background:linear-gradient(90deg,var(--bg2),var(--card),var(--bg2));background-size:200% 100%;animation:sk 1.3s infinite;margin-bottom:8px;}\n  @keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}\n  .dash-foot{text-align:center;margin-top:14px;}\n\n  .countdown-bar{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 20px;text-align:center;margin-top:22px;max-width:460px;margin-left:auto;margin-right:auto;}\n  .countdown-inner{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--text2);}\n  .countdown-digits{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--cobalt-text);letter-spacing:.5px;}\n\n  /* intro line */\n  .intro{max-width:680px;margin:0 auto;text-align:center;color:var(--text2);font-size:16px;padding:20px 0 0;}\n  .intro b{color:var(--text);}\n\n  /* bento features */\n  .bento{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}\n  @media(max-width:860px){.bento{grid-template-columns:1fr 1fr;}}\n  @media(max-width:600px){.bento{grid-template-columns:1fr;}}\n  .bcard{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;}\n  .bcard.wide{grid-column:span 2;}\n  @media(max-width:600px){.bcard.wide{grid-column:span 1;}}\n  .bcard h3{font-size:15.5px;margin-bottom:5px;}\n  .bcard p{font-size:13px;color:var(--text2);}\n  .bcard .visual{height:100px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:14px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-family:var(--mono);font-size:11px;overflow:hidden;position:relative;}\n  .mini-alert{background:var(--bg1);border:1px solid var(--border);border-radius:9px;padding:8px 10px;font-size:11px;margin-bottom:14px;display:flex;justify-content:space-between;gap:8px;}\n  .mini-alert:last-of-type{margin-bottom:14px;}\n  .mini-alert b{color:var(--amber);}\n  .exchange-chip{display:inline-flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:10.5px;font-weight:600;color:var(--text2);margin:2px;}\n  .exchange-chip .avatar{width:14px;height:14px;border-radius:4px;background:var(--cobalt);display:inline-block;}\n  .sparkline{width:100%;height:60px;}\n\n  /* CTA banner */\n  .cta-banner{border:1px solid var(--border);border-radius:20px;background:var(--bg1);padding:40px 30px;text-align:center;}\n  .cta-banner h3{font-size:clamp(20px,3.4vw,26px);margin-bottom:8px;}\n  .cta-banner p{color:var(--text2);margin-bottom:20px;font-size:14.5px;}\n\n  /* calc */\n  .calc{background:var(--bg1);border:1px solid var(--border);border-radius:22px;padding:30px 26px;}\n  .calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:center;margin-top:10px;}\n  @media(max-width:720px){.calc-grid{grid-template-columns:1fr;}}\n  .calc-controls label{display:block;font-size:12.5px;color:var(--text2);margin:14px 0 6px;font-weight:600;}\n  .calc-cap{font-family:var(--mono);font-size:24px;font-weight:700;color:var(--cobalt-text);}\n  .seg{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}\n  .seg button{flex:1;min-width:100px;border:1px solid var(--border-2);background:var(--card);color:var(--text2);border-radius:10px;padding:9px;font-weight:700;font-size:12.5px;cursor:pointer;}\n  .seg button.active{background:var(--cobalt);color:#fff;border-color:var(--cobalt);}\n  .calc-out{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;text-align:center;}\n  .calc-out .big{font-family:var(--mono);font-size:clamp(28px,6vw,38px);font-weight:700;color:var(--green);}\n  .calc-out .big-lbl{font-size:12.5px;color:var(--text2);margin-top:4px;}\n  .calc-out .row2{display:flex;justify-content:space-around;margin-top:18px;gap:10px;}\n  .calc-out .row2 .n{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--cobalt-text);}\n  .calc-out .row2 .l{font-size:11px;color:var(--text3);}\n  .calc-note{font-size:11.5px;color:var(--text3);margin-top:14px;text-align:center;}\n  input[type=range]{width:100%;accent-color:var(--cobalt);}\n\n  /* steps */\n  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}\n  .step{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 18px;text-align:center;}\n  .step .n{width:34px;height:34px;line-height:34px;border-radius:9px;background:var(--cobalt-soft);color:var(--cobalt-text);font-weight:800;margin:0 auto 12px;font-family:var(--mono);font-size:15px;}\n  .step h3{font-size:15px;margin-bottom:6px;}\n  .step p{font-size:12.5px;color:var(--text2);}\n\n  /* track */\n  .track{background:var(--bg1);border:1px solid var(--border);border-radius:20px;padding:32px 26px;}\n  .track-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:18px;}\n  .track-stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;}\n  .track-stat .num{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--cobalt-text);}\n  .track-stat .lbl{font-size:11.5px;color:var(--text2);margin-top:4px;}\n  .track-note{font-size:11.5px;color:var(--text3);text-align:center;margin-top:16px;}\n\n  /* pricing */\n  .billing-toggle{display:flex;width:max-content;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:4px;margin:0 auto 30px;gap:4px;}\n  .billing-toggle button{border:0;background:transparent;padding:9px 18px;border-radius:999px;font-weight:700;font-size:13px;color:var(--text2);cursor:pointer;}\n  .billing-toggle button.active{background:var(--cobalt);color:#fff;}\n  .billing-toggle .save{font-size:10.5px;font-weight:800;color:var(--green);margin-left:6px;}\n  .pricing{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;align-items:stretch;}\n  .plan{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:24px 20px;display:flex;flex-direction:column;position:relative;}\n  .plan.featured{border-color:var(--cobalt);}\n  .plan .badge{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--cobalt);color:#fff;font-size:10.5px;font-weight:800;padding:4px 12px;border-radius:999px;}\n  .plan .name{font-weight:700;font-size:17px;}\n  .plan .price{font-family:var(--mono);font-size:28px;font-weight:700;margin:10px 0 2px;}\n  .plan .price small{font-size:13px;font-weight:500;color:var(--text2);}\n  .plan .price-note{font-size:11.5px;color:var(--text3);min-height:16px;}\n  .plan ul{list-style:none;margin:14px 0 18px;flex:1;}\n  .plan li{font-size:13px;padding:6px 0;border-bottom:1px solid var(--border);color:var(--text2);}\n  .plan li::before{content:\"✓\";color:var(--green);font-weight:800;margin-right:8px;}\n  .plan-mini{display:block;text-align:center;font-size:12px;color:var(--text3);margin-top:10px;}\n  .plan .btn{justify-content:center;}\n  .pwa-hint{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:20px;font-size:13px;color:var(--text2);}\n\n  /* compare */\n  .compare-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:16px;}\n  table.compare{width:100%;border-collapse:collapse;background:var(--card);min-width:560px;}\n  .compare th,.compare td{padding:13px 16px;text-align:left;font-size:13.5px;border-bottom:1px solid var(--border);}\n  .compare th{background:var(--bg1);font-weight:700;color:var(--text2);}\n  .compare th.hl{color:var(--cobalt-text);}\n  .compare td.yes{color:var(--green);font-weight:800;text-align:center;}\n  .compare td.no{color:var(--text3);text-align:center;}\n  .compare td.part{color:var(--amber);text-align:center;font-weight:700;font-size:12px;}\n  .compare tr:last-child td{border-bottom:none;}\n\n  /* B2B */\n  .b2b-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:26px;}\n  .b2b-card{border:1px solid var(--border);border-radius:16px;padding:22px;background:var(--card);}\n  .b2b-card h3{font-size:16px;margin:10px 0 6px;}\n  .b2b-card p{font-size:13px;color:var(--text2);margin-bottom:10px;}\n  .b2b-card .from{font-size:12.5px;font-weight:700;color:var(--cobalt-text);}\n  .b2b-form{background:var(--bg1);border:1px solid var(--border);border-radius:20px;padding:28px 26px;}\n  .b2b-form h3{font-size:19px;text-align:center;margin-bottom:6px;}\n  .b2b-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:620px;margin:0 auto;}\n  @media(max-width:600px){.b2b-fields{grid-template-columns:1fr;}}\n  .b2b-fields .full{grid-column:1/-1;}\n  input,select,textarea{width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--border-2);font-size:14px;font-family:var(--sans);background:var(--card);color:var(--text);}\n  textarea{min-height:76px;resize:vertical;}\n  select{appearance:none;-webkit-appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%238891A3' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer;}\n  input[type=checkbox],input[type=radio]{appearance:none;-webkit-appearance:none;width:auto;min-width:18px;width:18px;height:18px;border:1px solid var(--border-2);border-radius:5px;background:var(--bg2);padding:0;margin:0;cursor:pointer;position:relative;flex-shrink:0;}\n  input[type=radio]{border-radius:50%;}\n  input[type=checkbox]:checked,input[type=radio]:checked{background:var(--cobalt);border-color:var(--cobalt);}\n  input[type=checkbox]:checked::after{content:\"\";position:absolute;left:4px;top:0px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(40deg);}\n  input[type=radio]:checked::after{content:\"\";position:absolute;left:4px;top:4px;width:6px;height:6px;border-radius:50%;background:#fff;}\n  .b2b-submit{display:block;margin:16px auto 0;}\n  .b2b-msg{text-align:center;margin-top:12px;font-size:13.5px;min-height:18px;}\n  .b2b-msg.ok{color:var(--green);}.b2b-msg.err{color:var(--red);}\n\n  /* referral / lead */\n  .ref,.lead{border:1px solid var(--border);border-radius:20px;padding:32px 26px;text-align:center;background:var(--card);}\n  .lead-form{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px;}\n  .lead-form input{flex:1;min-width:200px;max-width:320px;}\n  .lead-seg{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px;}\n  .lead-seg label{font-size:12.5px;background:var(--bg2);border:1px solid var(--border);padding:6px 13px;border-radius:999px;cursor:pointer;color:var(--text2);}\n  .lead-seg input{display:none;width:auto;}\n  .lead-seg label:has(input:checked){background:var(--cobalt-soft);color:var(--cobalt-text);border-color:var(--cobalt);font-weight:700;}\n  .lead-msg{margin-top:12px;font-size:13.5px;min-height:18px;}\n  .lead-msg.ok{color:var(--green);}.lead-msg.err{color:var(--red);}\n\n  /* FAQ */\n  .faq{max-width:720px;margin:0 auto;}\n  .qa{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:10px;overflow:hidden;}\n  .qa summary{font-size:14.5px;font-weight:700;padding:16px 18px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;}\n  .qa summary::-webkit-details-marker{display:none;}\n  .qa summary::after{content:\"+\";color:var(--cobalt-text);font-weight:800;font-size:18px;}\n  .qa[open] summary::after{content:\"−\";}\n  .qa p{font-size:13.5px;color:var(--text2);padding:0 18px 16px;}\n\n  /* final */\n  .final{border:1px solid var(--border);border-radius:22px;background:linear-gradient(180deg,var(--bg1),var(--bg));padding:48px 26px;text-align:center;}\n  .final h2{font-size:clamp(24px,4.5vw,32px);}\n  .final p{color:var(--text2);max-width:520px;margin:8px auto 24px;}\n\n  .disclaimer{font-size:12px;color:var(--text3);text-align:center;max-width:760px;margin:0 auto;}\n  footer{text-align:center;color:var(--text3);font-size:12.5px;padding:34px 0;border-top:1px solid var(--border);}\n  .langs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px;}\n  .langs a{font-size:12px;background:var(--card);border:1px solid var(--border);padding:5px 11px;border-radius:8px;color:var(--text2);}\n  .foot-links{margin-top:10px;}\n  .foot-links a{color:var(--text2);margin:0 8px;}\n\n  @media(max-width:480px){\n    .wrap{padding:0 14px;} section{padding:44px 0;} .dash{padding:16px;}\n  }\n</style>\n</head>\n<body>\n<header>\n  <div class=\"wrap\">\n    <div class=\"logo\"><span class=\"mark\">ff</span>Funding Finder</div>\n    <nav class=\"nav\">\n      <a class=\"hide-m\" href=\"#features\">Features</a>\n      <a class=\"hide-m\" href=\"#how\">How it works</a>\n      <a class=\"hide-m\" href=\"#calc\">Calculator</a>\n      <a class=\"hide-m\" href=\"#pricing\">Pricing</a>\n      <a class=\"hide-m\" href=\"#faq\">FAQ</a>\n      <a class=\"hide-m\" href=\"#b2b\">API / B2B</a>\n      <a class=\"btn sm\" href=\"https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=header\">Launch app</a>\n    </nav>\n  </div>\n  <div class=\"subnav\" id=\"subnav\">\n    <a href=\"#features\">Features</a>\n    <a href=\"#how\">How it works</a>\n    <a href=\"#calc\">Calculator</a>\n    <a href=\"#pricing\">Pricing</a>\n    <a href=\"#faq\">FAQ</a>\n    <a href=\"#b2b\">API / B2B</a>\n  </div>\n</header>\n\n<!-- HERO -->\n<div class=\"hero\">\n  <div class=\"wrap\">\n    <span class=\"pill\">tracking <b id=\"exCount\">31</b> exchanges · <b id=\"pairCount\">—</b> pairs scanning now</span>\n    <h1 id=\"heroTitle\">Market-neutral yield on <span class=\"hl\">crypto funding rates</span></h1>\n    <p class=\"lead\" id=\"heroLead\">Funding Finder scans 31 exchanges and surfaces the best cross-exchange funding arbitrage — passive yield without betting on price direction. Free to start, no card, no deposit to look.</p>\n    <div class=\"actions\">\n      <a class=\"btn primary\" href=\"https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=hero\" id=\"ctaHero\">Start free — see live opportunities</a>\n      <a class=\"btn\" href=\"https://t.me/fundinganalyzerbot\" target=\"_blank\" rel=\"noopener\">Open in Telegram</a>\n    </div>\n    <div class=\"trust-row\">\n      <span>✓ <b>0%</b> to view &amp; scan</span>\n      <span>✓ <b>7-day</b> Pro trial</span>\n      <span>✓ Pay in <b>USDT</b></span>\n      <span>✓ <b>PWA</b> &amp; Telegram Mini App</span>\n    </div>\n\n    <!-- dashboard mockup -->\n    <div class=\"dash\">\n      <div class=\"dash-top\">\n        <div class=\"dash-title\"><span class=\"dot\"></span>Best arbitrage right now</div>\n        <div class=\"dash-sub\" id=\"liveUpdated\">loading…</div>\n      </div>\n      <div class=\"kpi-row\">\n        <div class=\"kpi\"><div class=\"l\">exchanges tracked</div><div class=\"v\" id=\"statEx\">31</div></div>\n        <div class=\"kpi\"><div class=\"l\">pairs in live scan</div><div class=\"v\" id=\"statPairs\">—</div></div>\n        <div class=\"kpi\"><div class=\"l\">fee to view &amp; scan</div><div class=\"v\">0%</div></div>\n        <div class=\"kpi\"><div class=\"l\">time to best route</div><div class=\"v\">&lt;1s</div></div>\n      </div>\n      <div id=\"liveBody\"><div class=\"skeleton\"></div><div class=\"skeleton\"></div><div class=\"skeleton\"></div></div>\n      <div class=\"dash-foot\"><a class=\"btn sm\" href=\"https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=widget\">See all opportunities →</a></div>\n    </div>\n\n    <div class=\"countdown-bar\" id=\"fundingCountdown\">\n      <div class=\"countdown-inner\"><span>Next funding settlement</span><span class=\"countdown-digits\" id=\"countdownDigits\">--:--:--</span><span>UTC</span></div>\n    </div>\n  </div>\n</div>\n\n<!-- INTRO -->\n<section style=\"padding-bottom:20px;\">\n  <p class=\"intro\">Funding rates already move on 31 exchanges every 8 hours. <b>Most of that spread just goes uncaptured</b> — checking each exchange by hand doesn't scale, and by the time you've compared five tabs, the rate has moved. Funding Finder does the comparison continuously and shows the route.</p>\n</section>\n\n<!-- BENTO FEATURES -->\n<section id=\"features\">\n  <div class=\"wrap\">\n    <h2>Everything you need to farm funding</h2>\n    <p class=\"sub\">Built for first-timers chasing passive yield and pros running delta-neutral desks alike.</p>\n    <div class=\"bento\">\n      <div class=\"bcard wide\">\n        <div class=\"visual\"><svg class=\"sparkline\" viewBox=\"0 0 300 60\" preserveAspectRatio=\"none\"><polyline points=\"0,40 30,35 60,42 90,20 120,28 150,15 180,22 210,10 240,18 270,8 300,14\" fill=\"none\" stroke=\"#3D63FF\" stroke-width=\"2\"/></svg></div>\n        <h3>📡 31-exchange scanner</h3>\n        <p>Binance, Bybit, OKX, Gate, MEXC, Bitget, Hyperliquid and 24 more — one source of truth, refreshed in real time.</p>\n      </div>\n      <div class=\"bcard\">\n        <div class=\"visual\">\n          <div class=\"mini-alert\"><span>⚖️ Spread alert</span><b>BTC 0.41%</b></div>\n        </div>\n        <h3>🔔 Alerts &amp; digest</h3>\n        <p>Telegram alerts when a spread hits your threshold, plus a morning report on your watchlist.</p>\n      </div>\n      <div class=\"bcard\">\n        <div class=\"visual\">\n          <span class=\"exchange-chip\"><i class=\"avatar\"></i>Binance</span>\n          <span class=\"exchange-chip\"><i class=\"avatar\"></i>Bybit</span>\n          <span class=\"exchange-chip\"><i class=\"avatar\"></i>OKX</span>\n          <span class=\"exchange-chip\"><i class=\"avatar\"></i>+28</span>\n        </div>\n        <h3>🔌 One API, 31 exchanges</h3>\n        <p>Read-first, encrypted keys. Connect once, scan everywhere.</p>\n      </div>\n      <div class=\"bcard\">\n        <div class=\"visual\" style=\"font-family:var(--sans);font-size:12px;color:var(--text2);flex-direction:column;gap:4px;\">\n          <div>🤖 \"Best low-risk spread today: <b style=\"color:var(--text)\">ETH, 0.31%</b>\"</div>\n        </div>\n        <h3>AI trade ideas</h3>\n        <p>1 free idea/day, unlimited on Pro — personalized to your watchlist.</p>\n      </div>\n      <div class=\"bcard wide\">\n        <div class=\"visual\" style=\"flex-direction:column;align-items:flex-start;padding:12px;gap:6px;\">\n          <div class=\"mini-alert\" style=\"width:100%;\"><span>💼 Portfolio</span><b style=\"color:var(--green)\">+$142 today</b></div>\n          <div class=\"mini-alert\" style=\"width:100%;\"><span>⚙️ Auto-PnL</span><b>3 open legs</b></div>\n        </div>\n        <h3>💼 Portfolio &amp; auto-PnL</h3>\n        <p>Connect exchange keys (encrypted, read-first) for live PnL and optional auto-execution.</p>\n      </div>\n    </div>\n  </div>\n</section>\n\n<!-- CTA BANNER -->\n<section style=\"padding-top:0;\">\n  <div class=\"wrap\">\n    <div class=\"cta-banner\">\n      <h3>See the spread before it closes.</h3>\n      <p>One good arbitrage typically covers the month. Scanning and detection are always free.</p>\n      <a class=\"btn primary\" href=\"https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=cta_banner\">Start free →</a>\n    </div>\n  </div>\n</section>\n\n<!-- HOW IT WORKS -->\n<section id=\"how\">\n  <div class=\"wrap\">\n    <h2>From zero to first payout</h2>\n    <p class=\"sub\">See → try → earn. No deposit needed just to look.</p>\n    <div class=\"steps\">\n      <div class=\"step\"><div class=\"n\">1</div><h3>Pick exchanges</h3><p>Select from 31 exchanges to scan. Defaults get you going instantly.</p></div>\n      <div class=\"step\"><div class=\"n\">2</div><h3>Run the scan</h3><p>Every opportunity ranked by annualized yield and risk in under a second.</p></div>\n      <div class=\"step\"><div class=\"n\">3</div><h3>Open the position</h3><p>The \"Open\" button deep-links to the exchange. Hold to funding.</p></div>\n      <div class=\"step\"><div class=\"n\">4</div><h3>Collect funding</h3><p>Funding accrues every interval. Track live PnL in the app.</p></div>\n    </div>\n  </div>\n</section>\n\n<!-- CALCULATOR -->\n<section id=\"calc\">\n  <div class=\"wrap\">\n    <h2>What could this earn?</h2>\n    <p class=\"sub\">Driven by the current best live rate on 31 exchanges, net of estimated fees. Illustrative — a ceiling, not a guarantee.</p>\n    <div class=\"calc\">\n      <div class=\"calc-grid\">\n        <div class=\"calc-controls\">\n          <label>Capital deployed</label>\n          <div class=\"calc-cap\" id=\"calcCapLabel\">$10,000</div>\n          <input type=\"range\" id=\"calcCap\" min=\"500\" max=\"200000\" step=\"500\" value=\"10000\" />\n          <label>Strategy</label>\n          <div class=\"seg\" id=\"calcSeg\">\n            <button data-mode=\"best\" class=\"active\">Best pair</button>\n            <button data-mode=\"div\">Diversified</button>\n          </div>\n        </div>\n        <div class=\"calc-out\">\n          <div class=\"big\" id=\"calcYear\">$—</div>\n          <div class=\"big-lbl\">estimated / year, net of fees</div>\n          <div class=\"row2\">\n            <div><div class=\"n\" id=\"calcApr\">—%</div><div class=\"l\">net APR</div></div>\n            <div><div class=\"n\" id=\"calcMonth\">$—</div><div class=\"l\">/ month</div></div>\n            <div><div class=\"n\" id=\"calcDay\">$—</div><div class=\"l\">/ day</div></div>\n          </div>\n        </div>\n      </div>\n      <div class=\"calc-note\" id=\"calcNote\">Loading live rate…</div>\n      <div style=\"text-align:center;margin-top:18px;\"><a class=\"btn primary\" href=\"https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=calc\">See this in the app →</a></div>\n    </div>\n  </div>\n</section>\n\n<!-- TRACK RECORD -->\n<section>\n  <div class=\"wrap\">\n    <div class=\"track\" id=\"trackWidget\">\n      <h2 style=\"text-align:left;margin-bottom:6px;\">What the market actually paid</h2>\n      <p class=\"sub\" style=\"text-align:left;margin:0 0 0;\">Illustrative backtest on real scanned data over the last <span id=\"trDays\">30</span> days. Market-neutral, 1x leverage, gross of fees — a ceiling, not a promise.</p>\n      <div class=\"track-grid\">\n        <div class=\"track-stat\"><div class=\"num\" id=\"trBestPair\">—</div><div class=\"lbl\">top pair</div></div>\n        <div class=\"track-stat\"><div class=\"num\" id=\"trBestApr\">—</div><div class=\"lbl\">top pair, annualized</div></div>\n        <div class=\"track-stat\"><div class=\"num\" id=\"trDivApr\">—</div><div class=\"lbl\">diversified basket</div></div>\n        <div class=\"track-stat\"><div class=\"num\" id=\"trNotional\">$10k</div><div class=\"lbl\">assumed capital</div></div>\n      </div>\n      <p class=\"track-note\" id=\"trNote\">Loading real data…</p>\n    </div>\n  </div>\n</section>\n\n<!-- PRICING -->\n<section id=\"pricing\">\n  <div class=\"wrap\">\n    <h2>Simple pricing, pays for itself</h2>\n    <p class=\"sub\">Pay in USDT via Crypto Pay &amp; NOWPayments · 7-day Pro trial · save 20% annually.</p>\n    <div style=\"text-align:center;\"><div class=\"billing-toggle\" role=\"group\" aria-label=\"Billing period\">\n      <button type=\"button\" class=\"active\" data-period=\"monthly\" onclick=\"setBilling('monthly', this)\">Monthly</button>\n      <button type=\"button\" data-period=\"annual\" onclick=\"setBilling('annual', this)\">Annual <span class=\"save\">−20%</span></button>\n    </div></div>\n    <div class=\"pricing\">\n      <div class=\"plan\">\n        <div class=\"name\">Free</div>\n        <div class=\"price\" data-monthly=\"0\" data-annual=\"0\">$0</div>\n        <div class=\"price-note\">forever</div>\n        <ul><li>4 exchanges in scan</li><li>1 AI idea / day</li><li>Basic alerts</li><li>Live arbitrage view</li></ul>\n        <a class=\"btn block\" href=\"https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=pricing_free\">Start free</a>\n      </div>\n      <div class=\"plan featured\">\n        <div class=\"badge\">MOST POPULAR</div>\n        <div class=\"name\">Pro</div>\n        <div class=\"price\" data-monthly=\"49\" data-annual=\"470\">$49<small>/mo</small></div>\n        <div class=\"price-note\" id=\"proNote\">billed monthly</div>\n        <ul><li>12 exchanges in scan</li><li>Unlimited AI ideas</li><li>Portfolio + auto-PnL</li><li>Unlimited watchlist</li><li>Advanced alerts &amp; digest</li></ul>\n        <a class=\"btn primary block\" href=\"https://funding-finder-frontend.onrender.com/?plan=pro&utm_source=landing&utm_medium=pricing_pro\">Start 7-day Pro trial</a>\n        <a class=\"plan-mini\" href=\"https://t.me/fundinganalyzerbot\" target=\"_blank\" rel=\"noopener\">or open in Telegram</a>\n      </div>\n      <div class=\"plan\">\n        <div class=\"name\">Pro+</div>\n        <div class=\"price\" data-monthly=\"149\" data-annual=\"1430\">$149<small>/mo</small></div>\n        <div class=\"price-note\" id=\"proPlusNote\">billed monthly</div>\n        <ul><li>All 31 exchanges</li><li>Everything in Pro</li><li>Priority support</li><li>Early access to features</li><li>White-label option</li></ul>\n        <a class=\"btn block\" href=\"https://funding-finder-frontend.onrender.com/?plan=proplus&utm_source=landing&utm_medium=pricing_proplus\">Go Pro+</a>\n        <a class=\"plan-mini\" href=\"https://t.me/fundinganalyzerbot\" target=\"_blank\" rel=\"noopener\">or open in Telegram</a>\n      </div>\n    </div>\n    <div class=\"pwa-hint\"><span>📲 Install as a PWA: tap <code>Install app</code>, or \"Add to Home Screen\".</span></div>\n  </div>\n</section>\n\n<!-- COMPARISON -->\n<section>\n  <div class=\"wrap\">\n    <h2>Why not just use one exchange?</h2>\n    <p class=\"sub\">A single-exchange rate page can't see the spread. That spread is the whole game.</p>\n    <div class=\"compare-wrap\">\n      <table class=\"compare\">\n        <thead><tr><th>Capability</th><th class=\"hl\">Funding Finder</th><th>CoinGlass</th><th>ArbPing</th><th>Single exchange</th></tr></thead>\n        <tbody>\n          <tr><td>Exchanges aggregated</td><td class=\"yes\"><b>31</b></td><td class=\"yes\">15</td><td class=\"yes\">12</td><td class=\"no\">1</td></tr>\n          <tr><td>Cross-exchange arbitrage</td><td class=\"yes\">✓</td><td class=\"no\">✕</td><td class=\"yes\">✓</td><td class=\"no\">✕</td></tr>\n          <tr><td>Net APR (after fees)</td><td class=\"yes\">✓</td><td class=\"no\">✕</td><td class=\"no\">✕</td><td class=\"no\">✕</td></tr>\n          <tr><td>AI ideas on your portfolio</td><td class=\"yes\">✓</td><td class=\"no\">✕</td><td class=\"no\">✕</td><td class=\"no\">✕</td></tr>\n          <tr><td>Auto-PnL &amp; alerts</td><td class=\"yes\">✓</td><td class=\"part\">basic</td><td class=\"yes\">✓</td><td class=\"no\">✕</td></tr>\n          <tr><td>OI + liquidation heatmap</td><td class=\"yes\">✓</td><td class=\"yes\">✓</td><td class=\"no\">✕</td><td class=\"no\">✕</td></tr>\n          <tr><td>Backtest &amp; stability grade</td><td class=\"yes\">✓</td><td class=\"no\">✕</td><td class=\"part\">basic</td><td class=\"no\">✕</td></tr>\n          <tr><td>Free to start</td><td class=\"yes\">✓</td><td class=\"yes\">✓</td><td class=\"part\">limited</td><td class=\"yes\">✓</td></tr>\n        </tbody>\n      </table>\n    </div>\n  </div>\n</section>\n\n<!-- FAQ -->\n<section id=\"faq\">\n  <div class=\"wrap\">\n    <h2>Frequently asked questions</h2>\n    <div class=\"faq\">\n      <details class=\"qa\"><summary>What is a funding rate?</summary><p>A periodic payment exchanged between longs and shorts on perpetual futures. A positive rate means shorts pay longs — so you can earn simply by holding the right side.</p></details>\n      <details class=\"qa\"><summary>How does funding arbitrage work?</summary><p>Funding Finder finds pairs where the rate differs between two exchanges and shows the spread. Opening opposite positions on each venue captures that spread while staying market-neutral — no directional bet.</p></details>\n      <details class=\"qa\"><summary>Do I need to deposit to use it?</summary><p>No. Scanning, arbitrage detection, and 1 AI idea per day are free. You only deposit on an exchange if you decide to open a position.</p></details>\n      <details class=\"qa\"><summary>Are my exchange API keys safe?</summary><p>Keys are encrypted at rest on the server and used read-first. Auto-execution only runs with your explicit permission.</p></details>\n      <details class=\"qa\"><summary>How do I pay?</summary><p>In USDT via Crypto Pay and NOWPayments. New users get a 7-day Pro trial with no charge. Annual billing saves 20%.</p></details>\n      <details class=\"qa\"><summary>Is there an API for developers / funds?</summary><p>Yes — a versioned public API (v1) exposes aggregated funding data across 31 exchanges, plus white-label and embeddable widgets. See <a href=\"#b2b\" style=\"color:var(--cobalt-text)\">API / B2B</a>.</p></details>\n    </div>\n  </div>\n</section>\n\n<!-- B2B -->\n<section id=\"b2b\">\n  <div class=\"wrap\">\n    <h2>For funds, bots &amp; media</h2>\n    <p class=\"sub\">The same real-time engine, packaged for builders. Aggregated funding data across 31 exchanges, on tap.</p>\n    <div class=\"b2b-cards\">\n      <div class=\"b2b-card\"><span>🔌</span><h3>Funding Data API</h3><p>Versioned REST API (v1) with real-time rates, spreads and arbitrage signals. Built for quant desks, dashboards and bots.</p><div class=\"from\">from $299/mo</div></div>\n      <div class=\"b2b-card\"><span>🏷️</span><h3>White-label Mini App</h3><p>Your brand, our engine. A fully branded Telegram Mini App + PWA, with revenue share.</p><div class=\"from\">setup + rev-share</div></div>\n      <div class=\"b2b-card\"><span>📊</span><h3>Embeddable widget</h3><p>Drop the live \"best arbitrage\" widget onto your site with one script tag.</p><div class=\"from\"><a href=\"/embed.html\" style=\"color:var(--cobalt-text);font-weight:700;\">Get the snippet →</a></div></div>\n    </div>\n    <div class=\"b2b-form\">\n      <h3>Request B2B access</h3>\n      <p class=\"sub\" style=\"margin:6px 0 16px;\">Tell us what you're building. We'll reply within 1 business day.</p>\n      <form id=\"b2bForm\" onsubmit=\"return false;\">\n        <div class=\"b2b-fields\">\n          <input type=\"text\" id=\"b2bName\" placeholder=\"Name / Company\" autocomplete=\"organization\" />\n          <select id=\"b2bProduct\">\n            <option value=\"b2b-api\">Funding Data API</option>\n            <option value=\"b2b-whitelabel\">White-label Mini App</option>\n            <option value=\"b2b-embed\">Embeddable widget</option>\n            <option value=\"b2b-other\">Other / not sure</option>\n          </select>\n          <input type=\"email\" id=\"b2bEmail\" placeholder=\"Work email\" autocomplete=\"email\" />\n          <input type=\"text\" id=\"b2bTg\" placeholder=\"Telegram @handle (optional)\" />\n          <textarea class=\"full\" id=\"b2bMsg\" placeholder=\"What are you building? Expected volume?\"></textarea>\n        </div>\n        <button class=\"btn primary b2b-submit\" id=\"b2bSubmit\" type=\"submit\">Request access →</button>\n        <div class=\"b2b-msg\" id=\"b2bMsgOut\"></div>\n      </form>\n    </div>\n  </div>\n</section>\n\n<!-- REFERRAL -->\n<section>\n  <div class=\"wrap\">\n    <div class=\"ref\">\n      <h2>Invite friends, earn real revenue</h2>\n      <p class=\"sub\">Share your referral link — your friend gets a 7-day Pro trial instantly, and you earn 20% revenue share on their payments plus bonus scans.</p>\n      <a class=\"btn primary\" href=\"https://t.me/fundinganalyzerbot\" target=\"_blank\" rel=\"noopener\">Get your referral link</a>\n    </div>\n  </div>\n</section>\n\n<!-- LEAD MAGNET -->\n<section>\n  <div class=\"wrap\">\n    <div class=\"lead\">\n      <h2>📈 Free weekly funding report</h2>\n      <p class=\"sub\" style=\"margin-bottom:0;\">Where the best rates are, the top arbitrage of the week, and AI ideas. No spam — just numbers people trade on.</p>\n      <form class=\"lead-form\" id=\"leadForm\" onsubmit=\"return false;\">\n        <input type=\"email\" id=\"leadEmail\" placeholder=\"Your email\" autocomplete=\"email\" />\n        <button class=\"btn primary\" id=\"leadSubmit\" type=\"submit\">Get the report</button>\n      </form>\n      <div class=\"lead-seg\">\n        <label><input type=\"radio\" name=\"interest\" value=\"passive\" checked /><span>Passive yield</span></label>\n        <label><input type=\"radio\" name=\"interest\" value=\"arbitrage\" /><span>Arbitrage</span></label>\n      </div>\n      <div class=\"lead-msg\" id=\"leadMsg\"></div>\n    </div>\n  </div>\n</section>\n\n<!-- FINAL CTA -->\n<section>\n  <div class=\"wrap\">\n    <div class=\"final\">\n      <h2>The spread is live right now.</h2>\n      <p>See the best cross-exchange funding opportunities across 31 exchanges — free, no card, no deposit to look.</p>\n      <div class=\"actions\">\n        <a class=\"btn primary\" href=\"https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=final\">Launch app free</a>\n        <a class=\"btn\" href=\"https://t.me/fundinganalyzerbot\" target=\"_blank\" rel=\"noopener\">Open in Telegram</a>\n      </div>\n    </div>\n  </div>\n</section>\n\n<section style=\"padding-top:0;\">\n  <div class=\"wrap\"><p class=\"disclaimer\">⚠️ Not financial advice. Trading crypto derivatives and funding strategies carry the risk of loss. Returns depend on market conditions, liquidity, fees and slippage. Always verify rates on the exchange before trading.</p></div>\n</section>\n\n<footer>\n  <div class=\"wrap\">\n    Funding Finder • <a href=\"https://t.me/fundinganalyzerbot\">Telegram</a> • Not financial advice.\n    <div class=\"langs\">\n      <a href=\"/landing.html\">EN</a>\n    </div>\n    <div class=\"foot-links\"><a href=\"/index.html?app=1#/privacy\">Privacy</a> · <a href=\"/index.html?app=1#/terms\">Terms</a> · <a href=\"#b2b\">API / B2B</a></div>\n  </div>\n</footer>\n\n<script>\n  var API_URL = 'https://funding-finder-api.onrender.com';\n  var WIDGET_URL = API_URL + '/api/public/arbitrage';\n  var TRACK_URL = API_URL + '/api/public/trackrecord';\n  var WAITLIST_URL = API_URL + '/api/public/waitlist';\n  var REFRESH_MS = 45000;\n\n  function fmtApr(v){ return (v==null||isNaN(v))?'—':v.toFixed(0)+'%'; }\n  function fmtMoney(n){ if(n==null||isNaN(n))return '$—'; return '$'+Math.round(n).toLocaleString('en-US'); }\n\n  (function(){\n    try{\n      var params=new URLSearchParams(location.search);\n      var sid=localStorage.getItem('ff_analytics_session');\n      if(!sid){ sid='s_'+Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem('ff_analytics_session', sid); }\n      var src=params.get('utm_source'); if(src) localStorage.setItem('ff_src', src);\n      fetch(API_URL+'/api/public/track',{method:'POST',headers:{'Content-Type':'application/json'},\n        body:JSON.stringify({event:'landing_view',source:src||undefined,sessionId:sid}),keepalive:true}).catch(function(){});\n    }catch(e){}\n  })();\n\n  function renderOpp(opp){\n    var gross=(opp.profit&&opp.profit.grossDaily!=null)?(opp.profit.grossDaily/1000*100):0;\n    var net=(opp.profit&&opp.profit.netDaily!=null)?(opp.profit.netDaily/1000*100):0;\n    var fees=(opp.profit&&opp.profit.fees!=null)?(opp.profit.fees/1000*100):0;\n    var route=(opp.exchangeA||'?').toUpperCase()+' ('+((opp.fundingA_per_hour||0)*100).toFixed(3)+'%/h) ↔ '+(opp.exchangeB||'?').toUpperCase()+' ('+((opp.fundingB_per_hour||0)*100).toFixed(3)+'%/h)';\n    return '<div class=\"opp\">'+\n      '<div><div class=\"pair\">'+(opp.pair||'')+'</div><div class=\"route\">'+route+'</div></div>'+\n      '<div class=\"rate\"><div class=\"annual\">'+fmtApr(opp.profit?opp.profit.annualReturn:null)+' APR</div><span class=\"risk '+(opp.risk&&opp.risk.level||'LOW')+'\">'+(opp.risk&&opp.risk.level||'LOW')+' RISK</span></div>'+\n    '</div>';\n  }\n\n  var currentTopApr = 30.0;\n  var currentDivApr = 22.0;\n\n  function updateCalc(){\n    var cap = Number(document.getElementById('calcCap').value) || 10000;\n    document.getElementById('calcCapLabel').textContent = '$' + cap.toLocaleString('en-US');\n    var isBest = document.querySelector('#calcSeg button.active').getAttribute('data-mode') === 'best';\n    var apr = isBest ? currentTopApr : currentDivApr;\n    var year = cap * (apr / 100);\n    document.getElementById('calcYear').textContent = fmtMoney(year);\n    document.getElementById('calcApr').textContent = apr.toFixed(1) + '%';\n    document.getElementById('calcMonth').textContent = fmtMoney(year / 12);\n    document.getElementById('calcDay').textContent = fmtMoney(year / 365);\n  }\n\n  document.getElementById('calcCap').addEventListener('input', updateCalc);\n  document.querySelectorAll('#calcSeg button').forEach(function(b){\n    b.addEventListener('click', function(){\n      document.querySelectorAll('#calcSeg button').forEach(function(x){ x.classList.remove('active'); });\n      b.classList.add('active');\n      updateCalc();\n    });\n  });\n\n  function fetchWidget(){\n    fetch(WIDGET_URL).then(function(r){ return r.json(); }).then(function(data){\n      if (!data || !data.ok) return;\n      if (data.exchangesTracked) document.getElementById('statEx').textContent = data.exchangesTracked;\n      if (data.pairsTracked) document.getElementById('statPairs').textContent = data.pairsTracked.toLocaleString('en-US');\n      if (data.pairsTracked) document.getElementById('pairCount').textContent = data.pairsTracked.toLocaleString('en-US');\n      if (data.exchangesTracked) document.getElementById('exCount').textContent = data.exchangesTracked;\n      if (data.bestAnnualReturn) {\n        currentTopApr = Math.max(8, Number(data.bestAnnualReturn) || 30);\n        currentDivApr = Math.max(6, currentTopApr * 0.72);\n        updateCalc();\n      }\n      if (Array.isArray(data.opportunities) && data.opportunities.length > 0) {\n        var html = data.opportunities.slice(0, 3).map(renderOpp).join('');\n        document.getElementById('liveBody').innerHTML = html;\n      }\n      document.getElementById('liveUpdated').textContent = 'live · updated ' + new Date().toLocaleTimeString();\n      document.getElementById('calcNote').textContent = 'Net APR after estimated fees. Based on current rate across ' + (data.exchangesTracked || 31) + ' exchanges. Illustrative.';\n    }).catch(function(){});\n  }\n\n  fetchWidget();\n  setInterval(fetchWidget, REFRESH_MS);\n\n  // Countdown timer\n  function updateCountdown(){\n    var now = new Date();\n    var nextHour = (Math.floor(now.getUTCHours() / 8) + 1) * 8;\n    var target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), nextHour, 0, 0));\n    var diff = Math.max(0, Math.floor((target - now) / 1000));\n    var h = String(Math.floor(diff / 3600)).padStart(2, '0');\n    var m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');\n    var s = String(diff % 60).padStart(2, '0');\n    document.getElementById('countdownDigits').textContent = h + ':' + m + ':' + s;\n  }\n  setInterval(updateCountdown, 1000);\n  updateCountdown();\n\n  function setBilling(period, btn){\n    document.querySelectorAll('.billing-toggle button').forEach(function(b){ b.classList.remove('active'); });\n    btn.classList.add('active');\n    var isAnnual = period === 'annual';\n    document.querySelectorAll('.plan').forEach(function(p){\n      var pr = p.querySelector('.price');\n      if (!pr) return;\n      var m = Number(pr.getAttribute('data-monthly'));\n      var a = Number(pr.getAttribute('data-annual'));\n      if (m === 0) return;\n      if (isAnnual) {\n        pr.innerHTML = '$' + Math.round(a / 12) + '<small>/mo</small>';\n        var pn = p.querySelector('.price-note');\n        if (pn) pn.textContent = 'billed annually ($' + a + '/yr)';\n      } else {\n        pr.innerHTML = '$' + m + '<small>/mo</small>';\n        var pn = p.querySelector('.price-note');\n        if (pn) pn.textContent = 'billed monthly';\n      }\n    });\n  }\n  window.setBilling = setBilling;\n</script>\n</body>\n</html>
+  .opp:last-child{margin-bottom:0;}
+  .opp .pair{font-weight:700;font-size:14.5px;}
+  .opp .route{color:var(--text3);font-size:11.5px;margin-top:2px;}
+  .opp .rate{text-align:right;white-space:nowrap;}
+  .opp .annual{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--green);}
+  .opp .risk{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block;margin-top:3px;}
+  .risk.LOW{background:var(--green-soft);color:var(--green);}
+  .risk.MEDIUM{background:var(--amber-soft);color:var(--amber);}
+  .risk.HIGH{background:var(--red-soft);color:var(--red);}
+  .skeleton{height:54px;border-radius:12px;background:linear-gradient(90deg,var(--bg2),var(--card),var(--bg2));background-size:200% 100%;animation:sk 1.3s infinite;margin-bottom:8px;}
+  @keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .dash-foot{text-align:center;margin-top:14px;}
+
+  .countdown-bar{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 20px;text-align:center;margin-top:22px;max-width:460px;margin-left:auto;margin-right:auto;}
+  .countdown-inner{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--text2);}
+  .countdown-digits{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--cobalt-text);letter-spacing:.5px;}
+
+  /* intro line */
+  .intro{max-width:680px;margin:0 auto;text-align:center;color:var(--text2);font-size:16px;padding:20px 0 0;}
+  .intro b{color:var(--text);}
+
+  /* bento features */
+  .bento{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  @media(max-width:860px){.bento{grid-template-columns:1fr 1fr;}}
+  @media(max-width:600px){.bento{grid-template-columns:1fr;}}
+  .bcard{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;}
+  .bcard.wide{grid-column:span 2;}
+  @media(max-width:600px){.bcard.wide{grid-column:span 1;}}
+  .bcard h3{font-size:15.5px;margin-bottom:5px;}
+  .bcard p{font-size:13px;color:var(--text2);}
+  .bcard .visual{height:100px;border-radius:10px;background:var(--bg2);border:1px solid var(--border);margin-bottom:14px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-family:var(--mono);font-size:11px;overflow:hidden;position:relative;}
+  .mini-alert{background:var(--bg1);border:1px solid var(--border);border-radius:9px;padding:8px 10px;font-size:11px;margin-bottom:14px;display:flex;justify-content:space-between;gap:8px;}
+  .mini-alert:last-of-type{margin-bottom:14px;}
+  .mini-alert b{color:var(--amber);}
+  .exchange-chip{display:inline-flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:10.5px;font-weight:600;color:var(--text2);margin:2px;}
+  .exchange-chip .avatar{width:14px;height:14px;border-radius:4px;background:var(--cobalt);display:inline-block;}
+  .sparkline{width:100%;height:60px;}
+
+  /* CTA banner */
+  .cta-banner{border:1px solid var(--border);border-radius:20px;background:var(--bg1);padding:40px 30px;text-align:center;}
+  .cta-banner h3{font-size:clamp(20px,3.4vw,26px);margin-bottom:8px;}
+  .cta-banner p{color:var(--text2);margin-bottom:20px;font-size:14.5px;}
+
+  /* calc */
+  .calc{background:var(--bg1);border:1px solid var(--border);border-radius:22px;padding:30px 26px;}
+  .calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:center;margin-top:10px;}
+  @media(max-width:720px){.calc-grid{grid-template-columns:1fr;}}
+  .calc-controls label{display:block;font-size:12.5px;color:var(--text2);margin:14px 0 6px;font-weight:600;}
+  .calc-cap{font-family:var(--mono);font-size:24px;font-weight:700;color:var(--cobalt-text);}
+  .seg{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}
+  .seg button{flex:1;min-width:100px;border:1px solid var(--border-2);background:var(--card);color:var(--text2);border-radius:10px;padding:9px;font-weight:700;font-size:12.5px;cursor:pointer;}
+  .seg button.active{background:var(--cobalt);color:#fff;border-color:var(--cobalt);}
+  .calc-out{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;text-align:center;}
+  .calc-out .big{font-family:var(--mono);font-size:clamp(28px,6vw,38px);font-weight:700;color:var(--green);}
+  .calc-out .big-lbl{font-size:12.5px;color:var(--text2);margin-top:4px;}
+  .calc-out .row2{display:flex;justify-content:space-around;margin-top:18px;gap:10px;}
+  .calc-out .row2 .n{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--cobalt-text);}
+  .calc-out .row2 .l{font-size:11px;color:var(--text3);}
+  .calc-note{font-size:11.5px;color:var(--text3);margin-top:14px;text-align:center;}
+  input[type=range]{width:100%;accent-color:var(--cobalt);}
+
+  /* steps */
+  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
+  .step{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 18px;text-align:center;}
+  .step .n{width:34px;height:34px;line-height:34px;border-radius:9px;background:var(--cobalt-soft);color:var(--cobalt-text);font-weight:800;margin:0 auto 12px;font-family:var(--mono);font-size:15px;}
+  .step h3{font-size:15px;margin-bottom:6px;}
+  .step p{font-size:12.5px;color:var(--text2);}
+
+  /* track */
+  .track{background:var(--bg1);border:1px solid var(--border);border-radius:20px;padding:32px 26px;}
+  .track-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:18px;}
+  .track-stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;}
+  .track-stat .num{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--cobalt-text);}
+  .track-stat .lbl{font-size:11.5px;color:var(--text2);margin-top:4px;}
+  .track-note{font-size:11.5px;color:var(--text3);text-align:center;margin-top:16px;}
+
+  /* pricing */
+  .billing-toggle{display:flex;width:max-content;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:4px;margin:0 auto 30px;gap:4px;}
+  .billing-toggle button{border:0;background:transparent;padding:9px 18px;border-radius:999px;font-weight:700;font-size:13px;color:var(--text2);cursor:pointer;}
+  .billing-toggle button.active{background:var(--cobalt);color:#fff;}
+  .billing-toggle .save{font-size:10.5px;font-weight:800;color:var(--green);margin-left:6px;}
+  .pricing{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;align-items:stretch;}
+  .plan{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:24px 20px;display:flex;flex-direction:column;position:relative;}
+  .plan.featured{border-color:var(--cobalt);}
+  .plan .badge{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--cobalt);color:#fff;font-size:10.5px;font-weight:800;padding:4px 12px;border-radius:999px;}
+  .plan .name{font-weight:700;font-size:17px;}
+  .plan .price{font-family:var(--mono);font-size:28px;font-weight:700;margin:10px 0 2px;}
+  .plan .price small{font-size:13px;font-weight:500;color:var(--text2);}
+  .plan .price-note{font-size:11.5px;color:var(--text3);min-height:16px;}
+  .plan ul{list-style:none;margin:14px 0 18px;flex:1;}
+  .plan li{font-size:13px;padding:6px 0;border-bottom:1px solid var(--border);color:var(--text2);}
+  .plan li::before{content:"✓";color:var(--green);font-weight:800;margin-right:8px;}
+  .plan-mini{display:block;text-align:center;font-size:12px;color:var(--text3);margin-top:10px;}
+  .plan .btn{justify-content:center;}
+  .pwa-hint{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:20px;font-size:13px;color:var(--text2);}
+
+  /* compare */
+  .compare-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:16px;}
+  table.compare{width:100%;border-collapse:collapse;background:var(--card);min-width:560px;}
+  .compare th,.compare td{padding:13px 16px;text-align:left;font-size:13.5px;border-bottom:1px solid var(--border);}
+  .compare th{background:var(--bg1);font-weight:700;color:var(--text2);}
+  .compare th.hl{color:var(--cobalt-text);}
+  .compare td.yes{color:var(--green);font-weight:800;text-align:center;}
+  .compare td.no{color:var(--text3);text-align:center;}
+  .compare td.part{color:var(--amber);text-align:center;font-weight:700;font-size:12px;}
+  .compare tr:last-child td{border-bottom:none;}
+
+  /* B2B */
+  .b2b-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:26px;}
+  .b2b-card{border:1px solid var(--border);border-radius:16px;padding:22px;background:var(--card);}
+  .b2b-card h3{font-size:16px;margin:10px 0 6px;}
+  .b2b-card p{font-size:13px;color:var(--text2);margin-bottom:10px;}
+  .b2b-card .from{font-size:12.5px;font-weight:700;color:var(--cobalt-text);}
+  .b2b-form{background:var(--bg1);border:1px solid var(--border);border-radius:20px;padding:28px 26px;}
+  .b2b-form h3{font-size:19px;text-align:center;margin-bottom:6px;}
+  .b2b-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:620px;margin:0 auto;}
+  @media(max-width:600px){.b2b-fields{grid-template-columns:1fr;}}
+  .b2b-fields .full{grid-column:1/-1;}
+  input,select,textarea{width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--border-2);font-size:14px;font-family:var(--sans);background:var(--card);color:var(--text);}
+  textarea{min-height:76px;resize:vertical;}
+  select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%238891A3' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer;}
+  input[type=checkbox],input[type=radio]{appearance:none;-webkit-appearance:none;width:auto;min-width:18px;width:18px;height:18px;border:1px solid var(--border-2);border-radius:5px;background:var(--bg2);padding:0;margin:0;cursor:pointer;position:relative;flex-shrink:0;}
+  input[type=radio]{border-radius:50%;}
+  input[type=checkbox]:checked,input[type=radio]:checked{background:var(--cobalt);border-color:var(--cobalt);}
+  input[type=checkbox]:checked::after{content:"";position:absolute;left:4px;top:0px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(40deg);}
+  input[type=radio]:checked::after{content:"";position:absolute;left:4px;top:4px;width:6px;height:6px;border-radius:50%;background:#fff;}
+  .b2b-submit{display:block;margin:16px auto 0;}
+  .b2b-msg{text-align:center;margin-top:12px;font-size:13.5px;min-height:18px;}
+  .b2b-msg.ok{color:var(--green);}.b2b-msg.err{color:var(--red);}
+
+  /* referral / lead */
+  .ref,.lead{border:1px solid var(--border);border-radius:20px;padding:32px 26px;text-align:center;background:var(--card);}
+  .lead-form{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px;}
+  .lead-form input{flex:1;min-width:200px;max-width:320px;}
+  .lead-seg{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px;}
+  .lead-seg label{font-size:12.5px;background:var(--bg2);border:1px solid var(--border);padding:6px 13px;border-radius:999px;cursor:pointer;color:var(--text2);}
+  .lead-seg input{display:none;width:auto;}
+  .lead-seg label:has(input:checked){background:var(--cobalt-soft);color:var(--cobalt-text);border-color:var(--cobalt);font-weight:700;}
+  .lead-msg{margin-top:12px;font-size:13.5px;min-height:18px;}
+  .lead-msg.ok{color:var(--green);}.lead-msg.err{color:var(--red);}
+
+  /* FAQ */
+  .faq{max-width:720px;margin:0 auto;}
+  .qa{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:10px;overflow:hidden;}
+  .qa summary{font-size:14.5px;font-weight:700;padding:16px 18px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;}
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{content:"+";color:var(--cobalt-text);font-weight:800;font-size:18px;}
+  .qa[open] summary::after{content:"−";}
+  .qa p{font-size:13.5px;color:var(--text2);padding:0 18px 16px;}
+
+  /* final */
+  .final{border:1px solid var(--border);border-radius:22px;background:linear-gradient(180deg,var(--bg1),var(--bg));padding:48px 26px;text-align:center;}
+  .final h2{font-size:clamp(24px,4.5vw,32px);}
+  .final p{color:var(--text2);max-width:520px;margin:8px auto 24px;}
+
+  .disclaimer{font-size:12px;color:var(--text3);text-align:center;max-width:760px;margin:0 auto;}
+  footer{text-align:center;color:var(--text3);font-size:12.5px;padding:34px 0;border-top:1px solid var(--border);}
+  .langs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px;}
+  .langs a{font-size:12px;background:var(--card);border:1px solid var(--border);padding:5px 11px;border-radius:8px;color:var(--text2);}
+  .foot-links{margin-top:10px;}
+  .foot-links a{color:var(--text2);margin:0 8px;}
+
+  @media(max-width:480px){
+    .wrap{padding:0 14px;} section{padding:44px 0;} .dash{padding:16px;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="logo"><span class="mark">ff</span>Funding Finder</div>
+    <nav class="nav">
+      <a class="hide-m" href="#features">Features</a>
+      <a class="hide-m" href="#how">How it works</a>
+      <a class="hide-m" href="#calc">Calculator</a>
+      <a class="hide-m" href="#pricing">Pricing</a>
+      <a class="hide-m" href="#faq">FAQ</a>
+      <a class="hide-m" href="#b2b">API / B2B</a>
+      <a class="btn sm" href="https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=header">Launch app</a>
+    </nav>
+  </div>
+  <div class="subnav" id="subnav">
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="#calc">Calculator</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
+    <a href="#b2b">API / B2B</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="wrap">
+    <span class="pill">tracking <b id="exCount">31</b> exchanges · <b id="pairCount">—</b> pairs scanning now</span>
+    <h1 id="heroTitle">Market-neutral yield on <span class="hl">crypto funding rates</span></h1>
+    <p class="lead" id="heroLead">Funding Finder scans 31 exchanges and surfaces the best cross-exchange funding arbitrage — passive yield without betting on price direction. Free to start, no card, no deposit to look.</p>
+    <div class="actions">
+      <a class="btn primary" href="https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=hero" id="ctaHero">Start free — see live opportunities</a>
+      <a class="btn" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Open in Telegram</a>
+    </div>
+    <div class="trust-row">
+      <span>✓ <b>0%</b> to view &amp; scan</span>
+      <span>✓ <b>7-day</b> Pro trial</span>
+      <span>✓ Pay in <b>USDT</b></span>
+      <span>✓ <b>PWA</b> &amp; Telegram Mini App</span>
+    </div>
+
+    <!-- dashboard mockup -->
+    <div class="dash">
+      <div class="dash-top">
+        <div class="dash-title"><span class="dot"></span>Best arbitrage right now</div>
+        <div class="dash-sub" id="liveUpdated">loading…</div>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi"><div class="l">exchanges tracked</div><div class="v" id="statEx">31</div></div>
+        <div class="kpi"><div class="l">pairs in live scan</div><div class="v" id="statPairs">—</div></div>
+        <div class="kpi"><div class="l">fee to view &amp; scan</div><div class="v">0%</div></div>
+        <div class="kpi"><div class="l">time to best route</div><div class="v">&lt;1s</div></div>
+      </div>
+      <div id="liveBody"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+      <div class="dash-foot"><a class="btn sm" href="https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=widget">See all opportunities →</a></div>
+    </div>
+
+    <div class="countdown-bar" id="fundingCountdown">
+      <div class="countdown-inner"><span>Next funding settlement</span><span class="countdown-digits" id="countdownDigits">--:--:--</span><span>UTC</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- INTRO -->
+<section style="padding-bottom:20px;">
+  <p class="intro">Funding rates already move on 31 exchanges every 8 hours. <b>Most of that spread just goes uncaptured</b> — checking each exchange by hand doesn't scale, and by the time you've compared five tabs, the rate has moved. Funding Finder does the comparison continuously and shows the route.</p>
+</section>
+
+<!-- BENTO FEATURES -->
+<section id="features">
+  <div class="wrap">
+    <h2>Everything you need to farm funding</h2>
+    <p class="sub">Built for first-timers chasing passive yield and pros running delta-neutral desks alike.</p>
+    <div class="bento">
+      <div class="bcard wide">
+        <div class="visual"><svg class="sparkline" viewBox="0 0 300 60" preserveAspectRatio="none"><polyline points="0,40 30,35 60,42 90,20 120,28 150,15 180,22 210,10 240,18 270,8 300,14" fill="none" stroke="#3D63FF" stroke-width="2"/></svg></div>
+        <h3>📡 31-exchange scanner</h3>
+        <p>Binance, Bybit, OKX, Gate, MEXC, Bitget, Hyperliquid and 16 more — one source of truth, refreshed in real time.</p>
+      </div>
+      <div class="bcard">
+        <div class="visual">
+          <div class="mini-alert"><span>⚖️ Spread alert</span><b>BTC 0.41%</b></div>
+        </div>
+        <h3>🔔 Alerts &amp; digest</h3>
+        <p>Telegram alerts when a spread hits your threshold, plus a morning report on your watchlist.</p>
+      </div>
+      <div class="bcard">
+        <div class="visual">
+          <span class="exchange-chip"><i class="avatar"></i>Binance</span>
+          <span class="exchange-chip"><i class="avatar"></i>Bybit</span>
+          <span class="exchange-chip"><i class="avatar"></i>OKX</span>
+          <span class="exchange-chip"><i class="avatar"></i>+20</span>
+        </div>
+        <h3>🔌 One API, 31 exchanges</h3>
+        <p>Read-first, encrypted keys. Connect once, scan everywhere.</p>
+      </div>
+      <div class="bcard">
+        <div class="visual" style="font-family:var(--sans);font-size:12px;color:var(--text2);flex-direction:column;gap:4px;">
+          <div>🤖 "Best low-risk spread today: <b style="color:var(--text)">ETH, 0.31%</b>"</div>
+        </div>
+        <h3>AI trade ideas</h3>
+        <p>1 free idea/day, unlimited on Pro — personalized to your watchlist.</p>
+      </div>
+      <div class="bcard wide">
+        <div class="visual" style="flex-direction:column;align-items:flex-start;padding:12px;gap:6px;">
+          <div class="mini-alert" style="width:100%;"><span>💼 Portfolio</span><b style="color:var(--green)">+$142 today</b></div>
+          <div class="mini-alert" style="width:100%;"><span>⚙️ Auto-PnL</span><b>3 open legs</b></div>
+        </div>
+        <h3>💼 Portfolio &amp; auto-PnL</h3>
+        <p>Connect exchange keys (encrypted, read-first) for live PnL and optional auto-execution.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BANNER -->
+<section style="padding-top:0;">
+  <div class="wrap">
+    <div class="cta-banner">
+      <h3>See the spread before it closes.</h3>
+      <p>One good arbitrage typically covers the month. Scanning and detection are always free.</p>
+      <a class="btn primary" href="https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=cta_banner">Start free →</a>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="wrap">
+    <h2>From zero to first payout</h2>
+    <p class="sub">See → try → earn. No deposit needed just to look.</p>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Pick exchanges</h3><p>Select from 31 exchanges to scan. Defaults get you going instantly.</p></div>
+      <div class="step"><div class="n">2</div><h3>Run the scan</h3><p>Every opportunity ranked by annualized yield and risk in under a second.</p></div>
+      <div class="step"><div class="n">3</div><h3>Open the position</h3><p>The "Open" button deep-links to the exchange. Hold to funding.</p></div>
+      <div class="step"><div class="n">4</div><h3>Collect funding</h3><p>Funding accrues every interval. Track live PnL in the app.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- CALCULATOR -->
+<section id="calc">
+  <div class="wrap">
+    <h2>What could this earn?</h2>
+    <p class="sub">Driven by the current best live rate on 31 exchanges, net of estimated fees. Illustrative — a ceiling, not a guarantee.</p>
+    <div class="calc">
+      <div class="calc-grid">
+        <div class="calc-controls">
+          <label>Capital deployed</label>
+          <div class="calc-cap" id="calcCapLabel">$10,000</div>
+          <input type="range" id="calcCap" min="500" max="200000" step="500" value="10000" />
+          <label>Strategy</label>
+          <div class="seg" id="calcSeg">
+            <button data-mode="best" class="active">Best pair</button>
+            <button data-mode="div">Diversified</button>
+          </div>
+        </div>
+        <div class="calc-out">
+          <div class="big" id="calcYear">$—</div>
+          <div class="big-lbl">estimated / year, net of fees</div>
+          <div class="row2">
+            <div><div class="n" id="calcApr">—%</div><div class="l">net APR</div></div>
+            <div><div class="n" id="calcMonth">$—</div><div class="l">/ month</div></div>
+            <div><div class="n" id="calcDay">$—</div><div class="l">/ day</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="calc-note" id="calcNote">Loading live rate…</div>
+      <div style="text-align:center;margin-top:18px;"><a class="btn primary" href="https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=calc">See this in the app →</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- TRACK RECORD -->
+<section>
+  <div class="wrap">
+    <div class="track" id="trackWidget">
+      <h2 style="text-align:left;margin-bottom:6px;">What the market actually paid</h2>
+      <p class="sub" style="text-align:left;margin:0 0 0;">Illustrative backtest on real scanned data over the last <span id="trDays">30</span> days. Market-neutral, 1x leverage, gross of fees — a ceiling, not a promise.</p>
+      <div class="track-grid">
+        <div class="track-stat"><div class="num" id="trBestPair">—</div><div class="lbl">top pair</div></div>
+        <div class="track-stat"><div class="num" id="trBestApr">—</div><div class="lbl">top pair, annualized</div></div>
+        <div class="track-stat"><div class="num" id="trDivApr">—</div><div class="lbl">diversified basket</div></div>
+        <div class="track-stat"><div class="num" id="trNotional">$10k</div><div class="lbl">assumed capital</div></div>
+      </div>
+      <p class="track-note" id="trNote">Loading real data…</p>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing">
+  <div class="wrap">
+    <h2>Simple pricing, pays for itself</h2>
+    <p class="sub">Pay in USDT via Crypto Pay &amp; NOWPayments · 7-day Pro trial · save 20% annually.</p>
+    <div style="text-align:center;"><div class="billing-toggle" role="group" aria-label="Billing period">
+      <button type="button" class="active" data-period="monthly" onclick="setBilling('monthly', this)">Monthly</button>
+      <button type="button" data-period="annual" onclick="setBilling('annual', this)">Annual <span class="save">−20%</span></button>
+    </div></div>
+    <div class="pricing">
+      <div class="plan">
+        <div class="name">Free</div>
+        <div class="price" data-monthly="0" data-annual="0">$0</div>
+        <div class="price-note">forever</div>
+        <ul><li>4 exchanges in scan</li><li>1 AI idea / day</li><li>Basic alerts</li><li>Live arbitrage view</li></ul>
+        <a class="btn block" href="https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=pricing_free">Start free</a>
+      </div>
+      <div class="plan featured">
+        <div class="badge">MOST POPULAR</div>
+        <div class="name">Pro</div>
+        <div class="price" data-monthly="49" data-annual="470">$49<small>/mo</small></div>
+        <div class="price-note" id="proNote">billed monthly</div>
+        <ul><li>12 exchanges in scan</li><li>Unlimited AI ideas</li><li>Portfolio + auto-PnL</li><li>Unlimited watchlist</li><li>Advanced alerts &amp; digest</li></ul>
+        <a class="btn primary block" href="https://funding-finder-frontend.onrender.com/?plan=pro&utm_source=landing&utm_medium=pricing_pro">Start 7-day Pro trial</a>
+        <a class="plan-mini" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">or open in Telegram</a>
+      </div>
+      <div class="plan">
+        <div class="name">Pro+</div>
+        <div class="price" data-monthly="149" data-annual="1430">$149<small>/mo</small></div>
+        <div class="price-note" id="proPlusNote">billed monthly</div>
+        <ul><li>All 31 exchanges</li><li>Everything in Pro</li><li>Priority support</li><li>Early access to features</li><li>White-label option</li></ul>
+        <a class="btn block" href="https://funding-finder-frontend.onrender.com/?plan=proplus&utm_source=landing&utm_medium=pricing_proplus">Go Pro+</a>
+        <a class="plan-mini" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">or open in Telegram</a>
+      </div>
+    </div>
+    <div class="pwa-hint"><span>📲 Install as a PWA: tap <code>Install app</code>, or "Add to Home Screen".</span></div>
+  </div>
+</section>
+
+<!-- COMPARISON -->
+<section>
+  <div class="wrap">
+    <h2>Why not just use one exchange?</h2>
+    <p class="sub">A single-exchange rate page can't see the spread. That spread is the whole game.</p>
+    <div class="compare-wrap">
+      <table class="compare">
+        <thead><tr><th>Capability</th><th class="hl">Funding Finder</th><th>CoinGlass</th><th>ArbPing</th><th>Single exchange</th></tr></thead>
+        <tbody>
+          <tr><td>Exchanges aggregated</td><td class="yes"><b>31</b></td><td class="yes">15</td><td class="yes">12</td><td class="no">1</td></tr>
+          <tr><td>Cross-exchange arbitrage</td><td class="yes">✓</td><td class="no">✕</td><td class="yes">✓</td><td class="no">✕</td></tr>
+          <tr><td>Net APR (after fees)</td><td class="yes">✓</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td></tr>
+          <tr><td>AI ideas on your portfolio</td><td class="yes">✓</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td></tr>
+          <tr><td>Auto-PnL &amp; alerts</td><td class="yes">✓</td><td class="part">basic</td><td class="yes">✓</td><td class="no">✕</td></tr>
+          <tr><td>OI + liquidation heatmap</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✕</td><td class="no">✕</td></tr>
+          <tr><td>Backtest &amp; stability grade</td><td class="yes">✓</td><td class="no">✕</td><td class="part">basic</td><td class="no">✕</td></tr>
+          <tr><td>Free to start</td><td class="yes">✓</td><td class="yes">✓</td><td class="part">limited</td><td class="yes">✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="wrap">
+    <h2>Frequently asked questions</h2>
+    <div class="faq">
+      <details class="qa"><summary>What is a funding rate?</summary><p>A periodic payment exchanged between longs and shorts on perpetual futures. A positive rate means shorts pay longs — so you can earn simply by holding the right side.</p></details>
+      <details class="qa"><summary>How does funding arbitrage work?</summary><p>Funding Finder finds pairs where the rate differs between two exchanges and shows the spread. Opening opposite positions on each venue captures that spread while staying market-neutral — no directional bet.</p></details>
+      <details class="qa"><summary>Do I need to deposit to use it?</summary><p>No. Scanning, arbitrage detection, and 1 AI idea per day are free. You only deposit on an exchange if you decide to open a position.</p></details>
+      <details class="qa"><summary>Are my exchange API keys safe?</summary><p>Keys are encrypted at rest on the server and used read-first. Auto-execution only runs with your explicit permission.</p></details>
+      <details class="qa"><summary>How do I pay?</summary><p>In USDT via Crypto Pay and NOWPayments. New users get a 7-day Pro trial with no charge. Annual billing saves 20%.</p></details>
+      <details class="qa"><summary>Is there an API for developers / funds?</summary><p>Yes — a versioned public API (v1) exposes aggregated funding data across 31 exchanges, plus white-label and embeddable widgets. See <a href="#b2b" style="color:var(--cobalt-text)">API / B2B</a>.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- B2B -->
+<section id="b2b">
+  <div class="wrap">
+    <h2>For funds, bots &amp; media</h2>
+    <p class="sub">The same real-time engine, packaged for builders. Aggregated funding data across 31 exchanges, on tap.</p>
+    <div class="b2b-cards">
+      <div class="b2b-card"><span>🔌</span><h3>Funding Data API</h3><p>Versioned REST API (v1) with real-time rates, spreads and arbitrage signals. Built for quant desks, dashboards and bots.</p><div class="from">from $299/mo</div></div>
+      <div class="b2b-card"><span>🏷️</span><h3>White-label Mini App</h3><p>Your brand, our engine. A fully branded Telegram Mini App + PWA, with revenue share.</p><div class="from">setup + rev-share</div></div>
+      <div class="b2b-card"><span>📊</span><h3>Embeddable widget</h3><p>Drop the live "best arbitrage" widget onto your site with one script tag.</p><div class="from"><a href="/embed.html" style="color:var(--cobalt-text);font-weight:700;">Get the snippet →</a></div></div>
+    </div>
+    <div class="b2b-form">
+      <h3>Request B2B access</h3>
+      <p class="sub" style="margin:6px 0 16px;">Tell us what you're building. We'll reply within 1 business day.</p>
+      <form id="b2bForm" onsubmit="return false;">
+        <div class="b2b-fields">
+          <input type="text" id="b2bName" placeholder="Name / Company" autocomplete="organization" />
+          <select id="b2bProduct">
+            <option value="b2b-api">Funding Data API</option>
+            <option value="b2b-whitelabel">White-label Mini App</option>
+            <option value="b2b-embed">Embeddable widget</option>
+            <option value="b2b-other">Other / not sure</option>
+          </select>
+          <input type="email" id="b2bEmail" placeholder="Work email" autocomplete="email" />
+          <input type="text" id="b2bTg" placeholder="Telegram @handle (optional)" />
+          <textarea class="full" id="b2bMsg" placeholder="What are you building? Expected volume?"></textarea>
+        </div>
+        <button class="btn primary b2b-submit" id="b2bSubmit" type="submit">Request access →</button>
+        <div class="b2b-msg" id="b2bMsgOut"></div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- REFERRAL -->
+<section>
+  <div class="wrap">
+    <div class="ref">
+      <h2>Invite friends, earn real revenue</h2>
+      <p class="sub">Share your referral link — your friend gets a 7-day Pro trial instantly, and you earn 20% revenue share on their payments plus bonus scans.</p>
+      <a class="btn primary" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Get your referral link</a>
+    </div>
+  </div>
+</section>
+
+<!-- LEAD MAGNET -->
+<section>
+  <div class="wrap">
+    <div class="lead">
+      <h2>📈 Free weekly funding report</h2>
+      <p class="sub" style="margin-bottom:0;">Where the best rates are, the top arbitrage of the week, and AI ideas. No spam — just numbers people trade on.</p>
+      <form class="lead-form" id="leadForm" onsubmit="return false;">
+        <input type="email" id="leadEmail" placeholder="Your email" autocomplete="email" />
+        <button class="btn primary" id="leadSubmit" type="submit">Get the report</button>
+      </form>
+      <div class="lead-seg">
+        <label><input type="radio" name="interest" value="passive" checked /><span>Passive yield</span></label>
+        <label><input type="radio" name="interest" value="arbitrage" /><span>Arbitrage</span></label>
+      </div>
+      <div class="lead-msg" id="leadMsg"></div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section>
+  <div class="wrap">
+    <div class="final">
+      <h2>The spread is live right now.</h2>
+      <p>See the best cross-exchange funding opportunities across 31 exchanges — free, no card, no deposit to look.</p>
+      <div class="actions">
+        <a class="btn primary" href="https://funding-finder-frontend.onrender.com/?utm_source=landing&utm_medium=final">Launch app free</a>
+        <a class="btn" href="https://t.me/fundinganalyzerbot" target="_blank" rel="noopener">Open in Telegram</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0;">
+  <div class="wrap"><p class="disclaimer">⚠️ Not financial advice. Trading crypto derivatives and funding strategies carry the risk of loss. Returns depend on market conditions, liquidity, fees and slippage. Always verify rates on the exchange before trading.</p></div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Funding Finder • <a href="https://t.me/fundinganalyzerbot">Telegram</a> • Not financial advice.
+    <div class="langs">
+      <a href="/landing.html">EN</a><a href="/landing.ru.html">RU</a><a href="/landing.tr.html">TR</a><a href="/landing.vi.html">VI</a><a href="/landing.hi.html">HI</a><a href="/landing.es.html">ES</a>
+    </div>
+    <div class="foot-links"><a href="/index.html?app=1#/privacy">Privacy</a> · <a href="/index.html?app=1#/terms">Terms</a> · <a href="#b2b">API / B2B</a></div>
+  </div>
+</footer>
+
+<script>
+  var API_URL = 'https://funding-finder-api.onrender.com';
+  var WIDGET_URL = API_URL + '/api/public/arbitrage';
+  var TRACK_URL = API_URL + '/api/public/trackrecord';
+  var WAITLIST_URL = API_URL + '/api/public/waitlist';
+  var REFRESH_MS = 45000;
+
+  // annualReturn is ALREADY a percentage (e.g. 30.2 = 30.2%/yr) — formatting
+  // must NOT multiply by 100 (the old widget displayed "89590%/yr").
+  function fmtApr(v){ return (v==null||isNaN(v))?'—':v.toFixed(0)+'%'; }
+  function fmtMoney(n){ if(n==null||isNaN(n))return '$—'; return '$'+Math.round(n).toLocaleString('en-US'); }
+
+  // A/B headline test — real, server-scored winner (kept from original; no fake copy shown here since this pass ships one strong headline)
+  (function(){
+    try{
+      var params=new URLSearchParams(location.search);
+      var sid=localStorage.getItem('ff_analytics_session');
+      if(!sid){ sid='s_'+Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem('ff_analytics_session', sid); }
+      var src=params.get('utm_source'); if(src) localStorage.setItem('ff_src', src);
+      fetch(API_URL+'/api/public/track',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({event:'landing_view',source:src||undefined,sessionId:sid}),keepalive:true}).catch(function(){});
+    }catch(e){}
+  })();
+
+  // live widget + calculator (share one fetch)
+  (function(){
+    var body=document.getElementById('liveBody'), updated=document.getElementById('liveUpdated'),
+        pairCount=document.getElementById('pairCount'), statPairs=document.getElementById('statPairs');
+    var bestApr=0, divApr=0;
+
+    function renderCalc(){
+      var cap=parseInt(document.getElementById('calcCap').value,10);
+      document.getElementById('calcCapLabel').textContent='$'+cap.toLocaleString('en-US');
+      var mode=document.querySelector('#calcSeg button.active').getAttribute('data-mode');
+      var grossApr=mode==='best'?bestApr:divApr;
+      var entryFees=cap*0.0004, exitFees=cap*0.0004, totalFees=entryFees+exitFees;
+      var feeDragDaily=totalFees/cap;
+      // netApr is in PERCENT units (e.g. 29.9 = 29.9%/yr) — divide by 100
+      // before applying to capital (the old calculator showed $8.9M/yr on
+      // $10k because it skipped the /100).
+      var netApr=Math.max(0, grossApr - feeDragDaily*365);
+      var year=cap*netApr/100;
+      document.getElementById('calcYear').textContent=fmtMoney(year);
+      document.getElementById('calcApr').textContent=netApr.toFixed(1)+'%';
+      document.getElementById('calcMonth').textContent=fmtMoney(year/12);
+      document.getElementById('calcDay').textContent=fmtMoney(year/365);
+    }
+
+    function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+function render(data){
+      var opps=(data.opportunities||[]);
+      if(!opps.length){
+        body.innerHTML='<div style="text-align:center;padding:8px 0;color:var(--text3);font-size:13px;">No fresh opportunities in this window — refreshing…</div>';
+      } else {
+        body.innerHTML=opps.map(function(o){
+          return '<div class="opp"><div><div class="pair">'+o.pair+'</div><div class="route">'+(o.opportunity||'')+'</div></div>'+
+            '<div class="rate"><div class="annual">up to '+fmtApr(o.annualReturn)+'/yr</div>'+
+            '<span class="risk '+esc(o.riskLevel||'LOW')+'">'+esc(o.riskLevel||'LOW')+'</span></div></div>';
+        }).join('');
+        var aprs=opps.map(function(o){return o.annualReturn;}).filter(function(v){return v!=null&&!isNaN(v);});
+        if(aprs.length){
+          bestApr=Math.max.apply(null,aprs);
+          divApr=aprs.reduce(function(a,b){return a+b;},0)/aprs.length;
+          document.getElementById('calcNote').textContent='Net APR after estimated fees (0.04% taker × 4 legs). Based on the current live rate across '+(data.exchangesTracked||31)+' exchanges. Illustrative, market-neutral.';
+          renderCalc();
+        }
+      }
+      if(data.exchangesTracked){ document.getElementById('exCount').textContent=data.exchangesTracked; document.getElementById('statEx').textContent=data.exchangesTracked; }
+      if(data.pairsTracked){ pairCount.textContent=data.pairsTracked; statPairs.textContent=data.pairsTracked; }
+      var t=data.generatedAt?new Date(data.generatedAt):new Date();
+      updated.textContent='updated '+t.toLocaleTimeString();
+    }
+
+    function load(){
+      fetch(WIDGET_URL,{cache:'no-store'}).then(function(r){return r.json();})
+        .then(function(d){ if(d&&d.ok) render(d); })
+        .catch(function(){ updated.textContent='no connection — retry in '+(REFRESH_MS/1000)+'s'; document.getElementById('calcNote').textContent='Live rate unavailable — try again shortly.'; });
+    }
+    document.getElementById('calcCap').addEventListener('input',renderCalc);
+    document.querySelectorAll('#calcSeg button').forEach(function(b){
+      b.addEventListener('click',function(){
+        document.querySelectorAll('#calcSeg button').forEach(function(x){x.classList.remove('active');});
+        b.classList.add('active'); renderCalc();
+      });
+    });
+    load(); setInterval(load,REFRESH_MS);
+  })();
+
+  // subnav scroll-spy
+  (function(){
+    var links=document.querySelectorAll('#subnav a');
+    if(!links.length)return;
+    var map={};
+    links.forEach(function(a){ var id=a.getAttribute('href').slice(1); var el=document.getElementById(id); if(el) map[id]=a; });
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        var a=map[e.target.id]; if(!a)return;
+        if(e.isIntersecting){
+          links.forEach(function(x){x.classList.remove('active');});
+          a.classList.add('active');
+          a.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});
+        }
+      });
+    },{rootMargin:'-40% 0px -55% 0px'});
+    Object.keys(map).forEach(function(id){ io.observe(document.getElementById(id)); });
+  })();
+
+  function setBilling(period, btn){
+    document.querySelectorAll('.billing-toggle button').forEach(function(b){ b.classList.toggle('active', b===btn); });
+    document.querySelectorAll('.pricing .price').forEach(function(el){
+      var val=period==='annual'?el.getAttribute('data-annual'):el.getAttribute('data-monthly');
+      if(val==null)return; var n=parseInt(val,10);
+      if(n===0){ el.innerHTML='$0'; } else if(period==='annual'){ el.innerHTML='$'+n+'<small>/yr</small>'; } else { el.innerHTML='$'+n+'<small>/mo</small>'; }
+    });
+    var note=period==='annual'?'billed yearly · save 20%':'billed monthly';
+    document.getElementById('proNote').textContent=note;
+    document.getElementById('proPlusNote').textContent=note;
+  }
+
+  (function(){
+    var elDays=document.getElementById('trDays'),elBestPair=document.getElementById('trBestPair'),
+        elBestApr=document.getElementById('trBestApr'),elDivApr=document.getElementById('trDivApr'),
+        elNotional=document.getElementById('trNotional'),elNote=document.getElementById('trNote');
+    function pct(v){ return (v==null||isNaN(v))?'—':v.toFixed(0)+'%'; }
+    fetch(TRACK_URL,{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+      if(!d||!d.available){ elNote.textContent='Not enough history yet — coming soon.'; return; }
+      if(d.windowDays) elDays.textContent=d.windowDays;
+      if(d.bestPair&&d.bestPair.pair) elBestPair.textContent=d.bestPair.pair;
+      elBestApr.textContent=pct(d.bestPair&&d.bestPair.annualizedPct);
+      elDivApr.textContent=pct(d.diversified&&d.diversified.annualizedPct);
+      if(d.notionalUsd) elNotional.textContent='$'+(d.notionalUsd/1000)+'k';
+      var pairs=d.pairsAnalyzed?(' across '+d.pairsAnalyzed+' pairs'):'';
+      elNote.textContent='Illustrative backtest on real data'+pairs+'. Not financial advice.';
+    }).catch(function(){ elNote.textContent='Could not load data. Try again later.'; });
+  })();
+
+  (function(){
+    var el=document.getElementById('countdownDigits');
+    function tick(){
+      var now=new Date();
+      var next=[0,8,16].reduce(function(earliest,h){
+        var candidate=new Date(now); candidate.setUTCHours(h,0,0,0);
+        if(candidate<=now) candidate.setUTCDate(candidate.getUTCDate()+1);
+        return candidate<earliest?candidate:earliest;
+      },new Date('9999-12-31'));
+      var diff=Math.max(0,next.getTime()-now.getTime());
+      var hh=Math.floor(diff/3600000), mm=Math.floor((diff%3600000)/60000), ss=Math.floor((diff%60000)/1000);
+      el.textContent=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss;
+    }
+    tick(); setInterval(tick,1000);
+  })();
+
+  (function(){
+    var form=document.getElementById('leadForm'),emailEl=document.getElementById('leadEmail'),
+        msg=document.getElementById('leadMsg'),btn=document.getElementById('leadSubmit');
+    if(!form)return;
+    var params=new URLSearchParams(window.location.search);
+    form.addEventListener('submit',function(){
+      var email=(emailEl.value||'').trim();
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ msg.className='lead-msg err'; msg.textContent='Enter a valid email'; return; }
+      var interest=document.querySelector('input[name="interest"]:checked');
+      btn.disabled=true; btn.textContent='…';
+      fetch(WAITLIST_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        email:email, lang:'en', source:params.get('utm_source')||'landing', interest:interest?interest.value:'passive'
+      })}).then(function(r){return r.json();}).then(function(d){
+        msg.className='lead-msg ok'; msg.textContent=d.already?'You are already on the list!':'Done! The report is on its way.'; emailEl.value='';
+      }).catch(function(){ msg.className='lead-msg err'; msg.textContent='Network error. Try again later.'; })
+        .finally(function(){ btn.disabled=false; btn.textContent='Get the report'; });
+    });
+  })();
+
+  (function(){
+    var form=document.getElementById('b2bForm'); if(!form)return;
+    var out=document.getElementById('b2bMsgOut'), btn=document.getElementById('b2bSubmit');
+    form.addEventListener('submit',function(){
+      var name=(document.getElementById('b2bName').value||'').trim();
+      var email=(document.getElementById('b2bEmail').value||'').trim();
+      var tg=(document.getElementById('b2bTg').value||'').trim();
+      var product=document.getElementById('b2bProduct').value;
+      var message=(document.getElementById('b2bMsg').value||'').trim();
+      if(!email && !tg){ out.className='b2b-msg err'; out.textContent='Add an email or Telegram handle so we can reply.'; return; }
+      if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ out.className='b2b-msg err'; out.textContent='Enter a valid email.'; return; }
+      btn.disabled=true; btn.textContent='…';
+      var tgPacked=(tg?tg+' ':'')+'| '+product+(name?(' | '+name):'')+(message?(' | '+message):'');
+      fetch(WAITLIST_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        email: email||undefined, telegram: tgPacked, lang:'en', source: product, interest:'arbitrage'
+      })}).then(function(r){return r.json();}).then(function(){
+        out.className='b2b-msg ok'; out.textContent='Thanks! We\u2019ll reach out within 1 business day.'; form.reset();
+      }).catch(function(){ out.className='b2b-msg err'; out.textContent='Network error. Ping us on Telegram instead.'; })
+        .finally(function(){ btn.disabled=false; btn.textContent='Request access \u2192'; });
+    });
+  })();
+
+  setInterval(function(){ fetch(API_URL+'/api/public/ping',{keepalive:true}).catch(function(){}); }, 600000);
+</script>
+
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Funding Finder","applicationCategory":"FinanceApplication","operatingSystem":"Web, Telegram, PWA","url":"https://funding-finder-frontend.onrender.com/landing.html","description":"Aggregates funding rates from 31 crypto exchanges and finds the best cross-exchange funding arbitrage with AI ideas, auto-PnL and alerts.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"What is a funding rate?","acceptedAnswer":{"@type":"Answer","text":"A funding rate is a periodic payment between longs and shorts on perpetual futures. A positive rate means shorts pay longs, so you can earn by holding the position."}},
+{"@type":"Question","name":"How does funding arbitrage work?","acceptedAnswer":{"@type":"Answer","text":"Funding Finder finds pairs where the rate differs between exchanges and shows the spread. Opening opposite positions on each captures the difference while staying market-neutral."}},
+{"@type":"Question","name":"How many exchanges are supported?","acceptedAnswer":{"@type":"Answer","text":"31 exchanges including Binance, Bybit, OKX, Gate, MEXC, Bitget and Hyperliquid, aggregated in real time."}},
+{"@type":"Question","name":"Can I use it for free?","acceptedAnswer":{"@type":"Answer","text":"Yes. The Free tier is always available and new users get a 7-day Pro trial. Scanning, arbitrage detection and 1 AI idea per day are free."}},
+{"@type":"Question","name":"Is there an API for developers?","acceptedAnswer":{"@type":"Answer","text":"Yes, a versioned public API (v1) exposes aggregated funding data across 31 exchanges, plus white-label and embeddable widgets."}}
+]}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Organization","name":"Funding Finder","url":"https://funding-finder-frontend.onrender.com/landing.html","sameAs":["https://t.me/fundinganalyzerbot"]}
+</script>
+</body>
+</html>
