@@ -123,13 +123,7 @@ export function ProfilePage() {
       }
 
       // Fallback for legacy endpoints if needed
-      const results = await Promise.allSettled([
-        apiClient.getBalance(),
-        apiClient.getReferralLink(),
-        apiClient.getReferralList(),
-        apiClient.getPaymentHistory(),
-        apiClient.getWithdrawalHistory(),
-      ]);
+      const results = await Promise.allSettled([\n        apiClient.getBalance(),\n        apiClient.getReferralLink(),\n        apiClient.getReferralList(),\n        apiClient.getPaymentHistory(),\n        apiClient.getWithdrawalHistory(),\n      ]);
 
       const [balanceRes, referralLinkRes, referralStatsRes, paymentHistoryRes, withdrawalHistoryRes] =
         results.map((r) => r.status === 'fulfilled' ? r.value : null);
@@ -181,7 +175,6 @@ export function ProfilePage() {
   }, [user?.id]);
 
   const handleCreateOrder = useCallback(async (planId: string) => {
-    // Guard against double-tap: two concurrent orders = two invoices/charges.
     if (creatingOrder) return;
     setCreatingOrder(true);
     try {
@@ -194,8 +187,6 @@ export function ProfilePage() {
         }
         const invoiceUrl = response.botInvoiceUrl || response.miniAppInvoiceUrl || response.webAppInvoiceUrl;
         if (invoiceUrl) {
-          // window.open is blocked inside the Telegram webview; openLink falls
-          // back to tg.openLink() inside Telegram and window.open elsewhere.
           openLink(invoiceUrl);
         }
         showToast(t('profile.paymentCreated'), 'success');
@@ -209,7 +200,6 @@ export function ProfilePage() {
     }
   }, [creatingOrder, openLink, showToast, t, loadUserData]);
 
-  // Website: open the crypto checkout modal instead of the Telegram invoice.
   const openCheckout = useCallback((planId: string, planName: string, price: number) => {
     setCheckout({ planId, planName, price });
   }, []);
@@ -277,18 +267,7 @@ export function ProfilePage() {
             <div className="flex items-center gap-1 mt-2 overflow-x-auto pr-1">
               {ACHIEVEMENTS.map((ach) => {
                 const unlocked = ach.condition(userStats, referralStats.referrals, subscription);
-                return (
-                  <button
-                    key={ach.id}
-                    onClick={() => setSelectedAchievement(selectedAchievement === ach.id ? null : ach.id)}
-                    className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
-                    style={{ color: unlocked ? 'var(--amber)' : 'var(--text3)', background: unlocked ? 'var(--amber-soft)' : 'var(--surface-2)', opacity: unlocked ? 1 : 0.55 }}
-                    title={t(ach.key)}
-                    aria-label={t(ach.key)}
-                  >
-                    <Icon name={ach.icon} size={15} />
-                  </button>
-                );
+                return (\n                  <button\n                    key={ach.id}\n                    onClick={() => setSelectedAchievement(selectedAchievement === ach.id ? null : ach.id)}\n                    className=\"w-7 h-7 rounded-md flex items-center justify-center shrink-0\"\n                    style={{ color: unlocked ? 'var(--amber)' : 'var(--text3)', background: unlocked ? 'var(--amber-soft)' : 'var(--surface-2)', opacity: unlocked ? 1 : 0.55 }}\n                    title={t(ach.key)}\n                    aria-label={t(ach.key)}\n                  >\n                    <Icon name={ach.icon} size={15} />\n                  </button>\n                );
               })}
             </div>
           </div>
@@ -442,7 +421,6 @@ export function ProfilePage() {
             onClick={async () => {
               const { telegramShareUrl, copyShareText } = await import('../utils/shareLinks');
               const payload = { text: t('profile.shareText'), url: referralLink || SITE_URL, referralCode: user?.referralCode, utm: { source: 'miniapp', medium: 'share', campaign: 'referral' } };
-              // Mobile: use native share sheet; Desktop: open Telegram share URL; Fallback: clipboard
               if (/Mobi|Android/i.test(navigator.userAgent)) {
                 navigator.share({ title: 'Funding Finder', text: t('profile.shareText'), url: payload.url }).catch(() => {
                   window.open(telegramShareUrl(payload), '_blank', 'noopener');
@@ -544,19 +522,7 @@ export function ProfilePage() {
           <h2 className="text-base font-semibold mb-3">{t('profile.paymentHistory')}</h2>
           {paymentHistory.length === 0 ? (
             <div className="text-center py-6 text-muted">{t('profile.noPayments')}</div>
-        ) : (
-          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-             {paymentHistory.slice(0, showAllPayments ? paymentHistory.length : 3).map((payment) => (
-              <div key={payment.id} className="flex justify-between items-center py-3">
-                <div>
-                  <div className="font-medium">{planLabel(payment.plan)}</div>
-                  <div className="text-sm text-muted">{new Date(payment.date).toLocaleDateString()}</div>
-                </div>
-                <div className="text-right font-bold stat">{payment.amount} {payment.currency}</div>
-              </div>
-            ))}
-           </div>
-         )}
+        ) : (\n          <div className=\"divide-y\" style={{ borderColor: 'var(--border)' }}>\n             {paymentHistory.slice(0, showAllPayments ? paymentHistory.length : 3).map((payment) => (\n              <div key={payment.id} className=\"flex justify-between items-center py-3\">\n                <div>\n                  <div className=\"font-medium\">{planLabel(payment.plan)}</div>\n                  <div className=\"text-sm text-muted\">{new Date(payment.date).toLocaleDateString()}</div>\n                </div>\n                <div className=\"text-right font-bold stat\">{payment.amount} {payment.currency}</div>\n              </div>\n            ))}\n           </div>\n         )}
           {paymentHistory.length > 3 && (
             <button
               onClick={() => setShowAllPayments((value) => !value)}
@@ -704,12 +670,7 @@ const PlanCard = memo(function PlanCard({
         </div>
 
       <ul className="space-y-2 mb-4">
-        {features.map((feature, idx) => (
-          <li key={idx} className="flex items-start gap-2 text-sm text-[var(--text)]">
-            <IconCheck size={14} className="mt-0.5 shrink-0" style={{ color: 'var(--green)' }} />
-              <span>{t(feature)}</span>
-          </li>
-        ))}
+        {features.map((feature, idx) => (\n          <li key={idx} className=\"flex items-start gap-2 text-sm text-[var(--text)]\">\n            <IconCheck size={14} className=\"mt-0.5 shrink-0\" style={{ color: 'var(--green)' }} />\n              <span>{t(feature)}</span>\n          </li>\n        ))}
       </ul>
 
       {isCurrent ? (
