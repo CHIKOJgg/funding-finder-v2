@@ -80,6 +80,7 @@
     height: 100%;
     color-scheme: dark;
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
   }
 
   body {
@@ -90,11 +91,13 @@
     -moz-osx-font-smoothing: grayscale;
     width: 100%;
     min-height: 100%;
+    overflow-x: hidden;
   }
 
   #root {
     width: 100%;
     min-height: 100vh;
+    overflow-x: hidden;
   }
 
   /* Focus is always visible on this canvas (keyboard + accessibility) */
@@ -744,7 +747,7 @@
 }
 
 .web-header-inner {
-  max-width: 100%;
+  max-width: 1400px;
   margin: 0 auto;
   height: 56px;
   padding: 0 14px;
@@ -758,17 +761,5 @@
   .web-header-inner {
     padding: 0 24px;
     gap: 16px;
-  }
-}
-
-@media (min-width: 1200px) {
-  .web-header-inner {
-    padding: 0 48px;
-  }
-}
-
-@media (min-width: 1920px) {
-  .web-header-inner {
-    padding: 0 64px;
   }
 }

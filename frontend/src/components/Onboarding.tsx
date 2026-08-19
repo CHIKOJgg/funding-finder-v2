@@ -22,20 +22,9 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   const [interest, setInterest] = useState<Interest>('both');
   const [showChecklist, setShowChecklist] = useState(false);
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleSkip();
-      if (e.key === 'Enter' && step < 4) handleNext();
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [step]);
-
-  const handleNext = useCallback(() => {
-    if (step < 4) {
-      setStep((s) => s + 1);
-    } else {
-      handleComplete();
+  const handleBack = useCallback(() => {
+    if (step > 0) {
+      setStep((s) => s - 1);
     }
   }, [step]);
 
@@ -74,6 +63,24 @@ export function Onboarding({ onComplete }: OnboardingProps) {
 
     setShowChecklist(true);
   }, [setSelectedExchanges, activateTrial, refreshTrial, runScan, experience, interest, planLimits.maxExchanges]);
+
+  const handleNext = useCallback(() => {
+    if (step < 4) {
+      setStep((s) => s + 1);
+    } else {
+      handleComplete();
+    }
+  }, [step, handleComplete]);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleSkip();
+      if (e.key === 'Enter' && step < 4) handleNext();
+      if (e.key === 'ArrowLeft' && step > 0) handleBack();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [step, handleBack, handleNext, handleSkip]);
 
   const handleChecklistDone = useCallback(() => {
     onComplete();
@@ -116,11 +123,24 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   return (
     <div className="fixed inset-0 bg-[rgba(5,7,12,0.6)] flex items-center justify-center z-50 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label={t('onboarding.title')}>
       <div className="bg-surface rounded-2xl max-w-md w-full overflow-hidden" style={{ color: 'var(--text)' }}>
-        {/* Skip button */}
-        <div className="flex justify-end pt-3 pr-3">
+        {/* Top bar with Back and Skip buttons */}
+        <div className="flex items-center justify-between pt-3 px-4">
+          {step > 0 ? (
+            <button
+              type="button"
+              onClick={handleBack}
+              className="text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors cursor-pointer"
+              style={{ color: 'var(--text)', background: 'var(--surface-2)' }}
+            >
+              ← {t('onboarding.back') || 'Назад'}
+            </button>
+          ) : (
+            <div />
+          )}
           <button
+            type="button"
             onClick={handleSkip}
-            className="text-xs px-3 py-1.5 rounded-lg font-medium"
+            className="text-xs px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer"
             style={{ color: 'var(--text-muted)', background: 'var(--surface-2)' }}
           >
             {t('onboarding.skip') || 'Skip →'}
@@ -241,9 +261,26 @@ export function Onboarding({ onComplete }: OnboardingProps) {
             ))}
           </div>
 
-          <button onClick={handleNext} className="btn btn-primary w-full">
-            {step < STEPS.length - 1 ? t('onboarding.next') : t('onboarding.start')}
-          </button>
+          <div className="flex items-center gap-3">
+            {step > 0 && (
+              <button
+                type="button"
+                onClick={handleBack}
+                className="flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer"
+                style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border)' }}
+              >
+                ← {t('onboarding.back') || 'Назад'}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleNext}
+              className={`py-3 px-4 rounded-xl text-sm font-semibold transition-all active:scale-95 shadow-md cursor-pointer ${step > 0 ? 'flex-1' : 'w-full'}`}
+              style={{ background: 'var(--cobalt)', color: '#ffffff' }}
+            >
+              {step < STEPS.length - 1 ? t('onboarding.next') || 'Далее →' : t('onboarding.start') || 'Начать!'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

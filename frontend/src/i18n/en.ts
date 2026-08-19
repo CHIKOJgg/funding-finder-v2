@@ -234,6 +234,7 @@ export const en: Record<string, string> = {
   'onboarding.step4Title': 'Step 3: Subscription and features',
   'onboarding.step4Desc': 'A Pro subscription adds AI analysis, capital recommendations, arbitrage opportunities, and CSV export.',
   'onboarding.next': 'Next →',
+  'onboarding.back': 'Back',
   'onboarding.start': 'Start!',
   'onboarding.experienceTitle': 'What\'s your experience?',
   'onboarding.experienceDesc': 'We\'ll customize your experience based on your level.',

@@ -78,7 +78,7 @@ export function LanguageSwitcher({
         aria-haspopup="true"
         title="Сменить язык / Change language"
       >
-        <span className="text-sm leading-none">{current.flag}</span>
+        <span className="text-xs leading-none">🌐</span>
         <span className="font-mono font-bold uppercase">{current.label}</span>
         <svg
           className={clsx('w-3 h-3 text-[var(--text-muted)] transition-transform duration-200', open && 'rotate-180')}
@@ -113,7 +113,7 @@ export function LanguageSwitcher({
                 )}
               >
                 <span className="flex items-center gap-2">
-                  <span className="text-base">{l.flag}</span>
+                  <span className="text-[10px] font-mono font-bold px-1 py-0.5 rounded bg-[var(--surface-2)] text-[var(--text2)]">{l.label}</span>
                   <span>{l.name}</span>
                 </span>
                 {active && <span className="text-[var(--cobalt)] font-bold text-xs">✓</span>}

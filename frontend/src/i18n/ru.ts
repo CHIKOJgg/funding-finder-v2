@@ -234,6 +234,7 @@ export const ru: Record<string, string> = {
   'onboarding.step4Title': 'Шаг 3: Подписка и возможности',
   'onboarding.step4Desc': 'С Pro подпиской доступны AI-анализ, рекомендации по капиталу, арбитражные возможности и CSV-экспорт.',
   'onboarding.next': 'Далее →',
+  'onboarding.back': 'Назад',
   'onboarding.start': 'Начать!',
   'onboarding.experienceTitle': 'Какой у вас опыт?',
   'onboarding.experienceDesc': 'Мы настроим интерфейс под ваш уровень.',

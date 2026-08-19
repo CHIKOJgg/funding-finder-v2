@@ -753,19 +753,21 @@ const OpportunityCard = memo(function OpportunityCard({
           </div>
           <div className="text-xs text-[var(--text-muted)] mt-2 font-mono" title={t('arb.untilFundingTitle')}>
             {isSync ? (
-              <div className="flex items-center gap-1 flex-wrap">
-                <CountdownTimer intervalHours={intervalA} targetTimestamp={nextApplyA} className="font-medium" showProgress />
-                <span>{t('arb.untilFundingBoth', { exA: opp.exchangeA, exB: opp.exchangeB })}</span>
+              <div className="inline-flex items-center gap-1.5 flex-wrap">
+                <CountdownTimer intervalHours={intervalA} targetTimestamp={nextApplyA} className="font-semibold text-xs text-[var(--text)]" showProgress />
+                <span className="text-[11px] text-[var(--text-muted)]">
+                  {t('arb.untilFundingBoth', { exA: opp.exchangeA, exB: opp.exchangeB })}
+                </span>
               </div>
             ) : (
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-1">
-                  <CountdownTimer intervalHours={intervalA} targetTimestamp={nextApplyA} className="font-medium" />
-                  <span>{t('arb.untilFundingEx', { ex: opp.exchangeA })}</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="inline-flex items-center gap-1 bg-[var(--surface-2)] border border-[var(--border)] px-2 py-0.5 rounded-md">
+                  <span className="text-[10px] text-[var(--text-muted)] font-mono uppercase font-bold">{opp.exchangeA}:</span>
+                  <CountdownTimer intervalHours={intervalA} targetTimestamp={nextApplyA} className="font-semibold text-[11px] text-[var(--text)]" />
                 </div>
-                <div className="flex items-center gap-1">
-                  <CountdownTimer intervalHours={intervalB} targetTimestamp={nextApplyB} className="font-medium" />
-                  <span>{t('arb.untilFundingEx', { ex: opp.exchangeB })}</span>
+                <div className="inline-flex items-center gap-1 bg-[var(--surface-2)] border border-[var(--border)] px-2 py-0.5 rounded-md">
+                  <span className="text-[10px] text-[var(--text-muted)] font-mono uppercase font-bold">{opp.exchangeB}:</span>
+                  <CountdownTimer intervalHours={intervalB} targetTimestamp={nextApplyB} className="font-semibold text-[11px] text-[var(--text)]" />
                 </div>
               </div>
             )}

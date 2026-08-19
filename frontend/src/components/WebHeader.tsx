@@ -55,11 +55,11 @@ export function WebHeader({ user, onLogout, onLogin }: WebHeaderProps) {
             </span>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {!isGuest && (
-              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] text-xs font-medium text-[var(--text)]">
-                <span className="w-2 h-2 rounded-full bg-[var(--green)]" />
-                <span className="truncate max-w-[120px]">{userIdentifier || t('header.user')}</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] text-xs font-medium text-[var(--text)] shrink-0">
+                <span className="w-2 h-2 rounded-full bg-[var(--green)] shrink-0" />
+                <span className="truncate max-w-[100px] sm:max-w-[150px]">{userIdentifier || t('header.user')}</span>
               </div>
             )}
 
@@ -69,7 +69,7 @@ export function WebHeader({ user, onLogout, onLogin }: WebHeaderProps) {
               <button
                 type="button"
                 onClick={() => setShowLoginModal(true)}
-                className="btn btn-primary text-xs sm:text-sm py-1.5 px-3 font-semibold shadow-sm shrink-0"
+                className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-lg bg-[var(--cobalt)] hover:bg-[var(--brand-hover)] text-white text-xs sm:text-sm font-semibold shadow-sm transition-all shrink-0 cursor-pointer active:scale-95 select-none"
               >
                 {t('login.login') || 'Войти'}
               </button>
@@ -77,9 +77,13 @@ export function WebHeader({ user, onLogout, onLogin }: WebHeaderProps) {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="btn btn-secondary text-xs sm:text-sm py-1.5 px-3 font-medium shrink-0"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--surface-2)] hover:bg-[var(--red-soft)] hover:text-[var(--red)] hover:border-[var(--red)]/40 text-[var(--text2)] border border-[var(--border)] text-xs sm:text-sm font-medium transition-all shrink-0 cursor-pointer active:scale-95 select-none"
+                title={t('header.logout') || 'Выйти'}
               >
-                {t('header.logout') || 'Выйти'}
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>{t('header.logout') || 'Выйти'}</span>
               </button>
             )}
           </div>
