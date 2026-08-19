@@ -1,6 +1,5 @@
 import request from 'supertest';
 import { prismaMock as mockPrisma, createTestApp, makeAuthUser } from '../testkit';
-import arbitrageRoutes from '../../routes/arbitrage.js';
 
 jest.mock('../../services/prisma', () => ({
   prisma: mockPrisma,
@@ -27,9 +26,20 @@ jest.mock('../../services/scanService', () => ({
   runScan: jest.fn(),
   getCachedScan: jest.fn().mockReturnValue(null),
 }));
+jest.mock('../../middleware/auth', () => ({
+  authenticate: jest.fn((req: any, _res: any, next: any) => {
+    req.user = { id: 'test-user-id' };
+    req.userId = 'test-user-id';
+    next();
+  }),
+  optionalAuth: jest.fn((_req: any, _res: any, next: any) => next()),
+  validateExchangeList: jest.fn((_req: any, _res: any, next: any) => next()),
+}));
 
+import arbitrageRoutes from '../../routes/arbitrage.js';
 import * as arbitrageService from '../../services/arbitrageService';
 import * as scanService from '../../services/scanService';
+import { authenticate } from '../../middleware/auth.js';
 
 const authUser = makeAuthUser();
 const mkApp = () => createTestApp(arbitrageRoutes, { authUser });
@@ -43,7 +53,12 @@ const scanShape = {
 };
 
 beforeEach(() => {
-  jest.resetAllMocks();
+  jest.clearAllMocks();
+  (authenticate as unknown as jest.Mock).mockImplementation((req: any, _res: any, next: any) => {
+    req.user = { id: 'test-user-id' };
+    req.userId = 'test-user-id';
+    next();
+  });
 });
 
 describe('arbitrage routes', () => {

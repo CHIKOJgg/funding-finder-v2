@@ -42,14 +42,20 @@ async function consumeFreeAiQuota(userId: string): Promise<boolean> {
 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
-  if (user.lastFreeAiAt && user.lastFreeAiAt >= startOfToday) {
-    return false; // already used today
-  }
-  await prisma.user.update({
-    where: { telegramId: userId },
+
+  // Atomic conditional update: guarantees only 1 request wins the daily slot
+  const updated = await prisma.user.updateMany({
+    where: {
+      telegramId: userId,
+      OR: [
+        { lastFreeAiAt: null },
+        { lastFreeAiAt: { lt: startOfToday } },
+      ],
+    },
     data: { lastFreeAiAt: new Date() },
   });
-  return true;
+
+  return updated.count > 0;
 }
 
 router.post('/ai', aiLimiter, validate(aiSchema), async (req: AuthenticatedRequest, res) => {
