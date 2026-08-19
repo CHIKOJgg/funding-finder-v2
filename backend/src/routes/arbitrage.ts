@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validation.js';
-import { AuthenticatedRequest, authenticate } from '../middleware/auth.js';
+import { AuthenticatedRequest, authenticate, optionalAuth } from '../middleware/auth.js';
 import {
   createArbitrageAlert,
   getUserArbitrageAlerts,
@@ -523,8 +523,16 @@ router.get('/arbitrage/spot-futures', optionalAuth, async (req, res) => {
     const isDefaultPreview = exchange === 'binance' && pair === 'BTCUSDT';
 
     if (!isDefaultPreview) {
-      const user = req.user;
-      const sub = user?.subscription || 'free';
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.userId;
+      let sub = 'free';
+      if (userId) {
+        const userRow = await prisma.user.findUnique({
+          where: { telegramId: userId },
+          select: { subscription: true },
+        });
+        sub = userRow?.subscription || 'free';
+      }
       if (sub !== 'pro' && sub !== 'proplus') {
         return sendError(res, 403, 'Pro subscription required for custom Spot-Futures pairs', 'PRO_REQUIRED');
       }
