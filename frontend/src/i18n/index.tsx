@@ -8,13 +8,20 @@ import { es } from './es';
 
 export type Lang = 'ru' | 'en' | 'tr' | 'vi' | 'hi' | 'es';
 
-// Only fully translated locales are offered in the switcher. TR/VI/HI/ES
-// dictionaries are partial (~60 of 950 keys) and would silently fall back to
-// English — a fake "supported" language. Keep them in DICTS so a previously
-// saved preference still resolves; they just stop being selectable.
-export const LANGUAGES: { code: Lang; label: string }[] = [
-  { code: 'ru', label: 'RU' },
-  { code: 'en', label: 'EN' },
+export interface LanguageOption {
+  code: Lang;
+  label: string;
+  name: string;
+  flag: string;
+}
+
+export const LANGUAGES: LanguageOption[] = [
+  { code: 'ru', label: 'RU', name: 'Русский', flag: '🇷🇺' },
+  { code: 'en', label: 'EN', name: 'English', flag: '🇬🇧' },
+  { code: 'es', label: 'ES', name: 'Español', flag: '🇪🇸' },
+  { code: 'tr', label: 'TR', name: 'Türkçe', flag: '🇹🇷' },
+  { code: 'vi', label: 'VI', name: 'Tiếng Việt', flag: '🇻🇳' },
+  { code: 'hi', label: 'HI', name: 'हिन्दी', flag: '🇮🇳' },
 ];
 
 export const SUPPORTED_LANG_CODES = new Set<string>(LANGUAGES.map((l) => l.code));

@@ -32,40 +32,53 @@ export function WebHeader({ user, onLogout, onLogin }: WebHeaderProps) {
 
   const isGuest = !user?.provider || user.provider === 'guest';
 
-  const displayName =
+  const userIdentifier =
     user?.firstName ||
     (user?.walletAddress ? `${user.walletAddress.slice(0, 6)}…${user.walletAddress.slice(-4)}` : '') ||
     user?.email ||
-    (isGuest ? (t('header.guest') || 'Гость') : t('header.user'));
+    '';
 
   return (
     <>
       <header className="web-header">
         <div className="web-header-inner">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <span
-              className="flex items-center justify-center font-mono text-[13px] font-extrabold"
-              style={{ width: 26, height: 26, borderRadius: 7, background: 'var(--cobalt)', color: 'var(--on-brand)' }}
+              className="flex items-center justify-center font-mono text-[13px] font-extrabold shadow-sm"
+              style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--cobalt)', color: 'var(--on-brand)' }}
               aria-hidden="true"
             >
               ff
             </span>
-            <span className="font-extrabold text-[17px] text-[var(--text)]">Funding Finder</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm truncate max-w-[40vw]" style={{ color: 'var(--text-muted)' }}>
-              {displayName}
+            <span className="font-extrabold text-[16px] sm:text-[17px] tracking-tight text-[var(--text)]">
+              Funding Finder
             </span>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            {!isGuest && (
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] text-xs font-medium text-[var(--text)]">
+                <span className="w-2 h-2 rounded-full bg-[var(--green)]" />
+                <span className="truncate max-w-[120px]">{userIdentifier || t('header.user')}</span>
+              </div>
+            )}
+
             <LanguageSwitcher />
+
             {isGuest ? (
               <button
+                type="button"
                 onClick={() => setShowLoginModal(true)}
-                className="btn btn-primary text-sm py-1.5 px-3"
+                className="btn btn-primary text-xs sm:text-sm py-1.5 px-3 font-semibold shadow-sm shrink-0"
               >
                 {t('login.login') || 'Войти'}
               </button>
             ) : (
-              <button onClick={handleLogout} className="btn btn-secondary text-sm py-1.5 px-3">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="btn btn-secondary text-xs sm:text-sm py-1.5 px-3 font-medium shrink-0"
+              >
                 {t('header.logout') || 'Выйти'}
               </button>
             )}
