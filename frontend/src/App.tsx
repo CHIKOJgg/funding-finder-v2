@@ -185,17 +185,20 @@ function DataProvider() {
       .catch(() => { /* plan stays 'free' on failure */ });
     return () => { cancelled = true; };
   }, [user?.id]);
+
   const [scanResults, setScanResults] = useState<ScanResult | null>(null);
   const [scanLoading, setScanLoading] = useState(false);
   const [scanStatus, setScanStatus] = useState(() => t('app.ready'));
-  const [selectedExchanges, setSelectedExchanges] = useState<string[]>(ALL_EXCHANGES);
+  const [selectedExchanges, setSelectedExchanges] = useState<string[]>(() => ALL_EXCHANGES.slice(0, 4));
 
-  // The default selection is "all exchanges", but a plan may cap how many the
-  // user can actually scan (e.g. Free = 3). Trim the initial selection to the
-  // plan limit so the counter reads e.g. "3/3" instead of a confusing "23/3".
+  // The default selection is 4 exchanges for free users, and expands for Pro/Pro+.
   useEffect(() => {
     const max = planLimits.maxExchanges;
-    setSelectedExchanges((prev) => (prev.length > max ? prev.slice(0, max) : prev));
+    setSelectedExchanges((prev) => {
+      if (prev.length > max) return prev.slice(0, max);
+      if (prev.length < max && max > 4) return ALL_EXCHANGES.slice(0, max);
+      return prev;
+    });
   }, [planLimits.maxExchanges]);
 
   // Trial state
@@ -621,4 +624,3 @@ export default function App() {
     </ErrorBoundary>
   );
 }
-
