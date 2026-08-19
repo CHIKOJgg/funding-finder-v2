@@ -103,8 +103,8 @@ export interface ScanResult {
     minFundingUsed: number;
     totalOpportunities: number;
     exchanges: string[];
-    averageIntervalHours: number;  // average funding interval across all results
-    intervalDistribution: Record<string, number>; // count by interval
+    averageIntervalHours: number;
+    intervalDistribution: Record<string, number>;
   };
 }
 
@@ -138,12 +138,19 @@ export interface ArbitrageOpportunity {
   markPriceA?: number;
   markPriceB?: number;
   opportunity: string;
-  
+
   profit: ProfitCalculation;
   risk: RiskAssessment;
   score: number;
   timestamp: number;
   persistenceGrade?: string;  // A-F based on how often this pair appeared in recent scans
+
+  // Settlement Timing & Synchronization
+  nextApplyA?: number;             // Epoch ms of next funding payout on exchange A
+  nextApplyB?: number;             // Epoch ms of next funding payout on exchange B
+  sameSettlementTime?: boolean;    // True if both exchanges settle at the exact same time
+  settlementDeltaMinutes?: number; // Time difference between settlement cycles in minutes
+  sameInterval?: boolean;          // True if intervalA_hours === intervalB_hours
 
   // New metrics v2
   netApr?: number;             // APR after fees deducted

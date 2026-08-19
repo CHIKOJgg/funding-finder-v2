@@ -160,6 +160,7 @@ export function ArbitragePage() {
   const [exchangeFilter, setExchangeFilter] = useState<string[]>([]);
   const [minApy, setMinApy] = useState(0);
   const [pairQuery, setPairQuery] = useState('');
+  const [syncSettlementOnly, setSyncSettlementOnly] = useState(false);
   const [visibleCount, setVisibleCount] = useState(15);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const isGuest = !user?.provider || user.provider === 'guest';
@@ -236,6 +237,14 @@ export function ArbitragePage() {
       }
       if (minApy > 0 && (o.profit?.annualReturn ?? 0) < minApy) return false;
       if (q && !o.pair.toLowerCase().includes(q)) return false;
+      if (syncSettlementOnly) {
+        const isSync = o.sameSettlementTime ?? (
+          o.nextApplyA && o.nextApplyB
+            ? Math.abs(o.nextApplyA - o.nextApplyB) < 60_000
+            : o.intervalA_hours === o.intervalB_hours
+        );
+        if (!isSync) return false;
+      }
       return true;
     });
 
@@ -260,7 +269,7 @@ export function ArbitragePage() {
     });
 
     return sorted;
-  }, [arbOpportunities, arbSortBy, riskFilter, exchangeFilter, minApy, pairQuery]);
+  }, [arbOpportunities, arbSortBy, riskFilter, exchangeFilter, minApy, pairQuery, syncSettlementOnly]);
 
   const activeFilterCount = useMemo(() => {
     let n = 0;
@@ -269,8 +278,9 @@ export function ArbitragePage() {
     if (exchangeFilter.length > 0) n++;
     if (minApy > 0) n++;
     if (pairQuery.trim()) n++;
+    if (syncSettlementOnly) n++;
     return n;
-  }, [arbSortBy, riskFilter, exchangeFilter, minApy, pairQuery]);
+  }, [arbSortBy, riskFilter, exchangeFilter, minApy, pairQuery, syncSettlementOnly]);
 
   const resetFilters = useCallback(() => {
     setArbSortBy('apy');
@@ -278,6 +288,7 @@ export function ArbitragePage() {
     setExchangeFilter([]);
     setMinApy(0);
     setPairQuery('');
+    setSyncSettlementOnly(false);
     setVisibleCount(15);
   }, []);
 
@@ -464,12 +475,45 @@ export function ArbitragePage() {
                   />
                 </FilterField>
 
+                <FilterField label={t('filter.settlementTiming')}>
+                  <label className="flex items-start gap-2 cursor-pointer text-sm select-none py-1">
+                    <input
+                      type="checkbox"
+                      checked={syncSettlementOnly}
+                      onChange={(e) => setSyncSettlementOnly(e.target.checked)}
+                      className="w-4 h-4 mt-0.5 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+                    />
+                    <div>
+                      <span className="font-medium text-[var(--text)]">{t('filter.syncFundingOnly')}</span>
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('filter.syncFundingHint')}</p>
+                    </div>
+                  </label>
+                </FilterField>
+
                 {activeFilterCount > 0 && (
                   <button onClick={resetFilters} className="btn btn-secondary text-sm py-2 w-full">
                     {t('common.resetFilters')}
                   </button>
                 )}
               </FilterBar>
+
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setSyncSettlementOnly((prev) => !prev)}
+                  className={clsx(
+                    'text-xs font-semibold px-3 py-1.5 rounded-full border transition-all flex items-center gap-1.5 cursor-pointer',
+                    syncSettlementOnly
+                      ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
+                      : 'bg-[var(--surface-2)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--text-muted)]'
+                  )}
+                  title={t('filter.syncFundingHint')}
+                >
+                  <span>⚡</span>
+                  <span>{t('filter.syncFundingPill')}</span>
+                  {syncSettlementOnly && <span className="ml-0.5 text-xs">✓</span>}
+                </button>
+              </div>
 
               {filteredOpportunities.length === 0 ? (
                   <div className="text-center py-8 text-[var(--text-muted)]">
@@ -671,6 +715,15 @@ const OpportunityCard = memo(function OpportunityCard({
   const fundingB = fundB ? fundB.ratePerHour : opp.fundingB_per_hour;
   const intervalA = fundA ? fundA.intervalHours : opp.intervalA_hours;
   const intervalB = fundB ? fundB.intervalHours : opp.intervalB_hours;
+
+  const nextApplyA = fundA?.nextApply || opp.nextApplyA;
+  const nextApplyB = fundB?.nextApply || opp.nextApplyB;
+  const isSync = opp.sameSettlementTime ?? (
+    nextApplyA && nextApplyB
+      ? Math.abs(nextApplyA - nextApplyB) < 60_000
+      : intervalA === intervalB
+  );
+
   return (
     <div className="opportunity-card">
       <div className="opportunity-head">
@@ -680,9 +733,34 @@ const OpportunityCard = memo(function OpportunityCard({
             <span className={clsx('text-xs px-2 py-1 rounded-full', getRiskColor(opp.risk?.level))} title={t('arb.riskLevelTitle')}>
               {opp.risk?.level}
             </span>
+            {isSync ? (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--green-soft)] text-[var(--green)] border border-[var(--green)]/30 font-semibold flex items-center gap-1" title={t('arb.syncSettlementNotice')}>
+                {t('arb.syncBadge', { hours: intervalA })}
+              </span>
+            ) : (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--text-muted)] border border-[var(--border)] font-medium flex items-center gap-1">
+                {t('arb.asyncBadge', { hoursA: intervalA, hoursB: intervalB })}
+              </span>
+            )}
           </div>
           <div className="text-xs text-[var(--text-muted)] mt-2 font-mono" title={t('arb.untilFundingTitle')}>
-            <CountdownTimer intervalHours={opp.intervalA_hours} className="font-medium" showProgress /> {t('arb.untilFundingEx', { ex: opp.exchangeA })}
+            {isSync ? (
+              <div className="flex items-center gap-1 flex-wrap">
+                <CountdownTimer intervalHours={intervalA} targetTimestamp={nextApplyA} className="font-medium" showProgress />
+                <span>{t('arb.untilFundingBoth', { exA: opp.exchangeA, exB: opp.exchangeB })}</span>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1">
+                  <CountdownTimer intervalHours={intervalA} targetTimestamp={nextApplyA} className="font-medium" />
+                  <span>{t('arb.untilFundingEx', { ex: opp.exchangeA })}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <CountdownTimer intervalHours={intervalB} targetTimestamp={nextApplyB} className="font-medium" />
+                  <span>{t('arb.untilFundingEx', { ex: opp.exchangeB })}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="opportunity-hero">

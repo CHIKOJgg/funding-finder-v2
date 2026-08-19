@@ -1,5 +1,5 @@
 import { ExchangeResult, ArbitrageOpportunity, ProfitCalculation, RiskAssessment } from '../types/index.js';
-import { normalizeFundingRate } from '../utils/helpers.js';
+import { normalizeFundingRate, resolveNextApply } from '../utils/helpers.js';
 import { prisma } from './prisma.js';
 import { logger } from '../utils/logger.js';
 
@@ -421,6 +421,14 @@ export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): Arb
 
         // Minimum threshold: 0.001% per hour difference
         if (difference > 0.00001) {
+          const now = Date.now();
+          const nextApplyA = resolveNextApply(a, now);
+          const nextApplyB = resolveNextApply(b, now);
+          const settlementDeltaMs = Math.abs(nextApplyA - nextApplyB);
+          const sameSettlementTime = nextApplyA > 0 && nextApplyB > 0 && settlementDeltaMs < 60_000;
+          const settlementDeltaMinutes = Math.round(settlementDeltaMs / 60_000);
+          const sameInterval = intervalA_hours === intervalB_hours;
+
           const opp: ArbitrageOpportunity = {
             pair,
             exchangeA: a.exchange,
@@ -441,6 +449,11 @@ export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): Arb
             volumeB: b.volume_24h_settle,
             markPriceA: a.mark_price,
             markPriceB: b.mark_price,
+            nextApplyA,
+            nextApplyB,
+            sameSettlementTime,
+            settlementDeltaMinutes,
+            sameInterval,
             opportunity:
               fundingA_per_hour > fundingB_per_hour
                 ? `SHORT on ${a.exchange}, LONG on ${b.exchange}`
@@ -463,7 +476,7 @@ export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): Arb
               intervalMismatch,
             }),
             score: 0,
-            timestamp: Date.now(),
+            timestamp: now,
           };
             opp.score = calculateOpportunityScore(opp);
             // Attach new metrics v2

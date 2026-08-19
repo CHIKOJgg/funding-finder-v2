@@ -52,6 +52,14 @@ export const ru: Record<string, string> = {
   'filter.risk.low': 'LOW',
   'filter.risk.medium': 'MEDIUM',
   'filter.risk.high': 'HIGH',
+  'filter.settlementTiming': 'Время выплаты фандинга',
+  'filter.syncFundingOnly': 'Только синхронная выплата (в одну секунду)',
+  'filter.syncFundingHint': 'Показывает связки, где выплата фандинга происходит одновременно на обеих биржах (без перекоса во времени).',
+  'filter.syncFundingPill': '⚡ Синхронный фандинг',
+  'arb.syncBadge': '⚡ Синхронно ({hours}ч)',
+  'arb.asyncBadge': '⏳ Разное время ({hoursA}ч vs {hoursB}ч)',
+  'arb.syncSettlementNotice': 'Синхронная выплата фандинга',
+  'arb.untilFundingBoth': 'До выплаты на {exA} и {exB}',
 
   // ExchangeSelect
   'exchangeSelect.all': 'Все биржи',

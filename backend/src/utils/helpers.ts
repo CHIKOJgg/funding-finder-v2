@@ -309,3 +309,25 @@ export function generateRecommendations(
     })
     .join('\n');
 }
+
+/**
+ * Resolve the next funding-settlement timestamp for a contract in milliseconds (epoch ms).
+ * Prefers the exchange-reported future timestamp or derives the next interval boundary.
+ */
+export function resolveNextApply(
+  item: { funding_next_apply?: number; funding_interval_hours?: number; funding_interval_seconds?: number },
+  now: number = Date.now()
+): number {
+  const fna = item.funding_next_apply;
+  if (typeof fna === 'number' && isFinite(fna) && fna > now) {
+    return fna;
+  }
+  const intervalHours =
+    item.funding_interval_hours ||
+    (item.funding_interval_seconds ? item.funding_interval_seconds / 3600 : 0) ||
+    8;
+  if (!intervalHours || intervalHours <= 0) return 0;
+  const stepMs = intervalHours * 3600 * 1000;
+  const epoch = Date.UTC(1970, 0, 1);
+  return Math.ceil((now - epoch) / stepMs) * stepMs + epoch;
+}
