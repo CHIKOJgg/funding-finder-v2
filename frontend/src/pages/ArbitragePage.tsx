@@ -6,7 +6,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { SoftPaywallBanner } from '../components/SoftPaywallBanner';
 import { apiClient } from '../api/client';
 import { getRiskColor, formatPrice } from '../utils/formatters';
-import { openExchange, exchangeLabel } from '../utils/exchanges';
+import { openExchange, exchangeLabel, getEstimatedExchangeLatency } from '../utils/exchanges';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { ExchangeSelect } from '../components/ExchangeSelect';
 import { FilterBar, FilterField, SegmentedControl } from '../components/FilterBar';
@@ -79,11 +79,13 @@ interface LiveFunding {
 function useArbLivePrices(opps: any[]): {
   prices: Record<string, number>;
   funding: Record<string, LiveFunding>;
+  exchangeLatencies: Record<string, number>;
   latencyMs: number | null;
   lastUpdated: number | null;
 } {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [funding, setFunding] = useState<Record<string, LiveFunding>>({});
+  const [exchangeLatencies, setExchangeLatencies] = useState<Record<string, number>>({});
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
@@ -127,6 +129,9 @@ function useArbLivePrices(opps: any[]): {
         if (!cancelled) {
           setPrices((prev) => ({ ...prev, ...nextPrices }));
           setFunding((prev) => ({ ...prev, ...nextFunding }));
+          if (res.latencies && typeof res.latencies === 'object') {
+            setExchangeLatencies((prev) => ({ ...prev, ...res.latencies }));
+          }
           setLatencyMs(res._latencyMs || apiClient.getLastLiveLatency() || null);
           setLastUpdated(Date.now());
         }
@@ -142,7 +147,7 @@ function useArbLivePrices(opps: any[]): {
     };
   }, [depKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { prices, funding, latencyMs, lastUpdated };
+  return { prices, funding, exchangeLatencies, latencyMs, lastUpdated };
 }
 
 export function ArbitragePage() {
@@ -314,7 +319,7 @@ export function ArbitragePage() {
     () => (isGuest ? filteredOpportunities.slice(0, 1) : filteredOpportunities.slice(0, visibleCount)),
     [filteredOpportunities, visibleCount, isGuest]
   );
-  const { prices: priceMap, funding: fundingMap, latencyMs: liveLatency, lastUpdated: liveFetchedAt } = useArbLivePrices(visibleOpportunities);
+  const { prices: priceMap, funding: fundingMap, exchangeLatencies, latencyMs: liveLatency, lastUpdated: liveFetchedAt } = useArbLivePrices(visibleOpportunities);
 
   return (
     <div className="px-3 py-4 sm:px-4">
@@ -535,6 +540,7 @@ export function ArbitragePage() {
                         opportunity={opp}
                         priceMap={priceMap}
                         fundingMap={fundingMap}
+                        exchangeLatencies={exchangeLatencies}
                         latencyMs={liveLatency}
                         onCalculate={() => {
                           setSelectedOpportunity(opp);
@@ -682,12 +688,14 @@ const OpportunityCard = memo(function OpportunityCard({
   opportunity: opp,
   priceMap,
   fundingMap,
+  exchangeLatencies,
   latencyMs,
   onCalculate,
 }: {
   opportunity: any;
   priceMap?: Record<string, number>;
   fundingMap?: Record<string, { ratePerHour: number; intervalHours: number; rawRate: number; nextApply: number }>;
+  exchangeLatencies?: Record<string, number>;
   latencyMs?: number | null;
   onCalculate: () => void;
 }) {
@@ -790,7 +798,7 @@ const OpportunityCard = memo(function OpportunityCard({
           funding={fundingA}
           interval={intervalA}
           live={!!fundA}
-          latencyMs={latencyMs}
+          latencyMs={exchangeLatencies?.[opp.exchangeA] ?? opp.latencyA ?? latencyMs ?? getEstimatedExchangeLatency(opp.exchangeA)}
         />
         <ExchangePriceCell
           exchange={opp.exchangeB}
@@ -798,7 +806,7 @@ const OpportunityCard = memo(function OpportunityCard({
           funding={fundingB}
           interval={intervalB}
           live={!!fundB}
-          latencyMs={latencyMs}
+          latencyMs={exchangeLatencies?.[opp.exchangeB] ?? opp.latencyB ?? latencyMs ?? getEstimatedExchangeLatency(opp.exchangeB)}
         />
       </div>
       </div>

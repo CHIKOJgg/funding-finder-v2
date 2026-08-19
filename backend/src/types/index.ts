@@ -152,6 +152,10 @@ export interface ArbitrageOpportunity {
   settlementDeltaMinutes?: number; // Time difference between settlement cycles in minutes
   sameInterval?: boolean;          // True if intervalA_hours === intervalB_hours
 
+  // Exchange Response Latencies (in ms)
+  latencyA?: number;               // Measured API ping for exchange A
+  latencyB?: number;               // Measured API ping for exchange B
+
   // New metrics v2
   netApr?: number;             // APR after fees deducted
   paybackDays?: number;        // Days to recover fees from spread

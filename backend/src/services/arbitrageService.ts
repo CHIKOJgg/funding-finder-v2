@@ -1,5 +1,6 @@
 import { ExchangeResult, ArbitrageOpportunity, ProfitCalculation, RiskAssessment } from '../types/index.js';
 import { normalizeFundingRate, resolveNextApply } from '../utils/helpers.js';
+import { getExchangeLatency } from '../utils/exchangeLatency.js';
 import { prisma } from './prisma.js';
 import { logger } from '../utils/logger.js';
 
@@ -454,6 +455,8 @@ export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): Arb
             sameSettlementTime,
             settlementDeltaMinutes,
             sameInterval,
+            latencyA: getExchangeLatency(a.exchange),
+            latencyB: getExchangeLatency(b.exchange),
             opportunity:
               fundingA_per_hour > fundingB_per_hour
                 ? `SHORT on ${a.exchange}, LONG on ${b.exchange}`

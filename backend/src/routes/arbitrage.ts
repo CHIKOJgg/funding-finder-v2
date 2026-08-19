@@ -19,6 +19,7 @@ import { runScan, getCachedScan } from '../services/scanService.js';
 import { getWarmupPromise } from '../services/fundingWarmup.js';
 import { getSubscriptionLimits, requireSubscription, planRank } from '../middleware/subscription.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
+import { getExchangeLatency, recordExchangeLatency } from '../utils/exchangeLatency.js';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
 import { sendError } from '../middleware/errorHandler.js';
@@ -586,6 +587,7 @@ router.post('/live/batch', validate(liveBatchSchema), validateLiveBatchExchanges
     const requests = req.body.requests;
     const prices: Record<string, number> = {};
     const funding: Record<string, any> = {};
+    const latencies: Record<string, number> = {};
 
     await Promise.all(
       requests.map(async (r: any) => {
@@ -594,10 +596,17 @@ router.post('/live/batch', validate(liveBatchSchema), validateLiveBatchExchanges
         const symbols = r.symbols.map((s: string) => s.trim()).filter(Boolean);
         if (symbols.length === 0) return;
 
+        const start = performance.now();
         const [priceMap, fundingMap] = await Promise.all([
           getLivePriceBatch(exchange, symbols),
           getLiveFundingBatch(exchange, symbols),
         ]);
+        const elapsed = Math.round(performance.now() - start);
+        if (elapsed > 0) {
+          recordExchangeLatency(exchange, elapsed);
+        }
+        latencies[exchange] = getExchangeLatency(exchange);
+
         for (const [s, p] of Object.entries(priceMap as Record<string, number>)) {
           if (typeof p === 'number' && isFinite(p) && p > 0) prices[`${exchange}:${s.toUpperCase()}`] = p;
         }
@@ -609,7 +618,7 @@ router.post('/live/batch', validate(liveBatchSchema), validateLiveBatchExchanges
       })
     );
 
-    res.json({ ok: true, prices, funding });
+    res.json({ ok: true, prices, funding, latencies });
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Live batch error');
