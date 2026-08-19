@@ -132,7 +132,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               className="text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors cursor-pointer"
               style={{ color: 'var(--text)', background: 'var(--surface-2)' }}
             >
-              ← {t('onboarding.back') || 'Назад'}
+              {t('onboarding.back')}
             </button>
           ) : (
             <div />
@@ -143,7 +143,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
             className="text-xs px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer"
             style={{ color: 'var(--text-muted)', background: 'var(--surface-2)' }}
           >
-            {t('onboarding.skip') || 'Skip →'}
+            {t('onboarding.skip')}
           </button>
         </div>
 
@@ -269,7 +269,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                 className="flex-1 py-3 px-4 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer"
                 style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border)' }}
               >
-                ← {t('onboarding.back') || 'Назад'}
+                {t('onboarding.back')}
               </button>
             )}
             <button
@@ -278,7 +278,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               className={`py-3 px-4 rounded-xl text-sm font-semibold transition-all active:scale-95 shadow-md cursor-pointer ${step > 0 ? 'flex-1' : 'w-full'}`}
               style={{ background: 'var(--cobalt)', color: '#ffffff' }}
             >
-              {step < STEPS.length - 1 ? t('onboarding.next') || 'Далее →' : t('onboarding.start') || 'Начать!'}
+              {step < STEPS.length - 1 ? t('onboarding.next') : t('onboarding.start')}
             </button>
           </div>
         </div>

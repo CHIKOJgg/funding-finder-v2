@@ -234,8 +234,12 @@ export const en: Record<string, string> = {
   'onboarding.step4Title': 'Step 3: Subscription and features',
   'onboarding.step4Desc': 'A Pro subscription adds AI analysis, capital recommendations, arbitrage opportunities, and CSV export.',
   'onboarding.next': 'Next →',
-  'onboarding.back': 'Back',
+  'onboarding.back': '← Back',
+  'onboarding.skip': 'Skip →',
   'onboarding.start': 'Start!',
+  'onboarding.title': 'Welcome to Funding Finder',
+  'onboarding.scanHint': 'Auto-scan 4 top exchanges with one click',
+  'onboarding.trialHint': '7 days free — all Pro features included',
   'onboarding.experienceTitle': 'What\'s your experience?',
   'onboarding.experienceDesc': 'We\'ll customize your experience based on your level.',
   'onboarding.expBeginner': 'Beginner',
@@ -1004,13 +1008,6 @@ export const en: Record<string, string> = {
    // Sort aria
   'main.sortAriaLabel': 'Sort results',
   'main.directionFlip': 'Direction flip',
-
-  // Onboarding (first-run overlay) — used WITHOUT `|| fallback`, so a missing
-  // key would render the raw key to every new user.
-  'onboarding.title': 'Welcome to Funding Finder',
-  'onboarding.skip': 'Skip →',
-   'onboarding.scanHint': 'Auto-scan 4 top exchanges with one click',
-  'onboarding.trialHint': '7 days free — all Pro features included',
 
   // Crypto checkout
   'crypto.openCryptoBot': 'Open Crypto Bot',
