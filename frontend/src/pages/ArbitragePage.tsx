@@ -168,7 +168,7 @@ export function ArbitragePage() {
   const [syncSettlementOnly, setSyncSettlementOnly] = useState(false);
   const [visibleCount, setVisibleCount] = useState(15);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const isGuest = !user?.provider || user.provider === 'guest';
+  const isGuest = (!user?.provider || user.provider === 'guest') && subscription === 'free';
 
   useEffect(() => {
     // Cache-first: these only fetch if data isn't already loaded (or in-flight),

@@ -183,39 +183,31 @@ router.get('/arbitrage/opportunities', async (req, res) => {
   if (exchanges.length === 0) exchanges = SUPPORTED_EXCHANGES;
 
   let isGuest = false;
+  let maxAllowed = 4;
   const userId = (req as AuthenticatedRequest).userId;
   if (userId) {
-    if (userId.startsWith('guest_') || (req as any).user?.authProvider === 'guest') {
-      isGuest = true;
-    } else {
-      try {
-        const u = await prisma.user.findUnique({ where: { telegramId: userId }, select: { authProvider: true } });
-        if (u?.authProvider === 'guest') {
+    try {
+      const limits = await getSubscriptionLimits(userId);
+      maxAllowed = limits.maxExchanges;
+      if (limits.tier === 'free') {
+        if (userId.startsWith('guest_') || (req as any).user?.authProvider === 'guest') {
           isGuest = true;
+        } else {
+          const u = await prisma.user.findUnique({ where: { telegramId: userId }, select: { authProvider: true } });
+          if (u?.authProvider === 'guest') {
+            isGuest = true;
+          }
         }
-      } catch {}
+      }
+    } catch {
+      if (userId.startsWith('guest_')) isGuest = true;
     }
   } else {
     isGuest = true;
   }
 
-  // Cap to the user's plan so a guest / free user can never trigger a full 31-exchange
-  // live scan (which caused cold timeouts and surfaced as a network error).
-  if (isGuest) {
-    if (exchanges.length > 4) {
-      exchanges = exchanges.slice(0, 4);
-    }
-  } else if (userId) {
-    try {
-      const limits = await getSubscriptionLimits(userId);
-      if (exchanges.length > limits.maxExchanges) {
-        exchanges = exchanges.slice(0, limits.maxExchanges);
-      }
-    } catch {
-      if (exchanges.length > 4) {
-        exchanges = exchanges.slice(0, 4);
-      }
-    }
+  if (exchanges.length > maxAllowed) {
+    exchanges = exchanges.slice(0, maxAllowed);
   }
 
   const key = arbOppKey(exchanges);
