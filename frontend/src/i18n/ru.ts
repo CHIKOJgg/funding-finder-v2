@@ -431,6 +431,7 @@ export const ru: Record<string, string> = {
   'profile.paymentHistory': 'История платежей',
   'profile.noPayments': 'Платежей пока нет',
   'profile.withdrawalHistory': 'История выводов',
+  'profile.withdraw': 'Вывести',
   'profile.noWithdrawals': 'Выводов пока нет',
   'profile.settingsLink': 'Настройки',
   'profile.termsLink': 'Пользовательское соглашение',

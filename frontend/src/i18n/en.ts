@@ -453,6 +453,7 @@ export const en: Record<string, string> = {
   'profile.paymentHistory': 'Payment history',
   'profile.noPayments': 'No payments yet',
   'profile.withdrawalHistory': 'Withdrawal history',
+  'profile.withdraw': 'Withdraw',
   'profile.noWithdrawals': 'No withdrawals yet',
   'profile.settingsLink': 'Settings',
   'profile.termsLink': 'Terms of Service',

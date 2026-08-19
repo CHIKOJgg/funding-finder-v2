@@ -167,7 +167,7 @@ export function TrialCTA({ compact = false, showTimer = false, source }: TrialCT
           <IconChartLine size={12} /> Portfolio
         </span>
         <span className="px-2 py-1 rounded-full flex items-center gap-1" style={{ background: 'rgba(255,255,255,0.15)' }}>
-          <IconZap size={12} /> 20 Exchanges
+          <IconZap size={12} /> 31 Exchanges
         </span>
       </div>
       <button
