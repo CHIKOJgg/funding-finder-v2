@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validation.js';
-import { AuthenticatedRequest } from '../middleware/auth.js';
+import { AuthenticatedRequest, authenticate } from '../middleware/auth.js';
 import {
   createArbitrageAlert,
   getUserArbitrageAlerts,
@@ -109,7 +109,7 @@ const calculateProfitSchema = z.object({
   capital: z.number().min(100),
 });
 
-router.post('/alerts/arbitrage', validate(createAlertSchema), async (req, res) => {
+router.post('/alerts/arbitrage', authenticate, validate(createAlertSchema), async (req, res) => {
   try {
     const userId = (req as AuthenticatedRequest).userId!;
     const { pair, exchangeA, exchangeB, condition, threshold, direction, cooldown } = req.body;
@@ -131,7 +131,7 @@ router.post('/alerts/arbitrage', validate(createAlertSchema), async (req, res) =
   }
 });
 
-router.get('/alerts/arbitrage', async (req, res) => {
+router.get('/alerts/arbitrage', authenticate, async (req, res) => {
   try {
     const userId = (req as AuthenticatedRequest).userId!;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -144,7 +144,7 @@ router.get('/alerts/arbitrage', async (req, res) => {
   }
 });
 
-router.delete('/alerts/arbitrage/:alertId', async (req, res) => {
+router.delete('/alerts/arbitrage/:alertId', authenticate, async (req, res) => {
   try {
     const userId = (req as AuthenticatedRequest).userId!;
     const { alertId } = req.params;
@@ -159,7 +159,7 @@ router.delete('/alerts/arbitrage/:alertId', async (req, res) => {
   }
 });
 
-router.post('/alerts/arbitrage/:alertId/toggle', async (req, res) => {
+router.post('/alerts/arbitrage/:alertId/toggle', authenticate, async (req, res) => {
   try {
     const userId = (req as AuthenticatedRequest).userId!;
     const { alertId } = req.params;

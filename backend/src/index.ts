@@ -376,6 +376,9 @@ app.use('/api', qrPublicRouter);             // /api/qr-login/verify (no auth)
 // the webhook router itself.
 app.use('/api/webhook', webhookRoutes);
 
+// Arbitrage & Guest Teasers (optionalAuth handled per-route)
+app.use('/api', authLimiter, optionalAuth, arbitrageRoutes);
+
 // Scan hits many exchange APIs and AI calls cost money, so each route group
 // carries its own strict per-user cap (defined inside the route files so the
 // limit only counts that group's requests).
@@ -395,7 +398,6 @@ app.use('/api/v1', authLimiter, authenticate, v1Routes);
 
 // Protected routes (auth required)
 app.use('/api/alerts', authLimiter, authenticate, alertsRoutes);
-app.use('/api', authLimiter, optionalAuth, arbitrageRoutes);
 app.use('/api', authLimiter, authenticate, paymentsRoutes);
 app.use('/api', authLimiter, authenticate, referralsRoutes);
 app.use('/api', authLimiter, authenticate, profileRoutes);
