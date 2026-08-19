@@ -1,12 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { ru } from './ru';
 import { en } from './en';
-import { tr } from './tr';
-import { vi } from './vi';
-import { hi } from './hi';
-import { es } from './es';
 
-export type Lang = 'ru' | 'en' | 'tr' | 'vi' | 'hi' | 'es';
+export type Lang = 'ru' | 'en';
 
 export interface LanguageOption {
   code: Lang;
@@ -18,15 +14,11 @@ export interface LanguageOption {
 export const LANGUAGES: LanguageOption[] = [
   { code: 'ru', label: 'RU', name: 'Русский', flag: '🇷🇺' },
   { code: 'en', label: 'EN', name: 'English', flag: '🇬🇧' },
-  { code: 'es', label: 'ES', name: 'Español', flag: '🇪🇸' },
-  { code: 'tr', label: 'TR', name: 'Türkçe', flag: '🇹🇷' },
-  { code: 'vi', label: 'VI', name: 'Tiếng Việt', flag: '🇻🇳' },
-  { code: 'hi', label: 'HI', name: 'हिन्दी', flag: '🇮🇳' },
 ];
 
 export const SUPPORTED_LANG_CODES = new Set<string>(LANGUAGES.map((l) => l.code));
 
-const DICTS: Record<Lang, Dict> = { ru, en, tr, vi, hi, es };
+const DICTS: Record<Lang, Dict> = { ru, en };
 
 type Dict = Record<string, string>;
 type Vars = Record<string, string | number>;
@@ -45,22 +37,29 @@ const I18nContext = createContext<I18nContextType>({
   languages: LANGUAGES,
 });
 
-// Detect the initial UI language for a visitor who never picked one:
-// 1) saved preference, 2) Telegram Mini App language_code, 3) browser language,
-// 4) English (the campaign default — the old hardcoded Russian default put
-// TR/VI/HI/ES campaign traffic into a Russian UI).
+// Detect the initial UI language:
+// 1) saved preference in localStorage
+// 2) Telegram Mini App language_code (if 'ru'/'be'/'uk'/'kk' -> 'ru', else 'en')
+// 3) browser language (if 'ru' -> 'ru', else 'en')
 function detectInitialLang(): Lang {
   try {
     const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('ff_lang') : null;
     if (saved && SUPPORTED_LANG_CODES.has(saved)) return saved as Lang;
     const tgLang = (window.Telegram?.WebApp?.initDataUnsafe?.user as any)?.language_code as string | undefined;
-    if (tgLang && SUPPORTED_LANG_CODES.has(tgLang)) return tgLang as Lang;
-    const nav = (navigator.language || (navigator as any).userLanguage || 'en').slice(0, 2).toLowerCase();
-    if (nav && SUPPORTED_LANG_CODES.has(nav)) return nav as Lang;
+    if (tgLang) {
+      const lower = tgLang.toLowerCase();
+      if (lower.startsWith('ru') || lower.startsWith('be') || lower.startsWith('uk') || lower.startsWith('kk')) {
+        return 'ru';
+      }
+      return 'en';
+    }
+    const nav = (navigator.language || (navigator as any).userLanguage || 'ru').slice(0, 2).toLowerCase();
+    if (nav === 'ru' || nav === 'be' || nav === 'uk' || nav === 'kk') return 'ru';
+    return 'en';
   } catch {
     /* ignore detection errors */
   }
-  return 'en';
+  return 'ru';
 }
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {

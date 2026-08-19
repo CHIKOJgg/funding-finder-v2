@@ -1019,6 +1019,10 @@ export const ru: Record<string, string> = {
   'pullToRefresh.pull': 'Потяните для обновления',
   'pullToRefresh.refresh': 'Обновить',
   'pullToRefresh.refreshing': 'Обновление…',
+  'pullToRelease.refresh': 'Отпустите для обновления',
+
+  // Public page
+  'public.payback': 'Окупаемость',
 
   // Admin
   'admin.accessDenied': 'Доступ запрещён',
