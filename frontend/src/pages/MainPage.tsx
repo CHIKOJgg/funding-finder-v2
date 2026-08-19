@@ -21,6 +21,7 @@ import { ActivationChecklist } from '../components/ActivationChecklist';
 import { SoftPaywallBanner } from '../components/SoftPaywallBanner';
 import { InstallBanner } from '../components/InstallBanner';
 import { PullToRefresh } from '../components/PullToRefresh';
+import { LiveIndicator } from '../components/LiveIndicator';
 import { ExchangeResult } from '../types';
 import { useT, useI18n } from '../i18n';
 import { IconShare2, IconStar, IconBell, IconChartLine, IconLock, IconExternalLink } from '../components/icons';
@@ -384,8 +385,11 @@ export function MainPage() {
 
       {scanResults && (
         <div className="card">
-          <div className="flex items-center justify-between mb-3 gap-2">
-            <h2 className="text-lg font-semibold">{t('main.scanResults')}</h2>
+          <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold">{t('main.scanResults')}</h2>
+              <LiveIndicator latencyMs={lastScanMs} lastUpdated={(scanResults as any)?.timestamp ? new Date((scanResults as any).timestamp).getTime() : undefined} />
+            </div>
             {scanLoading && <span className="text-xs text-muted animate-pulse">{t('main.scanningBtn')}</span>}
             <div className="flex gap-2">
               <button

@@ -15,6 +15,7 @@ import {
 } from 'chart.js';
 import { openExchange } from '../utils/exchanges';
 import { IconLightbulb, IconPause, IconPlay } from './icons';
+import { LiveIndicator } from './LiveIndicator';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -49,13 +50,17 @@ export function SpotFuturesPanel() {
   const [history, setHistory] = useState<{ timestamp: string; funding: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [paused, setPaused] = useState(false);
 
   const loadSF = useCallback(async () => {
+    const t0 = performance.now();
     try {
       const res: any = await apiClient.getSpotFutures(exchange, pair);
+      const latency = Math.round(performance.now() - t0);
       if (res?.ok) {
         setData(res);
+        setLatencyMs(latency);
         setLastUpdated(Date.now());
       } else if (res?.error) {
         showToast(res.error, 'error');
@@ -129,10 +134,7 @@ export function SpotFuturesPanel() {
     <div className="card">
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-lg font-semibold">{t('sf.title')}</h2>
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className={clsx('inline-block w-2 h-2 rounded-full', paused ? 'bg-[var(--text3)]' : 'bg-[var(--green)] animate-pulse')} aria-hidden="true" />
-          <span className="text-[var(--green)] font-medium">{t('oi.live')}</span>
-        </div>
+        <LiveIndicator paused={paused} latencyMs={latencyMs} lastUpdated={lastUpdated} />
       </div>
       <p className="text-sm text-muted mb-3">{t('sf.subtitle')}</p>
 

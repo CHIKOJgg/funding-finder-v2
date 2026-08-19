@@ -16,6 +16,7 @@ import { Heatmap } from '../components/Heatmap';
 import { openLoginModal } from '../components/WebHeader';
 import { profitCalcClient, breakEvenDays, type ClientProfit } from '../utils/profitCalc';
 import { LiquidationHeatmap } from '../components/LiquidationHeatmap';
+import { LiveIndicator } from '../components/LiveIndicator';
 import {
   IconAlertTriangle,
   IconBell,
@@ -78,9 +79,13 @@ interface LiveFunding {
 function useArbLivePrices(opps: any[]): {
   prices: Record<string, number>;
   funding: Record<string, LiveFunding>;
+  latencyMs: number | null;
+  lastUpdated: number | null;
 } {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [funding, setFunding] = useState<Record<string, LiveFunding>>({});
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   const byExchange = useMemo(() => {
     const map: Record<string, string[]> = {};
@@ -122,6 +127,8 @@ function useArbLivePrices(opps: any[]): {
         if (!cancelled) {
           setPrices((prev) => ({ ...prev, ...nextPrices }));
           setFunding((prev) => ({ ...prev, ...nextFunding }));
+          setLatencyMs(res._latencyMs || apiClient.getLastLiveLatency() || null);
+          setLastUpdated(Date.now());
         }
       } catch {
         /* keep previous data on transient error */
@@ -135,7 +142,7 @@ function useArbLivePrices(opps: any[]): {
     };
   }, [depKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { prices, funding };
+  return { prices, funding, latencyMs, lastUpdated };
 }
 
 export function ArbitragePage() {
@@ -293,10 +300,10 @@ export function ArbitragePage() {
   // Live prices for the symbols the user is actually looking at. Refreshed
   // every 10s inside the hook; falls back to each opportunity's mark price.
   const visibleOpportunities = useMemo(
-    () => filteredOpportunities.slice(0, visibleCount),
-    [filteredOpportunities, visibleCount]
+    () => (isGuest ? filteredOpportunities.slice(0, 1) : filteredOpportunities.slice(0, visibleCount)),
+    [filteredOpportunities, visibleCount, isGuest]
   );
-  const { prices: priceMap, funding: fundingMap } = useArbLivePrices(visibleOpportunities);
+  const { prices: priceMap, funding: fundingMap, latencyMs: liveLatency, lastUpdated: liveFetchedAt } = useArbLivePrices(visibleOpportunities);
 
   return (
     <div className="px-3 py-4 sm:px-4">
@@ -307,13 +314,12 @@ export function ArbitragePage() {
         >
           ff
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="text-xl font-bold leading-tight text-[var(--text)]">{t('arb.title')}</h1>
-          <p className="text-sm text-muted leading-tight">{t('arb.subtitle')}</p>
+          <p className="text-sm text-muted leading-tight truncate">{t('arb.subtitle')}</p>
         </div>
-        <div className="flex items-center gap-1.5 text-xs shrink-0" title={lastUpdated ? t('arb.liveUpdated', { time: new Date(lastUpdated).toLocaleTimeString() }) : undefined}>
-          <span className="inline-block w-2 h-2 rounded-full bg-[var(--green)] animate-pulse" aria-hidden="true" />
-          <span className="text-[var(--green)] font-medium">{t('arb.live')}</span>
+        <div className="shrink-0">
+          <LiveIndicator latencyMs={liveLatency} lastUpdated={liveFetchedAt || lastUpdated} />
         </div>
       </div>
 
@@ -485,6 +491,7 @@ export function ArbitragePage() {
                         opportunity={opp}
                         priceMap={priceMap}
                         fundingMap={fundingMap}
+                        latencyMs={liveLatency}
                         onCalculate={() => {
                           setSelectedOpportunity(opp);
                           setShowModal(true);
@@ -631,11 +638,13 @@ const OpportunityCard = memo(function OpportunityCard({
   opportunity: opp,
   priceMap,
   fundingMap,
+  latencyMs,
   onCalculate,
 }: {
   opportunity: any;
   priceMap?: Record<string, number>;
   fundingMap?: Record<string, { ratePerHour: number; intervalHours: number; rawRate: number; nextApply: number }>;
+  latencyMs?: number | null;
   onCalculate: () => void;
 }) {
   const t = useT();
@@ -703,6 +712,7 @@ const OpportunityCard = memo(function OpportunityCard({
           funding={fundingA}
           interval={intervalA}
           live={!!fundA}
+          latencyMs={latencyMs}
         />
         <ExchangePriceCell
           exchange={opp.exchangeB}
@@ -710,6 +720,7 @@ const OpportunityCard = memo(function OpportunityCard({
           funding={fundingB}
           interval={intervalB}
           live={!!fundB}
+          latencyMs={latencyMs}
         />
       </div>
       </div>
@@ -887,29 +898,43 @@ function ExchangePriceCell({
   funding,
   interval,
   live,
+  latencyMs,
 }: {
   exchange: string;
   price: { value: number; live: boolean };
   funding: number;
   interval: number;
   live: boolean;
+  latencyMs?: number | null;
 }) {
   const t = useT();
   const valid = isFinite(price.value) && price.value > 0;
   const fundingColor = funding > 0 ? 'text-[var(--green)]' : funding < 0 ? 'text-[var(--red)]' : 'text-[var(--text2)]';
+  const latencyDisplay = latencyMs && latencyMs > 0 ? (latencyMs < 1000 ? `${Math.round(latencyMs)}ms` : `${(latencyMs / 1000).toFixed(1)}s`) : null;
+
   return (
     <div className="rounded-lg bg-surface-2 px-3 py-2 border border-[var(--border)]">
       <div className="flex items-center justify-between gap-1">
         <span className="text-xs font-medium text-[var(--text-muted)] truncate" title={exchangeLabel(exchange)}>{exchangeLabel(exchange)}</span>
         <span className="flex items-center gap-1.5 shrink-0">
-          {price.live && <span className="live-label">{t('arb.live')}</span>}
+          {price.live && (
+            <span className="live-label inline-flex items-center gap-1" title={latencyDisplay ? `Задержка обновления: ${latencyDisplay}` : undefined}>
+              <span>{t('arb.live')}</span>
+              {latencyDisplay && <span className="opacity-80 text-[10px] font-mono font-medium">· {latencyDisplay}</span>}
+            </span>
+          )}
           <span className="text-sm font-semibold font-mono text-[var(--text)]">${valid ? formatPrice(price.value) : '—'}</span>
         </span>
       </div>
       <div className="flex items-center justify-between mt-1.5 gap-1">
         <span className="text-xs text-[var(--text-muted)]">{t('arb.fundingRate')}</span>
         <span className="flex items-center gap-1.5 shrink-0">
-          {live && <span className="live-label">{t('arb.live')}</span>}
+          {live && (
+            <span className="live-label inline-flex items-center gap-1" title={latencyDisplay ? `Задержка обновления: ${latencyDisplay}` : undefined}>
+              <span>{t('arb.live')}</span>
+              {latencyDisplay && <span className="opacity-80 text-[10px] font-mono font-medium">· {latencyDisplay}</span>}
+            </span>
+          )}
           <span className={clsx('text-xs font-semibold font-mono truncate max-w-full', fundingColor)} title={`${(funding * 100).toFixed(4)}%/${t('unit.hoursShort', { h: interval })}`}>
             {(funding * 100).toFixed(4)}{t('unit.pctPerHour')} ({t('unit.hoursShort', { h: interval })})
           </span>
