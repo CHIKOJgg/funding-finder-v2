@@ -55,7 +55,7 @@ export const en: Record<string, string> = {
   'filter.settlementTiming': 'Funding settlement timing',
   'filter.syncFundingOnly': 'Simultaneous settlement only (same second)',
   'filter.syncFundingHint': 'Shows arbitrage pairs where funding payout occurs at the exact same moment on both exchanges (no timing lag).',
-  'filter.syncFundingPill': '⚡ Simultaneous funding',
+  'filter.syncFundingPill': 'Simultaneous funding',
   'arb.syncBadge': '⚡ Synchronized ({hours}h)',
   'arb.asyncBadge': '⏳ Async ({hoursA}h vs {hoursB}h)',
   'arb.syncSettlementNotice': 'Simultaneous funding settlement',
