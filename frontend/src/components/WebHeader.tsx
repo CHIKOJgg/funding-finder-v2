@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from './Toast';
 import { useT } from '../i18n';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -10,10 +10,20 @@ interface WebHeaderProps {
   onLogin?: (token: string, user: any) => void;
 }
 
+export function openLoginModal() {
+  window.dispatchEvent(new CustomEvent('open-login-modal'));
+}
+
 export function WebHeader({ user, onLogout, onLogin }: WebHeaderProps) {
   const { showToast } = useToast();
   const t = useT();
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setShowLoginModal(true);
+    window.addEventListener('open-login-modal', handler);
+    return () => window.removeEventListener('open-login-modal', handler);
+  }, []);
 
   const handleLogout = () => {
     onLogout();
@@ -64,11 +74,11 @@ export function WebHeader({ user, onLogout, onLogin }: WebHeaderProps) {
       </header>
 
       {showLoginModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="relative w-full max-w-sm my-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="relative w-full max-w-md my-8">
             <button
               onClick={() => setShowLoginModal(false)}
-              className="absolute top-4 right-4 z-20 w-8 h-8 rounded-full flex items-center justify-center bg-[var(--bg1)] text-[var(--text-muted)] hover:text-[var(--text)]"
+              className="absolute -top-3 -right-3 z-10 w-8 h-8 rounded-full bg-[var(--surface-2)] border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text)] flex items-center justify-center shadow-lg"
               aria-label="Close"
             >
               ✕
@@ -76,7 +86,7 @@ export function WebHeader({ user, onLogout, onLogin }: WebHeaderProps) {
             <LoginPage
               onAuthenticated={(token, u) => {
                 setShowLoginModal(false);
-                onLogin?.(token, u);
+                if (onLogin) onLogin(token, u);
               }}
             />
           </div>
