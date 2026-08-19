@@ -123,25 +123,12 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   return (
     <div className="fixed inset-0 bg-[rgba(5,7,12,0.6)] flex items-center justify-center z-50 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label={t('onboarding.title')}>
       <div className="bg-surface rounded-2xl max-w-md w-full overflow-hidden" style={{ color: 'var(--text)' }}>
-        {/* Top bar with Back and Skip buttons */}
-        <div className="flex items-center justify-between pt-3 px-4">
-          {step > 0 ? (
-            <button
-              type="button"
-              onClick={handleBack}
-              className="text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors cursor-pointer"
-              style={{ color: 'var(--text)', background: 'var(--surface-2)' }}
-            >
-              {t('onboarding.back')}
-            </button>
-          ) : (
-            <div />
-          )}
+        {/* Top bar with Skip button */}
+        <div className="flex items-center justify-end pt-3 px-4">
           <button
             type="button"
             onClick={handleSkip}
-            className="text-xs px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer"
-            style={{ color: 'var(--text-muted)', background: 'var(--surface-2)' }}
+            className="text-xs px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
           >
             {t('onboarding.skip')}
           </button>
