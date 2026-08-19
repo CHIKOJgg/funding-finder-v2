@@ -39,11 +39,19 @@ export function useTelegram() {
     setAuthProvider(undefined);
     setAuthenticated(false);
     setInitData(null);
-  }, []);
+    // On web, provision a clean guest session so the app remains functional
+    apiClient.guestLogin()
+      .then((r: any) => {
+        if (r?.ok && r.token && r.user) {
+          setAuthToken(r.token);
+          applyUser(r.user);
+        }
+      })
+      .catch(() => {});
+  }, [applyUser]);
 
   // A 401 from any API call means the stored session token is dead. Drop it
-  // immediately and fall back to the login screen instead of silently
-  // degrading every protected call to "free" until a full page reload.
+  // immediately and re-authenticate instead of failing silently.
   useEffect(() => {
     return onAuthExpired(() => {
       logout();
@@ -64,6 +72,7 @@ export function useTelegram() {
       if (tgReady.current) return;
       tgReady.current = true;
       setTg(webApp);
+      setIsWeb(false);
 
       const expandNow = () => {
         try {
@@ -133,40 +142,7 @@ export function useTelegram() {
       }
     }
 
-    const webApp = window.Telegram?.WebApp;
-    const hasTelegramUrlSignals =
-      window.location.hash.includes('tgWebAppData') ||
-      new URLSearchParams(window.location.search).has('tgWebAppStartParam');
-
-    if (webApp?.initData) {
-      // Telegram Mini App (native) — WebApp is injected synchronously.
-      setupTelegram(webApp);
-    } else if (webApp) {
-      // Telegram Mini App without initData (edge case on some clients).
-      // Still mark as Telegram so the web login page never shows.
-      setupTelegram(webApp);
-    } else if (hasTelegramUrlSignals) {
-      // On web.telegram.org the SDK may still be loading async. Wait for it
-      // instead of falling through to the web auth path.
-      const poll = setInterval(() => {
-        const w = window.Telegram?.WebApp;
-        if (w) {
-          clearInterval(poll);
-          clearTimeout(failSafe);
-          setupTelegram(w);
-        }
-      }, 100);
-      const failSafe = setTimeout(() => {
-        clearInterval(poll);
-        // SDK didn't load — still mark as non-web so we don't show the
-        // website login page inside Telegram's browser.
-        if (!tgReady.current) {
-          tgReady.current = true;
-          setIsWeb(false);
-        }
-      }, 8000);
-    } else {
-      // Public website mode — require a web session (wallet / Google).
+    function initWebMode() {
       setIsWeb(true);
       const stored = getAuthToken();
       if (stored) {
@@ -176,16 +152,60 @@ export function useTelegram() {
             if (r?.ok && r.user) {
               applyUser(r.user);
             } else {
-              logout();
+              initGuest();
             }
           })
           .catch(() => {
-            // Keep the user on the login screen; their token was invalid.
-            logout();
+            initGuest();
           });
+      } else {
+        initGuest();
       }
     }
-  }, [applyUser, logout]);
+
+    function initGuest() {
+      apiClient.guestLogin()
+        .then((r: any) => {
+          if (r?.ok && r.token && r.user) {
+            setAuthToken(r.token);
+            applyUser(r.user);
+          }
+        })
+        .catch((e) => {
+          console.warn('Guest login error:', e);
+        });
+    }
+
+    const webApp = window.Telegram?.WebApp;
+    const hasTelegramInitData = Boolean(webApp?.initData && webApp.initData.trim().length > 0);
+    const hasTelegramUrlSignals =
+      window.location.hash.includes('tgWebAppData') ||
+      new URLSearchParams(window.location.search).has('tgWebAppStartParam');
+
+    if (hasTelegramInitData) {
+      // Telegram Mini App (native) — WebApp is injected synchronously with initData.
+      setupTelegram(webApp!);
+    } else if (hasTelegramUrlSignals) {
+      // On web.telegram.org the SDK may still be loading async. Wait for it.
+      const poll = setInterval(() => {
+        const w = window.Telegram?.WebApp;
+        if (w?.initData && w.initData.trim().length > 0) {
+          clearInterval(poll);
+          clearTimeout(failSafe);
+          setupTelegram(w);
+        }
+      }, 100);
+      const failSafe = setTimeout(() => {
+        clearInterval(poll);
+        if (!tgReady.current) {
+          initWebMode();
+        }
+      }, 4000);
+    } else {
+      // Public website mode
+      initWebMode();
+    }
+  }, [applyUser]);
 
   const openLink = useCallback((url: string) => {
     if (tg?.openLink) {

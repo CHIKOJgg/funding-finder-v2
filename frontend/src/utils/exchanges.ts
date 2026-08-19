@@ -103,16 +103,12 @@ function withAffiliate(exchange: string, url: string): string {
 
 /** Single source of truth — must match backend SUPPORTED_EXCHANGES. */
 export const ALL_EXCHANGES = [
-  'gate', 'binance', 'bybit', 'mexc', 'okx',
-  'bitget', 'bingx', 'phemex', 'woo',
-  'hyperliquid', 'dydx', 'htx', 'blofin', 'aster', 'bluefin',
-  'kucoin', 'kraken', 'coinbase', 'bitunix', 'orderly', 'aevo',
+  'gate', 'binance', 'bybit', 'kucoin', 'mexc', 'okx',
+  'bitget', 'bingx', 'phemex', 'woo', 'hyperliquid', 'dydx',
+  'htx', 'blofin', 'aster', 'bluefin', 'kraken', 'coinbase',
+  'bitunix', 'orderly', 'aevo', 'apex', 'bitmart', 'coinex',
+  'coinw', 'cryptocom', 'deribit', 'drift', 'helix', 'paradex', 'weex',
 ];
-
-// Normalize any pair representation a caller might pass — "BTCUSDT",
-// "btc/usdt", "BTC", "BTC_USDT" — into a clean USDT-perp symbol. This is what
-// makes the deep link always point at the coin: a malformed symbol (e.g. with
-// a slash, or missing the USDT quote) makes the exchange autoroute to its
 // homepage instead of opening the trading pair.
 function normalizePerpSymbol(pair: string): string {
   const base = normalizeBase(pair);

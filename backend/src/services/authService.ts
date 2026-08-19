@@ -5,7 +5,7 @@ import { config } from '../config/index.js';
 import { getRedis } from '../utils/redis.js';
 import { logger } from '../utils/logger.js';
 
-export type AuthProvider = 'telegram' | 'wallet' | 'google' | 'email';
+export type AuthProvider = 'telegram' | 'wallet' | 'google' | 'email' | 'guest';
 
 export interface AuthTokenPayload {
   sub: string; // user.telegramId

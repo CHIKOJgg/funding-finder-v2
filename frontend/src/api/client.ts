@@ -506,6 +506,14 @@ export const apiClient = {
     return api.get('/auth/me');
   },
 
+  // Anonymous guest session for web visitors.
+  async guestLogin() {
+    const referredByCode = getStoredReferralCode();
+    const res: any = await api.post('/auth/guest', { referredByCode });
+    if (res?.ok) clearReferralCode();
+    return res;
+  },
+
   // Dev-only: mint a guest session (no real auth) for local development.
   async devGuest() {
     return api.post('/auth/dev-guest');

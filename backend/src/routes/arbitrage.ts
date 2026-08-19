@@ -181,13 +181,31 @@ router.get('/arbitrage/opportunities', async (req, res) => {
     : SUPPORTED_EXCHANGES;
   if (exchanges.length === 0) exchanges = SUPPORTED_EXCHANGES;
 
-  // Cap to the user's plan so a free user can never trigger a full 25-exchange
+  let isGuest = false;
+  const userId = (req as AuthenticatedRequest).userId;
+  if (userId) {
+    if (userId.startsWith('guest_') || (req as any).user?.authProvider === 'guest') {
+      isGuest = true;
+    } else {
+      try {
+        const u = await prisma.user.findUnique({ where: { telegramId: userId }, select: { authProvider: true } });
+        if (u?.authProvider === 'guest') {
+          isGuest = true;
+        }
+      } catch {}
+    }
+  } else {
+    isGuest = true;
+  }
+
+  // Cap to the user's plan so a free user can never trigger a full 31-exchange
   // live scan (that's what was timing out and surfacing as a network error).
   try {
-    const userId = (req as AuthenticatedRequest).userId!;
-    const limits = await getSubscriptionLimits(userId);
-    if (exchanges.length > limits.maxExchanges) {
-      exchanges = exchanges.slice(0, limits.maxExchanges);
+    if (userId) {
+      const limits = await getSubscriptionLimits(userId);
+      if (exchanges.length > limits.maxExchanges) {
+        exchanges = exchanges.slice(0, limits.maxExchanges);
+      }
     }
   } catch {
     // If we can't read plan limits, proceed with the requested set.
@@ -199,7 +217,16 @@ router.get('/arbitrage/opportunities', async (req, res) => {
   // polls this, so this is what keeps the tab responsive and API-light.
   const cachedOpp = arbOppCache.get(key);
   if (cachedOpp && Date.now() - cachedOpp.ts < ARB_OPP_CACHE_TTL_MS) {
-    return res.json({ ok: true, opportunities: cachedOpp.opportunities, metadata: cachedOpp.metadata, cached: true });
+    const opps = isGuest ? cachedOpp.opportunities.slice(0, 1) : cachedOpp.opportunities;
+    return res.json({
+      ok: true,
+      opportunities: opps,
+      metadata: cachedOpp.metadata,
+      totalOpportunities: cachedOpp.opportunities.length,
+      isGuest,
+      guestLocked: isGuest,
+      cached: true,
+    });
   }
 
   try {
@@ -235,15 +262,23 @@ router.get('/arbitrage/opportunities', async (req, res) => {
       ...scanResults.lowYield,
     ];
 
-    const opportunities = detectArbitrageOpportunities(allResults);
+    const rawOpportunities = detectArbitrageOpportunities(allResults);
     const metadata = {
       scanned: scanResults.scanned,
       intervalDistribution: scanResults.metrics.intervalDistribution,
       averageIntervalHours: scanResults.metrics.averageIntervalHours,
     };
-    arbOppCache.set(key, { opportunities, metadata, ts: Date.now() });
+    arbOppCache.set(key, { opportunities: rawOpportunities, metadata, ts: Date.now() });
 
-    return res.json({ ok: true, opportunities, metadata });
+    const opportunities = isGuest ? rawOpportunities.slice(0, 1) : rawOpportunities;
+    return res.json({
+      ok: true,
+      opportunities,
+      metadata,
+      totalOpportunities: rawOpportunities.length,
+      isGuest,
+      guestLocked: isGuest,
+    });
   } catch (e) {
     const error = e as Error;
     // Serve the last good opportunities so a transient scan failure never
@@ -251,13 +286,22 @@ router.get('/arbitrage/opportunities', async (req, res) => {
     const stale = arbOppCache.get(key);
     if (stale) {
       logger.warn({ err: error.message }, 'Arbitrage opportunities served stale after scan error');
-      return res.json({ ok: true, opportunities: stale.opportunities, metadata: stale.metadata, stale: true });
+      const opps = isGuest ? stale.opportunities.slice(0, 1) : stale.opportunities;
+      return res.json({
+        ok: true,
+        opportunities: opps,
+        metadata: stale.metadata,
+        totalOpportunities: stale.opportunities.length,
+        isGuest,
+        guestLocked: isGuest,
+        stale: true,
+      });
     }
     // Never return a hard 500 for a routine poll — that is what surfaces as
     // "Failed to load opportunities" in the mini app. Degrade gracefully to an
     // empty list with a flag the client can show as a soft notice.
     logger.error({ err: error }, 'Arbitrage opportunities error (degraded to empty)');
-    return res.json({ ok: true, opportunities: [], degraded: true, reason: error.message || String(error) });
+    return res.json({ ok: true, opportunities: [], degraded: true, isGuest, guestLocked: isGuest, reason: error.message || String(error) });
   }
 });
 

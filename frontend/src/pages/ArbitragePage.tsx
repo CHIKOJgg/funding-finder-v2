@@ -13,6 +13,7 @@ import { FilterBar, FilterField, SegmentedControl } from '../components/FilterBa
 import { useT } from '../i18n';
 import { SpotFuturesPanel } from '../components/SpotFuturesPanel';
 import { Heatmap } from '../components/Heatmap';
+import { openLoginModal } from '../components/WebHeader';
 import { profitCalcClient, breakEvenDays, type ClientProfit } from '../utils/profitCalc';
 import { LiquidationHeatmap } from '../components/LiquidationHeatmap';
 import {
@@ -154,13 +155,14 @@ export function ArbitragePage() {
   const [pairQuery, setPairQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(15);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const isGuest = !user?.provider || user.provider === 'guest';
 
   useEffect(() => {
     // Cache-first: these only fetch if data isn't already loaded (or in-flight),
     // so switching tabs keeps the previously loaded data instead of refetching.
     loadArbitrage();
-    if (user?.id) loadAlerts();
-  }, [user?.id, loadArbitrage, loadAlerts]);
+    if (user?.id && !isGuest) loadAlerts();
+  }, [user?.id, isGuest, loadArbitrage, loadAlerts]);
 
   // Live refresh: keep funding-rate opportunities fresh by re-fetching on an
   // interval (and whenever the server pushes fresh data over WebSocket).
@@ -474,10 +476,10 @@ export function ArbitragePage() {
               ) : (
                 <>
                   <div className="text-xs text-[var(--text-muted)] mb-2">
-                    {t('arb.shown', { x: Math.min(visibleCount, filteredOpportunities.length), y: filteredOpportunities.length })}
+                    {t('arb.shown', { x: isGuest ? 1 : Math.min(visibleCount, filteredOpportunities.length), y: isGuest ? Math.max(filteredOpportunities.length, 6) : filteredOpportunities.length })}
                   </div>
                   <div className="space-y-3">
-                    {filteredOpportunities.slice(0, visibleCount).map((opp) => (
+                    {(isGuest ? filteredOpportunities.slice(0, 1) : filteredOpportunities.slice(0, visibleCount)).map((opp) => (
                       <OpportunityCard
                         key={opp.id ?? `${opp.pair}-${opp.exchangeA}-${opp.exchangeB}`}
                         opportunity={opp}
@@ -490,18 +492,42 @@ export function ArbitragePage() {
                       />
                     ))}
                   </div>
-                  {visibleCount < filteredOpportunities.length && (
+
+                  {isGuest && (
+                    <div className="card text-center p-6 mt-4 border border-[var(--cobalt)]/40 bg-[var(--surface-2)]">
+                      <div
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 text-xl font-extrabold shadow-sm"
+                        style={{ background: 'var(--cobalt)', color: 'var(--on-brand)' }}
+                      >
+                        🔒
+                      </div>
+                      <h3 className="text-lg font-bold text-[var(--text)] mb-1">
+                        {t('arb.guestTeaserTitle', { count: Math.max(3, filteredOpportunities.length > 1 ? filteredOpportunities.length - 1 : 7) })}
+                      </h3>
+                      <p className="text-sm text-[var(--text-muted)] max-w-md mx-auto mb-4">
+                        {t('arb.guestTeaserDesc')}
+                      </p>
+                      <button
+                        onClick={() => openLoginModal()}
+                        className="btn btn-primary text-sm py-2.5 px-6 mx-auto font-semibold shadow-md"
+                      >
+                        {t('arb.guestTeaserBtn')}
+                      </button>
+                    </div>
+                  )}
+
+                  {!isGuest && visibleCount < filteredOpportunities.length && (
                     <div ref={loadMoreRef} className="py-4 text-center text-xs text-[var(--text-muted)]">
                       {t('arb.loadingMore')}
                     </div>
                   )}
-                  {visibleCount >= filteredOpportunities.length && filteredOpportunities.length > 15 && (
+                  {!isGuest && visibleCount >= filteredOpportunities.length && filteredOpportunities.length > 15 && (
                     <div className="py-3 text-center text-xs text-[var(--text-muted)]">
                       {t('arb.allLoaded', { count: filteredOpportunities.length })}
                     </div>
                   )}
 
-                  {subscription === 'free' && (
+                  {!isGuest && subscription === 'free' && (
                     <div className="mt-3">
                       <SoftPaywallBanner
                         used={Math.min(visibleCount, 5)}
@@ -529,8 +555,13 @@ export function ArbitragePage() {
         <div className="card">
           <h2 className="text-lg font-semibold mb-3">{t('arb.myAlerts')}</h2>
 
-          {!user?.id ? (
-            <div className="text-center py-8 text-[var(--text-muted)]">{t('arb.loginToManage')}</div>
+          {isGuest || !user?.id ? (
+            <div className="text-center py-8 text-[var(--text-muted)]">
+              <p className="mb-3">{t('arb.guestLoginPrompt') || t('arb.loginToManage')}</p>
+              <button onClick={() => openLoginModal()} className="btn btn-primary text-sm py-2 px-5 mx-auto">
+                {t('login.login') || 'Войти'}
+              </button>
+            </div>
           ) : arbAlerts.length === 0 ? (
             <div className="text-center py-8 text-[var(--text-muted)]">{t('arb.noAlerts')}</div>
           ) : (

@@ -54,7 +54,7 @@ async function resolveReferralCode(code?: string): Promise<string | undefined> {
 
 async function findOrCreateWebUser(params: {
   telegramId: string;
-  provider: 'wallet' | 'google' | 'email';
+  provider: 'wallet' | 'google' | 'email' | 'guest';
   walletAddress?: string;
   googleSub?: string;
   email?: string;
@@ -207,6 +207,26 @@ router.get('/config', async (_req: Request, res: Response) => {
   });
 });
 
+// POST /api/auth/guest → seamless guest session for web visitors
+router.post('/guest', async (req: Request, res: Response) => {
+  try {
+    const { referredByCode } = req.body || {};
+    const telegramId = `guest_${crypto.randomBytes(8).toString('hex')}`;
+    const user = await findOrCreateWebUser({
+      telegramId,
+      provider: 'guest',
+      firstName: 'Гость',
+      referredByCode,
+    });
+    const token = signAuthToken({ sub: telegramId, provider: 'guest' });
+    res.json({ ok: true, token, user: publicUser(user) });
+  } catch (e) {
+    const error = e as Error;
+    logger.error({ err: error }, 'Guest auth error');
+    sendError(res, 500, 'Guest session failed', 'AUTH_GUEST_ERROR');
+  }
+});
+
 // POST /api/auth/dev-guest → dev-only ephemeral session (no real auth)
 if (!config.isProduction) {
   router.post('/dev-guest', async (_req: Request, res: Response) => {
@@ -214,10 +234,10 @@ if (!config.isProduction) {
       const telegramId = `web_dev_${crypto.randomBytes(6).toString('hex')}`;
       const user = await findOrCreateWebUser({
         telegramId,
-        provider: 'email',
+        provider: 'guest',
         firstName: 'Dev Guest',
       });
-      const token = signAuthToken({ sub: telegramId, provider: 'email' });
+      const token = signAuthToken({ sub: telegramId, provider: 'guest' });
       res.json({ ok: true, token, user: publicUser(user) });
     } catch (e) {
       const error = e as Error;
