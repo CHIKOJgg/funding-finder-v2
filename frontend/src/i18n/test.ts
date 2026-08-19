@@ -1,1 +1,0 @@
-// Ru localization file
