@@ -339,10 +339,10 @@ export function ArbitragePage() {
         </div>
       </div>
 
-      <div className="tab-strip mb-4" role="tablist">
+      <div className="tab-strip mb-4 flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth pb-1" role="tablist">
         <button
           onClick={() => setActiveTab('opportunities')}
-          className={clsx('py-2.5 px-4 rounded-xl font-medium transition-all', activeTab === 'opportunities' ? 'btn-primary' : 'btn-secondary')}
+          className={clsx('py-2 px-3.5 sm:py-2.5 sm:px-4 rounded-xl font-medium transition-all shrink-0 text-xs sm:text-sm whitespace-nowrap', activeTab === 'opportunities' ? 'btn-primary' : 'btn-secondary')}
           role="tab"
           aria-selected={activeTab === 'opportunities'}
         >
@@ -350,7 +350,7 @@ export function ArbitragePage() {
         </button>
         <button
           onClick={() => setActiveTab('alerts')}
-          className={clsx('py-2.5 px-4 rounded-xl font-medium transition-all', activeTab === 'alerts' ? 'btn-primary' : 'btn-secondary')}
+          className={clsx('py-2 px-3.5 sm:py-2.5 sm:px-4 rounded-xl font-medium transition-all shrink-0 text-xs sm:text-sm whitespace-nowrap', activeTab === 'alerts' ? 'btn-primary' : 'btn-secondary')}
           role="tab"
           aria-selected={activeTab === 'alerts'}
         >
@@ -358,7 +358,7 @@ export function ArbitragePage() {
         </button>
         <button
           onClick={() => setActiveTab('spotfutures')}
-          className={clsx('py-2.5 px-4 rounded-xl font-medium transition-all', activeTab === 'spotfutures' ? 'btn-primary' : 'btn-secondary')}
+          className={clsx('py-2 px-3.5 sm:py-2.5 sm:px-4 rounded-xl font-medium transition-all shrink-0 text-xs sm:text-sm whitespace-nowrap', activeTab === 'spotfutures' ? 'btn-primary' : 'btn-secondary')}
           role="tab"
           aria-selected={activeTab === 'spotfutures'}
         >
@@ -366,13 +366,13 @@ export function ArbitragePage() {
         </button>
         <button
           onClick={() => setActiveTab('heatmap')}
-          className={clsx('py-2.5 px-4 rounded-xl font-medium transition-all', activeTab === 'heatmap' ? 'btn-primary' : 'btn-secondary')}
+          className={clsx('py-2 px-3.5 sm:py-2.5 sm:px-4 rounded-xl font-medium transition-all shrink-0 text-xs sm:text-sm whitespace-nowrap', activeTab === 'heatmap' ? 'btn-primary' : 'btn-secondary')}
           role="tab"
           aria-selected={activeTab === 'heatmap'}
         >
           {t('heatmap.title')}
         </button>
-       </div>
+      </div>
 
       {activeTab === 'opportunities' && (
         <div className="card">
@@ -732,14 +732,24 @@ const OpportunityCard = memo(function OpportunityCard({
       : intervalA === intervalB
   );
 
+  const riskLevel = (opp.risk?.level || 'low').toLowerCase();
+  const riskBadgeText = t(`arb.risk.${riskLevel}`) || opp.risk?.level || 'LOW';
+
+  const labelA = exchangeLabel(opp.exchangeA);
+  const labelB = exchangeLabel(opp.exchangeB);
+
+  const strategyText = /SHORT on/i.test(opp.opportunity)
+    ? t('arb.strategyShortLong', { shortEx: labelA, longEx: labelB }) || `SHORT on ${labelA}, LONG on ${labelB}`
+    : t('arb.strategyLongShort', { longEx: labelA, shortEx: labelB }) || `LONG on ${labelA}, SHORT on ${labelB}`;
+
   return (
     <div className="opportunity-card">
       <div className="opportunity-head">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <strong className="text-base break-words font-mono">{opp.pair}</strong>
-            <span className={clsx('text-xs px-2 py-1 rounded-full', getRiskColor(opp.risk?.level))} title={t('arb.riskLevelTitle')}>
-              {opp.risk?.level}
+            <span className={clsx('text-xs px-2 py-1 rounded-full font-semibold', getRiskColor(opp.risk?.level))} title={t('arb.riskLevelTitle')}>
+              {riskBadgeText}
             </span>
             {isSync ? (
               <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--green-soft)] text-[var(--green)] border border-[var(--green)]/30 font-semibold flex items-center gap-1" title={t('arb.syncSettlementNotice')}>
@@ -756,17 +766,17 @@ const OpportunityCard = memo(function OpportunityCard({
               <div className="inline-flex items-center gap-1.5 flex-wrap">
                 <CountdownTimer intervalHours={intervalA} targetTimestamp={nextApplyA} className="font-semibold text-xs text-[var(--text)]" showProgress />
                 <span className="text-[11px] text-[var(--text-muted)]">
-                  {t('arb.untilFundingBoth', { exA: opp.exchangeA, exB: opp.exchangeB })}
+                  {t('arb.untilFundingBoth', { exA: labelA, exB: labelB })}
                 </span>
               </div>
             ) : (
               <div className="flex items-center gap-1.5 flex-wrap">
                 <div className="inline-flex items-center gap-1 bg-[var(--surface-2)] border border-[var(--border)] px-2 py-0.5 rounded-md">
-                  <span className="text-[10px] text-[var(--text-muted)] font-mono uppercase font-bold">{opp.exchangeA}:</span>
+                  <span className="text-[10px] text-[var(--text-muted)] font-mono uppercase font-bold">{labelA}:</span>
                   <CountdownTimer intervalHours={intervalA} targetTimestamp={nextApplyA} className="font-semibold text-[11px] text-[var(--text)]" />
                 </div>
                 <div className="inline-flex items-center gap-1 bg-[var(--surface-2)] border border-[var(--border)] px-2 py-0.5 rounded-md">
-                  <span className="text-[10px] text-[var(--text-muted)] font-mono uppercase font-bold">{opp.exchangeB}:</span>
+                  <span className="text-[10px] text-[var(--text-muted)] font-mono uppercase font-bold">{labelB}:</span>
                   <CountdownTimer intervalHours={intervalB} targetTimestamp={nextApplyB} className="font-semibold text-[11px] text-[var(--text)]" />
                 </div>
               </div>
@@ -788,7 +798,7 @@ const OpportunityCard = memo(function OpportunityCard({
 
       <div className="strategy-summary">
         <span className="section-title">{cleanLabel(t('arb.strategy'))}</span>
-        <strong>{opp.opportunity}</strong>
+        <strong>{strategyText}</strong>
       </div>
 
       <div className="section-block mt-4">

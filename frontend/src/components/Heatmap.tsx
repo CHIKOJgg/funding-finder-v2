@@ -7,7 +7,8 @@ import { API_BASE } from '../api/client';
 interface HeatmapCell {
   exchange: string;
   contract: string;
-  rate_per_hour: number;
+  funding_rate_per_hour?: number;
+  rate_per_hour?: number;
   annualized_rate: number;
   net_annual?: number;
   payback_days?: number;
@@ -76,7 +77,6 @@ export function Heatmap() {
     const id = setInterval(fetchHeatmap, 60_000);
     return () => clearInterval(id);
   }, [fetchHeatmap]);
-
   const sortedPairs = useMemo(() => {
     if (!data) return [];
     let pairs = [...data.pairs];
@@ -84,13 +84,15 @@ export function Heatmap() {
       pairs = pairs.filter((p) => p.exchange === filterExchange);
     }
     pairs.sort((a, b) => {
+      const rateA = a.funding_rate_per_hour ?? a.rate_per_hour ?? 0;
+      const rateB = b.funding_rate_per_hour ?? b.rate_per_hour ?? 0;
       switch (sortBy) {
         case 'rate':
-          return Math.abs(b.rate_per_hour) - Math.abs(a.rate_per_hour);
+          return Math.abs(rateB) - Math.abs(rateA);
         case 'volume':
           return (b.volume_24h_settle || 0) - (a.volume_24h_settle || 0);
         case 'exchange':
-          return a.exchange.localeCompare(b.exchange) || Math.abs(b.rate_per_hour) - Math.abs(a.rate_per_hour);
+          return a.exchange.localeCompare(b.exchange) || Math.abs(rateB) - Math.abs(rateA);
         default:
           return 0;
       }
@@ -159,32 +161,35 @@ export function Heatmap() {
                </tr>
              </thead>
              <tbody>
-               {sortedPairs.map((p, i) => (
-                 <tr key={`${p.exchange}-${p.contract}-${i}`} className={clsx('border-b border-[var(--border)]', rateToColor(p.rate_per_hour))}>
-                   <td className="py-1 pr-2 font-medium">{exchangeLabel(p.exchange)}</td>
-                   <td className="py-1 pr-2">{p.contract}</td>
-                    <td className={clsx('py-1 pr-2 text-right font-semibold', rateTextColor(p.rate_per_hour ?? 0))}>
-                      {p.rate_per_hour != null ? `${(p.rate_per_hour >= 0 ? '+' : '')}${(p.rate_per_hour * 100).toFixed(4)}%/h` : '—'}
-                    </td>
-                    <td className={clsx('py-1 pr-2 text-right', rateTextColor(p.rate_per_hour ?? 0))}>
-                      {p.annualized_rate != null ? `${(p.annualized_rate >= 0 ? '+' : '')}${(p.annualized_rate * 100).toFixed(1)}%` : '—'}
-                    </td>
-                   <td className={clsx('py-1 pr-2 text-right', rateTextColor(p.accumulated?.d1 ?? 0))}>
-                     {p.accumulated != null ? (p.accumulated.d1 * 100 >= 0 ? '+' : '') + (p.accumulated.d1 * 100).toFixed(2) + '%' : '—'}
-                   </td>
-                   <td className={clsx('py-1 pr-2 text-right', rateTextColor(p.accumulated?.d7 ?? 0))}>
-                     {p.accumulated != null ? (p.accumulated.d7 * 100 >= 0 ? '+' : '') + (p.accumulated.d7 * 100).toFixed(2) + '%' : '—'}
-                   </td>
-                   <td className="py-1 text-right text-[var(--text-muted)]">
-                     {p.volume_24h_settle >= 1_000_000
-                       ? `${(p.volume_24h_settle / 1_000_000).toFixed(1)}M`
-                       : p.volume_24h_settle >= 1_000
-                       ? `${(p.volume_24h_settle / 1_000).toFixed(1)}K`
-                       : p.volume_24h_settle?.toFixed(0) ?? '—'}
-                   </td>
-                 </tr>
-               ))}
-            </tbody>
+               {sortedPairs.map((p, i) => {
+                 const rate = p.funding_rate_per_hour ?? p.rate_per_hour;
+                 return (
+                   <tr key={`${p.exchange}-${p.contract}-${i}`} className={clsx('border-b border-[var(--border)]', rateToColor(rate ?? 0))}>
+                     <td className="py-1 pr-2 font-medium">{exchangeLabel(p.exchange)}</td>
+                     <td className="py-1 pr-2">{p.contract}</td>
+                     <td className={clsx('py-1 pr-2 text-right font-semibold font-mono', rateTextColor(rate ?? 0))}>
+                       {rate != null ? `${(rate >= 0 ? '+' : '')}${(rate * 100).toFixed(4)}%/h` : '—'}
+                     </td>
+                     <td className={clsx('py-1 pr-2 text-right font-mono', rateTextColor(rate ?? 0))}>
+                       {p.annualized_rate != null ? `${(p.annualized_rate >= 0 ? '+' : '')}${(p.annualized_rate * 100).toFixed(1)}%` : '—'}
+                     </td>
+                     <td className={clsx('py-1 pr-2 text-right font-mono', rateTextColor(p.accumulated?.d1 ?? 0))}>
+                       {p.accumulated != null ? (p.accumulated.d1 * 100 >= 0 ? '+' : '') + (p.accumulated.d1 * 100).toFixed(2) + '%' : '—'}
+                     </td>
+                     <td className={clsx('py-1 pr-2 text-right font-mono', rateTextColor(p.accumulated?.d7 ?? 0))}>
+                       {p.accumulated != null ? (p.accumulated.d7 * 100 >= 0 ? '+' : '') + (p.accumulated.d7 * 100).toFixed(2) + '%' : '—'}
+                     </td>
+                     <td className="py-1 text-right text-[var(--text-muted)] font-mono">
+                       {p.volume_24h_settle >= 1_000_000
+                         ? `${(p.volume_24h_settle / 1_000_000).toFixed(1)}M`
+                         : p.volume_24h_settle >= 1_000
+                         ? `${(p.volume_24h_settle / 1_000).toFixed(1)}K`
+                         : p.volume_24h_settle?.toFixed(0) ?? '—'}
+                     </td>
+                   </tr>
+                 );
+               })}
+             </tbody>
           </table>
         </div>
       )}

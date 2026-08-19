@@ -1020,4 +1020,48 @@ export const en: Record<string, string> = {
 
   // Public page
   'public.payback': 'Payback',
+
+  // Common
+  'common.dismiss': 'Dismiss',
+
+  // Audit additions — Activation checklist & streaks
+  'activation.streak': '{total}/{all} done — {remaining} remaining',
+  'activation.dayRetention': 'Day {day} — complete activation to see everything',
+  'activation.daysSince': '{days}d since start — finish setup',
+
+  // Trial feature pills
+  'trial.featAi': 'AI Analysis',
+  'trial.featPortfolio': 'Portfolio',
+  'trial.featExchanges': '31 Exchanges',
+
+  // Arbitrage strategies & risk
+  'arb.strategyLongShort': 'LONG on {longEx}, SHORT on {shortEx}',
+  'arb.strategyShortLong': 'SHORT on {shortEx}, LONG on {longEx}',
+  'arb.risk.low': 'LOW',
+  'arb.risk.medium': 'MEDIUM',
+  'arb.risk.high': 'HIGH',
+
+  // Login
+  'login.orOther': 'or continue with',
+  'login.guestBtn': 'Continue as guest',
+
+  // Support modal
+  'support.btnTitle': 'Contact support',
+  'support.title': 'Submit a Request',
+  'support.desc': 'Describe your question or task — we will contact you shortly.',
+  'support.nameLabel': 'Name (optional)',
+  'support.namePlaceholder': 'Your name',
+  'support.contactLabel': 'Contact (Telegram / email)',
+  'support.contactPlaceholder': '@username or email',
+  'support.messageLabel': 'Message',
+  'support.messagePlaceholder': 'Describe your request…',
+  'support.sendBtn': 'Submit request',
+  'support.sending': 'Submitting…',
+  'support.emptyError': 'Please describe your request',
+  'support.sentSuccess': 'Request submitted. We will contact you shortly.',
+
+  // Spot-Futures strategies
+  'sf.strategyLong': 'Long spot + Short perp — collect funding (~{netApy}%/yr net)',
+  'sf.strategyShort': 'Short spot + Long perp — collect negative funding (~{netApy}%/yr net)',
+  'sf.strategyLow': 'Funding too low to cover fees (~{netApy}%/yr net) — not recommended',
 };

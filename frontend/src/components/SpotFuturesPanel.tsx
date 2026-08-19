@@ -227,7 +227,15 @@ export function SpotFuturesPanel() {
           {data?.strategy && (
             <div className="flex items-start gap-2 text-sm bg-[var(--cobalt-soft)] text-[var(--cobalt)] p-2.5 rounded-lg mb-3">
               <IconLightbulb className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{data.strategy}</span>
+              <span>
+                {data.strategy.includes('Long spot + Short perp')
+                  ? t('sf.strategyLong', { netApy: (data.netApy ?? 0).toFixed(1) })
+                  : data.strategy.includes('Short spot + Long perp')
+                  ? t('sf.strategyShort', { netApy: (-(data.netApy ?? 0)).toFixed(1) })
+                  : data.strategy.includes('Funding too low')
+                  ? t('sf.strategyLow', { netApy: (data.netApy ?? 0).toFixed(1) })
+                  : data.strategy}
+              </span>
             </div>
           )}
 

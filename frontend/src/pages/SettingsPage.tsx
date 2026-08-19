@@ -302,7 +302,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="px-3 py-4 sm:px-4 sm:max-w-2xl mx-auto">
+    <div className="px-3 py-4 sm:px-4 sm:max-w-2xl mx-auto pb-24">
       <div className="card">
         <h1 className="text-xl font-bold mb-2 text-[var(--text)]">{t('settings.title')}</h1>
         <p className="text-sm mb-0" style={{ color: 'var(--text2)' }}>{t('settings.subtitle')}</p>

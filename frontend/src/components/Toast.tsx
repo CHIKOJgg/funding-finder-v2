@@ -64,7 +64,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed top-[calc(var(--safe-top)_+_16px)] right-4 z-50 space-y-2 max-w-[min(92vw,420px)]">
+      <div className="fixed top-[calc(var(--safe-top)_+_64px)] right-4 z-50 space-y-2 max-w-[min(92vw,420px)] pointer-events-none">
         {toasts.map((toast) => {
           const s = TOAST_STYLES[toast.type];
           return (
@@ -72,7 +72,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               key={toast.id}
               role={toast.type === 'error' ? 'alert' : 'status'}
               aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
-              className="px-4 py-3 rounded-lg border text-sm animate-slide-in"
+              className="px-4 py-2.5 rounded-xl border text-sm font-medium animate-slide-in shadow-lg pointer-events-auto backdrop-blur-md"
               style={{ background: s.bg, color: s.fg, borderColor: s.border }}
             >
               {toast.message}

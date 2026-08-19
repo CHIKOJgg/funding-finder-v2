@@ -121,7 +121,7 @@ export function PaywallModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 animate-slide-in overflow-y-auto max-h-[90vh]"
+        className="w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 pb-8 animate-slide-in overflow-y-auto max-h-[90vh]"
         style={{ background: 'var(--surface)', color: 'var(--text)' }}
         onClick={(e) => e.stopPropagation()}
       >

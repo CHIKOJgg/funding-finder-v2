@@ -659,6 +659,7 @@ export const ru: Record<string, string> = {
   'admin.funnel.paywall_view': 'Просмотр paywall',
   'admin.funnel.trial_start': 'Старт пробного',
   'admin.funnel.paid': 'Оплата',
+  'admin.accessDenied': 'Доступ запрещён — эта панель только для администраторов.',
 
   // Activation checklist ("first profit in 5 minutes")
   'activation.title': 'До первой прибыли за 5 минут',
@@ -1024,6 +1025,47 @@ export const ru: Record<string, string> = {
   // Public page
   'public.payback': 'Окупаемость',
 
-  // Admin
-  'admin.accessDenied': 'Доступ запрещён',
+  // Common
+  'common.dismiss': 'Закрыть',
+
+  // Audit additions — Activation checklist & streaks
+  'activation.streak': '{total}/{all} выполнено — осталось {remaining}',
+  'activation.dayRetention': 'День {day} — завершите настройку',
+  'activation.daysSince': '{days}д с начала — завершите настройку',
+
+  // Trial feature pills
+  'trial.featAi': 'AI-анализ',
+  'trial.featPortfolio': 'Портфель',
+  'trial.featExchanges': '31 биржа',
+
+  // Arbitrage strategies & risk
+  'arb.strategyLongShort': 'ЛОНГ на {longEx}, ШОРТ на {shortEx}',
+  'arb.strategyShortLong': 'ШОРТ на {shortEx}, ЛОНГ на {longEx}',
+  'arb.risk.low': 'НИЗКИЙ',
+  'arb.risk.medium': 'СРЕДНИЙ',
+  'arb.risk.high': 'ВЫСОКИЙ',
+
+  // Login
+  'login.orOther': 'или другие способы',
+  'login.guestBtn': 'Продолжить как гость',
+
+  // Support modal
+  'support.btnTitle': 'Оставить заявку',
+  'support.title': 'Оставить заявку',
+  'support.desc': 'Опишите вашу задачу или вопрос — мы свяжемся с вами в ближайшее время.',
+  'support.nameLabel': 'Имя (необязательно)',
+  'support.namePlaceholder': 'Ваше имя',
+  'support.contactLabel': 'Контакт (Telegram / email)',
+  'support.contactPlaceholder': '@username или email',
+  'support.messageLabel': 'Сообщение',
+  'support.messagePlaceholder': 'Опишите вашу заявку…',
+  'support.sendBtn': 'Отправить заявку',
+  'support.sending': 'Отправка…',
+  'support.emptyError': 'Опишите вашу заявку',
+  'support.sentSuccess': 'Заявка отправлена. Мы свяжемся с вами в ближайшее время.',
+
+  // Spot-Futures strategies
+  'sf.strategyLong': 'Купить спот + Шорт на перпе — забирать фандинг (~{netApy}%/год чистыми)',
+  'sf.strategyShort': 'Шорт спот + Лонг на перпе — забирать отрицательный фандинг (~{netApy}%/год чистыми)',
+  'sf.strategyLow': 'Фандинг слишком мал для покрытия комиссий (~{netApy}%/год) — не рекомендуется к открытию',
 };

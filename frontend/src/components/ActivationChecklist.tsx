@@ -103,7 +103,7 @@ export function ActivationChecklist() {
             setDismissed(true);
           }}
           className="text-xs text-[var(--text-muted)] px-1 flex items-center justify-center w-8 h-8"
-          aria-label="Dismiss"
+          aria-label={t('common.dismiss') || 'Dismiss'}
         >
           <IconX size={14} />
         </button>
@@ -116,7 +116,7 @@ export function ActivationChecklist() {
           style={{ background: 'var(--amber-soft)', color: 'var(--amber)' }}
         >
           <IconFlame size={14} className="shrink-0" />
-          <span>{total}/{STEPS.length} done — {STEPS.length - total} remaining</span>
+          <span>{t('activation.streak', { total, all: STEPS.length, remaining: STEPS.length - total })}</span>
         </div>
       )}
 
@@ -178,8 +178,8 @@ export function ActivationChecklist() {
         <p className="text-xs mt-2 text-center flex items-center justify-center gap-1" style={{ color: 'var(--amber)' }}>
           <IconCalendarDays size={14} className="shrink-0" />
           {daysSinceOpen >= 7
-            ? 'Day ' + daysSinceOpen + ' — complete activation to see everything'
-            : daysSinceOpen + 'd since start — finish setup'}
+            ? t('activation.dayRetention', { day: daysSinceOpen })
+            : t('activation.daysSince', { days: daysSinceOpen })}
         </p>
       )}
     </div>
