@@ -13,6 +13,7 @@ import { FilterBar, FilterField, SegmentedControl } from '../components/FilterBa
 import { useT } from '../i18n';
 import { SpotFuturesPanel } from '../components/SpotFuturesPanel';
 import { Heatmap } from '../components/Heatmap';
+import { openLoginModal } from '../components/WebHeader';
 import { profitCalcClient, breakEvenDays, type ClientProfit } from '../utils/profitCalc';
 import { LiquidationHeatmap } from '../components/LiquidationHeatmap';
 import {
@@ -28,6 +29,7 @@ import {
   IconTrash2,
   IconTrendingUp,
 } from '../components/icons';
+
 type ArbSortKey = 'apy' | 'daily' | 'hourly' | 'risk';
 type RiskFilter = 'ALL' | 'LOW' | 'MEDIUM' | 'HIGH';
 
@@ -43,14 +45,10 @@ function cleanLabel(value: string): string {
   return value.replace(/[:：]\s*$/, '');
 }
 
-// Key used to store/lookup a live price for a (exchange, symbol) pair.
 function livePriceKey(exchange: string, pair: string): string {
   return `${exchange}:${pair.toUpperCase()}`;
 }
 
-// Returns the live price if we have one, otherwise the static mark price from
-// the last scan (so a card is never empty/NaN). `live` tells the UI whether the
-// value is a fresh fetch or a fallback.
 function resolvePrice(
   map: Record<string, number> | undefined,
   exchange: string,
@@ -63,10 +61,6 @@ function resolvePrice(
   return { value: NaN, live: false };
 }
 
-// Batches live perp prices AND funding rates for every symbol the user is
-// currently viewing, grouped by exchange, and re-fetches every 10s. Values are
-// merged (not replaced) so a transient error never wipes already-valid data —
-// the card always shows something sane (and falls back to the scan's values).
 interface LiveFunding {
   ratePerHour: number;
   intervalHours: number;
@@ -91,10 +85,6 @@ function useArbLivePrices(opps: any[]): {
     return map;
   }, [opps]);
 
-  // One request per tick for ALL exchanges via the unified /live/batch
-  // endpoint — this is the fix that stops per-exchange polling from tripping
-  // the rate limiter when many exchanges are selected. The response is keyed by
-  // `${exchange}:${SYMBOL}` so it maps straight onto livePriceKey.
   const depKey = useMemo(
     () => Object.entries(byExchange).map(([ex, syms]) => `${ex}:${[...syms].sort().join(',')}`).sort().join('|'),
     [byExchange]
@@ -132,7 +122,7 @@ function useArbLivePrices(opps: any[]): {
       cancelled = true;
       clearInterval(id);
     };
-  }, [depKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [depKey]);
 
   return { prices, funding };
 }
@@ -154,24 +144,18 @@ export function ArbitragePage() {
   const [pairQuery, setPairQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(15);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const isGuest = !user?.provider || user.provider === 'guest';
 
   useEffect(() => {
-    // Cache-first: these only fetch if data isn't already loaded (or in-flight),
-    // so switching tabs keeps the previously loaded data instead of refetching.
     loadArbitrage();
-    if (user?.id) loadAlerts();
-  }, [user?.id, loadArbitrage, loadAlerts]);
+    if (user?.id && !isGuest) loadAlerts();
+  }, [user?.id, isGuest, loadArbitrage, loadAlerts]);
 
-  // Live refresh: keep funding-rate opportunities fresh by re-fetching on an
-  // interval (and whenever the server pushes fresh data over WebSocket).
   useEffect(() => {
     setLastUpdated(Date.now());
   }, [arbOpportunities, liveFundingAt]);
 
   useEffect(() => {
-    // Background refreshes are silent: any transient miss keeps the last good
-    // list on screen instead of spamming "can't load opportunities". Only the
-    // first load and the manual 🔄 button surface errors.
     const id = setInterval(() => {
       if (!document.hidden) loadArbitrage(true, { silent: true });
     }, 90_000);
@@ -197,7 +181,7 @@ export function ArbitragePage() {
     } catch (error) {
       showToast(t('arb.alertUpdateError'), 'error');
     }
-  }, [setArbAlerts, showToast]);
+  }, [setArbAlerts, showToast, t]);
 
   const handleDeleteAlert = useCallback(async (alertId: string) => {
     try {
@@ -209,7 +193,7 @@ export function ArbitragePage() {
     } catch (error) {
       showToast(t('arb.alertDeleteError'), 'error');
     }
-  }, [setArbAlerts, showToast]);
+  }, [setArbAlerts, showToast, t]);
 
   const confirmDelete = useCallback(() => {
     if (deleteConfirm) {
@@ -272,7 +256,6 @@ export function ArbitragePage() {
     setVisibleCount(15);
   }, []);
 
-  // Infinite scroll: auto-load more when sentinel becomes visible
   useEffect(() => {
     const el = loadMoreRef.current;
     if (!el) return;
@@ -288,8 +271,6 @@ export function ArbitragePage() {
     return () => observer.disconnect();
   }, [filteredOpportunities.length]);
 
-  // Live prices for the symbols the user is actually looking at. Refreshed
-  // every 10s inside the hook; falls back to each opportunity's mark price.
   const visibleOpportunities = useMemo(
     () => filteredOpportunities.slice(0, visibleCount),
     [filteredOpportunities, visibleCount]
@@ -474,10 +455,10 @@ export function ArbitragePage() {
               ) : (
                 <>
                   <div className="text-xs text-[var(--text-muted)] mb-2">
-                    {t('arb.shown', { x: Math.min(visibleCount, filteredOpportunities.length), y: filteredOpportunities.length })}
+                    {t('arb.shown', { x: isGuest ? 1 : Math.min(visibleCount, filteredOpportunities.length), y: isGuest ? Math.max(filteredOpportunities.length, 6) : filteredOpportunities.length })}
                   </div>
                   <div className="space-y-3">
-                    {filteredOpportunities.slice(0, visibleCount).map((opp) => (
+                    {(isGuest ? filteredOpportunities.slice(0, 1) : filteredOpportunities.slice(0, visibleCount)).map((opp) => (
                       <OpportunityCard
                         key={opp.id ?? `${opp.pair}-${opp.exchangeA}-${opp.exchangeB}`}
                         opportunity={opp}
@@ -490,18 +471,42 @@ export function ArbitragePage() {
                       />
                     ))}
                   </div>
-                  {visibleCount < filteredOpportunities.length && (
+
+                  {isGuest && (
+                    <div className="card text-center p-6 mt-4 border border-[var(--cobalt)]/40 bg-[var(--surface-2)]">
+                      <div
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 text-xl font-extrabold shadow-sm"
+                        style={{ background: 'var(--cobalt)', color: 'var(--on-brand)' }}
+                      >
+                        🔒
+                      </div>
+                      <h3 className="text-lg font-bold text-[var(--text)] mb-1">
+                        {t('arb.guestTeaserTitle', { count: Math.max(3, filteredOpportunities.length > 1 ? filteredOpportunities.length - 1 : 7) })}
+                      </h3>
+                      <p className="text-sm text-[var(--text-muted)] max-w-md mx-auto mb-4">
+                        {t('arb.guestTeaserDesc')}
+                      </p>
+                      <button
+                        onClick={() => openLoginModal()}
+                        className="btn btn-primary text-sm py-2.5 px-6 mx-auto font-semibold shadow-md"
+                      >
+                        {t('arb.guestTeaserBtn')}
+                      </button>
+                    </div>
+                  )}
+
+                  {!isGuest && visibleCount < filteredOpportunities.length && (
                     <div ref={loadMoreRef} className="py-4 text-center text-xs text-[var(--text-muted)]">
                       {t('arb.loadingMore')}
                     </div>
                   )}
-                  {visibleCount >= filteredOpportunities.length && filteredOpportunities.length > 15 && (
+                  {!isGuest && visibleCount >= filteredOpportunities.length && filteredOpportunities.length > 15 && (
                     <div className="py-3 text-center text-xs text-[var(--text-muted)]">
                       {t('arb.allLoaded', { count: filteredOpportunities.length })}
                     </div>
                   )}
 
-                  {subscription === 'free' && (
+                  {!isGuest && subscription === 'free' && (
                     <div className="mt-3">
                       <SoftPaywallBanner
                         used={Math.min(visibleCount, 5)}
@@ -529,8 +534,13 @@ export function ArbitragePage() {
         <div className="card">
           <h2 className="text-lg font-semibold mb-3">{t('arb.myAlerts')}</h2>
 
-          {!user?.id ? (
-            <div className="text-center py-8 text-[var(--text-muted)]">{t('arb.loginToManage')}</div>
+          {isGuest || !user?.id ? (
+            <div className="text-center py-8 text-[var(--text-muted)]">
+              <p className="mb-3">{t('arb.guestLoginPrompt') || t('arb.loginToManage')}</p>
+              <button onClick={() => openLoginModal()} className="btn btn-primary text-sm py-2 px-5 mx-auto">
+                {t('login.login') || 'Войти'}
+              </button>
+            </div>
           ) : arbAlerts.length === 0 ? (
             <div className="text-center py-8 text-[var(--text-muted)]">{t('arb.noAlerts')}</div>
           ) : (
@@ -624,13 +634,14 @@ const OpportunityCard = memo(function OpportunityCard({
       volumeB: opp.volumeB,
     }, calcCapital);
   }, [showCalc, opp.exchangeA, opp.exchangeB, opp.difference, opp.volumeA, opp.volumeB, calcCapital]);
-  // Live funding (falling back to the scan's values so the card is never blank).
+
   const fundA = fundingMap?.[livePriceKey(opp.exchangeA, opp.pair)];
   const fundB = fundingMap?.[livePriceKey(opp.exchangeB, opp.pair)];
   const fundingA = fundA ? fundA.ratePerHour : opp.fundingA_per_hour;
   const fundingB = fundB ? fundB.ratePerHour : opp.fundingB_per_hour;
   const intervalA = fundA ? fundA.intervalHours : opp.intervalA_hours;
   const intervalB = fundB ? fundB.intervalHours : opp.intervalB_hours;
+
   return (
     <div className="opportunity-card">
       <div className="opportunity-head">
@@ -650,446 +661,4 @@ const OpportunityCard = memo(function OpportunityCard({
             {opp.profit?.annualReturn != null ? `${opp.profit.annualReturn.toFixed(1)}%` : '—'}
           </span>
           <span className="text-xs text-[var(--text-muted)]">{t('arb.netApy')}</span>
-          {opp.score != null && (
-            <span className="text-xs text-[var(--text2)] font-mono mt-2 text-right">
-              {cleanLabel(t('arb.compositeScore'))} {opp.score.toFixed(1)}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="strategy-summary">
-        <span className="section-title">{cleanLabel(t('arb.strategy'))}</span>
-        <strong>{opp.opportunity}</strong>
-      </div>
-
-      <div className="section-block mt-4">
-        <div className="section-title">{cleanLabel(t('arb.prices'))}</div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <ExchangePriceCell
-          exchange={opp.exchangeA}
-          price={priceA}
-          funding={fundingA}
-          interval={intervalA}
-          live={!!fundA}
-        />
-        <ExchangePriceCell
-          exchange={opp.exchangeB}
-          price={priceB}
-          funding={fundingB}
-          interval={intervalB}
-          live={!!fundB}
-        />
-      </div>
-      </div>
-
-      {opp.intervalMismatch && (
-        <div className="text-xs text-[var(--amber)] bg-[var(--amber-soft)] p-2 rounded-lg mb-2 font-mono">
-          {t('arb.intervalMismatch', { a: opp.intervalA_hours, b: opp.intervalB_hours })}
-        </div>
-      )}
-
-      <div className="section-block mt-4">
-        <div className="section-title">{cleanLabel(t('arb.netDaily'))}</div>
-      <div className="metric-stack">
-          <div className="metric-row">
-            <span className="metric-label">{cleanLabel(t('arb.fundingIncome'))}</span>
-            <span className="metric-value">+${opp.profit?.grossDaily != null ? opp.profit.grossDaily.toFixed(2) : '0.00'} {t('unit.usdtPerDay')}</span>
-          </div>
-          <div className="metric-row">
-            <span className="metric-label">{cleanLabel(t('arb.oneTimeCosts'))}</span>
-            <span className="metric-value">${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)} USDT</span>
-          </div>
-        <div className="metric-row">
-           <span className="metric-label">{cleanLabel(t('arb.netDaily'))}</span>
-           <span className={clsx('metric-value text-base', (opp.profit?.netDaily ?? 0) >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
-            {(opp.profit?.netDaily ?? 0) >= 0 ? '+' : ''}${opp.profit?.netDaily?.toFixed(2)} USDT
-          </span>
-        </div>
-        {(() => {
-          const oneTimeCost = (opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0);
-          const grossDaily = opp.profit?.grossDaily ?? 0;
-          if (grossDaily <= 0 || oneTimeCost <= 0) return null;
-          const breakEven = oneTimeCost / grossDaily;
-          const intervalHours = opp.intervalA_hours || 8;
-          const cycles = Math.ceil(breakEven * 24 / intervalHours);
-          return (
-            <div className="metric-row">
-              <span className="metric-label">{cleanLabel(t('arb.breakEven'))}</span>
-              <strong className={clsx('metric-value', breakEven <= 30 ? 'text-[var(--green)]' : 'text-[var(--amber)]')}>
-                ~{breakEven.toFixed(1)} {t('unit.daysShort')} · {cycles} {t('unit.settlementCycles')}
-              </strong>
-            </div>
-          );
-        })()}
-      </div>
-      </div>
-
-      {opp.risk?.reasons?.length > 0 && (
-        <div className="risk-notes">
-          {opp.risk.reasons.map((r: string, i: number) => (
-            <div key={i} className="flex items-center gap-1">
-              <IconAlertTriangle size={12} aria-hidden className="shrink-0" /> {r}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <button
-        onClick={() => { haptic('light'); openExchange(opp.exchangeA, opp.pair); setTimeout(() => openExchange(opp.exchangeB, opp.pair), 400); }}
-         className="btn btn-primary text-sm py-2 w-full mt-3 mb-3"
-        title={t('arb.openBothTitle', { pair: opp.pair, a: exchangeLabel(opp.exchangeA), b: exchangeLabel(opp.exchangeB) })}
-      >
-        {t('arb.openBoth', { a: exchangeLabel(opp.exchangeA), b: exchangeLabel(opp.exchangeB) })}
-      </button>
-
-       <details className="advanced-details mt-2">
-        <summary>{t('arb.moreDetails')}</summary>
-        <div className="details-grid">
-          <div className="metric-row"><span className="metric-label">{cleanLabel(t('arb.grossLabel'))}</span><span className="metric-value">{opp.profit?.grossDaily != null ? `${(opp.profit.grossDaily / 1000 * 100).toFixed(1)}%` : '—'}</span></div>
-          <div className="metric-row"><span className="metric-label">{cleanLabel(t('arb.fees'))}</span><span className="metric-value">{opp.profit?.fees != null ? `${(opp.profit.fees / 1000 * 100).toFixed(2)}%` : '—'}</span></div>
-          <div className="metric-row"><span className="metric-label">{cleanLabel(t('arb.slippage'))}</span><span className="metric-value">{opp.profit?.slippage != null ? `${(opp.profit.slippage / 1000 * 100).toFixed(2)}%` : '—'}</span></div>
-          {opp.accumulated && <div className="metric-row"><span className="metric-label">{cleanLabel(t('arb.accumulated'))}</span><span className="metric-value">1D {(opp.accumulated.d1 * 100).toFixed(2)}% · 7D {(opp.accumulated.d7 * 100).toFixed(2)}%</span></div>}
-          <div className="text-xs text-[var(--text-muted)]" title={t('arb.oiSignalTitle')}>
-            {(() => {
-              const minVol = Math.min(opp.volumeA || 0, opp.volumeB || 0);
-              const label = minVol > 10_000_000 ? t('arb.oiSignalHigh') : minVol > 1_000_000 ? t('arb.oiSignalMed') : minVol > 100_000 ? t('arb.oiSignalLow') : t('arb.oiSignalThin');
-              return `${cleanLabel(t('arb.oiSignal'))}: ${label} (${minVol > 1_000_000 ? `${(minVol / 1_000_000).toFixed(1)}M` : `${(minVol / 1000).toFixed(0)}K`})`;
-            })()}
-          </div>
-        </div>
-        <div className="card-actions">
-        <button
-          onClick={() => { haptic('light'); setShowCalc(!showCalc); }}
-          className="btn btn-success text-sm py-2 flex-[1.4]"
-        >
-          <IconCalculator size={16} className="inline mr-1" aria-hidden /> {showCalc ? t('arb.hideCalc') : t('arb.calculate')}
-        </button>
-        <button
-          onClick={onCalculate}
-          className="btn btn-secondary text-sm py-2 flex-1"
-        >
-          <IconChartLine size={16} className="inline mr-1" aria-hidden /> {t('arb.fullCalc')}
-        </button>
-        <button
-          onClick={() => { haptic('light'); openExchange(opp.exchangeA, opp.pair); }}
-          className="btn btn-secondary text-sm py-2 flex-1"
-          title={t('arb.openOnExchange', { pair: opp.pair, ex: exchangeLabel(opp.exchangeA) })}
-      >
-          {t('arb.openEx', { ex: exchangeLabel(opp.exchangeA) })}
-        </button>
-        <button
-          onClick={() => { haptic('light'); openExchange(opp.exchangeB, opp.pair); }}
-          className="btn btn-secondary text-sm py-2 flex-1"
-          title={t('arb.openOnExchange', { pair: opp.pair, ex: exchangeLabel(opp.exchangeB) })}
-      >
-          {t('arb.openEx', { ex: exchangeLabel(opp.exchangeB) })}
-        </button>
-        </div>
-      </details>
-
-      {showCalc && calcProfit && (
-        <div className="mt-2 p-2 rounded-lg bg-[var(--surface-2)] border border-[var(--border)]">
-          <div className="flex items-center gap-2 mb-2">
-            <label className="text-xs text-[var(--text-muted)] shrink-0">{t('arb.capital')}</label>
-            <input
-              type="number"
-              min={100}
-              max={1000000}
-              value={calcCapital}
-              onChange={(e) => setCalcCapital(Math.max(100, Math.min(1000000, Number(e.target.value) || 100)))}
-              className="input-field text-xs py-1 flex-1"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-            <div className="text-[var(--text-muted)]">{t('arb.netDaily')}</div>
-            <div className={clsx('font-bold text-right font-mono', calcProfit.netDaily >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
-              ${calcProfit.netDaily.toFixed(2)}
-            </div>
-            <div className="text-[var(--text-muted)]">{t('arb.netApy')}</div>
-            <div className={clsx('font-bold text-right font-mono', calcProfit.netApr >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
-              {calcProfit.netApr.toFixed(1)}%
-            </div>
-            <div className="text-[var(--text-muted)]">{t('arb.fees')}</div>
-            <div className="text-right font-mono">${calcProfit.fees.toFixed(2)}</div>
-            <div className="text-[var(--text-muted)]">{t('arb.slippage')}</div>
-            <div className="text-right font-mono">${calcProfit.slippage.toFixed(2)}</div>
-            <div className="text-[var(--text-muted)]">{t('arb.breakEven')}</div>
-            <div className="text-right font-mono">
-              {(() => {
-                const be = breakEvenDays(calcProfit);
-                return (
-                  <span className={be <= 30 ? 'text-[var(--green)]' : 'text-[var(--amber)]'}>
-                    ~{be === Infinity ? '∞' : be.toFixed(1)} {t('unit.daysShort')}
-                  </span>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {priceA.value > 0 && (
-        <button
-          onClick={() => { haptic('light'); setShowLiq(!showLiq); }}
-          className="btn btn-secondary text-xs py-2 w-full mt-1 min-h-[44px]"
-        >
-          {showLiq ? <IconChevronDown size={14} className="inline mr-1" aria-hidden /> : <IconChevronRight size={14} className="inline mr-1" aria-hidden />} {t('arb.liqHeatmap')}
-        </button>
-      )}
-
-      {showLiq && priceA.value > 0 && (
-        <LiquidationHeatmap price={priceA.value} className="mt-1" />
-      )}
-
-    </div>
-  );
-});
-
-// One exchange's live price + funding rate inside an arbitrage card. A green
-// pulsing dot on the price means it's a fresh live fetch; gray means we're
-// showing the last scan's mark price as a fallback (never blank/NaN). The price
-// uses a precision-aware formatter so even very cheap coins show their real value.
-function ExchangePriceCell({
-  exchange,
-  price,
-  funding,
-  interval,
-  live,
-}: {
-  exchange: string;
-  price: { value: number; live: boolean };
-  funding: number;
-  interval: number;
-  live: boolean;
-}) {
-  const t = useT();
-  const valid = isFinite(price.value) && price.value > 0;
-  const fundingColor = funding > 0 ? 'text-[var(--green)]' : funding < 0 ? 'text-[var(--red)]' : 'text-[var(--text2)]';
-  return (
-    <div className="rounded-lg bg-surface-2 px-3 py-2 border border-[var(--border)]">
-      <div className="flex items-center justify-between gap-1">
-        <span className="text-xs font-medium text-[var(--text-muted)] truncate" title={exchangeLabel(exchange)}>{exchangeLabel(exchange)}</span>
-        <span className="flex items-center gap-1.5 shrink-0">
-          {price.live && <span className="live-label">{t('arb.live')}</span>}
-          <span className="text-sm font-semibold font-mono text-[var(--text)]">${valid ? formatPrice(price.value) : '—'}</span>
-        </span>
-      </div>
-      <div className="flex items-center justify-between mt-1.5 gap-1">
-        <span className="text-xs text-[var(--text-muted)]">{t('arb.fundingRate')}</span>
-        <span className="flex items-center gap-1.5 shrink-0">
-          {live && <span className="live-label">{t('arb.live')}</span>}
-          <span className={clsx('text-xs font-semibold font-mono truncate max-w-full', fundingColor)} title={`${(funding * 100).toFixed(4)}%/${t('unit.hoursShort', { h: interval })}`}>
-            {(funding * 100).toFixed(4)}{t('unit.pctPerHour')} ({t('unit.hoursShort', { h: interval })})
-          </span>
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function ProfitCalculator({
-  opportunity,
-  capital,
-  setCapital,
-  onClose,
-}: {
-  opportunity: any;
-  capital: number;
-  setCapital: (v: number) => void;
-  onClose: () => void;
-}) {
-  const [result, setResult] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [backtest, setBacktest] = useState<any>(null);
-  const [backtestLoading, setBacktestLoading] = useState(false);
-  const { showToast } = useToast();
-  const t = useT();
-  const closeRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    closeRef.current?.focus();
-  }, []);
-
-  const handleCalculate = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response: any = await apiClient.calculateProfit(opportunity, capital);
-      if (response.ok) {
-        setResult(response);
-      }
-    } catch (error) {
-      showToast(t('arb.calcError'), 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [opportunity, capital, showToast]);
-
-  const handleBacktest = useCallback(async () => {
-    try {
-      setBacktestLoading(true);
-      const response: any = await apiClient.getBacktest(
-        opportunity.pair,
-        opportunity.exchangeA,
-        opportunity.exchangeB,
-        capital,
-        30,
-      );
-      if (response.ok) {
-        setBacktest(response);
-      } else {
-        showToast(t('arb.backtestNoData'), 'info');
-      }
-    } catch {
-      showToast(t('arb.backtestError'), 'error');
-    } finally {
-      setBacktestLoading(false);
-    }
-  }, [opportunity, capital, showToast]);
-
-  return (
-    <div
-      className="fixed inset-0 bg-[rgba(5,7,12,0.5)] flex items-center justify-center z-50 p-2 sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="calculator-title"
-    >
-      <div className="bg-surface rounded-xl max-w-md w-full">
-        <div className="card">
-          <h2 id="calculator-title" className="text-lg font-semibold mb-2">{t('arb.profitCalc')}</h2>
-          <div className="text-center mb-4">
-            <div className="font-bold font-mono">{opportunity.pair}</div>
-            <div className="text-sm text-[var(--text-muted)] font-mono">{opportunity.exchangeA} vs {opportunity.exchangeB}</div>
-            <div className="text-[var(--green)] font-bold font-mono">{(opportunity.difference_per_day * 100).toFixed(4)}{t('unit.pctPerDay')}</div>
-            {opportunity.intervalMismatch && (
-               <div className="text-xs text-[var(--amber)]">{t('arb.intervalMismatchShort')}</div>
-            )}
-          </div>
-
-          <div className="mb-4">
-              <label className="block text-sm font-medium text-[var(--text)] mb-1" htmlFor="calc-capital">
-              {t('arb.capital')}
-            </label>
-            <input
-              id="calc-capital"
-              type="number"
-              value={capital}
-              onChange={(e) => {
-                const val = Math.max(100, Math.min(1000000, Number(e.target.value) || 100));
-                setCapital(val);
-              }}
-              min={100}
-              max={1000000}
-              className="input-field"
-            />
-          </div>
-
-          <button onClick={handleCalculate} disabled={loading} className="btn btn-success mb-3 w-full">
-            {loading ? t('arb.calculating') : t('arb.calculateProfit')}
-          </button>
-
-          <button onClick={handleBacktest} disabled={backtestLoading} className="btn btn-secondary mb-4 w-full text-sm">
-            {backtestLoading ? t('arb.calculating') : <span className="inline-flex items-center gap-1.5"><IconTrendingUp size={14} aria-hidden /> {t('arb.backtest')}</span>}
-          </button>
-
-          {result && (
-            <div className="bg-[var(--surface-2)] p-3 rounded-lg">
-              <div className="text-xs text-[var(--text-muted)] mb-2">
-                {t('arb.netProfitNote')}
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-sm font-mono">
-                <div className="font-sans">{t('arb.perHour')}</div>
-                <div className={clsx('font-bold', result.profit.netHourly >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>{result.profit.netHourly.toFixed(4)} USDT</div>
-                <div className="font-sans">{t('arb.perDay')}</div>
-                <div className={clsx('font-bold', result.profit.netDaily >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>{result.profit.netDaily.toFixed(2)} USDT</div>
-                <div className="font-sans">{t('arb.perWeek')}</div>
-                <div className={clsx('font-bold', result.profit.netWeekly >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>{result.profit.netWeekly.toFixed(2)} USDT</div>
-                <div className="font-sans">{t('arb.perYear')}</div>
-                <div className={clsx('font-bold', result.profit.netAnnual >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>{result.profit.netAnnual.toFixed(2)} USDT</div>
-              </div>
-              <div className="mt-2 pt-2 border-t border-[var(--border)] font-mono">
-                <div className="flex justify-between">
-                  <span className="font-sans">{t('arb.annualReturn')}</span>
-                  <strong className={result.profit.annualReturn >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]'}>{result.profit.annualReturn.toFixed(2)}%</strong>
-                </div>
-              </div>
-              <div className="mt-2 pt-2 border-t border-[var(--border)]">
-                {(() => {
-                  const oneTimeCost = (result.profit.fees || 0) + (result.profit.slippage || 0);
-                  const grossDaily = result.profit.grossDaily || 0;
-                  const breakEven = grossDaily > 0 ? oneTimeCost / grossDaily : Infinity;
-                  const intervalHours = opportunity.intervalA_hours || 8;
-                  const cycles = Math.ceil(breakEven * 24 / intervalHours);
-                  return (
-                    <div className="flex justify-between text-sm font-mono">
-                      <span className="font-sans">{t('arb.breakEven')}</span>
-                      <strong className={breakEven > 0 && breakEven <= 30 ? 'text-[var(--green)]' : 'text-[var(--amber)]'}>
-                        {t('arb.breakEvenValue', { days: breakEven.toFixed(1), cycles })}
-                      </strong>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-          )}
-
-          {backtest && backtest.available && (
-            <div className="bg-[var(--surface-2)] p-3 rounded-lg mb-3">
-              <div className="text-sm font-semibold mb-2 font-mono">{t('arb.backtest')} ({backtest.days}d)</div>
-              <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                <div className="text-[var(--text-muted)] font-sans">{t('arb.backtestDays')}</div>
-                <div className="text-right">{backtest.daysWithSpread} / {backtest.totalDays}</div>
-                <div className="text-[var(--text-muted)] font-sans">{t('arb.backtestWinRate')}</div>
-                <div className={clsx('text-right font-bold', backtest.winRate >= 50 ? 'text-[var(--green)]' : 'text-[var(--amber)]')}>
-                  {backtest.winRate.toFixed(0)}%
-                </div>
-                <div className="text-[var(--text-muted)] font-sans">{t('arb.backtestCumulative')}</div>
-                <div className="text-right font-bold">{backtest.cumulativePct.toFixed(2)}%</div>
-                <div className="text-[var(--text-muted)] font-sans">{t('arb.backtestAnnualized')}</div>
-                <div className={clsx('text-right font-bold', backtest.annualizedPct >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
-                  {backtest.annualizedPct.toFixed(1)}%
-                </div>
-                <div className="text-[var(--text-muted)] font-sans">{t('arb.backtestProfit')}</div>
-                <div className={clsx('text-right font-bold', backtest.totalProfit >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
-                  ${backtest.totalProfit.toFixed(2)}
-                </div>
-                <div className="text-[var(--text-muted)] font-sans">{t('arb.backtestMaxDD')}</div>
-                <div className="text-right text-[var(--red)]">${backtest.maxDrawdown.toFixed(2)}</div>
-              </div>
-              {backtest.daily && backtest.daily.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-[var(--border)]">
-                  <div className="text-xs text-[var(--text-muted)] mb-1">{t('arb.backtestDaily')}</div>
-                  <div className="flex gap-px items-end h-12">
-                    {backtest.daily.map((d: any, i: number) => {
-                      const maxAbs = Math.max(...backtest.daily.map((x: any) => Math.abs(x.profitUsd)), 1);
-                      const h = Math.abs(d.profitUsd) / maxAbs * 100;
-                      return (
-                        <div
-                          key={i}
-                          className={clsx('flex-1 rounded-t', d.profitUsd >= 0 ? 'bg-[var(--green)]' : 'bg-[var(--red)]')}
-                          style={{ height: `${Math.max(4, h)}%` }}
-                          title={`${d.date}: $${d.profitUsd.toFixed(2)}`}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {backtest && !backtest.available && (
-            <div className="bg-[var(--surface-2)] p-3 rounded-lg mb-3 text-xs text-[var(--text-muted)] text-center">
-              {t('arb.backtestNoData')}
-            </div>
-          )}
-
-          <button ref={closeRef} onClick={onClose} className="btn btn-secondary mt-4 w-full">
-            {t('common.close')}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
+          {opp.score != null && (\n            <span className=\"text-xs text-[var(--text2)] font-mono mt-2 text-right\">\n              {cleanLabel(t('arb.compositeScore'))} {opp.score.toFixed(1)}\n            </span>\n          )}\n        </div>\n      </div>\n\n      <div className=\"strategy-summary\">\n        <span className=\"section-title\">{cleanLabel(t('arb.strategy'))}</span>\n        <strong>{opp.opportunity}</strong>\n      </div>\n\n      <div className=\"section-block mt-4\">\n        <div className=\"section-title\">{cleanLabel(t('arb.prices'))}</div>\n      <div className=\"grid grid-cols-1 sm:grid-cols-2 gap-3\">\n        <ExchangePriceCell\n          exchange={opp.exchangeA}\n          price={priceA}\n          funding={fundingA}\n          interval={intervalA}\n          live={!!fundA}\n        />\n        <ExchangePriceCell\n          exchange={opp.exchangeB}\n          price={priceB}\n          funding={fundingB}\n          interval={intervalB}\n          live={!!fundB}\n        />\n      </div>\n      </div>\n\n      {opp.intervalMismatch && (\n        <div className=\"text-xs text-[var(--amber)] bg-[var(--amber-soft)] p-2 rounded-lg mb-2 font-mono\">\n          {t('arb.intervalMismatch', { a: opp.intervalA_hours, b: opp.intervalB_hours })}\n        </div>\n      )}\n\n      <div className=\"section-block mt-4\">\n        <div className=\"section-title\">{cleanLabel(t('arb.netDaily'))}</div>\n      <div className=\"metric-stack\">\n          <div className=\"metric-row\">\n            <span className=\"metric-label\">{cleanLabel(t('arb.fundingIncome'))}</span>\n            <span className=\"metric-value\">+${opp.profit?.grossDaily != null ? opp.profit.grossDaily.toFixed(2) : '0.00'} {t('unit.usdtPerDay')}</span>\n          </div>\n          <div className=\"metric-row\">\n            <span className=\"metric-label\">{cleanLabel(t('arb.oneTimeCosts'))}</span>\n            <span className=\"metric-value\">${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)} USDT</span>\n          </div>\n        <div className=\"metric-row\">\n           <span className=\"metric-label\">{cleanLabel(t('arb.netDaily'))}</span>\n           <span className={clsx('metric-value text-base', (opp.profit?.netDaily ?? 0) >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>\n            {(opp.profit?.netDaily ?? 0) >= 0 ? '+' : ''}${opp.profit?.netDaily?.toFixed(2)} USDT\n          </span>\n        </div>\n        {(() => {\n          const oneTimeCost = (opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0);\n          const grossDaily = opp.profit?.grossDaily ?? 0;\n          if (grossDaily <= 0 || oneTimeCost <= 0) return null;\n          const breakEven = oneTimeCost / grossDaily;\n          const intervalHours = opp.intervalA_hours || 8;\n          const cycles = Math.ceil(breakEven * 24 / intervalHours);\n          return (\n            <div className=\"metric-row\">\n              <span className=\"metric-label\">{cleanLabel(t('arb.breakEven'))}</span>\n              <strong className={clsx('metric-value', breakEven <= 30 ? 'text-[var(--green)]' : 'text-[var(--amber)]')}>\n                ~{breakEven.toFixed(1)} {t('unit.daysShort')} · {cycles} {t('unit.settlementCycles')}\n              </strong>\n            </div>\n          );\n        })()}\n      </div>\n      </div>\n\n      {opp.risk?.reasons?.length > 0 && (\n        <div className=\"risk-notes\">\n          {opp.risk.reasons.map((r: string, i: number) => (\n            <div key={i} className=\"flex items-center gap-1\">\n              <IconAlertTriangle size={12} aria-hidden className=\"shrink-0\" /> {r}\n            </div>\n          ))}\n        </div>\n      )}\n\n      <button\n        onClick={() => { haptic('light'); openExchange(opp.exchangeA, opp.pair); setTimeout(() => openExchange(opp.exchangeB, opp.pair), 400); }}\n         className=\"btn btn-primary text-sm py-2 w-full mt-3 mb-3\"\n        title={t('arb.openBothTitle', { pair: opp.pair, a: exchangeLabel(opp.exchangeA), b: exchangeLabel(opp.exchangeB) })}\n      >\n        {t('arb.openBoth', { a: exchangeLabel(opp.exchangeA), b: exchangeLabel(opp.exchangeB) })}\n      </button>\n\n       <details className=\"advanced-details mt-2\">\n        <summary>{t('arb.moreDetails')}</summary>\n        <div className=\"details-grid\">\n          <div className=\"metric-row\"><span className=\"metric-label\">{cleanLabel(t('arb.grossLabel'))}</span><span className=\"metric-value\">{opp.profit?.grossDaily != null ? `${(opp.profit.grossDaily / 1000 * 100).toFixed(1)}%` : '—'}</span></div>\n          <div className=\"metric-row\"><span className=\"metric-label\">{cleanLabel(t('arb.fees'))}</span><span className=\"metric-value\">{opp.profit?.fees != null ? `${(opp.profit.fees / 1000 * 100).toFixed(2)}%` : '—'}</span></div>\n          <div className=\"metric-row\"><span className=\"metric-label\">{cleanLabel(t('arb.slippage'))}</span><span className=\"metric-value\">{opp.profit?.slippage != null ? `${(opp.profit.slippage / 1000 * 100).toFixed(2)}%` : '—'}</span></div>\n          {opp.accumulated && <div className=\"metric-row\"><span className=\"metric-label\">{cleanLabel(t('arb.accumulated'))}</span><span className=\"metric-value\">1D {(opp.accumulated.d1 * 100).toFixed(2)}% · 7D {(opp.accumulated.d7 * 100).toFixed(2)}%</span></div>}\n          <div className=\"text-xs text-[var(--text-muted)]\" title={t('arb.oiSignalTitle')}>\n            {(() => {\n              const minVol = Math.min(opp.volumeA || 0, opp.volumeB || 0);\n              const label = minVol > 10_000_000 ? t('arb.oiSignalHigh') : minVol > 1_000_000 ? t('arb.oiSignalMed') : minVol > 100_000 ? t('arb.oiSignalLow') : t('arb.oiSignalThin');\n              return `${cleanLabel(t('arb.oiSignal'))}: ${label} (${minVol > 1_000_000 ? `${(minVol / 1_000_000).toFixed(1)}M` : `${(minVol / 1000).toFixed(0)}K`})`;\n            })()}\n          </div>\n        </div>\n        <div className=\"card-actions\">\n        <button\n          onClick={() => { haptic('light'); setShowCalc(!showCalc); }}\n          className=\"btn btn-success text-sm py-2 flex-[1.4]\"\n        >\n          <IconCalculator size={16} className=\"inline mr-1\" aria-hidden /> {showCalc ? t('arb.hideCalc') : t('arb.calculate')}\n        </button>\n        <button\n          onClick={onCalculate}\n          className=\"btn btn-secondary text-sm py-2 flex-1\"\n        >\n          <IconChartLine size={16} className=\"inline mr-1\" aria-hidden /> {t('arb.fullCalc')}\n        </button>\n        <button\n          onClick={() => { haptic('light'); openExchange(opp.exchangeA, opp.pair); }}\n          className=\"btn btn-secondary text-sm py-2 flex-1\"\n          title={t('arb.openOnExchange', { pair: opp.pair, ex: exchangeLabel(opp.exchangeA) })}\n      >\n          {t('arb.openEx', { ex: exchangeLabel(opp.exchangeA) })}\n        </button>\n        <button\n          onClick={() => { haptic('light'); openExchange(opp.exchangeB, opp.pair); }}\n          className=\"btn btn-secondary text-sm py-2 flex-1\"\n          title={t('arb.openOnExchange', { pair: opp.pair, ex: exchangeLabel(opp.exchangeB) })}\n      >\n          {t('arb.openEx', { ex: exchangeLabel(opp.exchangeB) })}\n        </button>\n        </div>\n      </details>\n\n      {showCalc && calcProfit && (\n        <div className=\"mt-2 p-2 rounded-lg bg-[var(--surface-2)] border border-[var(--border)]\">\n          <div className=\"flex items-center gap-2 mb-2\">\n            <label className=\"text-xs text-[var(--text-muted)] shrink-0\">{t('arb.capital')}</label>\n            <input\n              type=\"number\"\n              min={100}\n              max={1000000}\n              value={calcCapital}\n              onChange={(e) => setCalcCapital(Math.max(100, Math.min(1000000, Number(e.target.value) || 100)))}\n              className=\"input-field text-xs py-1 flex-1\"\n            />\n          </div>\n          <div className=\"grid grid-cols-2 gap-x-3 gap-y-1 text-xs\">\n            <div className=\"text-[var(--text-muted)]\">{t('arb.netDaily')}</div>\n            <div className={clsx('font-bold text-right font-mono', calcProfit.netDaily >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>\n              ${calcProfit.netDaily.toFixed(2)}\n            </div>\n            <div className=\"text-[var(--text-muted)]\">{t('arb.netApy')}</div>\n            <div className={clsx('font-bold text-right font-mono', calcProfit.netApr >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>\n              {calcProfit.netApr.toFixed(1)}%\n            </div>\n            <div className=\"text-[var(--text-muted)]\">{t('arb.fees')}</div>\n            <div className=\"text-right font-mono\">${calcProfit.fees.toFixed(2)}</div>\n            <div className=\"text-[var(--text-muted)]\">{t('arb.slippage')}</div>\n            <div className=\"text-right font-mono\">${calcProfit.slippage.toFixed(2)}</div>\n            <div className=\"text-[var(--text-muted)]\">{t('arb.breakEven')}</div>\n            <div className=\"text-right font-mono\">\n              {(() => {\n                const be = breakEvenDays(calcProfit);\n                return (\n                  <span className={be <= 30 ? 'text-[var(--green)]' : 'text-[var(--amber)]'}>\n                    ~{be === Infinity ? '∞' : be.toFixed(1)} {t('unit.daysShort')}\n                  </span>\n                );\n              })()}\n            </div>\n          </div>\n        </div>\n      )}\n\n      {priceA.value > 0 && (\n        <button\n          onClick={() => { haptic('light'); setShowLiq(!showLiq); }}\n          className=\"btn btn-secondary text-xs py-2 w-full mt-1 min-h-[44px]\"\n        >\n          {showLiq ? <IconChevronDown size={14} className=\"inline mr-1\" aria-hidden /> : <IconChevronRight size={14} className=\"inline mr-1\" aria-hidden />} {t('arb.liqHeatmap')}\n        </button>\n      )}\n\n      {showLiq && priceA.value > 0 && (\n        <LiquidationHeatmap price={priceA.value} className=\"mt-1\" />\n      )}\n\n    </div>\n  );\n});\n\nfunction ExchangePriceCell({\n  exchange,\n  price,\n  funding,\n  interval,\n  live,\n}: {\n  exchange: string;\n  price: { value: number; live: boolean };\n  funding: number;\n  interval: number;\n  live: boolean;\n}) {\n  const t = useT();\n  const valid = isFinite(price.value) && price.value > 0;\n  const fundingColor = funding > 0 ? 'text-[var(--green)]' : funding < 0 ? 'text-[var(--red)]' : 'text-[var(--text2)]';\n  return (\n    <div className=\"rounded-lg bg-surface-2 px-3 py-2 border border-[var(--border)]\">\n      <div className=\"flex items-center justify-between gap-1\">\n        <span className=\"text-xs font-medium text-[var(--text-muted)] truncate\" title={exchangeLabel(exchange)}>{exchangeLabel(exchange)}</span>\n        <span className=\"flex items-center gap-1.5 shrink-0\">\n          {price.live && <span className=\"live-label\">{t('arb.live')}</span>}\n          <span className=\"text-sm font-semibold font-mono text-[var(--text)]\">${valid ? formatPrice(price.value) : '—'}</span>\n        </span>\n      </div>\n      <div className=\"flex items-center justify-between mt-1.5 gap-1\">\n        <span className=\"text-xs text-[var(--text-muted)]\">{t('arb.fundingRate')}</span>\n        <span className=\"flex items-center gap-1.5 shrink-0\">\n          {live && <span className=\"live-label\">{t('arb.live')}</span>}\n          <span className={clsx('text-xs font-semibold font-mono truncate max-w-full', fundingColor)} title={`${(funding * 100).toFixed(4)}%/${t('unit.hoursShort', { h: interval })}`}>\n            {(funding * 100).toFixed(4)}{t('unit.pctPerHour')} ({t('unit.hoursShort', { h: interval })})\n          </span>\n        </span>\n      </div>\n    </div>\n  );\n}\n\nfunction ProfitCalculator({\n  opportunity,\n  capital,\n  setCapital,\n  onClose,\n}: {\n  opportunity: any;\n  capital: number;\n  setCapital: (v: number) => void;\n  onClose: () => void;\n}) {\n  const [result, setResult] = useState<any>(null);\n  const [loading, setLoading] = useState(false);\n  const [backtest, setBacktest] = useState<any>(null);\n  const [backtestLoading, setBacktestLoading] = useState(false);\n  const { showToast } = useToast();\n  const t = useT();\n  const closeRef = useRef<HTMLButtonElement>(null);\n\n  useEffect(() => {\n    closeRef.current?.focus();\n  }, []);\n\n  const handleCalculate = useCallback(async () => {\n    try {\n      setLoading(true);\n      const response: any = await apiClient.calculateProfit(opportunity, capital);\n      if (response.ok) {\n        setResult(response);\n      }\n    } catch (error) {\n      showToast(t('arb.calcError'), 'error');\n    } finally {\n      setLoading(false);\n    }\n  }, [opportunity, capital, showToast, t]);\n\n  const handleBacktest = useCallback(async () => {\n    try {\n      setBacktestLoading(true);\n      const response: any = await apiClient.getBacktest(\n        opportunity.pair,\n        opportunity.exchangeA,\n        opportunity.exchangeB,\n        capital,\n        30,\n      );\n      if (response.ok) {\n        setBacktest(response);\n      } else {\n        showToast(t('arb.backtestNoData'), 'info');\n      }\n    } catch {\n      showToast(t('arb.backtestError'), 'error');\n    } finally {\n      setBacktestLoading(false);\n    }\n  }, [opportunity, capital, showToast, t]);\n\n  return (\n    <div className=\"modal-backdrop\" onClick={onClose}>\n      <div className=\"modal-box max-w-md w-full\" onClick={(e) => e.stopPropagation()} role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"calc-title\">\n        <div className=\"modal-header\">\n          <h3 id=\"calc-title\" className=\"text-lg font-bold text-[var(--text)]\">\n            {t('arb.profitCalc')}: {opportunity.pair}\n          </h3>\n          <button\n            ref={closeRef}\n            onClick={onClose}\n            className=\"w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)] transition-all\"\n            aria-label={t('common.close')}\n          >\n            ✕\n          </button>\n        </div>\n\n        <div className=\"space-y-4\">\n          <div className=\"text-xs text-[var(--text-muted)]\">\n            {opportunity.exchangeA} vs {opportunity.exchangeB}\n          </div>\n\n          <div>\n            <label className=\"label\">{t('arb.capital')}</label>\n            <input\n              type=\"number\"\n              min={100}\n              value={capital}\n              onChange={(e) => setCapital(Math.max(100, Number(e.target.value) || 0))}\n              className=\"input-field\"\n            />\n          </div>\n\n          <button\n            onClick={handleCalculate}\n            disabled={loading}\n            className=\"btn btn-primary w-full py-2.5\"\n          >\n            {loading ? t('arb.calculating') : t('arb.calculateProfit')}\n          </button>\n\n          {result && (\n            <div className=\"space-y-2 p-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-sm\">\n              <div className=\"text-xs text-[var(--text-muted)] mb-1 font-medium\">\n                {t('arb.netProfitNote')}\n              </div>\n              <div className=\"flex justify-between\">\n                <span className=\"text-[var(--text-muted)]\">{t('arb.perHour')}</span>\n                <strong className=\"font-mono\">${result.profit.perHour.toFixed(3)}</strong>\n              </div>\n              <div className=\"flex justify-between\">\n                <span className=\"text-[var(--text-muted)]\">{t('arb.perDay')}</span>\n                <strong className={clsx('font-mono', result.profit.perDay >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>\n                  ${result.profit.perDay.toFixed(2)}\n                </strong>\n              </div>\n              <div className=\"flex justify-between\">\n                <span className=\"text-[var(--text-muted)]\">{t('arb.perWeek')}</span>\n                <strong className=\"font-mono\">${result.profit.perWeek.toFixed(2)}</strong>\n              </div>\n              <div className=\"flex justify-between\">\n                <span className=\"text-[var(--text-muted)]\">{t('arb.perYear')}</span>\n                <strong className=\"font-mono\">${result.profit.perYear.toFixed(2)}</strong>\n              </div>\n              <div className=\"flex justify-between border-t border-[var(--border)] pt-2 mt-2\">\n                <span className=\"font-medium\">{t('arb.annualReturn')}</span>\n                <strong className={clsx('font-mono', result.profit.annualReturn >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>\n                  {result.profit.annualReturn.toFixed(1)}%\n                </strong>\n              </div>\n            </div>\n          )}\n\n          <button\n            onClick={handleBacktest}\n            disabled={backtestLoading}\n            className=\"btn btn-secondary w-full py-2\"\n          >\n            {backtestLoading ? t('arb.calculating') : t('arb.backtest30d')}\n          </button>\n\n          {backtest && (\n            <div className=\"space-y-2 p-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-sm\">\n              <div className=\"flex justify-between\">\n                <span className=\"text-[var(--text-muted)]\">{t('arb.totalProfit30d')}</span>\n                <strong className={clsx('font-mono', backtest.totalProfit >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>\n                  ${backtest.totalProfit.toFixed(2)}\n                </strong>\n              </div>\n              <div className=\"flex justify-between\">\n                <span className=\"text-[var(--text-muted)]\">{t('arb.avgSpread')}</span>\n                <strong className=\"font-mono\">{backtest.avgSpreadPercent.toFixed(4)}%</strong>\n              </div>\n              <div className=\"flex justify-between\">\n                <span className=\"text-[var(--text-muted)]\">{t('arb.winRate')}</span>\n                <strong className=\"font-mono text-[var(--green)]\">{backtest.winRate}%</strong>\n              </div>\n            </div>\n          )}\n        </div>\n      </div>\n    </div>\n  );\n}
