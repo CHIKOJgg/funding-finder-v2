@@ -198,17 +198,23 @@ router.get('/arbitrage/opportunities', async (req, res) => {
     isGuest = true;
   }
 
-  // Cap to the user's plan so a free user can never trigger a full 31-exchange
-  // live scan (that's what was timing out and surfacing as a network error).
-  try {
-    if (userId) {
+  // Cap to the user's plan so a guest / free user can never trigger a full 31-exchange
+  // live scan (which caused cold timeouts and surfaced as a network error).
+  if (isGuest) {
+    if (exchanges.length > 4) {
+      exchanges = exchanges.slice(0, 4);
+    }
+  } else if (userId) {
+    try {
       const limits = await getSubscriptionLimits(userId);
       if (exchanges.length > limits.maxExchanges) {
         exchanges = exchanges.slice(0, limits.maxExchanges);
       }
+    } catch {
+      if (exchanges.length > 4) {
+        exchanges = exchanges.slice(0, 4);
+      }
     }
-  } catch {
-    // If we can't read plan limits, proceed with the requested set.
   }
 
   const key = arbOppKey(exchanges);
