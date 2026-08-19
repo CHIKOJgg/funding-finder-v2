@@ -52,6 +52,7 @@ export function SpotFuturesPanel() {
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [paused, setPaused] = useState(false);
+  const [proRequired, setProRequired] = useState(false);
 
   const loadSF = useCallback(async () => {
     const t0 = performance.now();
@@ -62,6 +63,9 @@ export function SpotFuturesPanel() {
         setData(res);
         setLatencyMs(latency);
         setLastUpdated(Date.now());
+        setProRequired(false);
+      } else if (res?.code === 'PRO_REQUIRED' || res?.error?.includes?.('Pro')) {
+        setProRequired(true);
       } else if (res?.error) {
         showToast(res.error, 'error');
       }
@@ -185,15 +189,36 @@ export function SpotFuturesPanel() {
         </button>
       </div>
 
-      {!data?.supported && (
+      {proRequired ? (
+        <div className="card text-center p-6 my-4 border border-[var(--cobalt)]/40 bg-[var(--surface-2)]">
+          <div
+            className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 text-xl font-extrabold shadow-sm"
+            style={{ background: 'var(--cobalt)', color: 'var(--on-brand)' }}
+          >
+            ⭐
+          </div>
+          <h3 className="text-lg font-bold text-[var(--text)] mb-1">
+            {t('paywall.portfolioTitle') || 'Мониторинг Spot-Futures доступен в Pro'}
+          </h3>
+          <p className="text-sm text-[var(--text-muted)] max-w-md mx-auto mb-4">
+            Кастомный расчёт базиса спот-фьючерс и cash-and-carry арбитража для любых торговых пар входит в подписку Pro.
+          </p>
+          <a
+            href="/profile#subscription"
+            className="btn btn-primary text-sm py-2.5 px-6 mx-auto inline-block font-semibold shadow-md"
+          >
+            {t('paywall.unlockBtn') || 'Перейти к тарифу Pro'}
+          </a>
+        </div>
+      ) : !data?.supported ? (
         <div className="text-sm text-[var(--amber)] bg-[var(--amber-soft)] p-3 rounded-lg mb-4">
           {t('sf.notSupported', { exchange })}
         </div>
-      )}
+      ) : null}
 
-      {loading && !data ? (
+      {!proRequired && loading && !data ? (
         <div className="text-center py-6 text-[var(--text-muted)]" role="status">{t('common.loading')}</div>
-      ) : data?.supported ? (
+      ) : !proRequired && data?.supported ? (
         <>
           {lastUpdated && (
             <div className="text-xs text-[var(--text-muted)] mb-2">{t('oi.updated', { time: new Date(lastUpdated).toLocaleTimeString() })}</div>

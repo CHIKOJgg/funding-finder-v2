@@ -516,10 +516,20 @@ router.get('/arbitrage/backtest', requireSubscription('pro'), validate(backtestS
 // Spot-Futures (cash-and-carry) snapshot for a single pair: spot price, perp
 // mark, basis %, funding rate and the annualized yield of longing spot +
 // shorting the perp to collect funding.
-router.get('/arbitrage/spot-futures', requireSubscription('pro'), async (req, res) => {
+router.get('/arbitrage/spot-futures', optionalAuth, async (req, res) => {
   try {
-    const exchange = (req.query.exchange as string) || 'binance';
-    const pair = (req.query.pair as string) || 'BTCUSDT';
+    const exchange = ((req.query.exchange as string) || 'binance').toLowerCase();
+    const pair = ((req.query.pair as string) || 'BTCUSDT').toUpperCase();
+    const isDefaultPreview = exchange === 'binance' && pair === 'BTCUSDT';
+
+    if (!isDefaultPreview) {
+      const user = req.user;
+      const sub = user?.subscription || 'free';
+      if (sub !== 'pro' && sub !== 'proplus') {
+        return sendError(res, 403, 'Pro subscription required for custom Spot-Futures pairs', 'PRO_REQUIRED');
+      }
+    }
+
     const data = await getSpotFutures(exchange, pair);
     res.json({ ok: true, ...data, supportedExchanges: SF_SUPPORTED_EXCHANGES });
   } catch (e) {
