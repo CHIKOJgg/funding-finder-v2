@@ -106,7 +106,7 @@ function AccordionSection({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="card overflow-hidden">
+    <div className={clsx('card', !open && 'overflow-hidden')}>
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between py-3 text-left min-h-[52px]"
@@ -482,6 +482,7 @@ export function SettingsPage() {
 
       <AccordionSection title={t('settings.language')} icon="Globe" defaultOpen={false}>
         <LanguageSwitcher
+          variant="pills"
           onChange={(l) => setSettings((prev) => ({ ...prev, language: l }))}
         />
       </AccordionSection>

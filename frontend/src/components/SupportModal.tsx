@@ -407,7 +407,7 @@ export function SupportButton() {
                   <label htmlFor="support-category" className="block text-xs font-semibold text-muted mb-1.5">
                     {t('support.categoryLabel')}
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mb-3">
+                  <div className="flex flex-wrap gap-1.5 mb-3">
                     {[
                       { id: 'general', label: t('support.catGeneral') },
                       { id: 'billing', label: t('support.catBilling') },
@@ -420,10 +420,10 @@ export function SupportButton() {
                         key={cat.id}
                         type="button"
                         onClick={() => setCategory(cat.id as any)}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium text-left truncate transition-colors cursor-pointer border ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border ${
                           category === cat.id
                             ? 'bg-[var(--cobalt)] text-white border-[var(--cobalt)] shadow-sm'
-                            : 'bg-[var(--surface)] text-muted border-[var(--border)] hover:text-white'
+                            : 'bg-[var(--surface-2)] text-muted border-[var(--border)] hover:text-white'
                         }`}
                       >
                         {cat.label}

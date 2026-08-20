@@ -224,13 +224,13 @@ export function ProfilePage() {
       if (withdrawalHistoryRes && (withdrawalHistoryRes as any).ok) setWithdrawalHistory((withdrawalHistoryRes as any).withdrawals || []);
     } catch (error) {
       console.error('Failed to load user data:', error);
-      if (!cachedProfileData) {
+      if (!cachedProfileData && user && !user.id?.startsWith('guest_')) {
         showToast(t('profile.loadError'), 'error');
       }
     } finally {
       setLoading(false);
     }
-  }, [applyProfileData, showToast, t]);
+  }, [applyProfileData, showToast, t, user]);
 
   useEffect(() => {
     loadUserData(!cachedProfileData);

@@ -9,10 +9,24 @@ export async function requireAdmin(req: AuthenticatedRequest, res: Response, nex
       return res.status(401).json({ ok: false, error: 'Authentication required' });
     }
 
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { telegramId: req.userId },
       select: { role: true },
     });
+
+    if (!user) {
+      const cleanId = req.userId.replace(/^tg_/, '');
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { telegramId: cleanId },
+            { telegramId: `tg_${cleanId}` },
+            { id: req.userId },
+          ],
+        },
+        select: { role: true },
+      });
+    }
 
     if (!user || user.role !== 'admin') {
       logger.warn({ userId: req.userId }, 'Non-admin attempted to access admin route');
