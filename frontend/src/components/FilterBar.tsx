@@ -73,17 +73,17 @@ export function SegmentedControl<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="grid grid-cols-4 gap-1 p-1 bg-[var(--surface-2)] rounded-xl border border-[var(--border)]">
       {options.map((opt) => (
         <button
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
           className={clsx(
-            'text-xs px-3 min-h-[44px] flex items-center rounded-full border transition-colors active:opacity-80',
+            'text-xs py-2 px-1 text-center rounded-lg font-medium transition-all active:scale-[0.98]',
             value === opt.value
-              ? 'bg-[var(--cobalt)] text-[var(--on-brand)] border-[var(--cobalt)]'
-              : 'bg-transparent text-[var(--text-muted)] border-[var(--border)] active:border-[var(--border-2)]'
+              ? 'bg-[var(--cobalt)] text-[var(--on-brand)] shadow-sm'
+              : 'text-[var(--text-muted)] hover:text-[var(--text)]'
           )}
           aria-pressed={value === opt.value}
         >
