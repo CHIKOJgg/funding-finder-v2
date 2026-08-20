@@ -706,10 +706,17 @@ export function ProfilePage() {
         <PlanCard
           planId="pro"
           name="Pro"
-          price={49}
+          price={PLAN_PRICES.pro.monthly}
           tagline={t('profile.planTaglinePro')}
           featured
-          features={['profile.feat12ex', 'profile.featAi', 'profile.featCsv', 'profile.featPriority']}
+          features={[
+            'profile.featPro1',
+            'profile.featPro2',
+            'profile.featPro3',
+            'profile.featPro4',
+            'profile.featPro5',
+            'profile.featPro6',
+          ]}
           currentPlan={subscription}
           busy={creatingOrder}
           onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
@@ -717,9 +724,15 @@ export function ProfilePage() {
         <PlanCard
           planId="proplus"
           name="Pro+"
-          price={149}
+          price={PLAN_PRICES.proplus.monthly}
           tagline={t('profile.planTaglineProMax')}
-          features={['profile.feat20ex', 'profile.featAllPro', 'profile.featAnalytics', 'profile.featSupport', 'profile.featEarly']}
+          features={[
+            'profile.featProPlus1',
+            'profile.featProPlus2',
+            'profile.featProPlus3',
+            'profile.featProPlus4',
+            'profile.featProPlus5',
+          ]}
           currentPlan={subscription}
           busy={creatingOrder}
           onSelect={(pid, pname, pprice) => (isWeb ? openCheckout(pid, pname, pprice) : handleCreateOrder(pid))}
@@ -728,8 +741,8 @@ export function ProfilePage() {
       </div>
 
       <div className="card">
-          <h2 className="text-base font-semibold mb-2">{t('profile.planHeader')}</h2>
-        <p className="text-sm text-muted mb-2">
+        <h2 className="text-base font-semibold mb-2">{t('profile.planHeader')}</h2>
+        <p className="text-xs sm:text-sm text-muted mb-2 whitespace-pre-line leading-relaxed">
           {t('profile.freeDesc')}
         </p>
         <p className="text-xs text-muted">

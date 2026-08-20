@@ -26,18 +26,31 @@ export function getPromoDiscount(code?: string): number {
 // the old Basic/Pro split), Pro+ is the high-value tier. Free stays free.
 export const PLANS: Record<PlanId, Plan> = {
   pro: {
-    monthlyPrice: 49,
-    annualPrice: annualFromMonthly(49),
-    price: 49,
+    monthlyPrice: 29,
+    annualPrice: annualFromMonthly(29),
+    price: 29,
     name: 'Pro',
-    features: ['15 бирж в скане', 'AI-анализ безлимита', 'Портфель + PnL', 'Безлимитный вотчлист', 'Приоритетные обновления', 'Экспорт данных'],
+    features: [
+      '15 бирж',
+      'Расширенный арбитражный сканер',
+      'Spot-Futures матрица',
+      'AI-анализ связок',
+      'Симулятор портфеля',
+      'Настраиваемые алерты в Telegram',
+    ],
   },
   proplus: {
-    monthlyPrice: 149,
-    annualPrice: annualFromMonthly(149),
-    price: 149,
+    monthlyPrice: 79,
+    annualPrice: annualFromMonthly(79),
+    price: 79,
     name: 'Pro+',
-    features: ['Все 31+ биржа', 'Все функции Pro', 'Персональная поддержка', 'Ранний доступ к фичам', 'White-label'],
+    features: [
+      'Все 31+ бирж (включая DEX: Hyperliquid, dYdX, Drift, Paradex)',
+      'API-доступ',
+      'Авто-исполнение сделок',
+      'Приоритетная поддержка 24/7',
+      'Всё из Pro',
+    ],
   },
 };
 
