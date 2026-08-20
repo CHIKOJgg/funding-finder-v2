@@ -18,7 +18,7 @@ import type { ScanResult, TrialStatus, WatchlistItem } from './types';
 import { DebugLog, DebugToggle } from './components/DebugLog';
 import { SupportButton } from './components/SupportModal';
 import { logger as clientLogger } from './utils/logger';
-import { track } from './utils/analytics';
+import { track, initAutoTracker } from './utils/analytics';
 
 import { MainPage } from './pages/MainPage';
 import { ArbitragePage } from './pages/ArbitragePage';
@@ -149,11 +149,12 @@ function DataProvider() {
     clientLogger.setUser(user?.id ?? null);
   }, [user?.id]);
 
-  // Track "app_open" once on mount — the activation pivot between the anonymous
-  // landing funnel and the authenticated in-app funnel. Runs once per SPA load.
+  // Track "app_open" and initialize automatic click and error telemetry
   useEffect(() => {
     track('app_open', undefined, user?.id);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const cleanup = initAutoTracker(() => user?.id);
+    return cleanup;
+  }, [user?.id]);
 
   // Keep-alive ping: hit /api/public/ping every 10 min so the Render free-tier
   // API stays awake. Fire-and-forget, never blocks the UI.
@@ -191,12 +192,12 @@ function DataProvider() {
   const [scanStatus, setScanStatus] = useState(() => t('app.ready'));
   const [selectedExchanges, setSelectedExchanges] = useState<string[]>(() => getPlanDefaultExchanges('free'));
 
-  // The default selection is 4 exchanges for free users, 12 for Pro, and all 31 for Pro+.
+  // The default selection is 5 exchanges for free users, 15 for Pro, and all 31 for Pro+.
   useEffect(() => {
     const max = planLimits.maxExchanges;
     setSelectedExchanges((prev) => {
       if (prev.length > max) return prev.slice(0, max);
-      if (prev.length < max && (prev.length === 4 || prev.length === 12 || prev.length === 0)) {
+      if (prev.length < max && (prev.length === 0 || prev.length === 4 || prev.length === 5 || prev.length === 12 || prev.length === 15)) {
         return getPlanDefaultExchanges(subscription).slice(0, max);
       }
       return prev;

@@ -458,3 +458,76 @@ model QrLoginToken {
   @@index([token])
   @@index([createdAt])
 }
+
+// Support tickets managed via Telegram forum topics
+model SupportTicket {
+  id          String   @id @default(cuid())
+  userId      String?
+  name        String?
+  contact     String?
+  category    String   @default("general") // general | billing | bug | arbitrage | feature
+  message     String
+  threadId    Int?     // Telegram message_thread_id in the support supergroup
+  topicUrl    String?  // Direct link to the Telegram topic
+  status      String   @default("open") // open | in_progress | resolved | closed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([threadId])
+}
+
+// History of messages inside support tickets
+model SupportTicketMessage {
+  id         String   @id @default(cuid())
+  ticketId   String
+  sender     String   // 'user' | 'support' | 'bot'
+  senderName String?
+  text       String
+  threadId   Int?
+  messageId  Int?
+  createdAt  DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([threadId])
+}
+
+// Automated & pinned FAQ knowledge base items
+model FaqItem {
+  id          String   @id @default(cuid())
+  category    String   @default("general")
+  question    String
+  answer      String
+  hitCount    Int      @default(1)
+  isPinned    Boolean  @default(false)
+  threadId    Int?
+  messageId   Int?
+  keywords    String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([isPinned])
+}
+
+// Granular user action telemetry for analytics dashboards & conversion funnels
+model UserActionEvent {
+  id        String   @id @default(cuid())
+  userId    String?  // telegramId or webId
+  sessionId String?  // browser session
+  category  String   // 'navigation' | 'interaction' | 'conversion' | 'error' | 'scan'
+  action    String   // 'button_click' | 'page_view' | 'exchange_toggle' | etc.
+  label     String?  // e.g. button name, page path, exchange name
+  value     Float?   // numeric value (e.g. amount, durationMs)
+  meta      String?  // JSON string
+  platform  String?  // 'web' | 'miniapp' | 'bot'
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([category])
+  @@index([action])
+  @@index([userId])
+  @@index([createdAt])
+}

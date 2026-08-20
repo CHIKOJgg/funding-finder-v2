@@ -53,6 +53,7 @@ import webhookRoutes from './routes/webhook.js';
 import adminRoutes from './routes/admin.js';
 import debugRoutes from './routes/debug.js';
 import publicRoutes from './routes/public.js';
+import supportRoutes from './routes/support.js';
 import { requireAdmin } from './middleware/admin.js';
 import { getInvoiceStatus, reconcileCryptoPayInvoice, updateOrderFromWebhook } from './services/paymentService.js';
 
@@ -375,6 +376,9 @@ app.use('/api', qrPublicRouter);             // /api/qr-login/verify (no auth)
 // authenticated /api catch-all routes; signature verification happens inside
 // the webhook router itself.
 app.use('/api/webhook', webhookRoutes);
+
+// Support & Community Forum Topics
+app.use('/api/support', supportRoutes);
 
 // Arbitrage & Guest Teasers (optionalAuth handled per-route)
 app.use('/api', authLimiter, optionalAuth, arbitrageRoutes);

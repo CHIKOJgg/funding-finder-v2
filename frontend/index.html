@@ -40,8 +40,8 @@
           var qs = new URLSearchParams(location.search);
           var hash = location.hash || '';
 
-          // 1) Telegram Mini App context (check URL signals — SDK may still be loading async).
-          if (hash.indexOf('tgWebAppData') !== -1 || qs.has('tgWebAppStartParam')) return;
+          // 1) Telegram Mini App context (check URL signals or injected WebApp SDK).
+          if (hash.indexOf('tgWebAppData') !== -1 || qs.has('tgWebAppStartParam') || (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData)) return;
 
           // 2) Installed PWA (standalone).
           var standalone =

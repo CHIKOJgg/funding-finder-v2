@@ -554,7 +554,7 @@ const PortfolioRow = memo(function PortfolioRow({
           </div>
           {pnl && (
             <div className="text-xs text-[var(--text2)]">
-              ~{(pnl.hoursHeld ?? 0).toFixed(1)} {t('portfolio.holdHours')}
+              {t('portfolio.holdHours', { x: (pnl.hoursHeld ?? 0).toFixed(1) })}
             </div>
           )}
         </div>

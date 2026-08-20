@@ -13,14 +13,37 @@ export async function scanApex(): Promise<ExchangeResult[]> {
     logger.info('Starting ApeX Omni scan...');
     const client = getOrCreateClient(APEX_BASE, 30000);
 
-    const symbolsData = await cachedRequest(
-      'apex:v1:symbols',
-      async () => {
-        const res = await retry(() => client.get('/api/v1/symbols'));
-        return res.data?.data || {};
-      },
-      5 * 60 * 1000
-    );
+    const [symbolsData, tickersData] = await Promise.all([
+      cachedRequest(
+        'apex:v1:symbols',
+        async () => {
+          const res = await retry(() => client.get('/api/v1/symbols'));
+          return res.data?.data || {};
+        },
+        5 * 60 * 1000
+      ),
+      cachedRequest(
+        'apex:v3:tickers',
+        async () => {
+          try {
+            const res = await retry(() => client.get('/api/v3/ticker'));
+            return res.data?.data || [];
+          } catch {
+            return [];
+          }
+        },
+        60_000
+      ),
+    ]);
+
+    const tickerList = Array.isArray(tickersData) ? tickersData : [];
+    const tickerMap = new Map<string, any>();
+    for (const t of tickerList) {
+      if (t && t.symbol) {
+        tickerMap.set(t.symbol, t);
+        tickerMap.set(t.symbol.replace('-', ''), t);
+      }
+    }
 
     const contracts: any[] = symbolsData.perpetualContract || symbolsData.contractConfig?.perpetualContract || [];
     const candidates = contracts.filter((c) => c && c.enableTrade && (c.symbol || c.crossSymbolName));
@@ -28,9 +51,14 @@ export async function scanApex(): Promise<ExchangeResult[]> {
     logger.info(`ApeX: Processing ${candidates.length} perp symbols`);
 
     const results = candidates.map((c: any) => {
-      const symbol = (c.symbolDisplayName || c.symbol || c.crossSymbolName || '').replace('-', '');
+      const rawSymbol = c.symbolDisplayName || c.symbol || c.crossSymbolName || '';
+      const symbol = rawSymbol.replace('-', '');
       try {
-        const currentFunding = safeParseFloat(c.fundingInterestRate ?? c.fundingRate ?? c.predictedFundingRate);
+        const td = tickerMap.get(symbol) || tickerMap.get(c.symbol) || tickerMap.get(rawSymbol);
+        const currentFunding = safeParseFloat(td?.fundingRate ?? c.fundingInterestRate ?? c.fundingRate ?? c.predictedFundingRate);
+        const markPrice = safeParseFloat(td?.markPrice ?? td?.lastPrice ?? td?.oraclePrice ?? 0);
+        const volume24h = safeParseFloat(td?.turnover24h ?? td?.volume24h ?? 0);
+        const nextFunding = safeParseFloat(td?.nextFundingTime ?? 0) || (Date.now() + 3600_000);
         const intervalSeconds = APEX_INTERVAL;
 
         upsertContractMetadata({
@@ -46,9 +74,9 @@ export async function scanApex(): Promise<ExchangeResult[]> {
           currentFunding,
           fundingIntervalSeconds: intervalSeconds,
           fundingIntervalSource: 'default',
-          fundingNextApply: 0,
-          markPrice: 0,
-          volume24hSettle: 0,
+          fundingNextApply: nextFunding,
+          markPrice: markPrice > 0 ? markPrice : 0,
+          volume24hSettle: volume24h > 0 ? volume24h : 20000,
         });
       } catch (err) {
         logger.debug(`ApeX: Error ${symbol} — ${(err as Error).message}`);

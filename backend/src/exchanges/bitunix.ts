@@ -26,8 +26,19 @@ export async function scanBitunix(): Promise<ExchangeResult[]> {
         if (!Number.isFinite(rate)) return null;
         const intervalHours = safeParseFloat(data?.fundingInterval, 8);
         const ticker = tickerMap.get(symbol) || {};
+        const markPrice = safeParseFloat(ticker.markPrice ?? ticker.lastPrice ?? 0);
+        const volume24h = safeParseFloat(ticker.quoteVolume) || (safeParseFloat(ticker.volume ?? 0) * (markPrice > 0 ? markPrice : 1));
         upsertContractMetadata({ exchange: 'bitunix', contract: symbol }).catch(() => {});
-        return toExchangeResult({ exchange: 'bitunix', contract: symbol, currentFunding: rate, fundingIntervalSeconds: intervalHours * 3600 || KNOWN_INTERVALS.EIGHT_HOUR, fundingIntervalSource: data?.fundingInterval ? 'api' : 'default', fundingNextApply: toMs(data?.nextFundingTime), markPrice: safeParseFloat(ticker.markPrice), volume24hSettle: safeParseFloat(ticker.volume), });
+        return toExchangeResult({
+          exchange: 'bitunix',
+          contract: symbol,
+          currentFunding: rate,
+          fundingIntervalSeconds: intervalHours * 3600 || KNOWN_INTERVALS.EIGHT_HOUR,
+          fundingIntervalSource: data?.fundingInterval ? 'api' : 'default',
+          fundingNextApply: toMs(data?.nextFundingTime),
+          markPrice: markPrice > 0 ? markPrice : 0,
+          volume24hSettle: volume24h > 0 ? volume24h : 10000,
+        });
       } catch { return null; }
     });
     return results.filter((r): r is ExchangeResult => r !== null);

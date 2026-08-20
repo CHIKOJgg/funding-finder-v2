@@ -79,7 +79,7 @@ export async function scanBybit(): Promise<ExchangeResult[]> {
         const turnover24h = safeParseFloat(t.turnover24h ?? t.turnover_24h ?? 0);
 
         // Filter low volume
-        if (turnover24h < 1_000_000) continue;
+        if (turnover24h < 1_000) continue;
 
         // Normalize funding rate to hourly basis
         const normalized = normalizeFundingRate(currentFunding, intervalSeconds);

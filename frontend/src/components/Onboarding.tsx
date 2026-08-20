@@ -4,8 +4,8 @@ import { useT } from '../i18n';
 import { track } from '../utils/analytics';
 import { Icon, IconCheck, IconGift, IconZap, type IconName } from './icons';
 
-const PRESELECT_EXCHANGES = ['binance', 'bybit', 'okx', 'gate', 'mexc', 'bitget', 'kucoin', 'bingx'];
-const ADVANCED_EXCHANGES = [...PRESELECT_EXCHANGES, 'deribit', 'dydx', 'bitmex', 'bybit'];
+const PRESELECT_EXCHANGES = ['binance', 'bybit', 'okx', 'gate', 'kucoin', 'mexc', 'bitget', 'bingx'];
+const ADVANCED_EXCHANGES = [...PRESELECT_EXCHANGES, 'deribit', 'dydx', 'hyperliquid', 'phemex'];
 
 type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 type Interest = 'funding' | 'arbitrage' | 'both';

@@ -161,22 +161,22 @@ export async function getSpotFutures(exchange: string, pair: string): Promise<Sp
     const r = await cachedRequest(`sf:${exchange}:${pair}`, () => fetchRaw(exchange, pair), CACHE_TTL_MS);
 
     const basisPct = r.spotPrice > 0 ? ((r.perpMark - r.spotPrice) / r.spotPrice) * 100 : 0;
-    const taker = EXCHANGE_FEES[exchange]?.taker ?? 0.0005;
-    // One full round-trip (entry + exit on both spot and perp) costs ~4 taker fees total.
-    // Trading fees are a one-time position cost amortized over a 30-day holding baseline.
-    const roundTripFeePct = 4 * taker * 100; // e.g. 0.20%
-    const annualHoldingCostPct = (roundTripFeePct / 30) * 365; // ~2.4% / yr amortized
+    const perpTaker = EXCHANGE_FEES[exchange]?.taker ?? 0.0005;
+    const spotTaker = 0.001; // Spot fee standard ~0.10%
+    // Entry + exit on spot and perp: 2 * (perpTaker + spotTaker)
+    const roundTripFeePct = 2 * (perpTaker + spotTaker) * 100; // e.g. 0.30%
+    const annualHoldingCostPct = (roundTripFeePct / 30) * 365; // amortized over 30 days
+    const marginBorrowRateAnnualPct = 8.0; // ~8% APR margin loan cost when shorting spot
     const fundingApy = r.fundingRate * annualIntervals * 100;
     const netApy = fundingApy >= 0 ? fundingApy - annualHoldingCostPct : fundingApy + annualHoldingCostPct;
 
-    // Strategy direction must respect the SIGN of the funding rate: with
-    // negative funding, longs are PAID.
+    // Strategy direction must respect the SIGN of the funding rate and borrow costs:
     let strategy: string;
     if (netApy > 0 && fundingApy > 0) {
       strategy = `Long spot + Short perp — collect funding (~${netApy.toFixed(1)}%/yr net)`;
-    } else if (fundingApy < 0 && -fundingApy > annualHoldingCostPct) {
-      const netShortApy = -fundingApy - annualHoldingCostPct;
-      strategy = `Short spot + Long perp — earn the negative funding (~${netShortApy.toFixed(1)}%/yr net)`;
+    } else if (fundingApy < 0 && -fundingApy > (annualHoldingCostPct + marginBorrowRateAnnualPct)) {
+      const netShortApy = -fundingApy - annualHoldingCostPct - marginBorrowRateAnnualPct;
+      strategy = `Short spot + Long perp — earn negative funding (~${netShortApy.toFixed(1)}%/yr net after ${marginBorrowRateAnnualPct}% borrow fee)`;
     } else {
       strategy = `Funding too low to cover fees (~${netApy.toFixed(1)}%/yr net) — not worth opening`;
     }

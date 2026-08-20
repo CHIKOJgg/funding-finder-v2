@@ -31,42 +31,52 @@ export async function scanPhemex(): Promise<ExchangeResult[]> {
     const candidates = (tickers as any[])
       .filter((t) => t && t.symbol && t.symbol.endsWith('USDT'))
       .sort((a, b) => Number(b.turnoverRv || 0) - Number(a.turnoverRv || 0))
-      .slice(0, 250);
+      .slice(0, 150);
 
     logger.info(`Phemex: Processing ${candidates.length} contracts`);
 
-    const results = await mapWithConcurrency(candidates, { concurrency: CONCURRENCY }, async (t: any) => {
+    const results = await mapWithConcurrency(candidates, { concurrency: 8, delayMs: 10 }, async (t: any) => {
       const symbol = t.symbol;
       try {
-        const vol24 = safeParseFloat(t.turnoverRv);
-        const mark = safeParseFloat(t.markRp);
+        const vol24 = safeParseFloat(t.turnoverRv ?? t.turnover);
+        const mark = safeParseFloat(t.markRp ?? t.markPrice ?? t.lastEp);
 
-        const frRes = await retry(() =>
-          client.get('/contract-biz/public/real-funding-rates', {
-            params: { symbol },
-            timeout: 15000,
-          })
-        );
-        const row = frRes.data?.data?.rows?.[0];
-        if (!row) return null;
+        // Check if funding rate is available directly on ticker
+        const directRate = safeParseFloat(t.fundingRateRv ?? t.fundingRate ?? t.predFundingRateRv);
+        let currentFunding = directRate;
+        let nextFunding = Number(t.nextFundingTime) || (Date.now() + 28800_000);
+        let intervalSeconds = Number(t.fundingInterval) || 28800;
 
-        const currentFunding = safeParseFloat(row.fundingRate);
-        const nextFunding = Number(row.nextfundingTime) || 0;
-        const intervalSeconds = Number(row.fundingInterval) || 28800;
+        if (!Number.isFinite(currentFunding)) {
+          const frRes: any = await cachedRequest(
+            `phemex:fr:${symbol}`,
+            () => retry(() => client.get('/contract-biz/public/real-funding-rates', { params: { symbol }, timeout: 10000 })),
+            60_000
+          );
+          const row = frRes?.data?.data?.rows?.[0];
+          if (row) {
+            currentFunding = safeParseFloat(row.fundingRate);
+            nextFunding = Number(row.nextfundingTime) || nextFunding;
+            intervalSeconds = Number(row.fundingInterval) || intervalSeconds;
+            upsertContractMetadata({
+              exchange: 'phemex',
+              contract: symbol,
+              fundingCap: safeParseFloat(row.fundingRateCap),
+              fundingFloor: safeParseFloat(row.fundingRateFloor),
+            }).catch(() => {});
+          }
+        }
 
-        upsertContractMetadata({
-          exchange: 'phemex',
-          contract: symbol,
-          fundingCap: safeParseFloat(row.fundingRateCap),
-          fundingFloor: safeParseFloat(row.fundingRateFloor),
-        }).catch(() => {});
+        if (!Number.isFinite(currentFunding)) return null;
+
+        upsertContractMetadata({ exchange: 'phemex', contract: symbol }).catch(() => {});
 
         return toExchangeResult({
           exchange: 'phemex',
           contract: symbol,
           currentFunding,
           fundingIntervalSeconds: intervalSeconds,
-          fundingIntervalSource: row.fundingInterval ? 'api' : 'default',
+          fundingIntervalSource: 'api',
           fundingNextApply: nextFunding,
           markPrice: mark,
           volume24hSettle: vol24,

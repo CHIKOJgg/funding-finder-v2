@@ -765,6 +765,14 @@ const OpportunityCard = memo(function OpportunityCard({
                 {t('arb.asyncBadge', { hoursA: intervalA, hoursB: intervalB })}
               </span>
             )}
+            {opp.score != null && (
+              <span
+                className="text-[11px] px-2.5 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--text2)] border border-[var(--border)] font-mono font-medium inline-flex items-center gap-1 shrink-0"
+                title={`${cleanLabel(t('arb.compositeScore'))} ${opp.score.toFixed(1)}`}
+              >
+                <span className="text-amber-400">★</span> {cleanLabel(t('arb.compositeScore'))} {opp.score.toFixed(1)}
+              </span>
+            )}
           </div>
           <div className="text-xs text-[var(--text-muted)] mt-2 font-mono" title={t('arb.untilFundingTitle')}>
             {isSync ? (
@@ -793,11 +801,6 @@ const OpportunityCard = memo(function OpportunityCard({
             {opp.profit?.annualReturn != null ? `${opp.profit.annualReturn.toFixed(1)}%` : '—'}
           </span>
           <span className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-muted)] mt-0.5">{t('arb.netApy')}</span>
-          {opp.score != null && (
-            <span className="text-[11px] px-2 py-0.5 rounded-md bg-[var(--surface-2)] text-[var(--text2)] font-mono font-medium mt-1.5 border border-[var(--border)]">
-              ★ {cleanLabel(t('arb.compositeScore'))} {opp.score.toFixed(1)}
-            </span>
-          )}
         </div>
       </div>
 
@@ -835,22 +838,18 @@ const OpportunityCard = memo(function OpportunityCard({
       )}
 
       <div className="section-block mt-4">
-        <div className="section-title">{cleanLabel(t('arb.netDaily'))}</div>
+        <div className="section-title">{cleanLabel(t('arb.fundingIncome'))}</div>
       <div className="metric-stack">
           <div className="metric-row">
             <span className="metric-label">{cleanLabel(t('arb.fundingIncome'))}</span>
-            <span className="metric-value">+${opp.profit?.grossDaily != null ? opp.profit.grossDaily.toFixed(2) : '0.00'} {t('unit.usdtPerDay')}</span>
+            <span className="metric-value font-bold font-mono text-[var(--green)]">
+              +${opp.profit?.grossDaily != null ? opp.profit.grossDaily.toFixed(2) : '0.00'} {t('unit.usdtPerDay')}
+            </span>
           </div>
           <div className="metric-row">
             <span className="metric-label">{cleanLabel(t('arb.oneTimeCosts'))}</span>
-            <span className="metric-value">${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)} USDT</span>
+            <span className="metric-value font-mono">${((opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0)).toFixed(2)} USDT</span>
           </div>
-        <div className="metric-row">
-           <span className="metric-label">{cleanLabel(t('arb.netDaily'))}</span>
-           <span className={clsx('metric-value text-base', (opp.profit?.netDaily ?? 0) >= 0 ? 'text-[var(--green)]' : 'text-[var(--red)]')}>
-            {(opp.profit?.netDaily ?? 0) >= 0 ? '+' : ''}${opp.profit?.netDaily?.toFixed(2)} USDT
-          </span>
-        </div>
         {(() => {
           const oneTimeCost = (opp.profit?.fees ?? 0) + (opp.profit?.slippage ?? 0);
           const grossDaily = opp.profit?.grossDaily ?? 0;
@@ -861,7 +860,7 @@ const OpportunityCard = memo(function OpportunityCard({
           return (
             <div className="metric-row">
               <span className="metric-label">{cleanLabel(t('arb.breakEven'))}</span>
-              <strong className={clsx('metric-value', breakEven <= 30 ? 'text-[var(--green)]' : 'text-[var(--amber)]')}>
+              <strong className={clsx('metric-value font-mono', breakEven <= 30 ? 'text-[var(--green)]' : 'text-[var(--amber)]')}>
                 ~{breakEven.toFixed(1)} {t('unit.daysShort')} · {cycles} {t('unit.settlementCycles')}
               </strong>
             </div>

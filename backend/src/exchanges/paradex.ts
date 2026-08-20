@@ -36,8 +36,8 @@ export async function scanParadex(): Promise<ExchangeResult[]> {
         const currentFunding = safeParseFloat(m.funding_rate ?? m.fundingRate);
         const mark = safeParseFloat(m.mark_price ?? m.last_price ?? m.oracle_price);
         const vol24 = safeParseFloat(m.volume_24h ?? m.volume);
-        const intervalHours = safeParseFloat(m.funding_period_hours, 8);
-        const intervalSeconds = intervalHours > 0 ? intervalHours * 3600 : KNOWN_INTERVALS.EIGHT_HOUR;
+        const intervalHours = safeParseFloat(m.funding_period_hours, 1);
+        const intervalSeconds = intervalHours > 0 ? intervalHours * 3600 : KNOWN_INTERVALS.HOURLY;
         const nextFunding = m.next_funding_time ? new Date(m.next_funding_time).getTime() : 0;
 
         if (!isFinite(currentFunding)) return null;

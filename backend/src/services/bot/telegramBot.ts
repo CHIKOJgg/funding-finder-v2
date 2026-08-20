@@ -12,8 +12,8 @@ import { config } from '../../config/index.js';
 import { logger } from '../../utils/logger.js';
 import { runScan, getCachedScan } from '../scanService.js';
 import { getLivePriceBatch, toNative } from '../priceService.js';
-import { handleReferral } from '../paymentService.js';
 import { getPlanTier, getPlanLimitsForTier } from '../../middleware/subscription.js';
+import { forwardSupportReplyToUser, forwardUserMessageToSupportTopic } from '../supportService.js';
 
 const REFERRAL_PREFIX = 'ref_';
 
@@ -24,10 +24,12 @@ type TgUser = {
   username?: string;
   first_name?: string;
   last_name?: string;
+  is_bot?: boolean;
 };
 
 type TgMessage = {
   message_id: number;
+  message_thread_id?: number;
   from?: TgUser;
   chat: { id: number };
   text?: string;
@@ -163,7 +165,29 @@ export class TelegramBot {
   private async handleMessage(msg: TgMessage): Promise<void> {
     const text = msg.text?.trim() ?? '';
     const chatId = msg.chat.id;
-    if (!text.startsWith('/')) return;
+
+    // 1. If message is from support supergroup topic (from human admin), forward reply to user DM
+    const supportChatId = config.telegram.supportChatId;
+    if (supportChatId && (chatId.toString() === supportChatId || chatId.toString() === supportChatId.replace('-100', '')) && msg.message_thread_id) {
+      if (msg.from && !msg.from.is_bot && text) {
+        const adminName = msg.from.first_name || msg.from.username || 'Оператор поддержки';
+        await forwardSupportReplyToUser(msg.message_thread_id, adminName, text);
+      }
+      return;
+    }
+
+    // 2. If message is not a command, check if user is replying to an open support ticket
+    if (!text.startsWith('/')) {
+      if (msg.from) {
+        const userName = msg.from.username ? `@${msg.from.username}` : (msg.from.first_name || 'Пользователь');
+        const forwarded = await forwardUserMessageToSupportTopic(msg.from.id.toString(), userName, text);
+        if (forwarded) {
+          await this.send(chatId, '✅ Ваше сообщение передано в тему вашего тикета поддержки.');
+          return;
+        }
+      }
+      return;
+    }
 
     const [cmdRaw, ...args] = text.split(/\s+/);
     const cmd = cmdRaw.toLowerCase().split('@')[0]; // strip @botname

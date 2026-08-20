@@ -2,9 +2,11 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { z } from 'zod';
 
-dotenv.config({
-  path: path.resolve(__dirname, '../../.env'),
-});
+if (process.env.JEST_WORKER_ID === undefined && process.env.NODE_ENV !== 'test') {
+  dotenv.config({
+    path: path.resolve(__dirname, '../../.env'),
+  });
+}
 
 const baseSchema = z.object({
   PORT: z.string().regex(/^\d+$/, 'PORT must be a number').default('3000'),
@@ -57,6 +59,9 @@ const baseSchema = z.object({
   DEV_ULTIMATE_TELEGRAM_IDS: z.string().optional().default(''),
   SENTRY_DSN: z.string().optional().default(''),
   TELEGRAM_BOT_USERNAME: z.string().optional().default(''),
+  TELEGRAM_SUPPORT_CHAT_ID: z.string().optional().default('-1004303355395'),
+  TELEGRAM_SUPPORT_GROUP_USERNAME: z.string().optional().default('fundingfindersupport'),
+  TELEGRAM_SUPPORT_INVITE_LINK: z.string().optional().default('https://t.me/fundingfindersupport'),
 
   // Public marketing signal channel (organic lead-gen, no ad spend). When set
   // to a chat_id or @channelusername, the bot periodically posts the top
@@ -170,6 +175,9 @@ export const config = {
     botToken: env.TELEGRAM_BOT_TOKEN.trim(),
     botUsername: env.TELEGRAM_BOT_USERNAME.trim() || 'fundinganalyzerbot',
     publicSignalChannel: env.PUBLIC_SIGNAL_CHANNEL || undefined,
+    supportChatId: env.TELEGRAM_SUPPORT_CHAT_ID || '-1004303355395',
+    supportGroupUsername: env.TELEGRAM_SUPPORT_GROUP_USERNAME || 'fundingfindersupport',
+    supportInviteLink: env.TELEGRAM_SUPPORT_INVITE_LINK || 'https://t.me/fundingfindersupport',
   },
 
     branding: {

@@ -52,7 +52,8 @@ export async function scanKuCoin(): Promise<ExchangeResult[]> {
 
         const mark = safeParseFloat(ticker.markPrice ?? ticker.mark_price ?? ticker.lastTradePrice ?? 0);
         const vol24 = safeParseFloat(ticker.turnoverOf24h ?? ticker.turnover24h ?? ticker.volCcy24h ?? 0);
-        const oiUsd = safeParseFloat(ticker.openInterest ?? ticker.open_interest ?? 0) * (mark > 0 ? mark : 1);
+        const multiplier = safeParseFloat(ticker.multiplier, 1);
+        const oiUsd = safeParseFloat(ticker.openInterest ?? ticker.open_interest ?? 0) * multiplier * (mark > 0 ? mark : 1);
         const nextFunding = toMs(ticker.nextFundingRateDateTime) || 0;
         const granularityMs = safeParseFloat(ticker.fundingRateGranularity ?? ticker.currentFundingRateGranularity, 28800000);
         const intervalSeconds = granularityMs > 0 ? granularityMs / 1000 : KUCOIN_INTERVAL;

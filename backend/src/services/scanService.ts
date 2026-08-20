@@ -15,6 +15,52 @@ export function scanCacheKey(exchanges: string[]): string {
   return `scan:${[...exchanges].sort().join(',')}`;
 }
 
+export function filterScanResult(result: ScanResult, requestedExchanges: string[]): ScanResult {
+  const reqSet = new Set(requestedExchanges.map((e) => e.toLowerCase()));
+  const resultExchanges = result.metrics?.exchanges || [];
+  if (
+    resultExchanges.length === requestedExchanges.length &&
+    resultExchanges.every((e) => reqSet.has(e.toLowerCase()))
+  ) {
+    return result;
+  }
+
+  const highYield = (result.highYield || []).filter((i) => reqSet.has(i.exchange.toLowerCase()));
+  const mediumYield = (result.mediumYield || []).filter((i) => reqSet.has(i.exchange.toLowerCase()));
+  const lowYield = (result.lowYield || []).filter((i) => reqSet.has(i.exchange.toLowerCase()));
+  const hourly = result.hourly?.filter((i) => reqSet.has(i.exchange.toLowerCase())) || [];
+  const twohour = result.twohour?.filter((i) => reqSet.has(i.exchange.toLowerCase())) || [];
+  const fallback = result.fallback?.filter((i) => reqSet.has(i.exchange.toLowerCase())) || [];
+
+  let scanned = 0;
+  if (result.metrics?.exchangeCounts) {
+    for (const ex of reqSet) {
+      scanned += result.metrics.exchangeCounts[ex] || 0;
+    }
+  }
+  if (scanned === 0) {
+    scanned = highYield.length + mediumYield.length + lowYield.length;
+  }
+
+  return {
+    highYield,
+    mediumYield,
+    lowYield,
+    hourly,
+    twohour,
+    fallback,
+    scanned,
+    metrics: {
+      minFundingUsed: result.metrics?.minFundingUsed ?? 0,
+      totalOpportunities: highYield.length + mediumYield.length + lowYield.length,
+      exchanges: (result.metrics?.exchanges || []).filter((e) => reqSet.has(e.toLowerCase())),
+      averageIntervalHours: result.metrics?.averageIntervalHours ?? 8,
+      intervalDistribution: result.metrics?.intervalDistribution ?? {},
+      exchangeCounts: result.metrics?.exchangeCounts,
+    },
+  };
+}
+
 /**
  * Return a previously computed scan result if it is still fresh.
  * SWR (stale-while-revalidate) is implemented by callers using `ageMs`.
@@ -27,20 +73,25 @@ export function getCachedScan(exchanges: string[]): { result: ScanResult; ts: nu
   if (entry) return { result: entry.result, ts: entry.ts, ageMs: Date.now() - entry.ts };
 
   // Superset matching: find a cached scan that includes all requested exchanges
-  const sorted = [...exchanges].sort().join(',');
-  const sortedSet = new Set(exchanges);
+  const sortedSet = new Set(exchanges.map((e) => e.toLowerCase()));
   for (const cacheKey of cache.keys()) {
     if (!cacheKey.startsWith('scan:')) continue;
     const cachedExchanges = cacheKey.replace('scan:', '');
-    const cachedSet = new Set(cachedExchanges.split(','));
-    // If the cached scan covers all requested exchanges, reuse it
+    const cachedSet = new Set(cachedExchanges.split(',').map((e) => e.toLowerCase()));
+    // If the cached scan covers all requested exchanges, reuse it filtered down
     let isSuperset = true;
     for (const e of sortedSet) {
       if (!cachedSet.has(e)) { isSuperset = false; break; }
     }
     if (isSuperset) {
       const entry2 = cache.get<{ result: ScanResult; ts: number }>(cacheKey);
-      if (entry2) return { result: entry2.result, ts: entry2.ts, ageMs: Date.now() - entry2.ts };
+      if (entry2) {
+        return {
+          result: filterScanResult(entry2.result, exchanges),
+          ts: entry2.ts,
+          ageMs: Date.now() - entry2.ts,
+        };
+      }
     }
   }
   return null;
@@ -179,6 +230,13 @@ export async function processScanResults(all: ExchangeResult[]): Promise<ScanRes
     else lowYield.push(item);
   }
 
+  // Count cleaned records per exchange
+  const exchangeCounts: Record<string, number> = {};
+  for (const item of cleaned) {
+    const ex = (item.exchange || '').toLowerCase();
+    exchangeCounts[ex] = (exchangeCounts[ex] || 0) + 1;
+  }
+
   const result: ScanResult = {
     highYield: highYield.slice(0, 50),
     mediumYield: mediumYield.slice(0, 50),
@@ -193,6 +251,7 @@ export async function processScanResults(all: ExchangeResult[]): Promise<ScanRes
       exchanges: [...new Set(cleaned.map((x) => x.exchange))],
       averageIntervalHours,
       intervalDistribution,
+      exchangeCounts,
     },
   };
 
@@ -311,7 +370,7 @@ export async function runScan(exchanges: string[]): Promise<ScanResult> {
   const superset = findSupersetInFlight(exchanges);
   if (superset) {
     logger.info(`Coalescing subset scan (${key}) onto in-flight superset scan`);
-    return superset;
+    return superset.then((res) => filterScanResult(res, exchanges));
   }
 
   const promise = (async () => {

@@ -107,11 +107,10 @@ router.get('/orderStatus/:orderId', async (req, res) => {
             await updateOrderFromWebhook(order.id, mapped, 'nowpayments');
           }
         }
-      }
-    } else if (order.invoiceId) {
+      }    } else if (order.invoiceId) {
       const invoiceStatus = await getInvoiceStatus(order.invoiceId);
       if (invoiceStatus) {
-          await reconcileCryptoPayInvoice(order.invoiceId, invoiceStatus);
+        await reconcileCryptoPayInvoice(order.invoiceId, invoiceStatus);
         const updatedOrder = await getOrder(req.params.orderId);
         return res.json({ ok: true, order: updatedOrder, invoice });
       }
@@ -128,7 +127,7 @@ router.get('/orderStatus/:orderId', async (req, res) => {
 // Dev-only helper: simulate a successful payment so the full checkout flow can
 // be tested without a real crypto gateway. Never available in production.
 if (!config.isProduction) {
-  router.post('/simulate/:orderId', async (req, res) => {
+  const handleSimulate = async (req: any, res: any) => {
     try {
       const order = await getOrder(req.params.orderId);
       if (!order) return res.status(404).json({ ok: false, error: 'Order not found' });
@@ -142,7 +141,9 @@ if (!config.isProduction) {
       logger.error({ err: error }, 'Simulate payment error');
       return sendError(res, 500, 'Failed to simulate payment', 'SIMULATE_ERROR');
     }
-  });
+  };
+  router.post('/simulate/:orderId', handleSimulate);
+  router.post('/payments/simulate/:orderId', handleSimulate);
 }
 
 router.post('/withdraw', validate(withdrawSchema), async (req, res) => {
@@ -166,10 +167,6 @@ router.post('/withdraw', validate(withdrawSchema), async (req, res) => {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      // Atomic conditional decrement: the balance check and the deduction
-      // happen in ONE statement, so two concurrent withdrawals can never both
-      // pass the check and drive the balance negative (the old read-then-
-      // update pattern was racy under Postgres READ COMMITTED).
       const updated = await tx.user.updateMany({
         where: { telegramId: userId, balance: { gte: amount } },
         data: { balance: { decrement: amount } },

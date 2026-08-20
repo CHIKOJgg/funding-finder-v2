@@ -46,13 +46,20 @@ const ensuredUsers = new Map<string, number>();
 // make it a no-op write.
 const lastActiveTracked = new Map<string, number>();
 
-async function ensureUserExists(userId: string, authProvider: AuthProvider): Promise<void> {
+const ADMIN_USERNAMES = new Set(['yxxtg', 'ca_creator', 'ca_creator']);
+
+async function ensureUserExists(
+  userId: string,
+  authProvider: AuthProvider,
+  tgUser?: { id?: number; first_name?: string; username?: string }
+): Promise<void> {
   const cached = ensuredUsers.get(userId);
-  if (cached !== undefined && Date.now() - cached < ENSURE_TTL_MS) return;
+  if (cached !== undefined && Date.now() - cached < ENSURE_TTL_MS && !tgUser?.username) return;
 
   const tgId = userId.replace('tg_', '');
-  const isAdmin = config.admin.telegramIds.includes(tgId);
-  const isDevUltimate = DEV_ULTIMATE_TELEGRAM_IDS.has(tgId);
+  const usernameLower = tgUser?.username?.toLowerCase() || '';
+  const isAdmin = config.admin.telegramIds.includes(tgId) || ADMIN_USERNAMES.has(usernameLower);
+  const isDevUltimate = DEV_ULTIMATE_TELEGRAM_IDS.has(tgId) || ADMIN_USERNAMES.has(usernameLower);
   const now = new Date();
   const subscription = isDevUltimate ? 'proplus' : 'free';
   const trialEndsAt = isDevUltimate ? null : undefined;
@@ -60,15 +67,32 @@ async function ensureUserExists(userId: string, authProvider: AuthProvider): Pro
   // Find first; only write (create) when the user is genuinely missing.
   const existing = await prisma.user.findUnique({
     where: { telegramId: userId },
-    select: { id: true, role: true },
+    select: { id: true, role: true, username: true, subscription: true },
   });
   if (existing) {
     ensuredUsers.set(userId, Date.now());
-    // Promote to admin if configured (no-op for the vast majority of users).
-    if (isAdmin && existing.role !== 'admin') {
+    const existingUsernameLower = existing.username?.toLowerCase() || '';
+    const shouldBeAdmin = isAdmin || ADMIN_USERNAMES.has(existingUsernameLower);
+
+    // Promote to admin/ultimate if configured or update username
+    if (shouldBeAdmin && (existing.role !== 'admin' || existing.subscription !== 'proplus')) {
       await prisma.user.updateMany({
-        where: { telegramId: userId, role: { not: 'admin' } },
-        data: { role: 'admin' },
+        where: { telegramId: userId },
+        data: {
+          role: 'admin',
+          subscription: 'proplus',
+          subscriptionExpiresAt: null,
+          username: tgUser?.username || existing.username,
+          firstName: tgUser?.first_name || undefined,
+        },
+      });
+    } else if (tgUser?.username && tgUser.username !== existing.username) {
+      await prisma.user.updateMany({
+        where: { telegramId: userId },
+        data: {
+          username: tgUser.username,
+          firstName: tgUser.first_name || undefined,
+        },
       });
     }
     return;
@@ -78,10 +102,13 @@ async function ensureUserExists(userId: string, authProvider: AuthProvider): Pro
     await prisma.user.create({
       data: {
         telegramId: userId,
+        username: tgUser?.username || null,
+        firstName: tgUser?.first_name || null,
         lastActive: now,
-        role: isAdmin ? 'admin' : 'user',
+        role: (isAdmin || isDevUltimate) ? 'admin' : 'user',
         authProvider,
-        subscription,
+        subscription: (isAdmin || isDevUltimate) ? 'proplus' : subscription,
+        subscriptionExpiresAt: (isAdmin || isDevUltimate) ? null : undefined,
         ...(trialEndsAt !== undefined ? { trialEndsAt } : {}),
       },
     });
@@ -92,10 +119,14 @@ async function ensureUserExists(userId: string, authProvider: AuthProvider): Pro
   ensuredUsers.set(userId, Date.now());
 }
 
-async function trackActivity(userId: string, authProvider: AuthProvider = 'telegram'): Promise<void> {
+async function trackActivity(
+  userId: string,
+  authProvider: AuthProvider = 'telegram',
+  tgUser?: { id?: number; first_name?: string; username?: string }
+): Promise<void> {
   try {
     // ZERO DB ops for a warm user (cached) — removes the per-request write.
-    await ensureUserExists(userId, authProvider);
+    await ensureUserExists(userId, authProvider, tgUser);
 
     // Only refresh lastActive (and run the trial-expiry check) when stale.
     // Skip the DB query entirely for warm users — it costs ~420ms even when it
@@ -182,9 +213,8 @@ export async function validateTelegramInitData(req: Request, res: Response, next
       username: user.username,
     };
     (req as AuthenticatedRequest).userId = `tg_${user.id}`;
-
     // Ensure user exists in DB before any route handler
-    await trackActivity((req as AuthenticatedRequest).userId!);
+    await trackActivity((req as AuthenticatedRequest).userId!, 'telegram', (req as AuthenticatedRequest).telegramUser);
 
     next();
   } catch (err) {

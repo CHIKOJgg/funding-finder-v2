@@ -18,7 +18,12 @@ const router = Router();
 // served from a separate origin), best-effort and never throws — a tracking
 // failure must never break the page that fired it.
 const trackSchema = z.object({
-  event: z.enum(['landing_view', 'app_open', 'scan_run', 'paywall_view', 'trial_start', 'paid']),
+  event: z.string().max(80),
+  category: z.string().max(40).optional(),
+  action: z.string().max(80).optional(),
+  label: z.string().max(200).optional(),
+  value: z.number().optional(),
+  platform: z.string().max(30).optional(),
   source: z.string().max(40).optional(),
   variant: z.string().max(20).optional(),
   sessionId: z.string().max(80).optional(),
@@ -31,11 +36,10 @@ const trackSchema = z.object({
  * /public/track:
  *   post:
  *     tags: [Analytics]
- *     summary: Ingest a funnel event
+ *     summary: Ingest a user or funnel action event
  *     description: >
- *       Track a client-side funnel event (landing_view, app_open, scan_run, etc.).
- *       No authentication required — landing pages are anonymous and served from
- *       a separate origin. Fire-and-forget: analytics failures never 500 the caller.
+ *       Track a client-side funnel or user action event (clicks, navigation, errors, conversions).
+ *       No authentication required. Fire-and-forget: analytics failures never 500 the caller.
  *     requestBody:
  *       required: true
  *       content:
@@ -43,59 +47,94 @@ const trackSchema = z.object({
  *           schema:
  *             type: object
  *             required: [event]
- *             properties:
- *               event:
- *                 type: string
- *                 enum: [landing_view, app_open, scan_run, paywall_view, trial_start, paid]
- *                 description: Funnel event name
- *               source:
- *                 type: string
- *                 maxLength: 40
- *                 description: Event source (e.g., 'landing', 'seo', 'referral')
- *               variant:
- *                 type: string
- *                 maxLength: 20
- *                 description: A/B test variant (e.g., 'A' or 'B')
- *               sessionId:
- *                 type: string
- *                 maxLength: 80
- *                 description: Browser session identifier
- *               userId:
- *                 type: string
- *                 maxLength: 80
- *                 description: Authenticated user ID (if known)
- *               meta:
- *                 type: object
- *                 additionalProperties: true
- *                 description: Arbitrary metadata (max 2000 chars when serialized)
  *     responses:
  *       200:
  *         description: Event accepted (best-effort, never fails)
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 ok:
- *                   type: boolean
- *                   example: true
  */
 router.post('/track', validate(trackSchema), async (req, res) => {
   try {
-    const { event, source, variant, sessionId, userId, meta } = req.body;
-    await prisma.funnelEvent.create({
+    const { event, category, action, label, value, platform, source, variant, sessionId, userId, meta } = req.body;
+    
+    // 1. Record funnel stage if applicable
+    const funnelStages = ['landing_view', 'app_open', 'scan_run', 'paywall_view', 'trial_start', 'checkout_start', 'paid'];
+    if (funnelStages.includes(event)) {
+      await prisma.funnelEvent.create({
+        data: {
+          event,
+          source: source ?? null,
+          variant: variant ?? null,
+          sessionId: sessionId ?? null,
+          userId: userId ?? null,
+          meta: meta ? JSON.stringify(meta).slice(0, 2000) : null,
+        },
+      }).catch(() => {});
+    }
+
+    // 2. Record granular action telemetry
+    const determinedCategory = category ?? (
+      ['landing_view', 'app_open', 'page_view'].includes(event) ? 'navigation' :
+      ['paywall_view', 'trial_start', 'checkout_start', 'paid'].includes(event) ? 'conversion' :
+      event.includes('error') ? 'error' : 'interaction'
+    );
+
+    const determinedAction = action ?? event;
+    const determinedLabel = label ?? (meta?.button || meta?.label || meta?.page || meta?.plan || null);
+    const determinedValue = value ?? (meta?.amount ? Number(meta.amount) : null);
+    const userAgent = req.headers['user-agent'] || '';
+    const determinedPlatform = platform ?? (userAgent.includes('Telegram') ? 'miniapp' : 'web');
+
+    await prisma.userActionEvent.create({
       data: {
-        event,
-        source: source ?? null,
-        variant: variant ?? null,
-        sessionId: sessionId ?? null,
         userId: userId ?? null,
+        sessionId: sessionId ?? null,
+        category: determinedCategory,
+        action: determinedAction,
+        label: determinedLabel,
+        value: determinedValue,
         meta: meta ? JSON.stringify(meta).slice(0, 2000) : null,
+        platform: determinedPlatform,
+        ip: req.ip || null,
+        userAgent: userAgent.slice(0, 200) || null,
       },
-    });
+    }).catch(() => {});
   } catch (e) {
-    // Swallow: analytics must not 500 the caller.
-    logger.warn({ err: (e as Error).message }, 'Funnel track ingest failed');
+    logger.warn({ err: (e as Error).message }, 'Action track ingest failed');
+  }
+  return res.json({ ok: true });
+});
+
+// POST /public/track-batch — Ingest multiple client events in a single HTTP request
+router.post('/track-batch', async (req, res) => {
+  try {
+    const events = Array.isArray(req.body.events) ? req.body.events : [];
+    const userAgent = req.headers['user-agent'] || '';
+
+    for (const item of events.slice(0, 50)) {
+      const { event, category, action, label, value, platform, source, variant, sessionId, userId, meta } = item;
+      
+      const determinedCategory = category ?? (
+        ['landing_view', 'app_open', 'page_view'].includes(event) ? 'navigation' :
+        ['paywall_view', 'trial_start', 'checkout_start', 'paid'].includes(event) ? 'conversion' :
+        (event && event.includes('error')) ? 'error' : 'interaction'
+      );
+
+      await prisma.userActionEvent.create({
+        data: {
+          userId: userId ?? null,
+          sessionId: sessionId ?? null,
+          category: determinedCategory,
+          action: action ?? event ?? 'click',
+          label: label ?? (meta?.button || meta?.label || null),
+          value: value ?? null,
+          meta: meta ? JSON.stringify(meta).slice(0, 2000) : null,
+          platform: platform ?? (userAgent.includes('Telegram') ? 'miniapp' : 'web'),
+          ip: req.ip || null,
+          userAgent: userAgent.slice(0, 200) || null,
+        },
+      }).catch(() => {});
+    }
+  } catch (e) {
+    logger.warn({ err: (e as Error).message }, 'Batch action track ingest failed');
   }
   return res.json({ ok: true });
 });

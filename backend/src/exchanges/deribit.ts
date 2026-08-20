@@ -67,27 +67,17 @@ export async function scanDeribit(): Promise<ExchangeResult[]> {
           quoteCurrency: instr.quote_currency,
         }).catch(() => {});
 
-        const normalized = normalizeFundingRate(currentFunding, DERIBIT_INTERVAL);
-
-        return {
+        return toExchangeResult({
           exchange: 'deribit',
           contract: symbol,
           currentFunding,
-          funding_interval_seconds: DERIBIT_INTERVAL,
-          funding_interval_hours: DERIBIT_INTERVAL / 3600,
-          funding_interval_source: 'default' as const,
-          funding_rate_per_hour: normalized.perHour,
-          funding_rate_per_day: normalized.perDay,
-          annualized_rate: normalized.annualized,
-          funding_next_apply: 0,
-          time_until_next_funding_seconds: 0,
-          mark_price: markPrice,
-          volume_24h_settle: vol24,
-          openInterest: oiUsd,
-          openInterestUsd: oiUsd,
-          med_seconds: DERIBIT_INTERVAL,
-          med_hours: DERIBIT_INTERVAL / 3600,
-        };
+          fundingIntervalSeconds: DERIBIT_INTERVAL,
+          fundingIntervalSource: 'default',
+          fundingNextApply: 0,
+          markPrice: markPrice,
+          volume24hSettle: vol24,
+          openInterestUsd: oiUsd > 0 ? oiUsd : undefined,
+        });
       } catch (err) {
         logger.debug(`Deribit: Error processing ${instr.instrument_name} — ${(err as Error).message}`);
         return null;

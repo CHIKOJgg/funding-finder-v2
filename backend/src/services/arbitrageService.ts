@@ -269,19 +269,34 @@ const QUOTE_CURRENCIES = ['USDT', 'USDC', 'USD', 'BTC', 'ETH', 'DAI'];
  *   mexc  BTC_USDT       -> BTCUSDT
  */
 export function canonicalPairKey(contract: string): string {
-  let key = (contract || '')
+  let raw = (contract || '')
     .toUpperCase()
     .replace(/[-_/]/g, ' ')          // separators -> space
     .replace(/\bSWAP\b/g, ' ')       // OKX suffix
     .replace(/\bPERP\b/g, ' ')       // perp suffix
     .replace(/[^A-Z0-9]/g, '');      // strip everything else
-  // Treat USD-quoted perps (dYdX, Paradex) as matching USDT perps so cross-exchange
-  // funding-rate comparison includes DEX pairs.
-  if (key.endsWith('USD')) key += 'T';
-  // Hyperliquid and Drift return bare coin names (e.g. "BTC", "SOL").
-  // Append USDT so they match CEX pairs like "BTCUSDT".
-  if (key.length <= 5 && !key.endsWith('USDT') && !key.endsWith('USDC')) key += 'USDT';
-  return key;
+
+  if (!raw) return '';
+
+  // Extract quote currency (USDT, USDC, USD, BTC, ETH, DAI)
+  let quote = 'USDT';
+  let base = raw;
+  for (const q of ['USDT', 'USDC', 'USD', 'BTC', 'ETH', 'DAI']) {
+    if (raw.endsWith(q) && raw.length > q.length) {
+      quote = q === 'USD' ? 'USDT' : q;
+      base = raw.slice(0, -q.length);
+      break;
+    }
+  }
+
+  // Normalize meme-coin multipliers from the base symbol:
+  // e.g. 1000000MOG -> MOG, 1000PEPE -> PEPE, 10000LADYS -> LADYS, KBONK -> BONK, 1MPEPE -> PEPE
+  base = base
+    .replace(/^(1000000|100000|10000|1000|1M)(?=[A-Z]{3,})/i, '')
+    .replace(/^K(?=(BONK|PEPE|SHIB|LUNC|FLOKI|DOGE|SATS|CHEEMS|RATS|CAT|XEC|BTT|WHY))/i, '');
+
+  if (base.length <= 5 && !quote) quote = 'USDT';
+  return `${base}${quote}`;
 }
 
 /**

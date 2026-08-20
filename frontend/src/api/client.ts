@@ -189,7 +189,7 @@ export function onAuthExpired(listener: () => void): () => void {
 
 // Endpoints that must NEVER trigger the session-expired flow (unauthenticated
 // by design, or handling their own auth failures).
-const AUTH_EXEMPT_PATHS = ['/auth/login', '/auth/register', '/auth/google', '/auth/wallet/verify', '/auth/wallet/nonce', '/auth/dev-guest', '/qr-login/verify'];
+const AUTH_EXEMPT_PATHS = ['/auth/login', '/auth/register', '/auth/google', '/auth/wallet/verify', '/auth/wallet/nonce', '/auth/dev-guest', '/auth/guest', '/qr-login/verify'];
 
 api.interceptors.response.use(
   (response) => {
@@ -744,6 +744,23 @@ export const apiClient = {
         params: { contract, exchanges: exchanges.join(',') },
       })
     );
+    return (res as any).data;
+  },
+
+  async getSupportTopics() {
+    const res = await retryRequest(() => api.get('/support/topics'));
+    return (res as any).data;
+  },
+
+  async submitSupportTicket(data: {
+    category: string;
+    message: string;
+    name?: string;
+    contact?: string;
+    device?: string;
+    language?: string;
+  }) {
+    const res = await retryRequest(() => api.post('/support/ticket', data));
     return (res as any).data;
   },
 };

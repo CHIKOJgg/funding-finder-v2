@@ -13,7 +13,7 @@ export async function scanHtx(): Promise<ExchangeResult[]> {
     logger.info('Starting HTX scan...');
     const client = getOrCreateClient(HTX_BASE, 30000);
 
-    const [contractInfo, batchFunding] = await Promise.all([
+    const [contractInfo, batchFunding, tickers] = await Promise.all([
       cachedRequest(
         'htx:contract_info',
         async () => {
@@ -30,11 +30,28 @@ export async function scanHtx(): Promise<ExchangeResult[]> {
         },
         60_000
       ),
+      cachedRequest(
+        'htx:tickers',
+        async () => {
+          try {
+            const res = await retry(() => client.get('/linear-swap-api/v1/swap_ticker'));
+            return res.data?.data || [];
+          } catch {
+            return [];
+          }
+        },
+        60_000
+      ),
     ]);
 
     const fundingMap = new Map<string, any>();
     for (const f of batchFunding as any[]) {
       if (f && f.contract_code) fundingMap.set(f.contract_code, f);
+    }
+
+    const tickerMap = new Map<string, any>();
+    for (const t of tickers as any[]) {
+      if (t && t.contract_code) tickerMap.set(t.contract_code, t);
     }
 
     const candidates = (contractInfo as any[])
@@ -52,10 +69,13 @@ export async function scanHtx(): Promise<ExchangeResult[]> {
       const symbol = c.contract_code; // e.g. BTC-USDT
       try {
         const fd = fundingMap.get(symbol);
+        const td = tickerMap.get(symbol);
         const currentFunding = safeParseFloat(fd?.funding_rate);
         const nextFunding = toMs(fd?.funding_time ?? fd?.next_funding_time) || 0;
         const intervalHours = safeParseFloat(c.settlement_period, 8);
         const intervalSeconds = intervalHours > 0 ? intervalHours * 3600 : HTX_INTERVAL;
+        const markPrice = safeParseFloat(td?.close ?? td?.last_price ?? 0);
+        const volume24h = safeParseFloat(td?.amount ?? td?.turnover ?? 0) || (safeParseFloat(td?.vol ?? 0) * (markPrice > 0 ? markPrice : 1));
 
         upsertContractMetadata({
           exchange: 'htx',
@@ -71,8 +91,8 @@ export async function scanHtx(): Promise<ExchangeResult[]> {
           fundingIntervalSeconds: intervalSeconds,
           fundingIntervalSource: c.settlement_period ? 'api' : 'default',
           fundingNextApply: nextFunding,
-          markPrice: 0,
-          volume24hSettle: 0,
+          markPrice: markPrice > 0 ? markPrice : 0,
+          volume24hSettle: volume24h > 0 ? volume24h : 10000,
         });
       } catch (err) {
         logger.debug(`HTX: Error ${symbol} — ${(err as Error).message}`);

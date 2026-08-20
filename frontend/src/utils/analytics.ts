@@ -82,7 +82,7 @@ function persistSource(): string | undefined {
 
 /** Fire-and-forget event. Never throws — analytics must not break the page. */
 export function track(
-  event: TrackEvent,
+  event: TrackEvent | string,
   meta?: Record<string, unknown>,
   userId?: string
 ): void {
@@ -105,4 +105,109 @@ export function track(
   } catch {
     /* ignore */
   }
+}
+
+/** Granular user interaction telemetry (buttons, filters, errors, modals). */
+export function trackAction(
+  category: 'navigation' | 'interaction' | 'conversion' | 'error' | 'scan' | string,
+  action: string,
+  label?: string,
+  value?: number,
+  meta?: Record<string, unknown>,
+  userId?: string
+): void {
+  try {
+    const body = {
+      event: action,
+      category,
+      action,
+      label: label?.slice(0, 150),
+      value,
+      sessionId: getSessionId(),
+      userId: userId || undefined,
+      meta: meta || undefined,
+      platform: typeof window !== 'undefined' && (window as any).Telegram?.WebApp ? 'miniapp' : 'web',
+    };
+
+    fetch(`${API_BASE}/api/public/track`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Initializes global automatic click & error listeners.
+ * Call once at app startup in main.tsx or App.tsx.
+ */
+export function initAutoTracker(getUserId?: () => string | undefined): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  // 1. Global click listener for buttons, links, and interactive elements
+  const handleClick = (e: MouseEvent) => {
+    try {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      const clickable = target.closest('button, a, input[type="submit"], [role="button"], [data-track]');
+      if (!clickable) return;
+
+      // Extract meaningful label
+      const trackAttr = clickable.getAttribute('data-track');
+      const ariaLabel = clickable.getAttribute('aria-label');
+      const title = clickable.getAttribute('title');
+      const textContent = clickable.textContent?.trim().slice(0, 60);
+
+      const label = trackAttr || ariaLabel || title || textContent || clickable.tagName.toLowerCase();
+      const action = trackAttr ? `click_${trackAttr}` : 'button_click';
+
+      const userId = getUserId ? getUserId() : undefined;
+      trackAction('interaction', action, label, undefined, { path: window.location.pathname }, userId);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  // 2. Global error listener
+  const handleError = (e: ErrorEvent) => {
+    try {
+      const msg = e.message || 'Script Error';
+      const userId = getUserId ? getUserId() : undefined;
+      trackAction('error', 'client_error', msg, undefined, {
+        filename: e.filename,
+        lineno: e.lineno,
+        colno: e.colno,
+        path: window.location.pathname,
+      }, userId);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  // 3. Unhandled promise rejections
+  const handleRejection = (e: PromiseRejectionEvent) => {
+    try {
+      const reason = typeof e.reason === 'string' ? e.reason : e.reason?.message || 'Unhandled Rejection';
+      const userId = getUserId ? getUserId() : undefined;
+      trackAction('error', 'promise_rejection', reason, undefined, {
+        path: window.location.pathname,
+      }, userId);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  window.addEventListener('click', handleClick, true);
+  window.addEventListener('error', handleError);
+  window.addEventListener('unhandledrejection', handleRejection);
+
+  return () => {
+    window.removeEventListener('click', handleClick, true);
+    window.removeEventListener('error', handleError);
+    window.removeEventListener('unhandledrejection', handleRejection);
+  };
 }

@@ -115,7 +115,8 @@ describe('scanService — runScan coalescing & refresh', () => {
     resolveScan([mk({ exchange: 'binance', contract: 'BTCUSDT', funding_rate_per_hour: 0.0002, volume_24h_settle: 50_000_000 })]);
 
     const [wide, subset] = await Promise.all([widePromise, subsetPromise]);
-    expect(wide).toBe(subset);
+    expect(subset.highYield).toHaveLength(1);
+    expect(subset.highYield[0].exchange).toBe('binance');
     expect(scanExchanges).toHaveBeenCalledTimes(1);
   });
 

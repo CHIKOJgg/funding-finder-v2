@@ -30,7 +30,7 @@ export const EXCHANGE_FUNDING_INTERVALS: Record<string, number> = {
   bluefin: 28800,    // 8h fixed
   // New exchanges (P1)
   kucoin: 28800,        // 8h fixed
-  cryptocom: 28800,     // 8h fixed
+  cryptocom: 14400,     // 4h fixed
   deribit: 28800,       // 8h fixed
   kraken: 28800,
   coinbase: 28800,
@@ -105,6 +105,7 @@ export interface ScanResult {
     exchanges: string[];
     averageIntervalHours: number;
     intervalDistribution: Record<string, number>;
+    exchangeCounts?: Record<string, number>;
   };
 }
 

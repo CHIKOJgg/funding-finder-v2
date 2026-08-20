@@ -142,6 +142,7 @@ export interface ScanResult {
     exchanges: string[];
     averageIntervalHours: number;
     intervalDistribution: Record<string, number>;
+    exchangeCounts?: Record<string, number>;
   };
 }
 

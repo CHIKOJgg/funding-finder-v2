@@ -50,41 +50,10 @@ export const EXCHANGE_LABELS: Record<string, string> = {
 //
 // Codes can also be injected at build time via Vite env vars
 // (e.g. VITE_AFF_BINANCE=xxxx) so you don't commit them to git.
-interface AffiliateConfig {
-  param: string;
-  code: string;
-}
+import { AFFILIATE_CONFIG, ExchangeAffiliate } from '../config/affiliates.js';
 
-const env = (import.meta as any).env || {};
-
-export const AFFILIATE: Record<string, AffiliateConfig> = {
-  binance: { param: 'ref', code: env.VITE_AFF_BINANCE || '' },
-  bybit: { param: 'ref', code: env.VITE_AFF_BYBIT || '' },
-  okx: { param: 'channelId', code: env.VITE_AFF_OKX || '' },
-  gate: { param: 'ref', code: env.VITE_AFF_GATE || '' },
-  mexc: { param: 'inviteCode', code: env.VITE_AFF_MEXC || '' },
-  bitget: { param: 'ref', code: env.VITE_AFF_BITGET || '' },
-  bingx: { param: 'ref', code: env.VITE_AFF_BINGX || '' },
-  phemex: { param: 'referralCode', code: env.VITE_AFF_PHEMEX || '' },
-  woo: { param: 'ref', code: env.VITE_AFF_WOO || '' },
-  htx: { param: 'invite_code', code: env.VITE_AFF_HTX || '' },
-  coinex: { param: 'refer_code', code: env.VITE_AFF_COINEX || '' },
-  blofin: { param: 'referral_code', code: env.VITE_AFF_BLOFIN || '' },
-  bitmart: { param: 'r', code: env.VITE_AFF_BITMART || '' },
-  weex: { param: 'code', code: env.VITE_AFF_WEEX || '' },
-  coinw: { param: 'r', code: env.VITE_AFF_COINW || '' },
-  hyperliquid: { param: 'ref', code: env.VITE_AFF_HYPERLIQUID || '' },
-  dydx: { param: 'ref', code: env.VITE_AFF_DYDX || '' },
-  paradex: { param: 'ref', code: env.VITE_AFF_PARADEX || '' },
-  drift: { param: 'ref', code: env.VITE_AFF_DRIFT || '' },
-  helix: { param: 'ref', code: env.VITE_AFF_HELIX || '' },
-  apex: { param: 'ref', code: env.VITE_AFF_APEX || '' },
-  aster: { param: 'ref', code: env.VITE_AFF_ASTER || '' },
-  bluefin: { param: 'ref', code: env.VITE_AFF_BLUEFIN || '' },
-  kucoin: { param: 'ref', code: env.VITE_AFF_KUCOIN || '' },
-  cryptocom: { param: 'ref', code: env.VITE_AFF_CRYPTOCOM || '' },
-  deribit: { param: 'ref', code: env.VITE_AFF_DERIBIT || '' },
-};
+export const AFFILIATE = AFFILIATE_CONFIG;
+export type { ExchangeAffiliate };
 
 /** Append the exchange's affiliate code to a URL, if configured. */
 function withAffiliate(exchange: string, url: string): string {
@@ -110,17 +79,18 @@ export const ALL_EXCHANGES = [
   'coinw', 'cryptocom', 'deribit', 'drift', 'helix', 'paradex', 'weex',
 ];
 
-export const FREE_DEFAULT_EXCHANGES = ['binance', 'bybit', 'okx', 'gate'];
+export const FREE_DEFAULT_EXCHANGES = ['binance', 'bybit', 'okx', 'gate', 'kucoin'];
 export const PRO_DEFAULT_EXCHANGES = [
   'binance', 'bybit', 'okx', 'gate', 'kucoin', 'mexc',
-  'bitget', 'bingx', 'phemex', 'woo', 'hyperliquid', 'htx'
+  'bitget', 'bingx', 'phemex', 'woo', 'hyperliquid', 'htx',
+  'blofin', 'coinex', 'bitmart'
 ];
 
 export function getPlanMaxExchanges(plan: string): number {
   const p = (plan || 'free').toLowerCase();
   if (p === 'proplus' || p === 'promax' || p === 'ultimate' || p === 'admin') return 31;
-  if (p === 'pro') return 12;
-  return 4;
+  if (p === 'pro') return 15;
+  return 5;
 }
 
 export function getPlanDefaultExchanges(plan: string): string[] {

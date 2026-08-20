@@ -543,4 +543,138 @@ router.patch('/withdrawals/:id/reject', async (req: AuthenticatedRequest, res: R
   }
 });
 
+// GET /actions-stats — Aggregated user clicks, button usage heatmap & feature activity
+router.get('/actions-stats', async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [byAction, byCategory, byPlatform, totalEvents] = await Promise.all([
+      prisma.userActionEvent.groupBy({
+        by: ['action', 'label'],
+        where: { createdAt: { gte: since } },
+        _count: { _all: true },
+        orderBy: { _count: { action: 'desc' } },
+        take: 50,
+      }),
+      prisma.userActionEvent.groupBy({
+        by: ['category'],
+        where: { createdAt: { gte: since } },
+        _count: { _all: true },
+      }),
+      prisma.userActionEvent.groupBy({
+        by: ['platform'],
+        where: { createdAt: { gte: since }, platform: { not: null } },
+        _count: { _all: true },
+      }),
+      prisma.userActionEvent.count({ where: { createdAt: { gte: since } } }),
+    ]);
+
+    const topActions = byAction.map((row) => ({
+      action: row.action,
+      label: row.label || row.action,
+      count: row._count._all,
+    }));
+
+    const categoryBreakdown: Record<string, number> = {};
+    for (const row of byCategory) {
+      categoryBreakdown[row.category || 'other'] = row._count._all;
+    }
+
+    const platformBreakdown: Record<string, number> = {};
+    for (const row of byPlatform) {
+      platformBreakdown[row.platform || 'unknown'] = row._count._all;
+    }
+
+    res.json({
+      ok: true,
+      totalEvents,
+      topActions,
+      categoryBreakdown,
+      platformBreakdown,
+      windowDays: 30,
+    });
+  } catch (err) {
+    logger.error('Admin actions-stats error:', err);
+    res.status(500).json({ ok: false, error: 'Failed to load actions statistics' });
+  }
+});
+
+// GET /error-stats — Breakdown of client errors and failing interactions
+router.get('/error-stats', async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [errorEvents, totalErrors] = await Promise.all([
+      prisma.userActionEvent.findMany({
+        where: {
+          createdAt: { gte: since },
+          OR: [
+            { category: 'error' },
+            { action: { contains: 'error' } },
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      }),
+      prisma.userActionEvent.count({
+        where: {
+          createdAt: { gte: since },
+          OR: [
+            { category: 'error' },
+            { action: { contains: 'error' } },
+          ],
+        },
+      }),
+    ]);
+
+    // Group errors by label / message
+    const errorMap: Record<string, { message: string; count: number; lastSeen: Date; platform: string }> = {};
+    for (const ev of errorEvents) {
+      const msg = ev.label || ev.action || 'Unknown Error';
+      if (!errorMap[msg]) {
+        errorMap[msg] = { message: msg, count: 0, lastSeen: ev.createdAt, platform: ev.platform || 'web' };
+      }
+      errorMap[msg].count++;
+      if (ev.createdAt > errorMap[msg].lastSeen) {
+        errorMap[msg].lastSeen = ev.createdAt;
+      }
+    }
+
+    const topErrors = Object.values(errorMap).sort((a, b) => b.count - a.count);
+
+    res.json({
+      ok: true,
+      totalErrors,
+      topErrors,
+      recentErrors: errorEvents.slice(0, 30),
+      windowDays: 7,
+    });
+  } catch (err) {
+    logger.error('Admin error-stats error:', err);
+    res.status(500).json({ ok: false, error: 'Failed to load error statistics' });
+  }
+});
+
+// GET /live-feed — Real-time stream of latest 100 user events
+router.get('/live-feed', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+    const category = req.query.category as string | undefined;
+
+    const events = await prisma.userActionEvent.findMany({
+      where: category ? { category } : undefined,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+
+    res.json({
+      ok: true,
+      events,
+    });
+  } catch (err) {
+    logger.error('Admin live-feed error:', err);
+    res.status(500).json({ ok: false, error: 'Failed to load live feed' });
+  }
+});
+
 export default router;

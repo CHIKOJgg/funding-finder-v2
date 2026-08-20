@@ -53,8 +53,8 @@ const PLAN_LIMITS: Record<PlanTier, {
   // Free is the top-of-funnel hook, not a crippled demo: enough exchanges and
   // watchlist room to feel the product's value before hitting the paywall.
   // (Daily free AI tip is handled separately via `lastFreeAiAt`.)
-  free: { maxExchanges: 4, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 10, portfolioEnabled: false },
-  pro: { maxExchanges: 12, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
+  free: { maxExchanges: 5, aiEnabled: false, recommendationsEnabled: false, watchlistLimit: 10, portfolioEnabled: false },
+  pro: { maxExchanges: 15, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
   proplus: { maxExchanges: 31, aiEnabled: true, recommendationsEnabled: true, watchlistLimit: -1, portfolioEnabled: true },
 };
 

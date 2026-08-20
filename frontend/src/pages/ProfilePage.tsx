@@ -631,23 +631,48 @@ export function ProfilePage() {
       </div>
 
       <div className="rounded-2xl p-4 sm:p-5 mb-4 border transition-all shadow-sm" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-        <div className="flex items-center gap-3.5">
-          <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'var(--cobalt-soft)', color: 'var(--brand)' }}
-          >
-            <IconSmartphone size={22} />
-          </div>
-          <div className="flex-1 min-w-0 pr-2">
-            <div className="font-bold text-sm text-[var(--text)]">{t('profile.qrLoginTitle')}</div>
-            <div className="text-xs text-[var(--text-muted)] leading-relaxed mt-0.5">{t('profile.qrLoginDesc')}</div>
+        <div className="flex items-center justify-between gap-3.5">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: 'var(--cobalt-soft)', color: 'var(--brand)' }}
+            >
+              <IconSmartphone size={22} />
+            </div>
+            <div className="min-w-0">
+              <div className="font-bold text-sm text-[var(--text)]">{t('profile.qrLoginTitle')}</div>
+              <div className="text-xs text-[var(--text-muted)] leading-relaxed mt-0.5">{t('profile.qrLoginDesc')}</div>
+            </div>
           </div>
           <button
             onClick={() => setShowQrLogin(true)}
-            className="btn btn-secondary text-xs py-2 px-3.5 shrink-0 font-semibold rounded-xl"
+            className="btn btn-secondary w-auto whitespace-nowrap text-xs py-2 px-3.5 shrink-0 font-semibold rounded-xl"
           >
             {t('profile.qrLoginBtn')}
           </button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl p-4 sm:p-5 mb-4 border transition-all shadow-sm" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <div className="flex items-center justify-between gap-3.5">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-xl"
+              style={{ background: 'var(--cobalt-soft)', color: 'var(--brand)' }}
+            >
+              📊
+            </div>
+            <div className="min-w-0">
+              <div className="font-bold text-sm text-[var(--text)]">Панель управления и Аналитика</div>
+              <div className="text-xs text-[var(--text-muted)] leading-relaxed mt-0.5">Воронка конверсии, клики по кнопкам, ошибки и живая лента</div>
+            </div>
+          </div>
+          <Link
+            to="/admin"
+            className="btn btn-primary w-auto whitespace-nowrap text-xs py-2 px-3.5 shrink-0 font-semibold rounded-xl"
+          >
+            Открыть
+          </Link>
         </div>
       </div>
 

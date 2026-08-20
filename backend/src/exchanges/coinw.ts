@@ -6,7 +6,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const COINW_BASE = 'https://api.coinw.com';
-const CONCURRENCY = 3;
+const CONCURRENCY = 8;
 const COINW_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // typical 8h
 
 export async function scanCoinW(): Promise<ExchangeResult[]> {
@@ -25,15 +25,15 @@ export async function scanCoinW(): Promise<ExchangeResult[]> {
 
     const candidates = (symbols as any[])
       .filter((s) => s && s.symbol && s.symbol.endsWith('USDT'))
-      .slice(0, 200);
+      .slice(0, 100);
     logger.info(`CoinW: Processing ${candidates.length} perp symbols`);
 
-    const results = await mapWithConcurrency(candidates, { concurrency: CONCURRENCY }, async (s: any) => {
+    const results = await mapWithConcurrency(candidates, { concurrency: CONCURRENCY, delayMs: 15 }, async (s: any) => {
       const symbol = s.symbol; // BTCUSDT
       try {
         const [fr, tk] = await Promise.allSettled([
-          retry(() => client.get('/api/v2/futures/public/funding-rate', { params: { symbol }, timeout: 10000 })),
-          retry(() => client.get('/api/v2/futures/public/ticker', { params: { symbol }, timeout: 10000 })),
+          cachedRequest(`coinw:fr:${symbol}`, () => retry(() => client.get('/api/v2/futures/public/funding-rate', { params: { symbol }, timeout: 10000 })), 60_000),
+          cachedRequest(`coinw:tk:${symbol}`, () => retry(() => client.get('/api/v2/futures/public/ticker', { params: { symbol }, timeout: 10000 })), 60_000),
         ]);
         const fd = fr.status === 'fulfilled' ? fr.value.data?.data : null;
         const td = tk.status === 'fulfilled' ? tk.value.data?.data : null;

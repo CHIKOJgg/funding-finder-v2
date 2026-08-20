@@ -23,8 +23,8 @@ router.get('/profile', async (req: AuthenticatedRequest, res) => {
       return sendError(res, 404, 'User not found', 'USER_NOT_FOUND');
     }
 
-    const limits = await getSubscriptionLimits(userId).catch(() => ({ maxExchanges: 4 }));
-    const allowedExchanges = limits.maxExchanges || 4;
+    const limits = await getSubscriptionLimits(userId).catch(() => ({ maxExchanges: 5 }));
+    const allowedExchanges = limits.maxExchanges || 5;
 
     // Parallelize all secondary lookups so total DB latency is minimal
     const [referralCount, referredUsers, paymentsRes, withdrawalsRes, arbAlertsCount, genAlertsCount] = await Promise.all([
