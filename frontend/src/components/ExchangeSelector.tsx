@@ -89,20 +89,28 @@ export function ExchangeSelector({
       ) : (
         <div>
           {specificOpen && (
-            <select
-              className="exchange-select mb-3"
-              value=""
-              onChange={(e) => addExchange(e.target.value)}
-            >
-              <option value="" disabled>
-                {t('exchangeSelect.addExchange')}
-              </option>
-              {ALL.map((exchange) => (
-                <option key={exchange} value={exchange} disabled={value.includes(exchange)}>
-                  {exchangeLabel(exchange)}
+            <div className="mb-3">
+              <select
+                className="exchange-select w-full"
+                value=""
+                onChange={(e) => addExchange(e.target.value)}
+              >
+                <option value="" disabled>
+                  {value.length >= allowed
+                    ? t('exchangeSelect.limitReachedShort') || 'Лимит тарифа достигнут'
+                    : t('exchangeSelect.addExchange')}
                 </option>
-              ))}
-            </select>
+                {ALL.map((exchange) => (
+                  <option
+                    key={exchange}
+                    value={exchange}
+                    disabled={value.includes(exchange) || value.length >= allowed}
+                  >
+                    {exchangeLabel(exchange)} {value.includes(exchange) ? '✓' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
 
           <div className="flex flex-wrap gap-2">

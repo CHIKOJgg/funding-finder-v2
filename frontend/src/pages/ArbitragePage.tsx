@@ -151,7 +151,7 @@ function useArbLivePrices(opps: any[], enabled = true): {
 }
 
 export function ArbitragePage() {
-  const { user, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts, liveFundingAt, subscription, arbError } = useApp();
+  const { user, arbOpportunities, arbAlerts, setArbAlerts, arbLoading, loadArbitrage, loadAlerts, liveFundingAt, subscription, planLimits, arbError } = useApp();
   const { showToast } = useToast();
   const t = useT();
   const [activeTab, setActiveTab] = useState<'opportunities' | 'alerts' | 'spotfutures' | 'heatmap'>('opportunities');
@@ -467,7 +467,12 @@ export function ArbitragePage() {
                   />
                 </FilterField>
 
-                <ExchangeSelect selected={exchangeFilter} onChange={setExchangeFilter} />
+                <ExchangeSelect
+                  selected={exchangeFilter}
+                  onChange={setExchangeFilter}
+                  maxAllowed={planLimits.maxExchanges}
+                  planName={subscription}
+                />
 
                 <FilterField label={t('filter.pair')}>
                   <input
@@ -745,18 +750,18 @@ const OpportunityCard = memo(function OpportunityCard({
   return (
     <div className="opportunity-card">
       <div className="opportunity-head">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <strong className="text-base break-words font-mono">{opp.pair}</strong>
-            <span className={clsx('text-xs px-2 py-1 rounded-full font-semibold', getRiskColor(opp.risk?.level))} title={t('arb.riskLevelTitle')}>
+            <strong className="text-base font-bold font-mono tracking-tight text-[var(--text)]">{opp.pair}</strong>
+            <span className={clsx('text-[11px] px-2 py-0.5 rounded-full font-semibold', getRiskColor(opp.risk?.level))} title={t('arb.riskLevelTitle')}>
               {riskBadgeText}
             </span>
             {isSync ? (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--green-soft)] text-[var(--green)] border border-[var(--green)]/30 font-semibold flex items-center gap-1" title={t('arb.syncSettlementNotice')}>
+              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[var(--green-soft)] text-[var(--green)] border border-[var(--green)]/30 font-semibold inline-flex items-center gap-1 shrink-0" title={t('arb.syncSettlementNotice')}>
                 {t('arb.syncBadge', { hours: intervalA })}
               </span>
             ) : (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--text-muted)] border border-[var(--border)] font-medium flex items-center gap-1">
+              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--text-muted)] border border-[var(--border)] font-medium inline-flex items-center gap-1 shrink-0">
                 {t('arb.asyncBadge', { hoursA: intervalA, hoursB: intervalB })}
               </span>
             )}
@@ -787,10 +792,10 @@ const OpportunityCard = memo(function OpportunityCard({
           <span className="hero-metric text-[var(--green)]" title={t('arb.apyTitle')}>
             {opp.profit?.annualReturn != null ? `${opp.profit.annualReturn.toFixed(1)}%` : '—'}
           </span>
-          <span className="text-xs text-[var(--text-muted)]">{t('arb.netApy')}</span>
+          <span className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-muted)] mt-0.5">{t('arb.netApy')}</span>
           {opp.score != null && (
-            <span className="text-xs text-[var(--text2)] font-mono mt-2 text-right">
-              {cleanLabel(t('arb.compositeScore'))} {opp.score.toFixed(1)}
+            <span className="text-[11px] px-2 py-0.5 rounded-md bg-[var(--surface-2)] text-[var(--text2)] font-mono font-medium mt-1.5 border border-[var(--border)]">
+              ★ {cleanLabel(t('arb.compositeScore'))} {opp.score.toFixed(1)}
             </span>
           )}
         </div>

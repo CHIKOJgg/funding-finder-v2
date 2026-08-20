@@ -10,7 +10,7 @@ import { useTelegram } from './hooks/useTelegram';
 import { useIsWide } from './hooks/useIsWide';
 import { useWebSocket } from './hooks/useWebSocket';
 import { apiClient, getAuthToken, API_BASE } from './api/client';
-import { ALL_EXCHANGES } from './utils/exchanges';
+import { getPlanDefaultExchanges } from './utils/exchanges';
 import { getPlanLimits, PlanLimits } from './utils/plans';
 import { LanguageProvider } from './i18n';
 import { useT } from './i18n';
@@ -189,17 +189,19 @@ function DataProvider() {
   const [scanResults, setScanResults] = useState<ScanResult | null>(null);
   const [scanLoading, setScanLoading] = useState(false);
   const [scanStatus, setScanStatus] = useState(() => t('app.ready'));
-  const [selectedExchanges, setSelectedExchanges] = useState<string[]>(() => ALL_EXCHANGES.slice(0, 4));
+  const [selectedExchanges, setSelectedExchanges] = useState<string[]>(() => getPlanDefaultExchanges('free'));
 
-  // The default selection is 4 exchanges for free users, and expands for Pro/Pro+.
+  // The default selection is 4 exchanges for free users, 12 for Pro, and all 31 for Pro+.
   useEffect(() => {
     const max = planLimits.maxExchanges;
     setSelectedExchanges((prev) => {
       if (prev.length > max) return prev.slice(0, max);
-      if (prev.length < max && max > 4) return ALL_EXCHANGES.slice(0, max);
+      if (prev.length < max && (prev.length === 4 || prev.length === 12 || prev.length === 0)) {
+        return getPlanDefaultExchanges(subscription).slice(0, max);
+      }
       return prev;
     });
-  }, [planLimits.maxExchanges]);
+  }, [subscription, planLimits.maxExchanges]);
 
   // Trial state
   const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);

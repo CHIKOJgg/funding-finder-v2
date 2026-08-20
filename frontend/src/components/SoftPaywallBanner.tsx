@@ -41,30 +41,40 @@ export function SoftPaywallBanner({ used, total, featureLabel, onUpgrade }: Soft
     if (onUpgrade) {
       onUpgrade();
     } else {
-      navigate('/profile#subscription');
+      const el = document.getElementById('subscription');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        navigate('/profile#subscription');
+      }
     }
   };
 
   return (
     <div
-      className="rounded-xl p-4 mb-3 border"
+      className="rounded-2xl p-4 sm:p-5 mb-4 border relative overflow-hidden transition-all shadow-sm"
       style={{
-        background: 'var(--cobalt-soft)',
+        background: 'var(--surface)',
         borderColor: 'var(--border)',
       }}
     >
       <div className="flex items-start gap-3">
-        <IconLock size={20} className="shrink-0 mt-0.5" style={{ color: 'var(--brand)' }} />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text)' }}>
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+          style={{ background: 'var(--cobalt-soft)', color: 'var(--brand)' }}
+        >
+          <IconLock size={18} />
+        </div>
+        <div className="flex-1 min-w-0 pr-6">
+          <p className="text-sm font-bold leading-snug mb-1" style={{ color: 'var(--text)' }}>
             {t('softPaywall.title', { used, total, feature: featureLabel })}
           </p>
-          <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--text-muted)' }}>
             {t('softPaywall.desc', { days: TRIAL_DURATION_DAYS })}
           </p>
 
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-2)' }}>
+          <div className="flex items-center gap-2.5 mb-3.5">
+            <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-2)' }}>
               <div
                 className="h-full rounded-full"
                 style={{
@@ -74,21 +84,26 @@ export function SoftPaywallBanner({ used, total, featureLabel, onUpgrade }: Soft
                 }}
               />
             </div>
-            <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
-              {used}/{total}
+            <span className="text-xs font-mono font-semibold shrink-0" style={{ color: 'var(--text-muted)' }}>
+              {used} / {total}
             </span>
           </div>
 
-          <div className="flex gap-2">
-            <TrialCTA compact />
-            <button onClick={handleUpgrade} className="btn btn-secondary text-sm py-1.5 px-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="w-full">
+              <TrialCTA compact />
+            </div>
+            <button
+              onClick={handleUpgrade}
+              className="btn btn-secondary text-sm py-1.5 px-3 w-full font-semibold"
+            >
               {t('softPaywall.viewPlans')}
             </button>
           </div>
         </div>
         <button
           onClick={() => setDismissed(true)}
-          className="flex items-center justify-center w-8 h-8 rounded shrink-0"
+          className="absolute top-3 right-3 flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[var(--surface-2)] transition-colors shrink-0"
           style={{ color: 'var(--text-muted)' }}
           aria-label={t('common.close')}
         >

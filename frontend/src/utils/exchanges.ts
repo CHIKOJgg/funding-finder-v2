@@ -109,6 +109,26 @@ export const ALL_EXCHANGES = [
   'bitunix', 'orderly', 'aevo', 'apex', 'bitmart', 'coinex',
   'coinw', 'cryptocom', 'deribit', 'drift', 'helix', 'paradex', 'weex',
 ];
+
+export const FREE_DEFAULT_EXCHANGES = ['binance', 'bybit', 'okx', 'gate'];
+export const PRO_DEFAULT_EXCHANGES = [
+  'binance', 'bybit', 'okx', 'gate', 'kucoin', 'mexc',
+  'bitget', 'bingx', 'phemex', 'woo', 'hyperliquid', 'htx'
+];
+
+export function getPlanMaxExchanges(plan: string): number {
+  const p = (plan || 'free').toLowerCase();
+  if (p === 'proplus' || p === 'promax' || p === 'ultimate' || p === 'admin') return 31;
+  if (p === 'pro') return 12;
+  return 4;
+}
+
+export function getPlanDefaultExchanges(plan: string): string[] {
+  const p = (plan || 'free').toLowerCase();
+  if (p === 'proplus' || p === 'promax' || p === 'ultimate' || p === 'admin') return [...ALL_EXCHANGES];
+  if (p === 'pro') return [...PRO_DEFAULT_EXCHANGES];
+  return [...FREE_DEFAULT_EXCHANGES];
+}
 // homepage instead of opening the trading pair.
 function normalizePerpSymbol(pair: string): string {
   const base = normalizeBase(pair);

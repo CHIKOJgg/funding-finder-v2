@@ -35,15 +35,91 @@ interface UserStats {
   uniqueExchanges: number;
 }
 
-const ACHIEVEMENTS = [
-  { id: 'first_scan', icon: 'ScanLine', key: 'profile.achFirstScan', condition: (s: UserStats) => s.totalScans >= 1 },
-  { id: 'scanner', icon: 'Bot', key: 'profile.achScanner', condition: (s: UserStats) => s.totalScans >= 10 },
-  { id: 'master_scanner', icon: 'Trophy', key: 'profile.achMasterScanner', condition: (s: UserStats) => s.totalScans >= 100 },
-  { id: 'alert_setter', icon: 'Bell', key: 'profile.achAlertSetter', condition: (s: UserStats) => s.totalAlerts >= 1 },
-  { id: 'referral', icon: 'Users', key: 'profile.achReferral', condition: (_s: UserStats, r: number) => r >= 1 },
-  { id: 'pro_user', icon: 'Star', key: 'profile.achProUser', condition: (_s: UserStats, _r: number, sub: string) => sub === 'pro' || sub === 'proplus' },
-  { id: 'diversified', icon: 'Globe', key: 'profile.achDiversified', condition: (s: UserStats) => s.uniqueExchanges >= 3 },
-] as { id: string; icon: IconName; key: string; condition: (s: UserStats, r: number, sub: string) => boolean }[];
+interface AchievementDef {
+  id: string;
+  icon: IconName;
+  key: string;
+  descKey: string;
+  actionKey?: string;
+  actionPath?: string;
+  condition: (s: UserStats, r: number, sub: string) => boolean;
+  getProgress: (s: UserStats, r: number, sub: string) => { current: number; target: number };
+}
+
+const ACHIEVEMENTS: AchievementDef[] = [
+  {
+    id: 'first_scan',
+    icon: 'ScanLine',
+    key: 'profile.achFirstScan',
+    descKey: 'profile.achFirstScanDesc',
+    actionKey: 'profile.achGoScan',
+    actionPath: '/',
+    condition: (s: UserStats) => s.totalScans >= 1,
+    getProgress: (s: UserStats) => ({ current: Math.min(s.totalScans, 1), target: 1 }),
+  },
+  {
+    id: 'scanner',
+    icon: 'Bot',
+    key: 'profile.achScanner',
+    descKey: 'profile.achScannerDesc',
+    actionKey: 'profile.achGoScan',
+    actionPath: '/',
+    condition: (s: UserStats) => s.totalScans >= 10,
+    getProgress: (s: UserStats) => ({ current: Math.min(s.totalScans, 10), target: 10 }),
+  },
+  {
+    id: 'master_scanner',
+    icon: 'Trophy',
+    key: 'profile.achMasterScanner',
+    descKey: 'profile.achMasterScannerDesc',
+    actionKey: 'profile.achGoScan',
+    actionPath: '/',
+    condition: (s: UserStats) => s.totalScans >= 100,
+    getProgress: (s: UserStats) => ({ current: Math.min(s.totalScans, 100), target: 100 }),
+  },
+  {
+    id: 'alert_setter',
+    icon: 'Bell',
+    key: 'profile.achAlertSetter',
+    descKey: 'profile.achAlertSetterDesc',
+    actionKey: 'profile.achGoAlerts',
+    actionPath: '/arbitrage',
+    condition: (s: UserStats) => s.totalAlerts >= 1,
+    getProgress: (s: UserStats) => ({ current: Math.min(s.totalAlerts, 1), target: 1 }),
+  },
+  {
+    id: 'referral',
+    icon: 'Users',
+    key: 'profile.achReferral',
+    descKey: 'profile.achReferralDesc',
+    actionKey: 'profile.achShareLink',
+    condition: (_s: UserStats, r: number) => r >= 1,
+    getProgress: (_s: UserStats, r: number) => ({ current: Math.min(r, 1), target: 1 }),
+  },
+  {
+    id: 'pro_user',
+    icon: 'Star',
+    key: 'profile.achProUser',
+    descKey: 'profile.achProUserDesc',
+    actionKey: 'profile.achViewPlans',
+    actionPath: '#subscription',
+    condition: (_s: UserStats, _r: number, sub: string) => sub === 'pro' || sub === 'proplus' || sub === 'promax' || sub === 'ultimate',
+    getProgress: (_s: UserStats, _r: number, sub: string) => ({
+      current: (sub === 'pro' || sub === 'proplus' || sub === 'promax' || sub === 'ultimate') ? 1 : 0,
+      target: 1,
+    }),
+  },
+  {
+    id: 'diversified',
+    icon: 'Globe',
+    key: 'profile.achDiversified',
+    descKey: 'profile.achDiversifiedDesc',
+    actionKey: 'profile.achGoScan',
+    actionPath: '/',
+    condition: (s: UserStats) => s.uniqueExchanges >= 3,
+    getProgress: (s: UserStats) => ({ current: Math.min(s.uniqueExchanges, 3), target: 3 }),
+  },
+];
 
 let cachedProfileData: any = null;
 
@@ -293,12 +369,101 @@ export function ProfilePage() {
             </div>
           </div>
         </div>
-        {selectedAchievement && (
-          <div className="mb-3 rounded-lg px-3 py-2 text-xs" style={{ background: 'var(--amber-soft)', color: 'var(--text)' }}>
-            <strong>{t(ACHIEVEMENTS.find((ach) => ach.id === selectedAchievement)?.key || '')}</strong>
-            <div className="text-muted mt-1">{t('profile.achievementHint')}</div>
-          </div>
-        )}
+        {selectedAchievement && (() => {
+          const curAch = ACHIEVEMENTS.find((ach) => ach.id === selectedAchievement);
+          if (!curAch) return null;
+          const isUnlocked = curAch.condition(userStats, referralStats.referrals, subscription);
+          const progress = curAch.getProgress(userStats, referralStats.referrals, subscription);
+          const pct = Math.min(100, Math.round((progress.current / Math.max(1, progress.target)) * 100));
+
+          return (
+            <div
+              className="mb-3 rounded-2xl p-4 border transition-all shadow-sm"
+              style={{
+                background: isUnlocked ? 'var(--amber-soft)' : 'var(--surface-2)',
+                borderColor: isUnlocked ? 'rgba(245, 158, 11, 0.35)' : 'var(--border)',
+                color: 'var(--text)',
+              }}
+            >
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: isUnlocked ? 'var(--amber)' : 'var(--surface)',
+                      color: isUnlocked ? '#fff' : 'var(--text-muted)',
+                    }}
+                  >
+                    <Icon name={curAch.icon} size={16} />
+                  </div>
+                  <strong className="font-bold text-sm">{t(curAch.key)}</strong>
+                </div>
+                <span
+                  className="text-[11px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider"
+                  style={{
+                    background: isUnlocked ? 'rgba(245, 158, 11, 0.2)' : 'var(--surface)',
+                    color: isUnlocked ? 'var(--amber)' : 'var(--text-muted)',
+                  }}
+                >
+                  {isUnlocked ? t('profile.achUnlocked') : t('profile.achLocked')}
+                </span>
+              </div>
+
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed mt-2">
+                {t(curAch.descKey)}
+              </p>
+
+              <div className="flex items-center gap-2.5 mt-3">
+                <div className="flex-1 h-2 rounded-full overflow-hidden bg-[var(--surface)] border border-[var(--border)]">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${pct}%`,
+                      background: isUnlocked ? 'var(--amber)' : 'var(--brand)',
+                    }}
+                  />
+                </div>
+                <span className="text-xs font-mono font-semibold shrink-0 text-[var(--text-muted)]">
+                  {progress.current} / {progress.target}
+                </span>
+              </div>
+
+              {!isUnlocked && curAch.actionKey && (
+                <div className="mt-3 pt-2.5 border-t border-[var(--border)]/50 flex justify-end">
+                  {curAch.actionPath?.startsWith('#') ? (
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById(curAch.actionPath!.slice(1));
+                        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      className="btn btn-secondary text-xs py-1.5 px-3 font-semibold"
+                    >
+                      {t(curAch.actionKey)}
+                    </button>
+                  ) : curAch.id === 'referral' ? (
+                    <button
+                      onClick={async () => {
+                        const { copyShareText } = await import('../utils/shareLinks');
+                        await copyShareText({ text: t('profile.shareText'), url: referralLink || SITE_URL });
+                        showToast(t('profile.linkCopied'), 'success');
+                      }}
+                      className="btn btn-secondary text-xs py-1.5 px-3 font-semibold"
+                    >
+                      {t(curAch.actionKey)}
+                    </button>
+                  ) : (
+                    <Link
+                      to={curAch.actionPath || '/'}
+                      className="btn btn-secondary text-xs py-1.5 px-3 font-semibold"
+                    >
+                      {t(curAch.actionKey)}
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
         <div className="grid grid-cols-2 gap-3 mt-3">
           <div className="rounded-xl p-3 flex flex-col justify-between" style={{ background: 'var(--surface-2)' }}>
             <div>
@@ -465,16 +630,21 @@ export function ProfilePage() {
         <p className="text-xs text-muted mt-3">{t('profile.referralEarnHint', { rate: Math.round((referralStats.bonusRate || 0.2) * 100) })}</p>
       </div>
 
-      <div className="rounded-2xl p-4 mb-4" style={{ background: 'var(--surface)' }}>
-        <div className="flex items-center gap-3">
-          <IconSmartphone size={28} style={{ color: 'var(--brand)' }} />
-          <div className="flex-1">
-            <div className="font-semibold text-sm">{t('profile.qrLoginTitle')}</div>
-            <div className="text-xs text-muted">{t('profile.qrLoginDesc')}</div>
+      <div className="rounded-2xl p-4 sm:p-5 mb-4 border transition-all shadow-sm" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <div className="flex items-center gap-3.5">
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'var(--cobalt-soft)', color: 'var(--brand)' }}
+          >
+            <IconSmartphone size={22} />
+          </div>
+          <div className="flex-1 min-w-0 pr-2">
+            <div className="font-bold text-sm text-[var(--text)]">{t('profile.qrLoginTitle')}</div>
+            <div className="text-xs text-[var(--text-muted)] leading-relaxed mt-0.5">{t('profile.qrLoginDesc')}</div>
           </div>
           <button
             onClick={() => setShowQrLogin(true)}
-            className="btn btn-secondary text-xs py-1.5 px-3"
+            className="btn btn-secondary text-xs py-2 px-3.5 shrink-0 font-semibold rounded-xl"
           >
             {t('profile.qrLoginBtn')}
           </button>

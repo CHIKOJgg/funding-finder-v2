@@ -113,6 +113,28 @@ export function TrialCTA({ compact = false, showTimer = false, source }: TrialCT
     );
   }
 
+  if (compact) {
+    if (usedUp) {
+      return (
+        <button onClick={goToPlans} className="btn btn-primary text-sm py-1.5 px-3 w-full font-semibold">
+          {t('trial.extend')}
+        </button>
+      );
+    }
+    if (active) {
+      return (
+        <button onClick={goToPlans} className="btn btn-primary text-sm py-1.5 px-3 w-full font-semibold">
+          {t('trial.upgradeNow')}
+        </button>
+      );
+    }
+    return (
+      <button onClick={handleActivate} disabled={activating} className="btn btn-primary text-sm py-1.5 px-3 w-full font-semibold">
+        {activating ? '...' : t('trial.compact', { days: TRIAL_DURATION_DAYS })}
+      </button>
+    );
+  }
+
   if (usedUp) {
     return (
       <div className="rounded-xl p-4 text-center" style={{ background: 'var(--surface-2)' }}>
@@ -138,14 +160,6 @@ export function TrialCTA({ compact = false, showTimer = false, source }: TrialCT
           </p>
         </div>
       </div>
-    );
-  }
-
-  if (compact) {
-    return (
-      <button onClick={handleActivate} disabled={activating} className="btn btn-primary text-sm py-1.5 w-full">
-        {activating ? '...' : t('trial.compact', { days: TRIAL_DURATION_DAYS })}
-      </button>
     );
   }
 
