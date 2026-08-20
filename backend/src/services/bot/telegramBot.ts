@@ -14,6 +14,7 @@ import { runScan, getCachedScan } from '../scanService.js';
 import { getLivePriceBatch, toNative } from '../priceService.js';
 import { getPlanTier, getPlanLimitsForTier } from '../../middleware/subscription.js';
 import { forwardSupportReplyToUser, forwardUserMessageToSupportTopic } from '../supportService.js';
+import { handleReferral } from '../paymentService.js';
 
 const REFERRAL_PREFIX = 'ref_';
 
