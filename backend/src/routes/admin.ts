@@ -677,4 +677,219 @@ router.get('/live-feed', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
+// GET /support-stats — Support tickets, categories, resolution metrics & recent thread history
+router.get('/support-stats', async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      totalTickets,
+      ticketsToday,
+      ticketsWeek,
+      byCategory,
+      byStatus,
+      recentTickets,
+      faqStats,
+    ] = await Promise.all([
+      prisma.supportTicket.count(),
+      prisma.supportTicket.count({ where: { createdAt: { gte: todayStart } } }),
+      prisma.supportTicket.count({ where: { createdAt: { gte: weekAgo } } }),
+      prisma.supportTicket.groupBy({
+        by: ['category'],
+        _count: { _all: true },
+      }),
+      prisma.supportTicket.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      }),
+      prisma.supportTicket.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      prisma.faqItem.aggregate({
+        _sum: { hitCount: true },
+        _count: true,
+      }),
+    ]);
+
+    const categoryBreakdown: Record<string, number> = {};
+    for (const c of byCategory) {
+      categoryBreakdown[c.category || 'general'] = c._count._all;
+    }
+
+    const statusBreakdown: Record<string, number> = {};
+    for (const s of byStatus) {
+      statusBreakdown[s.status || 'open'] = s._count._all;
+    }
+
+    res.json({
+      ok: true,
+      totalTickets,
+      ticketsToday,
+      ticketsWeek,
+      categoryBreakdown,
+      statusBreakdown,
+      recentTickets,
+      faqStats: {
+        totalItems: faqStats._count,
+        totalHits: faqStats._sum.hitCount || 0,
+      },
+    });
+  } catch (err) {
+    logger.error('Admin support-stats error:', err);
+    res.status(500).json({ ok: false, error: 'Failed to load support statistics' });
+  }
+});
+
+// GET /marketing-campaigns — Campaign attribution (UTM source/campaign/medium), conversion by channel
+router.get('/marketing-campaigns', async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const events = await prisma.funnelEvent.findMany({
+      where: { createdAt: { gte: since } },
+      select: {
+        event: true,
+        source: true,
+        variant: true,
+        sessionId: true,
+        userId: true,
+        createdAt: true,
+      },
+    });
+
+    const campaigns: Record<string, {
+      source: string;
+      landingViews: number;
+      appOpens: number;
+      scans: number;
+      paywallViews: number;
+      trialStarts: number;
+      paid: number;
+      uniqueUsers: Set<string>;
+    }> = {};
+
+    for (const ev of events) {
+      const src = ev.source || 'direct / organic';
+      if (!campaigns[src]) {
+        campaigns[src] = {
+          source: src,
+          landingViews: 0,
+          appOpens: 0,
+          scans: 0,
+          paywallViews: 0,
+          trialStarts: 0,
+          paid: 0,
+          uniqueUsers: new Set<string>(),
+        };
+      }
+
+      const c = campaigns[src];
+      if (ev.userId || ev.sessionId) {
+        c.uniqueUsers.add(ev.userId || ev.sessionId!);
+      }
+
+      if (ev.event === 'landing_view') c.landingViews++;
+      else if (ev.event === 'app_open') c.appOpens++;
+      else if (ev.event === 'scan_run') c.scans++;
+      else if (ev.event === 'paywall_view') c.paywallViews++;
+      else if (ev.event === 'trial_start') c.trialStarts++;
+      else if (ev.event === 'paid') c.paid++;
+    }
+
+    const campaignList = Object.values(campaigns).map((c) => {
+      const totalVisitors = Math.max(c.landingViews, c.appOpens, c.uniqueUsers.size);
+      const conversionRatePct = totalVisitors > 0 ? Number(((c.paid / totalVisitors) * 100).toFixed(2)) : 0;
+      const trialRatePct = totalVisitors > 0 ? Number(((c.trialStarts / totalVisitors) * 100).toFixed(2)) : 0;
+      return {
+        source: c.source,
+        visitors: totalVisitors,
+        landingViews: c.landingViews,
+        appOpens: c.appOpens,
+        scans: c.scans,
+        paywallViews: c.paywallViews,
+        trialStarts: c.trialStarts,
+        paid: c.paid,
+        uniqueUsersCount: c.uniqueUsers.size,
+        conversionRatePct,
+        trialRatePct,
+      };
+    }).sort((a, b) => b.visitors - a.visitors);
+
+    res.json({
+      ok: true,
+      windowDays: 30,
+      totalCampaigns: campaignList.length,
+      campaigns: campaignList,
+    });
+  } catch (err) {
+    logger.error('Admin marketing-campaigns error:', err);
+    res.status(500).json({ ok: false, error: 'Failed to load marketing campaign stats' });
+  }
+});
+
+// GET /actions-detailed — Filtered event log with pagination
+router.get('/actions-detailed', async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit as string) || 50));
+    const category = req.query.category as string | undefined;
+    const action = req.query.action as string | undefined;
+    const userId = req.query.userId as string | undefined;
+    const platform = req.query.platform as string | undefined;
+    const search = req.query.search as string | undefined;
+    const timeframe = req.query.timeframe as string | undefined;
+
+    const where: any = {};
+
+    if (timeframe === 'today') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      where.createdAt = { gte: today };
+    } else if (timeframe === '7d') {
+      where.createdAt = { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) };
+    } else if (timeframe === '30d') {
+      where.createdAt = { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) };
+    }
+
+    if (category && category !== 'all') where.category = category;
+    if (action && action !== 'all') where.action = action;
+    if (platform && platform !== 'all') where.platform = platform;
+    if (userId) where.userId = { contains: userId, mode: 'insensitive' };
+    if (search) {
+      where.OR = [
+        { label: { contains: search, mode: 'insensitive' } },
+        { action: { contains: search, mode: 'insensitive' } },
+        { userId: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [events, total] = await Promise.all([
+      prisma.userActionEvent.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.userActionEvent.count({ where }),
+    ]);
+
+    res.json({
+      ok: true,
+      events,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (err) {
+    logger.error('Admin actions-detailed error:', err);
+    res.status(500).json({ ok: false, error: 'Failed to load detailed actions' });
+  }
+});
+
 export default router;

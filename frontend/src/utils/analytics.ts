@@ -1,10 +1,10 @@
 // Privacy-first, self-hosted funnel analytics for the marketing + growth loop.
-// Events are batched into the FunnelEvent table (no PII) so the CMO dashboard
-// and A/B tests run without any third-party tracker (GA, Meta, etc.).
+// Events are batched into the FunnelEvent and UserActionEvent tables
+// so the admin dashboard and A/B tests run without any third-party tracker (GA, Meta, etc.).
 //
-// Attribution is persisted in localStorage on the landing page (source + A/B
+// Attribution is persisted in localStorage on the landing page (source, campaign, + A/B
 // variant) and read back when the SPA fires in-app events, so
-// landing_view → app_open → scan_run → ... stays linked per browser.
+// landing_view → app_open → scan_run → ... stays linked per browser/user.
 
 import { API_BASE } from '../api/client';
 
@@ -15,10 +15,15 @@ export type TrackEvent =
   | 'paywall_view'
   | 'trial_start'
   | 'onboarding_complete'
-  | 'paid';
+  | 'paid'
+  | 'support_ticket_submit'
+  | 'support_modal_open'
+  | 'button_click';
 
 const SESSION_KEY = 'ff_analytics_session';
 const SRC_KEY = 'ff_src';
+const CAMPAIGN_KEY = 'ff_campaign';
+const MEDIUM_KEY = 'ff_medium';
 const VARIANT_KEY = 'ff_ab_variant';
 
 function getSessionId(): string {
@@ -66,15 +71,37 @@ export function getVariant(): string | undefined {
   }
 }
 
-function persistSource(): string | undefined {
+export function persistMarketingAttribution(): {
+  source?: string;
+  campaign?: string;
+  medium?: string;
+} {
   try {
     const params = new URLSearchParams(location.search);
-    const s = params.get('utm_source');
-    if (s) {
-      localStorage.setItem(SRC_KEY, s);
-      return s;
-    }
-    return localStorage.getItem(SRC_KEY) || undefined;
+    const tgParam = (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param;
+
+    const utmSource = params.get('utm_source') || params.get('ref') || (tgParam ? `tg_${tgParam}` : undefined);
+    const utmCampaign = params.get('utm_campaign') || params.get('campaign');
+    const utmMedium = params.get('utm_medium') || params.get('medium');
+
+    if (utmSource) localStorage.setItem(SRC_KEY, utmSource);
+    if (utmCampaign) localStorage.setItem(CAMPAIGN_KEY, utmCampaign);
+    if (utmMedium) localStorage.setItem(MEDIUM_KEY, utmMedium);
+
+    return {
+      source: utmSource || localStorage.getItem(SRC_KEY) || undefined,
+      campaign: utmCampaign || localStorage.getItem(CAMPAIGN_KEY) || undefined,
+      medium: utmMedium || localStorage.getItem(MEDIUM_KEY) || undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+export function getMarketingSource(): string | undefined {
+  try {
+    const attr = persistMarketingAttribution();
+    return attr.source;
   } catch {
     return undefined;
   }
@@ -87,13 +114,18 @@ export function track(
   userId?: string
 ): void {
   try {
+    const attr = persistMarketingAttribution();
     const body = {
       event,
-      source: persistSource(),
+      source: attr.source,
       variant: getVariant(),
       sessionId: getSessionId(),
       userId: userId || undefined,
-      meta: meta || undefined,
+      meta: {
+        ...(meta || {}),
+        campaign: attr.campaign,
+        medium: attr.medium,
+      },
     };
     // keepalive lets the ping survive navigation (e.g. landing → app CTA).
     fetch(`${API_BASE}/api/public/track`, {
@@ -107,9 +139,9 @@ export function track(
   }
 }
 
-/** Granular user interaction telemetry (buttons, filters, errors, modals). */
+/** Granular user interaction telemetry (buttons, filters, errors, modals, support). */
 export function trackAction(
-  category: 'navigation' | 'interaction' | 'conversion' | 'error' | 'scan' | string,
+  category: 'navigation' | 'interaction' | 'conversion' | 'error' | 'scan' | 'support' | string,
   action: string,
   label?: string,
   value?: number,
@@ -117,6 +149,7 @@ export function trackAction(
   userId?: string
 ): void {
   try {
+    const attr = persistMarketingAttribution();
     const body = {
       event: action,
       category,
@@ -125,7 +158,12 @@ export function trackAction(
       value,
       sessionId: getSessionId(),
       userId: userId || undefined,
-      meta: meta || undefined,
+      source: attr.source,
+      meta: {
+        ...(meta || {}),
+        campaign: attr.campaign,
+        medium: attr.medium,
+      },
       platform: typeof window !== 'undefined' && (window as any).Telegram?.WebApp ? 'miniapp' : 'web',
     };
 
@@ -140,12 +178,31 @@ export function trackAction(
   }
 }
 
+/** Explicit helper for tracking button clicks with rich metadata */
+export function trackButtonClick(buttonName: string, page?: string, meta?: Record<string, unknown>, userId?: string) {
+  trackAction('interaction', `click_${buttonName}`, buttonName, undefined, {
+    page: page || (typeof window !== 'undefined' ? window.location.pathname : undefined),
+    ...(meta || {}),
+  }, userId);
+}
+
+/** Explicit helper for tracking support interactions */
+export function trackSupportEvent(action: 'open' | 'ticket_submit' | 'topic_click' | 'faq_click', category?: string, meta?: Record<string, unknown>, userId?: string) {
+  trackAction('support', `support_${action}`, category || 'general', undefined, {
+    ...(meta || {}),
+    page: typeof window !== 'undefined' ? window.location.pathname : undefined,
+  }, userId);
+}
+
 /**
  * Initializes global automatic click & error listeners.
  * Call once at app startup in main.tsx or App.tsx.
  */
 export function initAutoTracker(getUserId?: () => string | undefined): () => void {
   if (typeof window === 'undefined') return () => {};
+
+  // Store marketing attribution from current URL params immediately on load
+  persistMarketingAttribution();
 
   // 1. Global click listener for buttons, links, and interactive elements
   const handleClick = (e: MouseEvent) => {

@@ -11,6 +11,7 @@ import {
   IconBot,
 } from './icons';
 import { apiClient } from '../api/client';
+import { trackSupportEvent } from '../utils/analytics';
 
 export interface SupportTopic {
   id: string;
@@ -174,6 +175,8 @@ export function SupportButton() {
         language: lang,
       });
 
+      trackSupportEvent('ticket_submit', category, { messageLength: message.trim().length, name: name.trim() });
+
       if (res?.ok) {
         setCreatedTopicUrl(res.topicUrl || groupUrl);
         showToast(t('support.sentSuccess'), 'success');
@@ -200,7 +203,10 @@ export function SupportButton() {
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setOpen(true);
+          trackSupportEvent('open', category);
+        }}
         aria-label={t('support.btnTitle')}
         title={t('support.btnTitle')}
         className="fixed right-4 bottom-20 md:bottom-6 md:right-6 z-50 flex h-11 w-11 items-center justify-center rounded-full text-white shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
@@ -327,7 +333,10 @@ export function SupportButton() {
                 /* Forum Topics List */
                 <div className="space-y-3">
                   <div
-                    onClick={() => openExternalTelegram(groupUrl)}
+                    onClick={() => {
+                      trackSupportEvent('topic_click', 'main_group', { url: groupUrl });
+                      openExternalTelegram(groupUrl);
+                    }}
                     className="p-3.5 rounded-xl flex items-center justify-between cursor-pointer transition-all hover:border-[var(--cobalt)] active:scale-[0.99]"
                     style={{
                       background: 'linear-gradient(135deg, rgba(61, 99, 255, 0.15) 0%, rgba(0, 184, 255, 0.08) 100%)',
@@ -359,7 +368,10 @@ export function SupportButton() {
                     {topics.map((item) => (
                       <div
                         key={item.id}
-                        onClick={() => openExternalTelegram(item.url || groupUrl)}
+                        onClick={() => {
+                          trackSupportEvent('topic_click', item.id, { title: item.title });
+                          openExternalTelegram(item.url || groupUrl);
+                        }}
                         className="p-3 rounded-xl flex items-start justify-between gap-3 cursor-pointer transition-all hover:bg-[var(--surface-2)] active:scale-[0.99]"
                         style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
                       >

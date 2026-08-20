@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { useApp } from '../App';
 import { useToast } from '../components/Toast';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { IconChevronLeft, IconChevronRight } from '../components/icons';
+import { IconChevronLeft, IconChevronRight, IconDownload, IconExternalLink, IconSearch } from '../components/icons';
 import { apiClient } from '../api/client';
 import { useT } from '../i18n';
 
@@ -120,7 +120,52 @@ interface LiveEvent {
   value: number | null;
   meta: string | null;
   platform: string | null;
+  ip?: string | null;
+  userAgent?: string | null;
   createdAt: string;
+}
+
+interface SupportTicketItem {
+  id: string;
+  name: string | null;
+  contact: string | null;
+  userId: string | null;
+  category: string;
+  message: string;
+  status: string;
+  threadId: number | null;
+  topicUrl: string | null;
+  createdAt: string;
+}
+
+interface SupportStats {
+  totalTickets: number;
+  ticketsToday: number;
+  ticketsWeek: number;
+  categoryBreakdown: Record<string, number>;
+  statusBreakdown: Record<string, number>;
+  recentTickets: SupportTicketItem[];
+  faqStats: { totalItems: number; totalHits: number };
+}
+
+interface MarketingCampaign {
+  source: string;
+  visitors: number;
+  landingViews: number;
+  appOpens: number;
+  scans: number;
+  paywallViews: number;
+  trialStarts: number;
+  paid: number;
+  uniqueUsersCount: number;
+  conversionRatePct: number;
+  trialRatePct: number;
+}
+
+interface MarketingData {
+  windowDays: number;
+  totalCampaigns: number;
+  campaigns: MarketingCampaign[];
 }
 
 type StatTone = 'cobalt' | 'green' | 'amber' | 'red' | 'neutral';
@@ -136,18 +181,49 @@ const STAT_TONES: Record<StatTone, { bg: string; fg: string; label: string }> = 
 function StatCard({ value, label, tone = 'neutral', size = 'lg' }: { value: ReactNode; label: string; tone?: StatTone; size?: 'lg' | 'md' }) {
   const c = STAT_TONES[tone];
   return (
-    <div className="p-3 rounded-lg" style={{ background: c.bg }}>
-      <div className={`font-bold font-mono ${size === 'lg' ? 'text-2xl' : ''}`} style={{ color: c.fg }}>{value}</div>
-      <div className="text-sm" style={{ color: c.label }}>{label}</div>
+    <div className="p-3 rounded-xl border border-[var(--border)]" style={{ background: c.bg }}>
+      <div className={`font-bold font-mono ${size === 'lg' ? 'text-2xl' : 'text-lg'}`} style={{ color: c.fg }}>{value}</div>
+      <div className="text-xs mt-0.5" style={{ color: c.label }}>{label}</div>
     </div>
   );
+}
+
+function exportToCsv(filename: string, rows: Array<Record<string, any>>) {
+  if (!rows || !rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const csvContent = [
+    headers.join(','),
+    ...rows.map((row) =>
+      headers
+        .map((h) => {
+          let val = row[h];
+          if (val === null || val === undefined) return '""';
+          if (typeof val === 'object') val = JSON.stringify(val);
+          val = String(val).replace(/"/g, '""');
+          return `"${val}"`;
+        })
+        .join(',')
+    ),
+  ].join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 export function AdminPage() {
   const { user } = useApp();
   const { showToast } = useToast();
   const t = useT();
-  const [tab, setTab] = useState<'users' | 'stats' | 'metrics' | 'funnel' | 'withdrawals' | 'actions' | 'errors' | 'feed'>('stats');
+  const [tab, setTab] = useState<
+    'stats' | 'marketing' | 'funnel' | 'actions' | 'support' | 'errors' | 'feed' | 'users' | 'withdrawals' | 'metrics'
+  >('stats');
+
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -156,6 +232,8 @@ export function AdminPage() {
   const [errorsData, setErrorsData] = useState<ErrorsData | null>(null);
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
   const [liveAutoRefresh, setLiveAutoRefresh] = useState(true);
+  const [supportStats, setSupportStats] = useState<SupportStats | null>(null);
+  const [marketingData, setMarketingData] = useState<MarketingData | null>(null);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [withdrawalFilter, setWithdrawalFilter] = useState<'pending' | 'completed' | 'rejected' | 'all'>('pending');
   const [completeModal, setCompleteModal] = useState<any | null>(null);
@@ -168,6 +246,10 @@ export function AdminPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [editUser, setEditUser] = useState<{ id: string; field: 'subscription' | 'balance'; value: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  // Filters for actions & feed
+  const [actionSearch, setActionSearch] = useState('');
+  const [feedCategoryFilter, setFeedCategoryFilter] = useState('all');
 
   const fetchStats = useCallback(async () => {
     try {
@@ -207,12 +289,27 @@ export function AdminPage() {
     } catch { /* ignore */ }
   }, []);
 
-  const fetchLiveFeed = useCallback(async () => {
+  const fetchSupportStats = useCallback(async () => {
     try {
-      const res: any = await apiClient.get('/admin/live-feed?limit=50');
-      if (res.ok) setLiveEvents(res.events || []);
+      const res: any = await apiClient.get('/admin/support-stats');
+      if (res.ok) setSupportStats(res);
     } catch { /* ignore */ }
   }, []);
+
+  const fetchMarketingData = useCallback(async () => {
+    try {
+      const res: any = await apiClient.get('/admin/marketing-campaigns');
+      if (res.ok) setMarketingData(res);
+    } catch { /* ignore */ }
+  }, []);
+
+  const fetchLiveFeed = useCallback(async () => {
+    try {
+      const catParam = feedCategoryFilter !== 'all' ? `&category=${feedCategoryFilter}` : '';
+      const res: any = await apiClient.get(`/admin/live-feed?limit=100${catParam}`);
+      if (res.ok) setLiveEvents(res.events || []);
+    } catch { /* ignore */ }
+  }, [feedCategoryFilter]);
 
   const fetchUsers = useCallback(async (p: number, q: string) => {
     try {
@@ -241,13 +338,31 @@ export function AdminPage() {
   useEffect(() => {
     if (tab === 'users') fetchUsers(page, search);
     if (tab === 'stats') fetchStats();
+    if (tab === 'marketing') fetchMarketingData();
+    if (tab === 'support') fetchSupportStats();
     if (tab === 'metrics') fetchMetrics();
     if (tab === 'funnel') fetchFunnel();
     if (tab === 'actions') fetchActionsStats();
     if (tab === 'errors') fetchErrorStats();
     if (tab === 'feed') fetchLiveFeed();
     if (tab === 'withdrawals') fetchWithdrawals(withdrawalFilter);
-  }, [tab, page, search, withdrawalFilter, fetchUsers, fetchStats, fetchMetrics, fetchFunnel, fetchActionsStats, fetchErrorStats, fetchLiveFeed, fetchWithdrawals]);
+  }, [
+    tab,
+    page,
+    search,
+    withdrawalFilter,
+    feedCategoryFilter,
+    fetchUsers,
+    fetchStats,
+    fetchMarketingData,
+    fetchSupportStats,
+    fetchMetrics,
+    fetchFunnel,
+    fetchActionsStats,
+    fetchErrorStats,
+    fetchLiveFeed,
+    fetchWithdrawals,
+  ]);
 
   // Live feed auto-refresh interval
   useEffect(() => {
@@ -356,23 +471,26 @@ export function AdminPage() {
   }
 
   return (
-    <div className="p-4 max-w-5xl mx-auto">
+    <div className="p-4 max-w-6xl mx-auto">
       <div className="card">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <div>
-            <h1 className="text-xl font-bold text-[var(--text)]">Панель управления и Аналитика</h1>
-            <p className="text-xs text-[var(--text2)]">{t('admin.subtitle')}</p>
+            <h1 className="text-xl font-bold text-[var(--text)]">Панель управления и Маркетинг</h1>
+            <p className="text-xs text-[var(--text2)]">Полный мониторинг пользователей, кликов, поддержки и конверсий</p>
           </div>
           <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--green-soft)] text-[var(--green)] font-semibold font-mono">
             ● Live System
           </span>
         </div>
 
+        {/* Navigation Tabs */}
         <div className="flex flex-wrap gap-1.5 mb-5 border-b border-[var(--border)] pb-3">
           {[
             { id: 'stats', label: t('admin.stats'), icon: '📊' },
+            { id: 'marketing', label: 'Маркетинг & UTM', icon: '🎯' },
             { id: 'funnel', label: 'Воронка продаж', icon: '📉' },
             { id: 'actions', label: 'Клики и Кнопки', icon: '🖱️' },
+            { id: 'support', label: 'Поддержка & FAQ', icon: '🎫' },
             { id: 'errors', label: 'Ошибки', icon: '🚨' },
             { id: 'feed', label: 'Живая лента', icon: '⚡' },
             { id: 'users', label: t('admin.users'), icon: '👥' },
@@ -394,6 +512,7 @@ export function AdminPage() {
           ))}
         </div>
 
+        {/* TAB 1: OVERVIEW STATS */}
         {tab === 'stats' && stats && (
           <div className="space-y-6">
             <div>
@@ -431,6 +550,101 @@ export function AdminPage() {
           </div>
         )}
 
+        {/* TAB 2: MARKETING & UTM CAMPAIGNS */}
+        {tab === 'marketing' && (
+          <div className="space-y-6">
+            <div className="flex flex-wrap justify-between items-center gap-2">
+              <div>
+                <h2 className="text-base font-semibold">Анализ маркетинговых каналов & UTM-кампаний</h2>
+                <p className="text-xs text-[var(--text3)]">Источники трафика, конверсия по каналам и платящие пользователи (за 30 дней)</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => marketingData?.campaigns && exportToCsv('funding_finder_marketing.csv', marketingData.campaigns)}
+                  className="btn btn-secondary text-xs py-1 px-3 w-auto flex items-center gap-1.5"
+                >
+                  <IconDownload size={14} /> Экспорт в CSV
+                </button>
+                <button onClick={fetchMarketingData} className="btn text-xs py-1 px-3 w-auto">
+                  Обновить
+                </button>
+              </div>
+            </div>
+
+            {marketingData ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <StatCard value={marketingData.totalCampaigns} label="Всего каналов / меток" tone="cobalt" />
+                  <StatCard
+                    value={marketingData.campaigns.reduce((acc, c) => acc + c.visitors, 0)}
+                    label="Всего посетителей"
+                    tone="neutral"
+                  />
+                  <StatCard
+                    value={marketingData.campaigns.reduce((acc, c) => acc + c.paid, 0)}
+                    label="Всего оплат из каналов"
+                    tone="green"
+                  />
+                  <StatCard
+                    value={`${(
+                      (marketingData.campaigns.reduce((acc, c) => acc + c.paid, 0) /
+                        Math.max(marketingData.campaigns.reduce((acc, c) => acc + c.visitors, 0), 1)) *
+                      100
+                    ).toFixed(2)}%`}
+                    label="Средняя конверсия в оплату"
+                    tone="green"
+                  />
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-[var(--surface-2)] text-[var(--text2)] uppercase">
+                      <tr>
+                        <th className="p-2.5 rounded-l-lg">Источник / Кампания</th>
+                        <th className="p-2.5 text-right">Посетители</th>
+                        <th className="p-2.5 text-right">Сканы</th>
+                        <th className="p-2.5 text-right">Пейволл</th>
+                        <th className="p-2.5 text-right">Триал</th>
+                        <th className="p-2.5 text-right font-bold text-[var(--green)]">Оплаты</th>
+                        <th className="p-2.5 text-right rounded-r-lg">Конверсия %</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {marketingData.campaigns.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-6 text-center text-muted">Кампаний пока не зафиксировано</td>
+                        </tr>
+                      ) : (
+                        marketingData.campaigns.map((c, i) => (
+                          <tr key={i} className="hover:bg-[var(--surface-2)] transition-colors">
+                            <td className="p-2.5 font-semibold text-[var(--text)] flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-[var(--cobalt)]" />
+                              {c.source}
+                            </td>
+                            <td className="p-2.5 text-right font-mono">{c.visitors}</td>
+                            <td className="p-2.5 text-right font-mono text-[var(--text2)]">{c.scans}</td>
+                            <td className="p-2.5 text-right font-mono text-[var(--text2)]">{c.paywallViews}</td>
+                            <td className="p-2.5 text-right font-mono text-[var(--amber)] font-bold">{c.trialStarts}</td>
+                            <td className="p-2.5 text-right font-mono text-[var(--green)] font-bold">{c.paid}</td>
+                            <td className="p-2.5 text-right font-mono font-bold">
+                              <span className={`px-2 py-0.5 rounded ${c.conversionRatePct > 0 ? 'bg-[var(--green-soft)] text-[var(--green)]' : 'bg-[var(--surface-2)] text-muted'}`}>
+                                {c.conversionRatePct}%
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-[var(--text3)]">{t('common.loading')}</div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: FUNNEL */}
         {tab === 'funnel' && funnel && (
           <div className="space-y-6">
             <div>
@@ -448,22 +662,27 @@ export function AdminPage() {
                     scan_run: '3. Сканирование ставок фандинга',
                     paywall_view: '4. Просмотр тарифов и пейволла',
                     trial_start: '5. Активация 3-дневного триала',
-                    checkout_start: '6. Переход к оплате подписки',
-                    paid: '7. Успешная оплата (Подписка активна)',
+                    checkout_start: '6. Переход к оплате',
+                    paid: '7. Успешная оплата подписки 🎉',
                   };
 
                   return (
-                    <div key={f.stage} className="p-3 bg-[var(--surface-2)] rounded-xl">
-                      <div className="flex justify-between text-xs font-semibold mb-1.5">
-                        <span className="text-[var(--text)]">{labels[f.stage] || f.stage}</span>
-                        <span className="text-[var(--brand)] font-mono">
-                          {f.value} польз. {i > 0 && <span className="text-[var(--text3)] font-normal">({f.conversionFromPrevPct}% от пред.)</span>}
-                        </span>
+                    <div key={f.stage} className="p-3 bg-[var(--surface-2)] rounded-xl text-xs">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="font-semibold text-[var(--text)]">{labels[f.stage] || f.stage}</span>
+                        <div className="flex items-center gap-3 font-mono">
+                          <span className="font-bold text-sm text-[var(--text)]">{f.value}</span>
+                          {i > 0 && (
+                            <span className="text-[11px] px-1.5 py-0.5 rounded bg-[var(--surface)] text-[var(--brand)] font-semibold">
+                              {f.conversionFromPrevPct}% от пред.
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="w-full bg-[var(--surface)] h-3 rounded-full overflow-hidden">
+                      <div className="w-full bg-[var(--surface)] h-2.5 rounded-full overflow-hidden">
                         <div
-                          className="h-full rounded-full transition-all bg-gradient-to-r from-[var(--cobalt)] to-[var(--green)]"
-                          style={{ width: `${pctWidth}%` }}
+                          className="h-full bg-[var(--cobalt)] rounded-full transition-all duration-500"
+                          style={{ width: `${pctWidth}%`, background: i === funnel.funnel.length - 1 ? 'var(--green)' : 'var(--cobalt)' }}
                         />
                       </div>
                     </div>
@@ -472,40 +691,58 @@ export function AdminPage() {
               </div>
             </div>
 
-            {funnel.variantComparison && funnel.variantComparison.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold mb-2">A/B Тестирование офферов</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {funnel.variantComparison.map((v) => (
-                    <div key={v.variant} className="p-3 bg-[var(--surface-2)] rounded-lg text-xs space-y-1">
-                      <div className="font-bold text-[var(--text)] text-sm">Вариант {v.variant}</div>
-                      <div>Посещений: <strong>{v.landingView}</strong> → Открытий: <strong>{v.appOpen}</strong> ({v.landingToAppPct}%)</div>
-                      <div>Триалов: <strong>{v.trialStart}</strong> ({v.appToTrialPct}%)</div>
+            <div>
+              <h3 className="text-sm font-semibold mb-3">Сравнение заголовков A/B тестирования</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {funnel.variantComparison.map((v) => (
+                  <div key={v.variant} className="p-4 bg-[var(--surface-2)] rounded-xl text-xs space-y-2 border border-[var(--border)]">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-sm text-[var(--brand)]">Вариант «{v.variant}»</span>
+                      <span className="text-muted font-mono">{v.landingView} показов</span>
                     </div>
-                  ))}
-                </div>
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      <div className="p-2 bg-[var(--surface)] rounded-lg">
+                        <div className="text-muted">Конверсия в App</div>
+                        <div className="font-bold text-base font-mono text-[var(--text)]">{v.landingToAppPct}%</div>
+                      </div>
+                      <div className="p-2 bg-[var(--surface)] rounded-lg">
+                        <div className="text-muted">Конверсия в Триал</div>
+                        <div className="font-bold text-base font-mono text-[var(--green)]">{v.appToTrialPct}%</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
           </div>
         )}
 
+        {/* TAB 4: BUTTON CLICKS & ACTIONS */}
         {tab === 'actions' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-wrap justify-between items-center gap-2">
               <div>
-                <h2 className="text-base font-semibold">Аналитика кликов и действий пользователей</h2>
-                <p className="text-xs text-[var(--text3)]">Какие кнопки нажимают чаще всего и какие остаются незамеченными</p>
+                <h2 className="text-base font-semibold">Телеметрия нажатий кнопок & действий</h2>
+                <p className="text-xs text-[var(--text3)]">Полный лог взаимодействия пользователей с интерфейсом</p>
               </div>
-              <button onClick={fetchActionsStats} className="btn text-xs py-1 px-2.5 w-auto">
-                Обновить
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => actionsData?.topActions && exportToCsv('funding_finder_button_clicks.csv', actionsData.topActions)}
+                  className="btn btn-secondary text-xs py-1 px-3 w-auto flex items-center gap-1.5"
+                >
+                  <IconDownload size={14} /> Экспорт в CSV
+                </button>
+                <button onClick={fetchActionsStats} className="btn text-xs py-1 px-3 w-auto">
+                  Обновить
+                </button>
+              </div>
             </div>
 
             {actionsData ? (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <StatCard value={actionsData.totalEvents} label="Всего кликов/событий" tone="cobalt" />
-                  <StatCard value={actionsData.topActions.length} label="Уникальных действий" tone="neutral" />
+                  <StatCard value={actionsData.topActions.length} label="Уникальных кнопок" tone="neutral" />
                   <StatCard
                     value={`${actionsData.platformBreakdown.miniapp || 0} / ${actionsData.platformBreakdown.web || 0}`}
                     label="MiniApp / Web"
@@ -516,28 +753,43 @@ export function AdminPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-semibold mb-3">🔥 Топ-25 самых нажимаемых кнопок и элементов</h3>
-                  <div className="space-y-2">
-                    {actionsData.topActions.slice(0, 25).map((act, i) => {
-                      const maxCount = actionsData.topActions[0]?.count || 1;
-                      const widthPct = Math.max((act.count / maxCount) * 100, 4);
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-semibold">🔥 Рейтинг нажимаемых кнопок и элементов</h3>
+                    <div className="relative w-48">
+                      <input
+                        type="text"
+                        placeholder="Поиск по кнопкам..."
+                        value={actionSearch}
+                        onChange={(e) => setActionSearch(e.target.value)}
+                        className="input-field text-xs py-1 pl-7 w-full"
+                      />
+                      <IconSearch size={12} className="absolute left-2.5 top-2 text-muted" />
+                    </div>
+                  </div>
 
-                      return (
-                        <div key={i} className="p-2.5 bg-[var(--surface-2)] rounded-lg text-xs">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="font-semibold text-[var(--text)] truncate max-w-[70%]">
-                              <span className="text-[var(--text3)] mr-2 font-mono">#{i + 1}</span>
-                              {act.label || act.action}
-                            </span>
-                            <span className="font-mono font-bold text-[var(--brand)]">{act.count} кликов</span>
+                  <div className="space-y-2">
+                    {actionsData.topActions
+                      .filter((act) => !actionSearch || act.label.toLowerCase().includes(actionSearch.toLowerCase()) || act.action.toLowerCase().includes(actionSearch.toLowerCase()))
+                      .map((act, i) => {
+                        const maxCount = actionsData.topActions[0]?.count || 1;
+                        const widthPct = Math.max((act.count / maxCount) * 100, 4);
+
+                        return (
+                          <div key={i} className="p-2.5 bg-[var(--surface-2)] rounded-xl text-xs">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="font-semibold text-[var(--text)] truncate max-w-[70%]">
+                                <span className="text-[var(--text3)] mr-2 font-mono">#{i + 1}</span>
+                                {act.label || act.action}
+                              </span>
+                              <span className="font-mono font-bold text-[var(--brand)]">{act.count} кликов</span>
+                            </div>
+                            <div className="w-full bg-[var(--surface)] h-2 rounded-full overflow-hidden">
+                              <div className="h-full bg-[var(--cobalt)] rounded-full" style={{ width: `${widthPct}%` }} />
+                            </div>
+                            <div className="text-[10px] text-[var(--text3)] mt-1 font-mono">Событие: {act.action}</div>
                           </div>
-                          <div className="w-full bg-[var(--surface)] h-2 rounded-full overflow-hidden">
-                            <div className="h-full bg-[var(--cobalt)] rounded-full" style={{ width: `${widthPct}%` }} />
-                          </div>
-                          <div className="text-[10px] text-[var(--text3)] mt-1 font-mono">Действие: {act.action}</div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                   </div>
                 </div>
 
@@ -559,6 +811,118 @@ export function AdminPage() {
           </div>
         )}
 
+        {/* TAB 5: SUPPORT & FAQ */}
+        {tab === 'support' && (
+          <div className="space-y-6">
+            <div className="flex flex-wrap justify-between items-center gap-2">
+              <div>
+                <h2 className="text-base font-semibold">Служба поддержки & База знаний FAQ</h2>
+                <p className="text-xs text-[var(--text3)]">Все обращения пользователей, категории вопросов и статус топиков в Telegram</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => supportStats?.recentTickets && exportToCsv('funding_finder_support_tickets.csv', supportStats.recentTickets)}
+                  className="btn btn-secondary text-xs py-1 px-3 w-auto flex items-center gap-1.5"
+                >
+                  <IconDownload size={14} /> Экспорт в CSV
+                </button>
+                <button onClick={fetchSupportStats} className="btn text-xs py-1 px-3 w-auto">
+                  Обновить
+                </button>
+              </div>
+            </div>
+
+            {supportStats ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <StatCard value={supportStats.totalTickets} label="Всего обращений" tone="cobalt" />
+                  <StatCard value={supportStats.ticketsToday} label="Обращений сегодня" tone="green" />
+                  <StatCard value={supportStats.ticketsWeek} label="За последние 7 дней" tone="cobalt" />
+                  <StatCard value={supportStats.faqStats.totalHits} label="Просмотров FAQ" tone="amber" />
+                </div>
+
+                {/* Categories breakdown */}
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Распределение вопросов по темам</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+                    {Object.entries(supportStats.categoryBreakdown).map(([cat, count]) => (
+                      <div key={cat} className="p-2.5 bg-[var(--surface-2)] rounded-xl text-xs">
+                        <div className="text-muted uppercase text-[10px] font-bold">{cat}</div>
+                        <div className="text-base font-bold text-[var(--text)] font-mono mt-0.5">{count}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Recent Tickets Table */}
+                <div>
+                  <h3 className="text-sm font-semibold mb-3">Последние тикеты поддержки</h3>
+                  <div className="space-y-2.5">
+                    {supportStats.recentTickets.length === 0 ? (
+                      <div className="p-6 text-center text-muted text-xs bg-[var(--surface-2)] rounded-xl">Обращений пока нет</div>
+                    ) : (
+                      supportStats.recentTickets.map((tk) => {
+                        const isResolved = tk.status === 'resolved' || tk.status === 'closed';
+                        const inProgress = tk.status === 'in_progress';
+                        return (
+                          <div key={tk.id} className="p-3 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl text-xs">
+                            <div className="flex flex-wrap justify-between items-start gap-2">
+                              <div>
+                                <div className="font-semibold text-sm text-[var(--text)] flex items-center gap-2">
+                                  <span>{tk.name || tk.contact || 'Пользователь'}</span>
+                                  {tk.contact && <span className="text-[11px] text-[var(--cobalt-text)]">{tk.contact}</span>}
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded uppercase font-bold bg-[var(--surface)] text-[var(--brand)]">
+                                    {tk.category}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-muted mt-0.5">
+                                  ID: {tk.userId || 'anon'} · Создано: {new Date(tk.createdAt).toLocaleString()}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                                    isResolved
+                                      ? 'bg-[var(--green-soft)] text-[var(--green)]'
+                                      : inProgress
+                                      ? 'bg-[var(--cobalt-soft)] text-[var(--cobalt-text)]'
+                                      : 'bg-[var(--amber-soft)] text-[var(--amber)]'
+                                  }`}
+                                >
+                                  {tk.status}
+                                </span>
+                                {tk.threadId && (
+                                  <a
+                                    href={tk.topicUrl || `https://t.me/fundingfindersupport/${tk.threadId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-secondary text-[11px] py-1 px-2.5 flex items-center gap-1 w-auto"
+                                  >
+                                    <span>В группу</span>
+                                    <IconExternalLink size={12} />
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+
+                            <p className="text-xs text-[var(--text2)] mt-2 bg-[var(--surface)] p-2.5 rounded-lg border border-[var(--border)]">
+                              {tk.message}
+                            </p>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-[var(--text3)]">{t('common.loading')}</div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 6: ERRORS */}
         {tab === 'errors' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -611,14 +975,21 @@ export function AdminPage() {
           </div>
         )}
 
+        {/* TAB 7: LIVE STREAM AUDIT */}
         {tab === 'feed' && (
           <div className="space-y-4">
             <div className="flex flex-wrap justify-between items-center gap-2">
               <div>
-                <h2 className="text-base font-semibold">Живая лента действий пользователей</h2>
-                <p className="text-xs text-[var(--text3)]">Поток событий клиентов в реальном времени</p>
+                <h2 className="text-base font-semibold">Живой поток действий пользователей</h2>
+                <p className="text-xs text-[var(--text3)]">События клиентов в реальном времени с параметрами сессий</p>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => liveEvents.length > 0 && exportToCsv('funding_finder_live_events.csv', liveEvents)}
+                  className="btn btn-secondary text-xs py-1 px-3 w-auto flex items-center gap-1.5"
+                >
+                  <IconDownload size={14} /> Экспорт в CSV
+                </button>
                 <button
                   onClick={() => setLiveAutoRefresh(!liveAutoRefresh)}
                   className={`text-xs px-2.5 py-1 rounded-lg font-medium ${
@@ -633,6 +1004,21 @@ export function AdminPage() {
               </div>
             </div>
 
+            {/* Category filter pills */}
+            <div className="flex flex-wrap gap-1.5">
+              {['all', 'interaction', 'conversion', 'navigation', 'support', 'error'].map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setFeedCategoryFilter(c)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold uppercase ${
+                    feedCategoryFilter === c ? 'bg-[var(--cobalt)] text-white' : 'bg-[var(--surface-2)] text-muted hover:text-white'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+
             {liveEvents.length === 0 ? (
               <div className="text-center py-8 text-[var(--text3)]">Событий пока нет</div>
             ) : (
@@ -644,6 +1030,7 @@ export function AdminPage() {
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold uppercase ${
                           ev.category === 'conversion' ? 'bg-[var(--green-soft)] text-[var(--green)]' :
                           ev.category === 'error' ? 'bg-[var(--red-soft)] text-[var(--red)]' :
+                          ev.category === 'support' ? 'bg-[var(--amber-soft)] text-[var(--amber)]' :
                           'bg-[var(--cobalt-soft)] text-[var(--cobalt-text)]'
                         }`}>
                           {ev.category}
@@ -665,6 +1052,7 @@ export function AdminPage() {
           </div>
         )}
 
+        {/* TAB 8: USERS */}
         {tab === 'users' && (
           <div>
             <div className="flex gap-2 mb-4">
@@ -753,6 +1141,7 @@ export function AdminPage() {
           </div>
         )}
 
+        {/* TAB 9: WITHDRAWALS */}
         {tab === 'withdrawals' && (
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
@@ -848,6 +1237,7 @@ export function AdminPage() {
           </div>
         )}
 
+        {/* TAB 10: LTV METRICS */}
         {tab === 'metrics' && metrics && (
           <div className="space-y-6">
             <div>
