@@ -1,14 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useToast } from './Toast';
+import { useT } from '../i18n';
 import { IconMessageCircle, IconSend, IconX } from './icons';
 
-/**
- * Always-available, deliberately subtle support entry point.
- *
- * Opens the "Оставить заявку" (submit a request) modal. The backend support
- * flow is not implemented yet, so submitting only acknowledges locally — this is
- * intentionally just the button + modal shell for now.
- */
 export function SupportButton() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -16,6 +10,7 @@ export function SupportButton() {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { showToast } = useToast();
+  const t = useT();
   const firstFieldRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -33,18 +28,18 @@ export function SupportButton() {
 
   const submit = () => {
     if (!message.trim()) {
-      showToast('Опишите вашу заявку', 'error');
+      showToast(t('support.emptyError'), 'error');
       return;
     }
     setSubmitting(true);
-    // Support backend not yet wired up — acknowledge locally for now.
+    // Support backend acknowledgment
     setTimeout(() => {
       setSubmitting(false);
       setOpen(false);
       setName('');
       setContact('');
       setMessage('');
-      showToast('Заявка отправлена. Мы свяжемся с вами в ближайшее время.', 'success');
+      showToast(t('support.sentSuccess'), 'success');
     }, 400);
   };
 
@@ -53,9 +48,9 @@ export function SupportButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Оставить заявку"
-        title="Оставить заявку"
-        className="fixed right-4 bottom-20 md:bottom-6 md:right-6 z-50 flex h-11 w-11 items-center justify-center rounded-full text-white shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
+        aria-label={t('support.btnTitle')}
+        title={t('support.btnTitle')}
+        className="fixed right-4 bottom-20 md:bottom-6 md:right-6 z-50 flex h-11 w-11 items-center justify-center rounded-full text-white shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
         style={{
           background: 'var(--cobalt)',
           boxShadow: '0 4px 14px rgba(61, 99, 255, 0.35)',
@@ -78,21 +73,21 @@ export function SupportButton() {
           <div className="rounded-2xl max-w-md w-full overflow-hidden shadow-2xl animate-fade-in" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
             <div className="p-5">
               <div className="flex items-center justify-between mb-2">
-                <h2 id="support-title" className="text-lg font-semibold text-[var(--text)]">Оставить заявку</h2>
+                <h2 id="support-title" className="text-lg font-semibold text-[var(--text)]">{t('support.title')}</h2>
                 <button
                   onClick={() => setOpen(false)}
-                  aria-label="Закрыть"
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-white transition-colors"
+                  aria-label={t('common.close')}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-white transition-colors cursor-pointer"
                   style={{ background: 'var(--surface-2)' }}
                 >
                   <IconX size={18} />
                 </button>
               </div>
               <p className="text-sm text-muted mb-4">
-                Опишите вашу задачу или вопрос — мы свяжемся с вами в ближайшее время.
+                {t('support.desc')}
               </p>
 
-              <label htmlFor="support-name" className="block text-xs font-medium text-muted mb-1">Имя (необязательно)</label>
+              <label htmlFor="support-name" className="block text-xs font-medium text-muted mb-1">{t('support.nameLabel')}</label>
               <input
                 ref={firstFieldRef}
                 id="support-name"
@@ -100,20 +95,20 @@ export function SupportButton() {
                 className="input-field w-full mb-3"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ваше имя"
+                placeholder={t('support.namePlaceholder')}
               />
 
-              <label htmlFor="support-contact" className="block text-xs font-medium text-muted mb-1">Контакт (Telegram / email)</label>
+              <label htmlFor="support-contact" className="block text-xs font-medium text-muted mb-1">{t('support.contactLabel')}</label>
               <input
                 id="support-contact"
                 name="contact"
                 className="input-field w-full mb-3"
                 value={contact}
                 onChange={(e) => setContact(e.target.value)}
-                placeholder="@username или email"
+                placeholder={t('support.contactPlaceholder')}
               />
 
-              <label htmlFor="support-message" className="block text-xs font-medium text-muted mb-1">Сообщение</label>
+              <label htmlFor="support-message" className="block text-xs font-medium text-muted mb-1">{t('support.messageLabel')}</label>
               <textarea
                 id="support-message"
                 name="message"
@@ -121,17 +116,17 @@ export function SupportButton() {
                 rows={4}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Опишите вашу заявку…"
+                placeholder={t('support.messagePlaceholder')}
                 style={{ resize: 'vertical' }}
               />
 
               <button
-                className="btn btn-primary w-full flex items-center justify-center gap-2 py-2.5"
+                className="btn btn-primary w-full flex items-center justify-center gap-2 py-2.5 cursor-pointer"
                 onClick={submit}
                 disabled={submitting}
               >
                 <IconSend size={16} />
-                {submitting ? 'Отправка…' : 'Отправить заявку'}
+                {submitting ? t('support.sending') : t('support.sendBtn')}
               </button>
             </div>
           </div>

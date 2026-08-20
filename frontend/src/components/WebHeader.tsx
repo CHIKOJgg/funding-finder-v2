@@ -32,41 +32,58 @@ export function WebHeader({ user, onLogout, onLogin }: WebHeaderProps) {
 
   const isGuest = !user?.provider || user.provider === 'guest';
 
-  const displayName =
+  const userIdentifier =
     user?.firstName ||
     (user?.walletAddress ? `${user.walletAddress.slice(0, 6)}…${user.walletAddress.slice(-4)}` : '') ||
     user?.email ||
-    (isGuest ? (t('header.guest') || 'Гость') : t('header.user'));
+    '';
 
   return (
     <>
       <header className="web-header">
         <div className="web-header-inner">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <span
-              className="flex items-center justify-center font-mono text-[13px] font-extrabold"
-              style={{ width: 26, height: 26, borderRadius: 7, background: 'var(--cobalt)', color: 'var(--on-brand)' }}
+              className="flex items-center justify-center font-mono text-[13px] font-extrabold shadow-sm"
+              style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--cobalt)', color: 'var(--on-brand)' }}
               aria-hidden="true"
             >
               ff
             </span>
-            <span className="font-extrabold text-[17px] text-[var(--text)]">Funding Finder</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm truncate max-w-[40vw]" style={{ color: 'var(--text-muted)' }}>
-              {displayName}
+            <span className="font-extrabold text-[16px] sm:text-[17px] tracking-tight text-[var(--text)]">
+              Funding Finder
             </span>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {!isGuest && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] text-xs font-medium text-[var(--text)] shrink-0">
+                <span className="w-2 h-2 rounded-full bg-[var(--green)] shrink-0" />
+                <span className="truncate max-w-[100px] sm:max-w-[150px]">{userIdentifier || t('header.user')}</span>
+              </div>
+            )}
+
             <LanguageSwitcher />
+
             {isGuest ? (
               <button
+                type="button"
                 onClick={() => setShowLoginModal(true)}
-                className="btn btn-primary text-sm py-1.5 px-3"
+                className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-lg bg-[var(--cobalt)] hover:bg-[var(--brand-hover)] text-white text-xs sm:text-sm font-semibold shadow-sm transition-all shrink-0 cursor-pointer active:scale-95 select-none"
               >
                 {t('login.login') || 'Войти'}
               </button>
             ) : (
-              <button onClick={handleLogout} className="btn btn-secondary text-sm py-1.5 px-3">
-                {t('header.logout') || 'Выйти'}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--surface-2)] hover:bg-[var(--red-soft)] hover:text-[var(--red)] hover:border-[var(--red)]/40 text-[var(--text2)] border border-[var(--border)] text-xs sm:text-sm font-medium transition-all shrink-0 cursor-pointer active:scale-95 select-none"
+                title={t('header.logout') || 'Выйти'}
+              >
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>{t('header.logout') || 'Выйти'}</span>
               </button>
             )}
           </div>

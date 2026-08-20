@@ -1,12 +1,11 @@
 import { ExchangeResult } from '../types/index.js';
 import { KNOWN_INTERVALS } from '../types/index.js';
-import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest, safeParseFloat, toMs } from '../utils/exchangeClient.js';
+import { retry, getOrCreateClient, cachedRequest, safeParseFloat, toMs } from '../utils/exchangeClient.js';
 import { toExchangeResult } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
-const BITMART_BASE = 'https://api.bitmart.com';
-const CONCURRENCY = 3;
+const BITMART_BASE = 'https://api-cloud-v2.bitmart.com';
 const BITMART_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // typical 8h
 
 export async function scanBitMart(): Promise<ExchangeResult[]> {
@@ -14,52 +13,48 @@ export async function scanBitMart(): Promise<ExchangeResult[]> {
     logger.info('Starting BitMart scan...');
     const client = getOrCreateClient(BITMART_BASE, 30000);
 
-    const [symbols, tickers] = await Promise.all([
-      cachedRequest('bitmart:symbols', async () => {
-        const res = await retry(() => client.get('/v2/contract/public/symbols-list'));
-        return res.data?.data || [];
-      }, 6 * 60 * 60 * 1000),
-      cachedRequest('bitmart:tickers', async () => {
-        const res = await retry(() => client.get('/v2/contract/public/tickers'));
-        return res.data?.data || [];
-      }, 60_000),
-    ]);
+    const symbols = await cachedRequest(
+      'bitmart:v2:symbols',
+      async () => {
+        const res = await retry(() => client.get('/contract/public/details'));
+        return res.data?.data?.symbols || [];
+      },
+      60_000
+    );
 
-    const tickerMap = new Map<string, any>();
-    for (const t of tickers as any[]) tickerMap.set(t.symbol, t);
+    const candidates = (Array.isArray(symbols) ? symbols : [])
+      .filter((t: any) => t && t.symbol && (t.symbol.endsWith('USDT') || t.symbol.endsWith('USDC')) && (t.status === 'Trading' || !t.status));
 
-    const candidates = (symbols as any[])
-      .filter((s) => s && s.symbol && s.symbol.endsWith('USDT'))
-      .sort((a, b) => Number(tickerMap.get(b.symbol)?.volume_24h || 0) - Number(tickerMap.get(a.symbol)?.volume_24h || 0))
-      .slice(0, 250);
     logger.info(`BitMart: Processing ${candidates.length} perp symbols`);
 
-    const results = await mapWithConcurrency(candidates, { concurrency: CONCURRENCY }, async (s: any) => {
-      const symbol = s.symbol; // BTCUSDT
+    const results = candidates.map((t: any) => {
+      const symbol = t.symbol; // BTCUSDT
       try {
-        const tk = tickerMap.get(symbol);
-        const fr = await retry(() =>
-          client.get('/v2/contract/public/funding-rate', { params: { symbol }, timeout: 10000 })
-        );
-        const fd = fr.data?.data;
-        if (!fd) return null;
+        const currentFunding = safeParseFloat(t.funding_rate ?? t.fundingRate);
+        const nextFunding = toMs(t.funding_time ?? t.fundingTime) || 0;
+        const mark = safeParseFloat(t.mark_price ?? t.last_price ?? t.index_price);
+        const vol24 = safeParseFloat(t.turnover_24h ?? t.volume_24h ?? t.open_interest_value);
+        const intervalHours = safeParseFloat(t.funding_interval_hours, 8);
+        const intervalSeconds = intervalHours > 0 ? intervalHours * 3600 : BITMART_INTERVAL;
+        const oiUsd = safeParseFloat(t.open_interest_value);
 
-        const currentFunding = safeParseFloat(fd.funding_rate);
-        const nextFunding = toMs(fd.funding_time) || 0;
-        const mark = safeParseFloat(tk?.last_price);
-        const vol24 = safeParseFloat(tk?.volume_24h);
-
-        upsertContractMetadata({ exchange: 'bitmart', contract: symbol }).catch(() => {});
+        upsertContractMetadata({
+          exchange: 'bitmart',
+          contract: symbol,
+          baseCurrency: t.base_currency,
+          quoteCurrency: t.quote_currency || 'USDT',
+        }).catch(() => {});
 
         return toExchangeResult({
           exchange: 'bitmart',
           contract: symbol,
           currentFunding,
-          fundingIntervalSeconds: BITMART_INTERVAL,
-          fundingIntervalSource: 'default',
+          fundingIntervalSeconds: intervalSeconds,
+          fundingIntervalSource: t.funding_interval_hours ? 'api' : 'default',
           fundingNextApply: nextFunding,
           markPrice: mark,
           volume24hSettle: vol24,
+          openInterestUsd: oiUsd > 0 ? oiUsd : undefined,
         });
       } catch (err) {
         logger.debug(`BitMart: Error ${symbol} — ${(err as Error).message}`);

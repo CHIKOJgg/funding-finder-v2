@@ -52,6 +52,14 @@ export const ru: Record<string, string> = {
   'filter.risk.low': 'LOW',
   'filter.risk.medium': 'MEDIUM',
   'filter.risk.high': 'HIGH',
+  'filter.settlementTiming': 'Время выплаты фандинга',
+  'filter.syncFundingOnly': 'Только синхронная выплата (в одну секунду)',
+  'filter.syncFundingHint': 'Показывает связки, где выплата фандинга происходит одновременно на обеих биржах (без перекоса во времени).',
+  'filter.syncFundingPill': 'Синхронный фандинг',
+  'arb.syncBadge': '⚡ Синхронно ({hours}ч)',
+  'arb.asyncBadge': '⏳ Разное время ({hoursA}ч vs {hoursB}ч)',
+  'arb.syncSettlementNotice': 'Синхронная выплата фандинга',
+  'arb.untilFundingBoth': 'До выплаты на {exA} и {exB}',
 
   // ExchangeSelect
   'exchangeSelect.all': 'Все биржи',
@@ -225,8 +233,13 @@ export const ru: Record<string, string> = {
   'onboarding.step3Desc': 'Результаты сортируются по доходности. Откройте график, чтобы посмотреть историю ставок. Настройте оповещение, чтобы узнавать о достижении порога.',
   'onboarding.step4Title': 'Шаг 3: Подписка и возможности',
   'onboarding.step4Desc': 'С Pro подпиской доступны AI-анализ, рекомендации по капиталу, арбитражные возможности и CSV-экспорт.',
-  'onboarding.next': 'Далее →',
+  'onboarding.next': 'Вперёд →',
+  'onboarding.back': '← Назад',
+  'onboarding.skip': 'Пропустить →',
   'onboarding.start': 'Начать!',
+  'onboarding.title': 'Добро пожаловать в Funding Finder',
+  'onboarding.scanHint': 'Автосканирование топовых бирж в один клик',
+  'onboarding.trialHint': '7 дней бесплатно — все Pro-функции включены',
   'onboarding.experienceTitle': 'Какой у вас опыт?',
   'onboarding.experienceDesc': 'Мы настроим интерфейс под ваш уровень.',
   'onboarding.expBeginner': 'Новичок',
@@ -293,7 +306,7 @@ export const ru: Record<string, string> = {
 
   // Paywall
   'paywall.exchangesTitle': 'Больше бирж',
-   'paywall.exchangesDesc': 'Ваш тариф позволяет сканировать ограниченное число бирж. Подключите Pro, чтобы сканировать до 9 бирж одновременно и находить самые выгодные ставки фандинга.',
+   'paywall.exchangesDesc': 'Ваш тариф позволяет сканировать ограниченное число бирж. Подключите Pro, чтобы сканировать до 12 бирж одновременно и находить самые выгодные ставки фандинга.',
   'paywall.aiTitle': 'AI Анализ',
   'paywall.aiDesc': 'AI разбор ставок фандинга от нейросети доступен на тарифе Pro. Узнавайте, какие пары стоит держать, а какие — закрывать.',
   'paywall.recommendationsTitle': 'Рекомендации',
@@ -315,7 +328,7 @@ export const ru: Record<string, string> = {
   'paywall.annualSavings': 'Экономия ${amount}/год',
   'paywall.equivalentTo': 'Эквивалент ${price}/',
   'paywall.exitOffer': 'Подписка Pro оплачивается ежемесячно, отменить можно в любой момент.',
-   'paywall.exitOfferDesc': 'Бесплатно — 4 биржи, Pro — 9, Pro+ — 21.',
+   'paywall.exitOfferDesc': 'Бесплатно — 4 биржи, Pro — 12, Pro+ — 31.',
   'paywall.claimOffer': 'Смотреть планы',
   'paywall.maybeLater': 'Может, позже',
 
@@ -395,7 +408,7 @@ export const ru: Record<string, string> = {
   'profile.apply': 'Применить',
   'profile.copyLink': 'Получить ссылку',
   'profile.linkCopied': 'Ссылка скопирована',
-  'profile.shareText': 'Лучший фандинг на 26 биржах прямо сейчас — Funding Finder. Зарабатывай вместе со мной по рефералке:',
+  'profile.shareText': 'Лучший фандинг на 31 бирже прямо сейчас — Funding Finder. Зарабатывай вместе со мной по рефералке:',
   'profile.openBot': 'Открыть бота',
   'profile.share': 'Поделиться',
   'profile.shareTelegram': 'Telegram',
@@ -431,6 +444,7 @@ export const ru: Record<string, string> = {
   'profile.paymentHistory': 'История платежей',
   'profile.noPayments': 'Платежей пока нет',
   'profile.withdrawalHistory': 'История выводов',
+  'profile.withdraw': 'Вывести',
   'profile.noWithdrawals': 'Выводов пока нет',
   'profile.settingsLink': 'Настройки',
   'profile.termsLink': 'Пользовательское соглашение',
@@ -645,6 +659,7 @@ export const ru: Record<string, string> = {
   'admin.funnel.paywall_view': 'Просмотр paywall',
   'admin.funnel.trial_start': 'Старт пробного',
   'admin.funnel.paid': 'Оплата',
+  'admin.accessDenied': 'Доступ запрещён — эта панель только для администраторов.',
 
   // Activation checklist ("first profit in 5 minutes")
   'activation.title': 'До первой прибыли за 5 минут',
@@ -846,7 +861,7 @@ export const ru: Record<string, string> = {
 
   // Public heatmap page
   'public.title': 'Ставки финансирования в реальном времени',
-  'public.subtitle': 'Ставки фандинга в реальном времени на 26 биржах',
+  'public.subtitle': 'Ставки фандинга в реальном времени на 31 бирже',
   'public.pairsScanned': 'пар просканировано',
   'public.updated': 'Обновлено',
   'public.noData': 'Данных пока нет. Идёт сканирование…',
@@ -865,10 +880,10 @@ export const ru: Record<string, string> = {
   'public.annualized': 'APR',
   'public.price': 'Цена',
   'public.volume24h': 'Объём 24ч',
-  'public.cta': 'Полный доступ: 26 бирж, арбитраж, алерты — войдите через Telegram',
+  'public.cta': 'Полный доступ: 31 биржа, арбитраж, алерты — войдите через Telegram',
   'public.loginTelegram': 'Войти через Telegram',
   'public.heroTitle': 'Ставки фандинга в реальном времени',
-  'public.heroSubtitle': 'Отслеживайте ставки фандинга на 26 биржах и находите лучшие возможности.',
+  'public.heroSubtitle': 'Отслеживайте ставки фандинга на 31 бирже и находите лучшие возможности.',
   'public.statPairs': 'Пар отслеживается',
   'public.statExchanges': 'Бирж',
   'public.statVolume': 'Объём 24ч',
@@ -885,7 +900,7 @@ export const ru: Record<string, string> = {
   'public.faq4A': 'Откройте позицию на бессрочном фьючерсе на бирже с высокой положительной ставкой фандинга (если хотите получать выплаты как шорт). Наш AI-анализ подскажет лучшие позиции под ваш капитал.',
   'public.termsLink': 'Условия',
   'public.privacyLink': 'Конфиденциальность',
-  'public.footerNote': 'Отслеживайте ставки фандинга на 26 биржах',
+  'public.footerNote': 'Отслеживайте ставки фандинга на 31 бирже',
 
   // Heatmap
   'heatmap.title': 'Тепловая карта фандинга',
@@ -974,12 +989,12 @@ export const ru: Record<string, string> = {
    'paywall.freeFeat1': '4 биржи',
   'paywall.freeFeat2': '1 AI-идея / день',
   'paywall.freeFeat3': 'Базовые алерты',
-   'paywall.proFeat1': '9 бирж',
+   'paywall.proFeat1': '12 бирж',
   'paywall.proFeat2': 'Безлимитные AI-идеи',
   'paywall.proFeat3': 'Портфель + авто-PnL',
   'paywall.proFeat4': 'Безлимитный watchlist',
   'paywall.proFeat5': 'Арбитражные сигналы',
-   'paywall.proplusFeat1': 'Все 21 биржи',
+   'paywall.proplusFeat1': 'Все 31 биржа',
   'paywall.proplusFeat2': 'Приоритетный AI-анализ',
   'paywall.proplusFeat3': 'Персональная поддержка',
   'paywall.currentPlan': 'Текущий',
@@ -1005,7 +1020,52 @@ export const ru: Record<string, string> = {
   'pullToRefresh.pull': 'Потяните для обновления',
   'pullToRefresh.refresh': 'Обновить',
   'pullToRefresh.refreshing': 'Обновление…',
+  'pullToRelease.refresh': 'Отпустите для обновления',
 
-  // Admin
-  'admin.accessDenied': 'Доступ запрещён',
+  // Public page
+  'public.payback': 'Окупаемость',
+
+  // Common
+  'common.dismiss': 'Закрыть',
+
+  // Audit additions — Activation checklist & streaks
+  'activation.streak': '{total}/{all} выполнено — осталось {remaining}',
+  'activation.dayRetention': 'День {day} — завершите настройку',
+  'activation.daysSince': '{days}д с начала — завершите настройку',
+
+  // Trial feature pills
+  'trial.featAi': 'AI-анализ',
+  'trial.featPortfolio': 'Портфель',
+  'trial.featExchanges': '31 биржа',
+
+  // Arbitrage strategies & risk
+  'arb.strategyLongShort': 'ЛОНГ на {longEx}, ШОРТ на {shortEx}',
+  'arb.strategyShortLong': 'ШОРТ на {shortEx}, ЛОНГ на {longEx}',
+  'arb.risk.low': 'НИЗКИЙ',
+  'arb.risk.medium': 'СРЕДНИЙ',
+  'arb.risk.high': 'ВЫСОКИЙ',
+
+  // Login
+  'login.orOther': 'или другие способы',
+  'login.guestBtn': 'Продолжить как гость',
+
+  // Support modal
+  'support.btnTitle': 'Оставить заявку',
+  'support.title': 'Оставить заявку',
+  'support.desc': 'Опишите вашу задачу или вопрос — мы свяжемся с вами в ближайшее время.',
+  'support.nameLabel': 'Имя (необязательно)',
+  'support.namePlaceholder': 'Ваше имя',
+  'support.contactLabel': 'Контакт (Telegram / email)',
+  'support.contactPlaceholder': '@username или email',
+  'support.messageLabel': 'Сообщение',
+  'support.messagePlaceholder': 'Опишите вашу заявку…',
+  'support.sendBtn': 'Отправить заявку',
+  'support.sending': 'Отправка…',
+  'support.emptyError': 'Опишите вашу заявку',
+  'support.sentSuccess': 'Заявка отправлена. Мы свяжемся с вами в ближайшее время.',
+
+  // Spot-Futures strategies
+  'sf.strategyLong': 'Купить спот + Шорт на перпе — забирать фандинг (~{netApy}%/год чистыми)',
+  'sf.strategyShort': 'Шорт спот + Лонг на перпе — забирать отрицательный фандинг (~{netApy}%/год чистыми)',
+  'sf.strategyLow': 'Фандинг слишком мал для покрытия комиссий (~{netApy}%/год) — не рекомендуется к открытию',
 };

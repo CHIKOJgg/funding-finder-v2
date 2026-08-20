@@ -4,6 +4,7 @@ import { validate } from '../middleware/validation.js';
 import { validateExchangeList, AuthenticatedRequest } from '../middleware/auth.js';
 import { requireSubscription, getSubscriptionLimits } from '../middleware/subscription.js';
 import { runScan, getCachedScan } from '../services/scanService.js';
+import { getWarmupPromise } from '../services/fundingWarmup.js';
 import { wsManager } from '../services/websocket.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
 import { logger } from '../utils/logger.js';
@@ -42,7 +43,14 @@ router.post('/scan', requireSubscription('free'), validate(scanSchema), validate
       }
     }
     // Stale-while-revalidate: return a cached scan immediately, refresh in background.
-    const cached = getCachedScan(exchanges);
+    let cached = getCachedScan(exchanges);
+    if (!cached) {
+      const warm = getWarmupPromise();
+      if (warm) {
+        await Promise.race([warm, new Promise((r) => setTimeout(r, 2000))]);
+        cached = getCachedScan(exchanges);
+      }
+    }
     let result;
     if (cached) {
       result = cached.result;

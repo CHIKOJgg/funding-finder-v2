@@ -630,6 +630,10 @@ export const apiClient = {
   // snapshot (so the UI stays populated) instead of hitting the limiter again.
   LIVE_BATCH_CACHE_MS: 4000,
   _liveBatchCache: { key: '', at: 0, data: null as any } as { key: string; at: number; data: any },
+  _lastLiveLatency: null as number | null,
+  getLastLiveLatency(): number | null {
+    return this._lastLiveLatency;
+  },
   setProPlusRefresh(enabled: boolean) {
     this.LIVE_BATCH_CACHE_MS = enabled ? 2000 : 4000;
   },
@@ -641,15 +645,19 @@ export const apiClient = {
     const cache = this._liveBatchCache;
     const now = Date.now();
     if (key && cache.key === key && now - cache.at < this.LIVE_BATCH_CACHE_MS && cache.data) {
-      return cache.data;
+      return { ...cache.data, _latencyMs: this._lastLiveLatency, _cached: true };
     }
     // During a 429 backoff serve the last good snapshot rather than re-hitting
     // the server and keeping the limiter permanently tripped.
     if (isBackingOff() && cache.key && cache.data) {
-      return cache.data;
+      return { ...cache.data, _latencyMs: this._lastLiveLatency, _cached: true };
     }
+    const t0 = performance.now();
     const res: any = await retryRequest(() => api.post('/live/batch', { requests }));
+    const latency = Math.round(performance.now() - t0);
+    this._lastLiveLatency = latency;
     if (res?.ok) {
+      res._latencyMs = latency;
       this._liveBatchCache = { key, at: now, data: res };
     }
     return res;

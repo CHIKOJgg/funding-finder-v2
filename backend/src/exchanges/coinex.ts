@@ -6,7 +6,7 @@ import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const COINEX_BASE = 'https://api.coinex.com/v2';
-const COINEX_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // dynamic, default 8h (not an API field)
+const COINEX_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // dynamic, default 8h
 
 export async function scanCoinEx(): Promise<ExchangeResult[]> {
   try {
@@ -34,9 +34,7 @@ export async function scanCoinEx(): Promise<ExchangeResult[]> {
     for (const t of tickerAll as any[]) tickerMap.set(t.market, t);
 
     const candidates = (marketAll as any[])
-      .filter((m) => m && m.market && m.market.endsWith('USDT') && m.contract_type === 'perpetual')
-      .sort((a, b) => Number(tickerMap.get(b.market)?.value || 0) - Number(tickerMap.get(a.market)?.value || 0))
-      .slice(0, 250);
+      .filter((m) => m && m.market && (m.market.endsWith('USDT') || m.market.endsWith('USDC')) && (m.contract_type === 'linear' || m.contract_type === 'perpetual'));
     logger.info(`CoinEx: Processing ${candidates.length} perp markets`);
 
     const results = (candidates as any[]).map((m: any) => {
@@ -44,12 +42,12 @@ export async function scanCoinEx(): Promise<ExchangeResult[]> {
       try {
         const f = fundingMap.get(symbol);
         const t = tickerMap.get(symbol);
-        if (!f) return null;
+        if (!f && !t) return null;
 
-        const currentFunding = safeParseFloat(f.latest_funding_rate);
-        const nextFunding = toMs(f.next_funding_time) || 0;
-        const mark = safeParseFloat(f.mark_price) || safeParseFloat(t?.last);
-        const vol24 = safeParseFloat(t?.value);
+        const currentFunding = safeParseFloat(f?.latest_funding_rate ?? t?.funding_rate);
+        const nextFunding = toMs(f?.next_funding_time ?? t?.next_funding_time) || 0;
+        const mark = safeParseFloat(f?.mark_price) || safeParseFloat(t?.last) || safeParseFloat(t?.mark_price);
+        const vol24 = safeParseFloat(t?.value) || safeParseFloat(t?.volume);
 
         upsertContractMetadata({ exchange: 'coinex', contract: symbol }).catch(() => {});
 

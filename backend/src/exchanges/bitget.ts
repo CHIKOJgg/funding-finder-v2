@@ -1,16 +1,13 @@
 import { ExchangeResult } from '../types/index.js';
 import { KNOWN_INTERVALS } from '../types/index.js';
-import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest, safeParseFloat } from '../utils/exchangeClient.js';
+import { retry, getOrCreateClient, cachedRequest, safeParseFloat } from '../utils/exchangeClient.js';
 import { toExchangeResult } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const BITGET_BASE = 'https://api.bitget.com';
-const CONCURRENCY = 3;
 const BITGET_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // 8h default
 
-// Derive next funding time from the funding interval aligned to UTC day
-// boundaries (Bitget settles at 00:00 / 08:00 / 16:00 UTC for 8h).
 function deriveNextFunding(intervalSeconds: number): number {
   const intervalMs = intervalSeconds * 1000;
   const now = Date.now();
@@ -58,18 +55,16 @@ export async function scanBitget(): Promise<ExchangeResult[]> {
     );
 
     const candidates = (tickers as any[])
-      .filter((t) => t && t.symbol && t.symbol.endsWith('USDT'))
-      .sort((a, b) => Number(b.usdtVolume || 0) - Number(a.usdtVolume || 0))
-      .slice(0, 250);
+      .filter((t) => t && t.symbol && (t.symbol.endsWith('USDT') || t.symbol.endsWith('USDC')));
 
     logger.info(`Bitget: Processing ${candidates.length} contracts`);
 
-    const results = await mapWithConcurrency(candidates, { concurrency: CONCURRENCY }, async (t: any) => {
+    const results = candidates.map((t: any) => {
       try {
         const symbol = t.symbol;
         const currentFunding = safeParseFloat(t.fundingRate);
-        const mark = safeParseFloat(t.markPrice);
-        const vol24 = safeParseFloat(t.usdtVolume);
+        const mark = safeParseFloat(t.markPrice ?? t.lastPr);
+        const vol24 = safeParseFloat(t.usdtVolume ?? t.quoteVolume);
 
         const intervalSeconds = intervalMap.get(symbol) || BITGET_INTERVAL;
 

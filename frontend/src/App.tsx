@@ -20,14 +20,15 @@ import { SupportButton } from './components/SupportModal';
 import { logger as clientLogger } from './utils/logger';
 import { track } from './utils/analytics';
 
-const MainPage = React.lazy(() => import('./pages/MainPage').then(m => ({ default: m.MainPage })));
-const ArbitragePage = React.lazy(() => import('./pages/ArbitragePage').then(m => ({ default: m.ArbitragePage })));
-const ProfilePage = React.lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
+import { MainPage } from './pages/MainPage';
+import { ArbitragePage } from './pages/ArbitragePage';
+import { ProfilePage } from './pages/ProfilePage';
+import { PortfolioPage } from './pages/PortfolioPage';
+import { SettingsPage } from './pages/SettingsPage';
+
 const TermsPage = React.lazy(() => import('./pages/TermsPage').then(m => ({ default: m.TermsPage })));
 const PrivacyPage = React.lazy(() => import('./pages/PrivacyPage').then(m => ({ default: m.PrivacyPage })));
 const AdminPage = React.lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
-const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
-const PortfolioPage = React.lazy(() => import('./pages/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
 const QrScanPage = React.lazy(() => import('./pages/QrScanPage').then(m => ({ default: m.QrScanPage })));
 const PublicPage = React.lazy(() => import('./pages/PublicPage').then(m => ({ default: m.PublicPage })));
 
@@ -184,17 +185,20 @@ function DataProvider() {
       .catch(() => { /* plan stays 'free' on failure */ });
     return () => { cancelled = true; };
   }, [user?.id]);
+
   const [scanResults, setScanResults] = useState<ScanResult | null>(null);
   const [scanLoading, setScanLoading] = useState(false);
   const [scanStatus, setScanStatus] = useState(() => t('app.ready'));
-  const [selectedExchanges, setSelectedExchanges] = useState<string[]>(ALL_EXCHANGES);
+  const [selectedExchanges, setSelectedExchanges] = useState<string[]>(() => ALL_EXCHANGES.slice(0, 4));
 
-  // The default selection is "all exchanges", but a plan may cap how many the
-  // user can actually scan (e.g. Free = 3). Trim the initial selection to the
-  // plan limit so the counter reads e.g. "3/3" instead of a confusing "23/3".
+  // The default selection is 4 exchanges for free users, and expands for Pro/Pro+.
   useEffect(() => {
     const max = planLimits.maxExchanges;
-    setSelectedExchanges((prev) => (prev.length > max ? prev.slice(0, max) : prev));
+    setSelectedExchanges((prev) => {
+      if (prev.length > max) return prev.slice(0, max);
+      if (prev.length < max && max > 4) return ALL_EXCHANGES.slice(0, max);
+      return prev;
+    });
   }, [planLimits.maxExchanges]);
 
   // Trial state
@@ -620,4 +624,3 @@ export default function App() {
     </ErrorBoundary>
   );
 }
-

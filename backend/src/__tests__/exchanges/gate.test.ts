@@ -19,13 +19,11 @@ describe('scanGate', () => {
     const now = Date.now();
     mock.routeGet({
       '/futures/usdt/tickers': [
-        { contract: 'BTCUSDT', volume_24h_settle: '5000000', mark_price: '50000', funding_rate: '0.0001', funding_next_apply: String(now + 3600000) },
+        { contract: 'BTC_USDT', volume_24h_settle: '5000000', mark_price: '50000', funding_rate: '0.0001', funding_next_apply: String((now + 3600000) / 1000) },
       ],
-      '/futures/usdt/contracts': {
-        funding_rate: '0.0001',
-        funding_next_apply: String(now + 3600000),
-      },
-      '/futures/usdt/funding_rate': [{ t: 1000 }, { t: 29801000 }],
+      '/futures/usdt/contracts': [
+        { name: 'BTC_USDT', funding_rate: '0.0001', funding_interval: 28800, funding_next_apply: (now + 3600000) / 1000 },
+      ],
     });
 
     const results = await scanGate();

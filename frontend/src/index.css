@@ -80,6 +80,7 @@
     height: 100%;
     color-scheme: dark;
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
   }
 
   body {
@@ -90,11 +91,13 @@
     -moz-osx-font-smoothing: grayscale;
     width: 100%;
     min-height: 100%;
+    overflow-x: hidden;
   }
 
   #root {
     width: 100%;
     min-height: 100vh;
+    overflow-x: hidden;
   }
 
   /* Focus is always visible on this canvas (keyboard + accessibility) */
@@ -501,6 +504,13 @@
     font-size: 0.625rem;
     font-weight: 700;
     letter-spacing: 0.05em;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(52, 211, 153, 0.08);
+    border: 1px solid rgba(52, 211, 153, 0.2);
+    display: inline-flex;
+    align-items: center;
+    line-height: 1.2;
   }
 
   .advanced-details {
@@ -737,23 +747,19 @@
 }
 
 .web-header-inner {
-  max-width: 100%;
+  max-width: 1400px;
   margin: 0 auto;
   height: 56px;
-  padding: 0 24px;
+  padding: 0 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 640px) {
   .web-header-inner {
-    padding: 0 48px;
-  }
-}
-
-@media (min-width: 1920px) {
-  .web-header-inner {
-    padding: 0 64px;
+    padding: 0 24px;
+    gap: 16px;
   }
 }

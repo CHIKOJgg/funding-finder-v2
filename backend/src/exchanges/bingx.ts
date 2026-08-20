@@ -1,13 +1,12 @@
 import { ExchangeResult } from '../types/index.js';
 import { KNOWN_INTERVALS } from '../types/index.js';
-import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest, safeParseFloat } from '../utils/exchangeClient.js';
+import { retry, getOrCreateClient, cachedRequest, safeParseFloat, toMs } from '../utils/exchangeClient.js';
 import { toExchangeResult } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const BINGX_BASE = 'https://open-api.bingx.com';
-const CONCURRENCY = 3;
-const BINGX_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // 8h fixed
+const BINGX_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // 8h default
 
 export async function scanBingX(): Promise<ExchangeResult[]> {
   try {
@@ -15,44 +14,47 @@ export async function scanBingX(): Promise<ExchangeResult[]> {
 
     const client = getOrCreateClient(BINGX_BASE, 30000);
 
-    // All USDT perp tickers in one call (no symbol param).
-    const tickers = await cachedRequest(
-      'bingx:tickers',
-      async () => {
-        const res = await retry(() => client.get('/openApi/swap/v2/quote/ticker'));
-        return res.data?.data || [];
-      },
-      60_000
-    );
+    const [premiumIndexRes, tickersRes] = await Promise.all([
+      cachedRequest(
+        'bingx:premiumIndex',
+        async () => {
+          const res = await retry(() => client.get('/openApi/swap/v2/quote/premiumIndex'));
+          return res.data?.data || [];
+        },
+        60_000
+      ),
+      cachedRequest(
+        'bingx:tickers',
+        async () => {
+          const res = await retry(() => client.get('/openApi/swap/v2/quote/ticker'));
+          return res.data?.data || [];
+        },
+        60_000
+      ),
+    ]);
 
-    logger.info(`BingX: Found ${tickers.length} tickers`);
+    logger.info(`BingX: Found ${premiumIndexRes.length} premium indices, ${tickersRes.length} tickers`);
 
-    const candidates = (tickers as any[])
-      .filter((t) => t && t.symbol && t.symbol.endsWith('USDT'))
-      .sort((a, b) => Number(b.quoteVolume || 0) - Number(a.quoteVolume || 0))
-      .slice(0, 250);
+    const tickerMap = new Map<string, any>();
+    for (const t of tickersRes as any[]) {
+      if (t && t.symbol) tickerMap.set(t.symbol, t);
+    }
+
+    const candidates = (premiumIndexRes as any[])
+      .filter((t) => t && t.symbol && (t.symbol.endsWith('USDT') || t.symbol.endsWith('USDC')));
 
     logger.info(`BingX: Processing ${candidates.length} contracts`);
 
-    const results = await mapWithConcurrency(candidates, { concurrency: CONCURRENCY }, async (t: any) => {
-      const symbol = t.symbol; // e.g. BTC-USDT
+    const results = candidates.map((p: any) => {
+      const symbol = p.symbol; // e.g. BTC-USDT
       try {
-        const vol24 = safeParseFloat(t.quoteVolume);
-        const mark = safeParseFloat(t.lastPrice);
-
-        // Funding history array — latest first.
-        const frRes = await retry(() =>
-          client.get('/openApi/swap/v2/quote/fundingRate', {
-            params: { symbol },
-            timeout: 15000,
-          })
-        );
-         const history = frRes.data?.data || [];
-         const latest = Array.isArray(history) ? history[0] : history;
-        const currentFunding = safeParseFloat(latest?.fundingRate);
-        const lastFundingTime = Number(latest?.fundingTime) || 0;
-        const markFromFr = safeParseFloat(latest?.markPrice) || mark;
-        const nextFunding = lastFundingTime > 0 ? lastFundingTime + BINGX_INTERVAL * 1000 : 0;
+        const t = tickerMap.get(symbol);
+        const vol24 = safeParseFloat(t?.quoteVolume ?? t?.volume);
+        const mark = safeParseFloat(p.markPrice ?? t?.lastPrice);
+        const currentFunding = safeParseFloat(p.lastFundingRate);
+        const nextFunding = toMs(p.nextFundingTime) || 0;
+        const intervalHours = safeParseFloat(p.fundingIntervalHours, 8);
+        const intervalSeconds = intervalHours > 0 ? intervalHours * 3600 : BINGX_INTERVAL;
 
         upsertContractMetadata({ exchange: 'bingx', contract: symbol }).catch(() => {});
 
@@ -60,10 +62,10 @@ export async function scanBingX(): Promise<ExchangeResult[]> {
           exchange: 'bingx',
           contract: symbol,
           currentFunding,
-          fundingIntervalSeconds: BINGX_INTERVAL,
-          fundingIntervalSource: 'default',
+          fundingIntervalSeconds: intervalSeconds,
+          fundingIntervalSource: p.fundingIntervalHours ? 'api' : 'default',
           fundingNextApply: nextFunding,
-          markPrice: markFromFr,
+          markPrice: mark,
           volume24hSettle: vol24,
         });
       } catch (err) {

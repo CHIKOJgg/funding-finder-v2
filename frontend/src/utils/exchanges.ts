@@ -225,3 +225,42 @@ export function openExchange(exchange: string, pair: string): void {
 export function exchangeLabel(exchange: string): string {
   return EXCHANGE_LABELS[exchange.toLowerCase()] || exchange;
 }
+
+const BASE_EXCHANGE_LATENCIES: Record<string, number> = {
+  binance: 42,
+  phemex: 58,
+  bybit: 76,
+  bitget: 81,
+  bingx: 84,
+  mexc: 89,
+  woo: 92,
+  okx: 108,
+  coinbase: 112,
+  deribit: 116,
+  htx: 118,
+  hyperliquid: 124,
+  coinex: 126,
+  weex: 128,
+  blofin: 132,
+  aster: 134,
+  coinw: 135,
+  orderly: 136,
+  dydx: 138,
+  bitunix: 140,
+  gate: 142,
+  cryptocom: 144,
+  bitmart: 145,
+  paradex: 146,
+  aevo: 148,
+  bluefin: 150,
+  kucoin: 152,
+  apex: 155,
+  helix: 158,
+  drift: 162,
+  kraken: 168,
+};
+
+export function getEstimatedExchangeLatency(exchange: string): number {
+  const lower = exchange.toLowerCase();
+  return BASE_EXCHANGE_LATENCIES[lower] || 85;
+}

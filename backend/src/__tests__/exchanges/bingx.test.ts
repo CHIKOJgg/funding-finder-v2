@@ -21,8 +21,8 @@ describe('scanBingX', () => {
       '/openApi/swap/v2/quote/ticker': {
         data: [{ symbol: 'BTC-USDT', quoteVolume: '1000000', lastPrice: '50000' }],
       },
-      '/openApi/swap/v2/quote/fundingRate': {
-        data: [{ fundingRate: '0.0001', fundingTime: now + 3600000, markPrice: '50000' }],
+      '/openApi/swap/v2/quote/premiumIndex': {
+        data: [{ symbol: 'BTC-USDT', markPrice: '50000', lastFundingRate: '0.0001', nextFundingTime: now + 3600000, fundingIntervalHours: 8 }],
       },
     });
 

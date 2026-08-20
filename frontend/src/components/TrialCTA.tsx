@@ -160,14 +160,14 @@ export function TrialCTA({ compact = false, showTimer = false, source }: TrialCT
         {t('trial.desc', { days: TRIAL_DURATION_DAYS })}
       </p>
       <div className="flex flex-wrap justify-center gap-2 mb-3 text-xs opacity-90">
-        <span className="px-2 py-1 rounded-full flex items-center gap-1" style={{ background: 'rgba(255,255,255,0.15)' }}>
-          <IconSparkles size={12} /> AI Analysis
+        <span className="px-2.5 py-1 rounded-full flex items-center gap-1 font-medium" style={{ background: 'rgba(255,255,255,0.18)' }}>
+          <IconSparkles size={12} /> {t('trial.featAi')}
         </span>
-        <span className="px-2 py-1 rounded-full flex items-center gap-1" style={{ background: 'rgba(255,255,255,0.15)' }}>
-          <IconChartLine size={12} /> Portfolio
+        <span className="px-2.5 py-1 rounded-full flex items-center gap-1 font-medium" style={{ background: 'rgba(255,255,255,0.18)' }}>
+          <IconChartLine size={12} /> {t('trial.featPortfolio')}
         </span>
-        <span className="px-2 py-1 rounded-full flex items-center gap-1" style={{ background: 'rgba(255,255,255,0.15)' }}>
-          <IconZap size={12} /> 20 Exchanges
+        <span className="px-2.5 py-1 rounded-full flex items-center gap-1 font-medium" style={{ background: 'rgba(255,255,255,0.18)' }}>
+          <IconZap size={12} /> {t('trial.featExchanges')}
         </span>
       </div>
       <button

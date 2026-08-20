@@ -1,12 +1,17 @@
 import { ExchangeResult, KNOWN_INTERVALS } from '../types/index.js';
-import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest, toMs } from '../utils/exchangeClient.js';
+import { retry, getOrCreateClient, cachedRequest, safeParseFloat, toMs } from '../utils/exchangeClient.js';
 import { normalizeFundingRate } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
 const MEXC_BASE = 'https://contract.mexc.com';
-const MAX_CONCURRENCY = 3;
 const MEXC_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // MEXC is always 8h
+
+function deriveNextFunding(): number {
+  const intervalMs = MEXC_INTERVAL * 1000;
+  const now = Date.now();
+  return Math.ceil(now / intervalMs) * intervalMs;
+}
 
 export async function scanMEXC(): Promise<ExchangeResult[]> {
   try {
@@ -14,115 +19,92 @@ export async function scanMEXC(): Promise<ExchangeResult[]> {
 
     const client = getOrCreateClient(MEXC_BASE, 20000);
 
-    // Use cached contracts
-    const contracts = await cachedRequest(
-      'mexc:contracts',
-      async () => {
-        const r = await retry(() => client.get('/api/v1/contract/detail'));
-        return r.data.data || [];
-      },
-      120_000  // Cache for 2 minutes
+    const [tickersRes, contractsRes] = await Promise.all([
+      cachedRequest(
+        'mexc:tickers',
+        async () => {
+          const r = await retry(() => client.get('/api/v1/contract/ticker'));
+          return r.data?.data || [];
+        },
+        60_000
+      ),
+      cachedRequest(
+        'mexc:contracts',
+        async () => {
+          const r = await retry(() => client.get('/api/v1/contract/detail'));
+          return r.data?.data || [];
+        },
+        5 * 60 * 1000
+      ),
+    ]);
+
+    logger.info(`MEXC: Found ${tickersRes.length} tickers, ${contractsRes.length} contracts`);
+
+    const contractMap = new Map<string, any>();
+    for (const c of contractsRes) {
+      if (c && c.symbol) contractMap.set(c.symbol, c);
+    }
+
+    const candidates = (tickersRes as any[]).filter(
+      (t: any) =>
+        t &&
+        t.symbol &&
+        (t.symbol.includes('USDT') || t.symbol.includes('USDC')) &&
+        !t.symbol.includes('1_USDT')
     );
 
-    logger.info(`MEXC: Found ${contracts.length} total contracts`);
+    logger.info(`MEXC: Processing ${candidates.length} USDT/USDC contracts`);
 
-    const usdtContracts = contracts
-      .filter(
-        (c: any) =>
-          c.symbol &&
-          c.symbol.includes('USDT') &&
-          !c.symbol.includes('1_USDT') &&
-          !c.symbol.includes('1000')
-      )
-      .slice(0, 200);
+    const results = candidates.map((t: any) => {
+      const rawSymbol = t.symbol; // e.g. BTC_USDT
+      const displaySymbol = rawSymbol.replace('_', ''); // e.g. BTCUSDT
+      const c = contractMap.get(rawSymbol) || {};
 
-    logger.info(`MEXC: Processing ${usdtContracts.length} USDT contracts`);
+      try {
+        const currentFunding = safeParseFloat(t.fundingRate);
+        const mark = safeParseFloat(t.fairPrice ?? t.lastPrice);
+        const vol24 = safeParseFloat(t.amount24 ?? t.volume24);
+        const nextFunding = deriveNextFunding();
 
-    const processed = await mapWithConcurrency(
-      usdtContracts,
-      { concurrency: MAX_CONCURRENCY },
-      async (contract: any) => {
-        const symbol = contract.symbol;
+        if (!isFinite(currentFunding)) return null;
 
-        // Upsert contract metadata
         upsertContractMetadata({
           exchange: 'mexc',
-          contract: symbol,
-          settleCurrency: contract.settleCoin || 'USDT',
-          baseCurrency: contract.baseCoin,
-          quoteCurrency: contract.quoteCoin,
-          maxLeverage: contract.maxLeverage ? parseInt(contract.maxLeverage) : undefined,
+          contract: displaySymbol,
+          settleCurrency: c.settleCoin || 'USDT',
+          baseCurrency: c.baseCoin,
+          quoteCurrency: c.quoteCoin,
+          maxLeverage: c.maxLeverage ? parseInt(c.maxLeverage) : undefined,
         }).catch(() => {});
 
-        try {
-          const [fundingR, tickerR] = await Promise.allSettled([
-            retry(() =>
-              client.get(`/api/v1/contract/funding_rate/${symbol}`, {
-                timeout: 10000,
-              })
-            ),
-            retry(() =>
-              client.get('/api/v1/contract/ticker', {
-                params: { symbol },
-                timeout: 10000,
-              })
-            ),
-          ]);
+        const normalized = normalizeFundingRate(currentFunding, MEXC_INTERVAL);
+        const now = Date.now();
+        const timeUntilNext = nextFunding > now ? Math.floor((nextFunding - now) / 1000) : null;
 
-          const fundingInfo =
-            fundingR.status === 'fulfilled' ? fundingR.value.data.data : null;
-          const ticker =
-            tickerR.status === 'fulfilled' ? tickerR.value.data.data : null;
-
-          if (!ticker) return null;
-
-          const currentFunding =
-            fundingInfo && fundingInfo.fundingRate !== undefined
-              ? parseFloat(fundingInfo.fundingRate)
-              : 0;
-
-          const mark =
-            parseFloat(ticker.fairPrice) || parseFloat(ticker.lastPrice) || 0;
-          const vol24 = parseFloat(ticker.volume24) || 0;
-          const nextFunding = fundingInfo?.nextSettleTime
-            ? toMs(fundingInfo.nextSettleTime)
-            : 0;
-
-          if (!isFinite(currentFunding)) return null;
-
-          // MEXC is always 8h
-          const normalized = normalizeFundingRate(currentFunding, MEXC_INTERVAL);
-
-          // Calculate time until next funding
-          const now = Date.now();
-          const timeUntilNext = nextFunding > now ? Math.floor((nextFunding - now) / 1000) : null;
-
-          return {
-            exchange: 'mexc',
-            contract: symbol,
-            currentFunding,
-            funding_interval_seconds: MEXC_INTERVAL,
-            funding_interval_hours: MEXC_INTERVAL / 3600,
-            funding_interval_source: 'default' as const,
-            funding_rate_per_hour: normalized.perHour,
-            funding_rate_per_day: normalized.perDay,
-            annualized_rate: normalized.annualized,
-            funding_next_apply: nextFunding,
-            time_until_next_funding_seconds: timeUntilNext,
-            mark_price: mark,
-            volume_24h_settle: vol24,
-            // Legacy fields
-            med_seconds: MEXC_INTERVAL,
-            med_hours: MEXC_INTERVAL / 3600,
-          };
-        } catch (err) {
-          logger.debug(`MEXC: Error ${symbol} — ${(err as Error).message}`);
-          return null;
-        }
+        return {
+          exchange: 'mexc',
+          contract: displaySymbol,
+          currentFunding,
+          funding_interval_seconds: MEXC_INTERVAL,
+          funding_interval_hours: MEXC_INTERVAL / 3600,
+          funding_interval_source: 'default' as const,
+          funding_rate_per_hour: normalized.perHour,
+          funding_rate_per_day: normalized.perDay,
+          annualized_rate: normalized.annualized,
+          funding_next_apply: nextFunding,
+          time_until_next_funding_seconds: timeUntilNext,
+          mark_price: mark,
+          volume_24h_settle: vol24,
+          med_seconds: MEXC_INTERVAL,
+          med_hours: MEXC_INTERVAL / 3600,
+        };
+      } catch (err) {
+        logger.debug(`MEXC: Error ${rawSymbol} — ${(err as Error).message}`);
+        return null;
       }
-    );
+    });
 
-    const valid = processed.filter((r) => r !== null) as ExchangeResult[];
+    const valid = results.filter((r) => r !== null) as ExchangeResult[];
     logger.info(`MEXC scan complete: ${valid.length} valid results`);
     return valid;
   } catch (err: any) {

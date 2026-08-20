@@ -71,10 +71,9 @@ export async function scanBinance(): Promise<ExchangeResult[]> {
     logger.info(`Binance: Found ${tickersAll.length} tickers total`);
 
     const usdtTickers = tickersAll
-      .filter((t: any) => t && t.symbol && t.symbol.endsWith('USDT'))
-      .sort((a: any, b: any) => Number(b.quoteVolume || 0) - Number(a.quoteVolume || 0))
-      .slice(0, 200);
-    logger.info(`Binance: Processing ${usdtTickers.length} USDT/BUSD pairs`);
+      .filter((t: any) => t && t.symbol && (t.symbol.endsWith('USDT') || t.symbol.endsWith('USDC')))
+      .sort((a: any, b: any) => Number(b.quoteVolume || 0) - Number(a.quoteVolume || 0));
+    logger.info(`Binance: Processing ${usdtTickers.length} USDT/USDC pairs`);
 
     // Fetch exchange info once for metadata
     let exchangeInfo: any = null;

@@ -16,11 +16,18 @@ beforeEach(() => {
 
 describe('scanHelix', () => {
   it('returns normalized ExchangeResult[] for Helix', async () => {
-    const now = Date.now();
     mock.routeGet({
-      '/perpetual-markets': {
-        data: [
-          { marketId: 'btcusdt-perp', fundingRate: '0.0001', markPrice: '50000', oraclePrice: '50000', volume24h: '1000', nextFundingTimestamp: now + 3600000 },
+      '/injective/exchange/v1beta1/derivative/markets': {
+        markets: [
+          {
+            market: {
+              ticker: 'BTC/USDT PERP',
+              market_id: '0x123',
+              status: 'active',
+              is_perpetual: true,
+              perpetual_market_info: { hourly_funding_rate_cap: '0.0001', hourly_interest_rate: '0.0001' },
+            },
+          },
         ],
       },
     });
@@ -30,7 +37,7 @@ describe('scanHelix', () => {
     expect(results.length).toBeGreaterThan(0);
     const r = results.find((x) => x.exchange === 'helix');
     expect(r).toBeDefined();
-    expect(r!.contract).toBe('btcusdt-perp');
+    expect(r!.contract).toBe('BTC/USDT PERP');
     expect(Number.isFinite(r!.funding_rate_per_hour)).toBe(true);
   });
 

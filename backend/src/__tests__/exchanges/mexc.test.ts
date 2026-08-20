@@ -16,18 +16,14 @@ beforeEach(() => {
 
 describe('scanMEXC', () => {
   it('returns normalized ExchangeResult[] for MEXC', async () => {
-    const now = Date.now();
     mock.routeGet({
       '/api/v1/contract/detail': {
         data: [
-          { symbol: 'BTCUSDT', settleCoin: 'USDT', baseCoin: 'BTC', quoteCoin: 'USDT', maxLeverage: '100' },
+          { symbol: 'BTC_USDT', settleCoin: 'USDT', baseCoin: 'BTC', quoteCoin: 'USDT', maxLeverage: '100' },
         ],
       },
-      '/api/v1/contract/funding_rate': {
-        data: { fundingRate: '0.0001', nextSettleTime: now + 3600000 },
-      },
       '/api/v1/contract/ticker': {
-        data: { fairPrice: '50000', lastPrice: '50000', volume24: '1000000' },
+        data: [{ symbol: 'BTC_USDT', fairPrice: '50000', lastPrice: '50000', fundingRate: '0.0001', volume24: '1000000' }],
       },
     });
 

@@ -18,14 +18,20 @@ describe('scanBitMart', () => {
   it('returns normalized ExchangeResult[] for BitMart', async () => {
     const now = Date.now();
     mock.routeGet({
-      '/v2/contract/public/symbols-list': {
-        data: [{ symbol: 'BTCUSDT' }],
-      },
-      '/v2/contract/public/tickers': {
-        data: [{ symbol: 'BTCUSDT', volume_24h: '1000000', last_price: '50000' }],
-      },
-      '/v2/contract/public/funding-rate': {
-        data: { funding_rate: '0.0001', funding_time: now + 3600000 },
+      '/contract/public/details': {
+        data: {
+          symbols: [
+            {
+              symbol: 'BTCUSDT',
+              status: 'Trading',
+              funding_rate: '0.0001',
+              funding_time: now + 3600000,
+              funding_interval_hours: 8,
+              mark_price: '50000',
+              turnover_24h: '1000000',
+            },
+          ],
+        },
       },
     });
 

@@ -13,12 +13,15 @@ export async function scanBitunix(): Promise<ExchangeResult[]> {
       cachedRequest('bitunix:tickers', async () => (await retry(() => client.get('/api/v1/futures/market/tickers'))).data?.data || [], 60 * 1000),
     ]);
     const tickerMap = new Map((tickers as any[]).map((t) => [t.symbol, t]));
-    const candidates = (pairs as any[]).map((p) => typeof p === 'string' ? p : p?.symbol).filter(Boolean).slice(0, 100);
-    const results = await mapWithConcurrency(candidates, { concurrency: 3 }, async (symbol: string) => {
+    const candidates = (pairs as any[])
+      .map((p) => typeof p === 'string' ? p : p?.symbol)
+      .filter(Boolean)
+      .sort((a, b) => Number(tickerMap.get(b)?.quoteVolume || tickerMap.get(b)?.volume || 0) - Number(tickerMap.get(a)?.quoteVolume || tickerMap.get(a)?.volume || 0))
+      .slice(0, 100);
+
+    const results = await mapWithConcurrency(candidates, { concurrency: 5, delayMs: 20 }, async (symbol: string) => {
       try {
         const data = (await cachedRequest(`bitunix:funding:${symbol}`, async () => (await retry(() => client.get('/api/v1/futures/market/funding_rate', { params: { symbol } }))).data?.data, 60 * 1000)) as any;
-        // Bitunix reports `fundingRate` as a PERCENTAGE (e.g. "0.00588" ==
-        // 0.00588% ≈ Binance's 0.00005852 decimal). Convert to decimal.
         const rate = safeParseFloat(data?.fundingRate, NaN) / 100;
         if (!Number.isFinite(rate)) return null;
         const intervalHours = safeParseFloat(data?.fundingInterval, 8);

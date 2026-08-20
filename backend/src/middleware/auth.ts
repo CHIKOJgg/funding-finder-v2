@@ -314,3 +314,39 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
   // Fall back to Telegram init data (existing behaviour).
   return validateTelegramInitData(req, res, next);
 }
+
+/**
+ * Optional authentication middleware: populates req.userId if a valid token/init-data
+ * is present, but allows unauthenticated / guest requests through.
+ */
+export async function optionalAuth(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice('Bearer '.length).trim();
+    const payload = verifyAuthToken(token);
+    if (payload) {
+      (req as AuthenticatedRequest).userId = payload.sub;
+      (req as AuthenticatedRequest).authProvider = payload.provider;
+      if (payload.provider === 'telegram') {
+        const tgId = payload.sub.replace('tg_', '');
+        (req as AuthenticatedRequest).telegramUser = { id: Number(tgId) || 0 };
+      }
+      await trackActivity(payload.sub, payload.provider);
+    }
+    return next();
+  }
+
+  const rawInitData = req.headers['x-telegram-init-data'] as string;
+  if (rawInitData) {
+    const parsed = validateTelegramInitDataSync(rawInitData);
+    if (parsed) {
+      (req as AuthenticatedRequest).userId = parsed.userId;
+      (req as AuthenticatedRequest).authProvider = 'telegram';
+      const tgId = parsed.userId.replace('tg_', '');
+      (req as AuthenticatedRequest).telegramUser = { id: Number(tgId) || 0 };
+      await trackActivity(parsed.userId, 'telegram');
+    }
+  }
+  return next();
+}
+

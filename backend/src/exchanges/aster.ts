@@ -35,8 +35,7 @@ export async function scanAster(): Promise<ExchangeResult[]> {
 
     const candidates = (info as any[])
       .filter((s) => s && s.symbol && s.contractType === 'PERPETUAL' && s.status === 'TRADING')
-      .sort((a, b) => Number(tickerMap.get(b.symbol)?.quoteVolume || 0) - Number(tickerMap.get(a.symbol)?.quoteVolume || 0))
-      .slice(0, 250);
+      .sort((a, b) => Number(tickerMap.get(b.symbol)?.quoteVolume || 0) - Number(tickerMap.get(a.symbol)?.quoteVolume || 0));
     logger.info(`Aster: Processing ${candidates.length} perp symbols`);
 
     const results = (candidates as any[]).map((s: any) => {

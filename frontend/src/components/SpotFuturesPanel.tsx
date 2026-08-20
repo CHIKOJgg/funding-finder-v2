@@ -15,6 +15,7 @@ import {
 } from 'chart.js';
 import { openExchange } from '../utils/exchanges';
 import { IconLightbulb, IconPause, IconPlay } from './icons';
+import { LiveIndicator } from './LiveIndicator';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -49,14 +50,22 @@ export function SpotFuturesPanel() {
   const [history, setHistory] = useState<{ timestamp: string; funding: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [paused, setPaused] = useState(false);
+  const [proRequired, setProRequired] = useState(false);
 
   const loadSF = useCallback(async () => {
+    const t0 = performance.now();
     try {
       const res: any = await apiClient.getSpotFutures(exchange, pair);
+      const latency = Math.round(performance.now() - t0);
       if (res?.ok) {
         setData(res);
+        setLatencyMs(latency);
         setLastUpdated(Date.now());
+        setProRequired(false);
+      } else if (res?.code === 'PRO_REQUIRED' || res?.error?.includes?.('Pro')) {
+        setProRequired(true);
       } else if (res?.error) {
         showToast(res.error, 'error');
       }
@@ -129,10 +138,7 @@ export function SpotFuturesPanel() {
     <div className="card">
       <div className="flex justify-between items-center mb-3">
         <h2 className="text-lg font-semibold">{t('sf.title')}</h2>
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className={clsx('inline-block w-2 h-2 rounded-full', paused ? 'bg-[var(--text3)]' : 'bg-[var(--green)] animate-pulse')} aria-hidden="true" />
-          <span className="text-[var(--green)] font-medium">{t('oi.live')}</span>
-        </div>
+        <LiveIndicator paused={paused} latencyMs={latencyMs} lastUpdated={lastUpdated} />
       </div>
       <p className="text-sm text-muted mb-3">{t('sf.subtitle')}</p>
 
@@ -183,15 +189,36 @@ export function SpotFuturesPanel() {
         </button>
       </div>
 
-      {!data?.supported && (
+      {proRequired ? (
+        <div className="card text-center p-6 my-4 border border-[var(--cobalt)]/40 bg-[var(--surface-2)]">
+          <div
+            className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 text-xl font-extrabold shadow-sm"
+            style={{ background: 'var(--cobalt)', color: 'var(--on-brand)' }}
+          >
+            ⭐
+          </div>
+          <h3 className="text-lg font-bold text-[var(--text)] mb-1">
+            {t('paywall.portfolioTitle') || 'Мониторинг Spot-Futures доступен в Pro'}
+          </h3>
+          <p className="text-sm text-[var(--text-muted)] max-w-md mx-auto mb-4">
+            Кастомный расчёт базиса спот-фьючерс и cash-and-carry арбитража для любых торговых пар входит в подписку Pro.
+          </p>
+          <a
+            href="/profile#subscription"
+            className="btn btn-primary text-sm py-2.5 px-6 mx-auto inline-block font-semibold shadow-md"
+          >
+            {t('paywall.unlockBtn') || 'Перейти к тарифу Pro'}
+          </a>
+        </div>
+      ) : !data?.supported ? (
         <div className="text-sm text-[var(--amber)] bg-[var(--amber-soft)] p-3 rounded-lg mb-4">
           {t('sf.notSupported', { exchange })}
         </div>
-      )}
+      ) : null}
 
-      {loading && !data ? (
+      {!proRequired && loading && !data ? (
         <div className="text-center py-6 text-[var(--text-muted)]" role="status">{t('common.loading')}</div>
-      ) : data?.supported ? (
+      ) : !proRequired && data?.supported ? (
         <>
           {lastUpdated && (
             <div className="text-xs text-[var(--text-muted)] mb-2">{t('oi.updated', { time: new Date(lastUpdated).toLocaleTimeString() })}</div>
@@ -200,7 +227,15 @@ export function SpotFuturesPanel() {
           {data?.strategy && (
             <div className="flex items-start gap-2 text-sm bg-[var(--cobalt-soft)] text-[var(--cobalt)] p-2.5 rounded-lg mb-3">
               <IconLightbulb className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{data.strategy}</span>
+              <span>
+                {data.strategy.includes('Long spot + Short perp')
+                  ? t('sf.strategyLong', { netApy: (data.netApy ?? 0).toFixed(1) })
+                  : data.strategy.includes('Short spot + Long perp')
+                  ? t('sf.strategyShort', { netApy: (-(data.netApy ?? 0)).toFixed(1) })
+                  : data.strategy.includes('Funding too low')
+                  ? t('sf.strategyLow', { netApy: (data.netApy ?? 0).toFixed(1) })
+                  : data.strategy}
+              </span>
             </div>
           )}
 

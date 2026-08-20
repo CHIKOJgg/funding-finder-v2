@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { validate } from '../middleware/validation.js';
-import { AuthenticatedRequest } from '../middleware/auth.js';
+import { AuthenticatedRequest, authenticate, optionalAuth } from '../middleware/auth.js';
 import {
   createArbitrageAlert,
   getUserArbitrageAlerts,
@@ -19,6 +19,7 @@ import { runScan, getCachedScan } from '../services/scanService.js';
 import { getWarmupPromise } from '../services/fundingWarmup.js';
 import { getSubscriptionLimits, requireSubscription, planRank } from '../middleware/subscription.js';
 import { SUPPORTED_EXCHANGES } from '../exchanges/index.js';
+import { getExchangeLatency, recordExchangeLatency } from '../utils/exchangeLatency.js';
 import { prisma } from '../services/prisma.js';
 import { logger } from '../utils/logger.js';
 import { sendError } from '../middleware/errorHandler.js';
@@ -109,7 +110,7 @@ const calculateProfitSchema = z.object({
   capital: z.number().min(100),
 });
 
-router.post('/alerts/arbitrage', validate(createAlertSchema), async (req, res) => {
+router.post('/alerts/arbitrage', authenticate, validate(createAlertSchema), async (req, res) => {
   try {
     const userId = (req as AuthenticatedRequest).userId!;
     const { pair, exchangeA, exchangeB, condition, threshold, direction, cooldown } = req.body;
@@ -131,7 +132,7 @@ router.post('/alerts/arbitrage', validate(createAlertSchema), async (req, res) =
   }
 });
 
-router.get('/alerts/arbitrage', async (req, res) => {
+router.get('/alerts/arbitrage', authenticate, async (req, res) => {
   try {
     const userId = (req as AuthenticatedRequest).userId!;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -144,7 +145,7 @@ router.get('/alerts/arbitrage', async (req, res) => {
   }
 });
 
-router.delete('/alerts/arbitrage/:alertId', async (req, res) => {
+router.delete('/alerts/arbitrage/:alertId', authenticate, async (req, res) => {
   try {
     const userId = (req as AuthenticatedRequest).userId!;
     const { alertId } = req.params;
@@ -159,7 +160,7 @@ router.delete('/alerts/arbitrage/:alertId', async (req, res) => {
   }
 });
 
-router.post('/alerts/arbitrage/:alertId/toggle', async (req, res) => {
+router.post('/alerts/arbitrage/:alertId/toggle', authenticate, async (req, res) => {
   try {
     const userId = (req as AuthenticatedRequest).userId!;
     const { alertId } = req.params;
@@ -182,33 +183,31 @@ router.get('/arbitrage/opportunities', async (req, res) => {
   if (exchanges.length === 0) exchanges = SUPPORTED_EXCHANGES;
 
   let isGuest = false;
+  let maxAllowed = 4;
   const userId = (req as AuthenticatedRequest).userId;
   if (userId) {
-    if (userId.startsWith('guest_') || (req as any).user?.authProvider === 'guest') {
-      isGuest = true;
-    } else {
-      try {
-        const u = await prisma.user.findUnique({ where: { telegramId: userId }, select: { authProvider: true } });
-        if (u?.authProvider === 'guest') {
+    try {
+      const limits = await getSubscriptionLimits(userId);
+      maxAllowed = limits.maxExchanges;
+      if (limits.tier === 'free') {
+        if (userId.startsWith('guest_') || (req as any).user?.authProvider === 'guest') {
           isGuest = true;
+        } else {
+          const u = await prisma.user.findUnique({ where: { telegramId: userId }, select: { authProvider: true } });
+          if (u?.authProvider === 'guest') {
+            isGuest = true;
+          }
         }
-      } catch {}
+      }
+    } catch {
+      if (userId.startsWith('guest_')) isGuest = true;
     }
   } else {
     isGuest = true;
   }
 
-  // Cap to the user's plan so a free user can never trigger a full 31-exchange
-  // live scan (that's what was timing out and surfacing as a network error).
-  try {
-    if (userId) {
-      const limits = await getSubscriptionLimits(userId);
-      if (exchanges.length > limits.maxExchanges) {
-        exchanges = exchanges.slice(0, limits.maxExchanges);
-      }
-    }
-  } catch {
-    // If we can't read plan limits, proceed with the requested set.
+  if (exchanges.length > maxAllowed) {
+    exchanges = exchanges.slice(0, maxAllowed);
   }
 
   const key = arbOppKey(exchanges);
@@ -234,12 +233,11 @@ router.get('/arbitrage/opportunities', async (req, res) => {
     // (the warm full-set cache counts as a superset), refresh in the background.
     let cached = getCachedScan(exchanges);
     if (!cached) {
-      // Cold start: a warm-up scan may already be running (or about to). Ride
-      // it instead of firing our own cold live scan — otherwise the user's
-      // request and the warm-up would scan concurrently and saturate the box.
+      // Cold start: a warm-up scan may already be running. Wait up to 2s for it,
+      // then proceed with a fast scan if still cold.
       const warm = getWarmupPromise();
       if (warm) {
-        await warm;
+        await Promise.race([warm, new Promise((r) => setTimeout(r, 2000))]);
         cached = getCachedScan(exchanges);
       }
     }
@@ -510,10 +508,28 @@ router.get('/arbitrage/backtest', requireSubscription('pro'), validate(backtestS
 // Spot-Futures (cash-and-carry) snapshot for a single pair: spot price, perp
 // mark, basis %, funding rate and the annualized yield of longing spot +
 // shorting the perp to collect funding.
-router.get('/arbitrage/spot-futures', requireSubscription('pro'), async (req, res) => {
+router.get('/arbitrage/spot-futures', optionalAuth, async (req, res) => {
   try {
-    const exchange = (req.query.exchange as string) || 'binance';
-    const pair = (req.query.pair as string) || 'BTCUSDT';
+    const exchange = ((req.query.exchange as string) || 'binance').toLowerCase();
+    const pair = ((req.query.pair as string) || 'BTCUSDT').toUpperCase();
+    const isDefaultPreview = exchange === 'binance' && pair === 'BTCUSDT';
+
+    if (!isDefaultPreview) {
+      const authReq = req as AuthenticatedRequest;
+      const userId = authReq.userId;
+      let sub = 'free';
+      if (userId) {
+        const userRow = await prisma.user.findUnique({
+          where: { telegramId: userId },
+          select: { subscription: true },
+        });
+        sub = userRow?.subscription || 'free';
+      }
+      if (sub !== 'pro' && sub !== 'proplus') {
+        return sendError(res, 403, 'Pro subscription required for custom Spot-Futures pairs', 'PRO_REQUIRED');
+      }
+    }
+
     const data = await getSpotFutures(exchange, pair);
     res.json({ ok: true, ...data, supportedExchanges: SF_SUPPORTED_EXCHANGES });
   } catch (e) {
@@ -562,6 +578,7 @@ router.post('/live/batch', validate(liveBatchSchema), validateLiveBatchExchanges
     const requests = req.body.requests;
     const prices: Record<string, number> = {};
     const funding: Record<string, any> = {};
+    const latencies: Record<string, number> = {};
 
     await Promise.all(
       requests.map(async (r: any) => {
@@ -570,10 +587,17 @@ router.post('/live/batch', validate(liveBatchSchema), validateLiveBatchExchanges
         const symbols = r.symbols.map((s: string) => s.trim()).filter(Boolean);
         if (symbols.length === 0) return;
 
+        const start = performance.now();
         const [priceMap, fundingMap] = await Promise.all([
           getLivePriceBatch(exchange, symbols),
           getLiveFundingBatch(exchange, symbols),
         ]);
+        const elapsed = Math.round(performance.now() - start);
+        if (elapsed > 0) {
+          recordExchangeLatency(exchange, elapsed);
+        }
+        latencies[exchange] = getExchangeLatency(exchange);
+
         for (const [s, p] of Object.entries(priceMap as Record<string, number>)) {
           if (typeof p === 'number' && isFinite(p) && p > 0) prices[`${exchange}:${s.toUpperCase()}`] = p;
         }
@@ -585,7 +609,7 @@ router.post('/live/batch', validate(liveBatchSchema), validateLiveBatchExchanges
       })
     );
 
-    res.json({ ok: true, prices, funding });
+    res.json({ ok: true, prices, funding, latencies });
   } catch (e) {
     const error = e as Error;
     logger.error({ err: error }, 'Live batch error');

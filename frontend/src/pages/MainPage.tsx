@@ -13,7 +13,6 @@ import { ExchangeSelect } from '../components/ExchangeSelect';
 import { HistoryChart } from '../components/HistoryChart';
 import { FundingCalendar } from '../components/FundingCalendar';
 import { CountdownTimer } from '../components/CountdownTimer';
-import { QuickStart } from '../components/QuickStart';
 import { PairMatrix } from '../components/PairMatrix';
 import { RiskProfileModal } from '../components/RiskProfileModal';
 import { ResultSkeleton } from '../components/Skeleton';
@@ -311,8 +310,6 @@ export function MainPage() {
       </div>
 
       <InstallBanner />
-
-      <QuickStart hasScanResults={Boolean(scanResults)} selectedCount={selectedExchanges.length} />
 
       {!planLimits.aiEnabled && <ActivationChecklist />}
 

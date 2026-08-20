@@ -5,7 +5,7 @@ import { toExchangeResult } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
-const HELIX_BASE = 'https://k8s.mainnet.exchange.gm.injective.network/api/exchange/v1';
+const HELIX_BASE = 'https://sentry.lcd.injective.network';
 const HELIX_INTERVAL = KNOWN_INTERVALS.HOURLY; // 1h fixed
 
 export async function scanHelix(): Promise<ExchangeResult[]> {
@@ -14,41 +14,48 @@ export async function scanHelix(): Promise<ExchangeResult[]> {
     const client = getOrCreateClient(HELIX_BASE, 30000);
 
     const markets = await cachedRequest(
-      'helix:perpetual-markets',
+      'helix:derivative-markets',
       async () => {
-        const res = await retry(() => client.get('/perpetual-markets'));
-        return res.data?.data || res.data || [];
+        try {
+          const res = await retry(() => client.get('/injective/exchange/v1beta1/derivative/markets'));
+          return res.data?.markets || res.data?.data || [];
+        } catch {
+          const altClient = getOrCreateClient('https://injective-rest.publicnode.com', 30000);
+          const res2 = await retry(() => altClient.get('/injective/exchange/v1beta1/derivative/markets'));
+          return res2.data?.markets || res2.data?.data || [];
+        }
       },
       60_000
     );
 
     const candidates = (markets as any[])
-      .filter((m) => m && m.marketId && m.marketId.toLowerCase().includes('perp'))
-      .slice(0, 250);
+      .filter((m) => m && m.market && (m.market.ticker?.includes('PERP') || m.market.isPerpetual));
     logger.info(`Helix: Processing ${candidates.length} perp markets`);
 
     const results = (candidates as any[]).map((m: any) => {
-      const symbol = m.marketId; // e.g. btcusdt-perp
+      const ticker = String(m.market?.ticker || '');
+      const cleanContract = ticker.replace(/\s+/g, '').replace('/', '').replace('PERP', 'PERP'); // e.g. BTCUSDT-PERP or BTC/USDT PERP
       try {
-        const currentFunding = safeParseFloat(m.fundingRate);
-        const mark = safeParseFloat(m.markPrice) || safeParseFloat(m.oraclePrice);
-        const vol24 = safeParseFloat(m.volume24h) || safeParseFloat(m.takerVolume) || 0;
-        const nextFunding = toMs(m.nextFundingTimestamp) || 0;
+        const perpInfo = m.perpetual_info?.market_info || {};
+        const hourlyRate = safeParseFloat(perpInfo.hourly_funding_rate_cap ?? perpInfo.hourly_interest_rate ?? 0);
+        const mark = safeParseFloat(m.mark_price) / Math.pow(10, safeParseFloat(m.market?.quote_decimals, 6) || 6);
+        const intervalSec = safeParseFloat(perpInfo.funding_interval, 3600);
+        const nextFunding = toMs(perpInfo.next_funding_timestamp) || 0;
 
-        upsertContractMetadata({ exchange: 'helix', contract: symbol }).catch(() => {});
+        upsertContractMetadata({ exchange: 'helix', contract: ticker }).catch(() => {});
 
         return toExchangeResult({
           exchange: 'helix',
-          contract: symbol,
-          currentFunding,
-          fundingIntervalSeconds: HELIX_INTERVAL,
-          fundingIntervalSource: 'default',
+          contract: ticker || cleanContract,
+          currentFunding: hourlyRate,
+          fundingIntervalSeconds: intervalSec > 0 ? intervalSec : HELIX_INTERVAL,
+          fundingIntervalSource: perpInfo.funding_interval ? 'api' : 'default',
           fundingNextApply: nextFunding,
-          markPrice: mark,
-          volume24hSettle: vol24,
+          markPrice: mark ?? 0,
+          volume24hSettle: 0,
         });
       } catch (err) {
-        logger.debug(`Helix: Error ${symbol} — ${(err as Error).message}`);
+        logger.debug(`Helix: Error ${ticker} — ${(err as Error).message}`);
         return null;
       }
     });

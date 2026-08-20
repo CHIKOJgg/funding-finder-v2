@@ -1,12 +1,11 @@
 import { ExchangeResult, KNOWN_INTERVALS } from '../types/index.js';
-import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest } from '../utils/exchangeClient.js';
-import { normalizeFundingRate } from '../utils/helpers.js';
+import { retry, getOrCreateClient, cachedRequest, safeParseFloat, toMs } from '../utils/exchangeClient.js';
+import { toExchangeResult } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { upsertOpenInterest, upsertLongShortRatio } from '../services/marketDataService.js';
 import { logger } from '../utils/logger.js';
 
 const KUCOIN_BASE = 'https://api-futures.kucoin.com';
-const CONCURRENCY = 3;
 const KUCOIN_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR;
 
 export async function scanKuCoin(): Promise<ExchangeResult[]> {
@@ -25,10 +24,10 @@ export async function scanKuCoin(): Promise<ExchangeResult[]> {
         );
         const all = res.data?.data || [];
         return all.filter(
-          (s: any) => s.status === 'Open' && s.settleCurrency === 'USDT' && s.isInverse === false
+          (s: any) => s.status === 'Open' && (s.settleCurrency === 'USDT' || s.quoteCurrency === 'USDT' || s.quoteCurrency === 'USDC') && s.isInverse === false
         );
       },
-      300_000
+      60_000
     );
 
     if (!symbols.length) {
@@ -36,96 +35,67 @@ export async function scanKuCoin(): Promise<ExchangeResult[]> {
       return [];
     }
 
-    const tickerSymbols = symbols
-      .sort((a: any, b: any) => Number(b.turnoverOf24h || 0) - Number(a.turnoverOf24h || 0))
-      .slice(0, 200)
-      .map((s: any) => s.symbol);
+    logger.info(`KuCoin: Processing ${symbols.length} active contracts`);
 
-    const tickers = await cachedRequest(
-      'kucoin:tickers',
-      async () => {
-        return symbols.filter((s: any) => tickerSymbols.includes(s.symbol));
-      },
-      60_000
-    );
+    const results = symbols.map((ticker: any) => {
+      const symbol = ticker.symbol;
+      try {
+        const fundingRateStr = ticker.fundingFeeRate
+          ?? ticker.fundingRate
+          ?? ticker.predictedFundingFeeRate
+          ?? ticker.funding_rate
+          ?? '';
+        if (fundingRateStr === '') return null;
 
-    const tickerMap = new Map<string, any>();
-    for (const t of tickers) {
-      tickerMap.set(t.symbol, t);
-    }
+        const currentFunding = parseFloat(String(fundingRateStr));
+        if (!Number.isFinite(currentFunding)) return null;
 
-    const results = await mapWithConcurrency(
-      tickerSymbols,
-      { concurrency: CONCURRENCY },
-      async (symbol: string) => {
-        try {
-          const ticker = tickerMap.get(symbol);
-          if (!ticker) return null;
+        const mark = safeParseFloat(ticker.markPrice ?? ticker.mark_price ?? ticker.lastTradePrice ?? 0);
+        const vol24 = safeParseFloat(ticker.turnoverOf24h ?? ticker.turnover24h ?? ticker.volCcy24h ?? 0);
+        const oiUsd = safeParseFloat(ticker.openInterest ?? ticker.open_interest ?? 0) * (mark > 0 ? mark : 1);
+        const nextFunding = toMs(ticker.nextFundingRateDateTime) || 0;
+        const granularityMs = safeParseFloat(ticker.fundingRateGranularity ?? ticker.currentFundingRateGranularity, 28800000);
+        const intervalSeconds = granularityMs > 0 ? granularityMs / 1000 : KUCOIN_INTERVAL;
 
-          const fundingRateStr = ticker.fundingRate
-            ?? ticker.fundingFeeRate
-            ?? ticker.predictedFundingFeeRate
-            ?? ticker.funding_rate
-            ?? '';
-          if (!fundingRateStr) return null;
-
-          const currentFunding = parseFloat(fundingRateStr);
-          if (!Number.isFinite(currentFunding)) return null;
-
-          const mark = parseFloat(ticker.markPrice ?? ticker.mark_price ?? 0);
-          const vol24 = parseFloat(ticker.turnoverOf24h ?? ticker.turnover24h ?? ticker.volCcy24h ?? 0);
-
-          const oiUsd = parseFloat(ticker.openInterest ?? ticker.open_interest ?? 0) || 0;
-          if (oiUsd > 0) {
-            upsertOpenInterest('kucoin', symbol, oiUsd).catch(() => {});
-          }
-
-          const lsrBase = ticker.longShortRatio ?? ticker.long_short_ratio;
-          if (lsrBase) {
-            const lsr = parseFloat(lsrBase);
-            if (Number.isFinite(lsr) && lsr > 0) {
-              upsertLongShortRatio('kucoin', symbol, lsr).catch(() => {});
-            }
-          }
-
-          upsertContractMetadata({
-            exchange: 'kucoin',
-            contract: symbol,
-            settleCurrency: 'USDT',
-            baseCurrency: ticker.baseCurrency ?? ticker.base_currency,
-            quoteCurrency: ticker.quoteCurrency ?? ticker.quote_currency,
-            maxLeverage: ticker.maxLeverage ?? ticker.max_leverage,
-          }).catch(() => {});
-
-          const normalized = normalizeFundingRate(currentFunding, KUCOIN_INTERVAL);
-
-          return {
-            exchange: 'kucoin',
-            contract: symbol,
-            currentFunding,
-            funding_interval_seconds: KUCOIN_INTERVAL,
-            funding_interval_hours: KUCOIN_INTERVAL / 3600,
-            funding_interval_source: 'default' as const,
-            funding_rate_per_hour: normalized.perHour,
-            funding_rate_per_day: normalized.perDay,
-            annualized_rate: normalized.annualized,
-            funding_next_apply: 0,
-            time_until_next_funding_seconds: 0,
-            mark_price: mark,
-            volume_24h_settle: vol24,
-            openInterest: oiUsd,
-            openInterestUsd: oiUsd,
-            med_seconds: KUCOIN_INTERVAL,
-            med_hours: KUCOIN_INTERVAL / 3600,
-          };
-        } catch (err) {
-          logger.debug(`KuCoin: Error processing ${symbol} — ${(err as Error).message}`);
-          return null;
+        if (oiUsd > 0) {
+          upsertOpenInterest('kucoin', symbol, oiUsd).catch(() => {});
         }
-      }
-    );
 
-    const valid = results.filter((r) => r !== null) as ExchangeResult[];
+        const lsrBase = ticker.longShortRatio ?? ticker.long_short_ratio;
+        if (lsrBase) {
+          const lsr = parseFloat(lsrBase);
+          if (Number.isFinite(lsr) && lsr > 0) {
+            upsertLongShortRatio('kucoin', symbol, lsr).catch(() => {});
+          }
+        }
+
+        upsertContractMetadata({
+          exchange: 'kucoin',
+          contract: symbol,
+          settleCurrency: ticker.settleCurrency || 'USDT',
+          baseCurrency: ticker.baseCurrency ?? ticker.base_currency,
+          quoteCurrency: ticker.quoteCurrency ?? ticker.quote_currency,
+          maxLeverage: ticker.maxLeverage ?? ticker.max_leverage,
+        }).catch(() => {});
+
+        return toExchangeResult({
+          exchange: 'kucoin',
+          contract: symbol,
+          currentFunding,
+          fundingIntervalSeconds: intervalSeconds,
+          fundingIntervalSource: ticker.fundingRateGranularity ? 'api' : 'default',
+          fundingNextApply: nextFunding,
+          markPrice: mark,
+          volume24hSettle: vol24,
+          openInterestUsd: oiUsd > 0 ? oiUsd : undefined,
+        });
+      } catch (err) {
+        logger.debug(`KuCoin: Error processing ${symbol} — ${(err as Error).message}`);
+        return null;
+      }
+    });
+
+    const valid = results.filter((r: any): r is ExchangeResult => r !== null);
     logger.info(`KuCoin scan completed: ${valid.length} results`);
     return valid;
   } catch (err: any) {

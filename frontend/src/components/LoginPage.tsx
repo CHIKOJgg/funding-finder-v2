@@ -317,7 +317,7 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
 
         <div className="flex items-center gap-2 mb-4">
           <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('login.orEmail')}</span>
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('login.orOther')}</span>
           <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
         </div>
 
@@ -347,7 +347,7 @@ export function LoginPage({ onAuthenticated }: LoginProps) {
         )}
 
         <button onClick={handleGuest} disabled={loading} className="btn btn-secondary w-full text-sm">
-          {t('login.devGuest') || 'Продолжить как гость'}
+          {t('login.guestBtn')}
         </button>
 
         <p className="text-center text-xs mt-4" style={{ color: 'var(--text-muted)' }}>

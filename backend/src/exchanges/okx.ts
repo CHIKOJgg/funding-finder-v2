@@ -1,12 +1,12 @@
 import { ExchangeResult, KNOWN_INTERVALS } from '../types/index.js';
 import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest } from '../utils/exchangeClient.js';
-import { normalizeFundingRate } from '../utils/helpers.js';
+import { toExchangeResult } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { upsertOpenInterest, upsertLongShortRatio } from '../services/marketDataService.js';
 import { logger } from '../utils/logger.js';
 
 const OKX_BASE = 'https://www.okx.com';
-const MAX_CONCURRENCY = 3;
+const MAX_CONCURRENCY = 5;
 const OKX_INTERVAL = KNOWN_INTERVALS.EIGHT_HOUR; // OKX is always 8h
 
 // Fetch OI for a single symbol (OKX requires per-symbol call)
@@ -68,48 +68,49 @@ export async function scanOKX(): Promise<ExchangeResult[]> {
     const client = getOrCreateClient(OKX_BASE, 30000);
 
     // Use cached instruments
-    const instruments = await cachedRequest(
-      'okx:instruments:swap',
-      async () => {
-        const res = await retry(() =>
-          client.get('/api/v5/public/instruments', {
-            params: { instType: 'SWAP' },
-          })
-        );
-        return res.data.data || [];
-      },
-      300_000  // Cache for 5 minutes (instruments rarely change)
-    );
+    const [instruments, tickers] = await Promise.all([
+      cachedRequest(
+        'okx:instruments:swap',
+        async () => {
+          const res = await retry(() =>
+            client.get('/api/v5/public/instruments', {
+              params: { instType: 'SWAP' },
+            })
+          );
+          return res.data.data || [];
+        },
+        300_000 // Cache for 5 minutes
+      ),
+      cachedRequest(
+        'okx:tickers:swap',
+        async () => {
+          const res = await retry(() =>
+            client.get('/api/v5/market/tickers', {
+              params: { instType: 'SWAP' },
+            })
+          );
+          return res.data.data || [];
+        },
+        60_000
+      ),
+    ]);
 
     logger.info(`OKX: Found ${instruments.length} SWAP instruments`);
-
-    const usdtInstruments = instruments
-      .filter((i: any) => i.instId && i.instId.includes('-USDT-') && i.state === 'live')
-      .slice(0, 200);
-    logger.info(`OKX: Processing ${usdtInstruments.length} USDT instruments`);
-
-    // Use cached tickers
-    const tickers = await cachedRequest(
-      'okx:tickers:swap',
-      async () => {
-        const res = await retry(() =>
-          client.get('/api/v5/market/tickers', {
-            params: { instType: 'SWAP' },
-          })
-        );
-        return res.data.data || [];
-      },
-      60_000
-    );
 
     const tickerMap = new Map<string, any>();
     for (const t of tickers) {
       tickerMap.set(t.instId, t);
     }
 
+    const usdtInstruments = instruments
+      .filter((i: any) => i.instId && (i.instId.includes('-USDT-') || i.instId.includes('-USDC-')) && i.state === 'live')
+      .sort((a: any, b: any) => Number(tickerMap.get(b.instId)?.volCcy24h || 0) - Number(tickerMap.get(a.instId)?.volCcy24h || 0));
+
+    logger.info(`OKX: Processing ${usdtInstruments.length} USDT instruments`);
+
     const results = await mapWithConcurrency(
       usdtInstruments,
-      { concurrency: MAX_CONCURRENCY },
+      { concurrency: MAX_CONCURRENCY, delayMs: 25 },
       async (instr: any) => {
         const symbol = instr.instId;
         try {
@@ -128,73 +129,37 @@ export async function scanOKX(): Promise<ExchangeResult[]> {
             maxLeverage: instr.lever ? parseInt(instr.lever) : undefined,
           }).catch(() => {});
 
-           // Tickers do not include funding fields. Use the documented public
-           // funding endpoint and cache each instrument briefly.
-           const funding = await cachedRequest(`okx:funding:${symbol}`, async () => {
-             const res = await retry(() => client.get('/api/v5/public/funding-rate', { params: { instId: symbol } }));
-             return res.data?.data?.[0] || null;
-           }, 60_000);
-            const currentFunding = parseFloat(funding?.fundingRate) || 0;
-            // OKX returns nextFundingTime/fundingTime as ISO-8601 strings; parse
-            // them properly (Number() on an ISO string yields NaN → 0).
-            const nextRaw = funding?.nextFundingTime || funding?.fundingTime;
-            const nextFundingTime = nextRaw ? new Date(nextRaw).getTime() : 0;
+          // Tickers do not include funding fields. Use the documented public
+          // funding endpoint and cache each instrument briefly.
+          const funding = await cachedRequest(
+            `okx:funding:${symbol}`,
+            async () => {
+              const res = await retry(
+                () => client.get('/api/v5/public/funding-rate', { params: { instId: symbol }, timeout: 8000 }),
+                2,
+                200
+              );
+              return res.data?.data?.[0] || null;
+            },
+            120_000
+          );
+          const currentFunding = parseFloat(funding?.fundingRate) || 0;
+          const nextRaw = funding?.nextFundingTime || funding?.fundingTime;
+          const nextFundingTime = nextRaw ? (Number(nextRaw) > 0 && Number(nextRaw) < 1e12 ? Number(nextRaw) * 1000 : Number(nextRaw)) || new Date(nextRaw).getTime() || 0 : 0;
 
-           const mark = parseFloat(ticker.last) || 0;
-           const vol24 = parseFloat(ticker.volCcy24h) || parseFloat(ticker.vol24h) || 0;
+          const mark = parseFloat(ticker.last) || 0;
+          const vol24 = parseFloat(ticker.volCcy24h) || parseFloat(ticker.vol24h) || 0;
 
-           // Fetch OI and Long/Short ratio (OKX requires per-symbol calls here)
-           let oiUsd = 0;
-           let longShortRatio: number | null = null;
-           let longAccountRatio: number | null = null;
-           let shortAccountRatio: number | null = null;
-
-           try {
-             const oi = await fetchOkxOpenInterest(client, symbol);
-             oiUsd = oi;
-             upsertOpenInterest('okx', symbol, oi).catch(() => {});
-           } catch { /* OI not critical */ }
-
-           try {
-             const lsr = await fetchOkxLongShortRatio(client, symbol);
-             if (lsr) {
-               longShortRatio = lsr.longShortRatio;
-               longAccountRatio = lsr.longAccountRatio;
-               shortAccountRatio = lsr.shortAccountRatio;
-               upsertLongShortRatio('okx', symbol, lsr.longShortRatio, lsr.longAccountRatio, lsr.shortAccountRatio).catch(() => {});
-             }
-           } catch { /* LSR not critical */ }
-
-           // OKX is always 8h
-           const normalized = normalizeFundingRate(currentFunding, OKX_INTERVAL);
-
-           // Calculate time until next funding
-           const now = Date.now();
-           const timeUntilNext = nextFundingTime > now ? Math.floor((nextFundingTime - now) / 1000) : null;
-
-           return {
-             exchange: 'okx',
-             contract: symbol,
-             currentFunding,
-             funding_interval_seconds: OKX_INTERVAL,
-             funding_interval_hours: OKX_INTERVAL / 3600,
-             funding_interval_source: 'default' as const,
-             funding_rate_per_hour: normalized.perHour,
-             funding_rate_per_day: normalized.perDay,
-             annualized_rate: normalized.annualized,
-             funding_next_apply: nextFundingTime,
-             time_until_next_funding_seconds: timeUntilNext,
-             mark_price: mark,
-             volume_24h_settle: vol24,
-             openInterest: oiUsd,
-             openInterestUsd: oiUsd,
-             longShortRatio,
-             longAccountRatio,
-             shortAccountRatio,
-             // Legacy fields
-             med_seconds: OKX_INTERVAL,
-             med_hours: OKX_INTERVAL / 3600,
-           };
+          return toExchangeResult({
+            exchange: 'okx',
+            contract: symbol,
+            currentFunding,
+            fundingIntervalSeconds: OKX_INTERVAL,
+            fundingIntervalSource: 'default',
+            fundingNextApply: nextFundingTime,
+            markPrice: mark,
+            volume24hSettle: vol24,
+          });
         } catch (err) {
           logger.debug(`OKX: Error processing ${symbol} — ${(err as Error).message}`);
           return null;
@@ -202,7 +167,7 @@ export async function scanOKX(): Promise<ExchangeResult[]> {
       }
     );
 
-    const valid = results.filter((r) => r !== null) as ExchangeResult[];
+    const valid = results.filter((r): r is ExchangeResult => r !== null);
     logger.info(`OKX scan complete: ${valid.length} valid results`);
     return valid;
   } catch (err: any) {

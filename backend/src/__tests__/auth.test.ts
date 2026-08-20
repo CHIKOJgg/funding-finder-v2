@@ -1,9 +1,9 @@
 import crypto from 'crypto';
 
-function createTelegramInitData(botToken: string, user: { id: number; first_name: string }): string {
+function createTelegramInitData(botToken: string, user: { id: number; first_name: string }, fixedDate?: string): string {
   const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
   const userStr = JSON.stringify(user);
-  const authDate = Math.floor(Date.now() / 1000).toString();
+  const authDate = fixedDate || Math.floor(Date.now() / 1000).toString();
 
   const urlParams = new URLSearchParams();
   urlParams.set('auth_date', authDate);
@@ -40,8 +40,9 @@ describe('Telegram initData validation', () => {
 
   it('should produce same hash for same data', () => {
     const user = { id: 123456, first_name: 'Test' };
-    const data1 = createTelegramInitData(testToken, user);
-    const data2 = createTelegramInitData(testToken, user);
+    const fixedDate = '1700000000';
+    const data1 = createTelegramInitData(testToken, user, fixedDate);
+    const data2 = createTelegramInitData(testToken, user, fixedDate);
     const hash1 = new URLSearchParams(data1).get('hash');
     const hash2 = new URLSearchParams(data2).get('hash');
     expect(hash1).toBe(hash2);

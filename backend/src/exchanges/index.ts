@@ -78,7 +78,7 @@ export const SUPPORTED_EXCHANGES: string[] = Object.keys(EXCHANGE_SCANNERS);
  */
 export async function scanExchanges(exchanges: string[]): Promise<ExchangeResult[]> {
   const allResults: ExchangeResult[] = [];
-  const BATCH_SIZE = 3; // Scan 3 exchanges in parallel
+  const BATCH_SIZE = 8; // Scan 8 exchanges in parallel for fast response
 
   // Split exchanges into batches
   const batches: string[][] = [];
@@ -115,7 +115,7 @@ export async function scanExchanges(exchanges: string[]): Promise<ExchangeResult
 
     // Small delay between batches
     if (batchIndex < batches.length - 1) {
-      await sleep(500);
+      await sleep(100);
     }
   }
 

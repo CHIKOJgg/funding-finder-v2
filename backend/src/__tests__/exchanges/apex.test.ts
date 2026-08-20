@@ -17,11 +17,19 @@ beforeEach(() => {
 describe('scanApex', () => {
   it('returns normalized ExchangeResult[] for ApeX', async () => {
     mock.routeGet({
-      '/symbols': {
-        data: [{ symbol: 'BTCUSDT', contractType: 'PERPETUAL' }],
-      },
-      '/ticker': {
-        data: { fundingRate: '0.0001', markPrice: '50000', turnover24h: '5000000' },
+      '/api/v1/symbols': {
+        data: {
+          perpetualContract: [
+            {
+              symbol: 'BTC-USDT',
+              symbolDisplayName: 'BTCUSDT',
+              enableTrade: true,
+              fundingInterestRate: '0.0001',
+              underlyingCurrencyId: 'BTC',
+              settleCurrencyId: 'USDT',
+            },
+          ],
+        },
       },
     });
 

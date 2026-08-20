@@ -180,6 +180,25 @@ export interface ArbitrageOpportunity {
   risk: RiskAssessment;
   score: number;
   timestamp: number;
+  persistenceGrade?: string;
+
+  // Settlement Timing & Synchronization
+  nextApplyA?: number;             // Epoch ms of next funding payout on exchange A
+  nextApplyB?: number;             // Epoch ms of next funding payout on exchange B
+  sameSettlementTime?: boolean;    // True if both exchanges settle at the exact same time
+  settlementDeltaMinutes?: number; // Time difference between settlement cycles in minutes
+  sameInterval?: boolean;          // True if intervalA_hours === intervalB_hours
+
+  // Exchange Response Latencies (in ms)
+  latencyA?: number;               // Measured API ping for exchange A
+  latencyB?: number;               // Measured API ping for exchange B
+
+  // New metrics v2
+  netApr?: number;
+  paybackDays?: number;
+  stabilityGrade?: string;
+  aliveHours?: number;
+  winRate30d?: number;
 }
 
 export interface ProfitCalculation {

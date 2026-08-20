@@ -478,24 +478,21 @@ router.patch('/withdrawals/:id/complete', async (req: AuthenticatedRequest, res:
     const { id } = req.params;
     const { transactionId } = req.body;
 
-    const withdrawal = await prisma.withdrawal.findUnique({ where: { id } });
-    if (!withdrawal) {
-      return res.status(404).json({ ok: false, error: 'Withdrawal not found' });
-    }
-    if (withdrawal.status !== 'pending') {
-      return res.status(400).json({ ok: false, error: `Cannot complete withdrawal with status ${withdrawal.status}` });
-    }
-
-    const updated = await prisma.withdrawal.update({
-      where: { id },
+    const updated = await prisma.withdrawal.updateMany({
+      where: { id, status: 'pending' },
       data: {
         status: 'completed',
         transactionId: transactionId || null,
       },
     });
 
+    if (updated.count === 0) {
+      return res.status(400).json({ ok: false, error: 'Withdrawal not found or not in pending status' });
+    }
+
+    const finalWithdrawal = await prisma.withdrawal.findUnique({ where: { id } });
     logger.info({ adminId: req.userId, withdrawalId: id, transactionId }, 'Admin completed withdrawal');
-    res.json({ ok: true, withdrawal: updated });
+    res.json({ ok: true, withdrawal: finalWithdrawal });
   } catch (err) {
     logger.error('Admin complete withdrawal error:', err);
     res.status(500).json({ ok: false, error: 'Failed to complete withdrawal' });
@@ -515,25 +512,34 @@ router.patch('/withdrawals/:id/reject', async (req: AuthenticatedRequest, res: R
       return res.status(400).json({ ok: false, error: `Cannot reject withdrawal with status ${withdrawal.status}` });
     }
 
-    const [updatedWithdrawal, updatedUser] = await prisma.$transaction([
-      prisma.withdrawal.update({
-        where: { id },
+    const result = await prisma.$transaction(async (tx) => {
+      // Atomic status transition: only succeeds if status is still 'pending'
+      const updatedCount = await tx.withdrawal.updateMany({
+        where: { id, status: 'pending' },
         data: { status: 'rejected' },
-      }),
-      prisma.user.update({
+      });
+
+      if (updatedCount.count === 0) {
+        throw new Error('Withdrawal already processed');
+      }
+
+      const updatedUser = await tx.user.update({
         where: { telegramId: withdrawal.userId },
         data: { balance: { increment: withdrawal.amount } },
-      }),
-    ]);
+      });
+
+      const updatedWithdrawal = await tx.withdrawal.findUnique({ where: { id } });
+      return { updatedWithdrawal, newBalance: updatedUser.balance };
+    });
 
     logger.info(
       { adminId: req.userId, withdrawalId: id, refundedUserId: withdrawal.userId, amount: withdrawal.amount },
       'Admin rejected withdrawal and refunded balance'
     );
-    res.json({ ok: true, withdrawal: updatedWithdrawal, newBalance: updatedUser.balance });
+    res.json({ ok: true, withdrawal: result.updatedWithdrawal, newBalance: result.newBalance });
   } catch (err) {
     logger.error('Admin reject withdrawal error:', err);
-    res.status(500).json({ ok: false, error: 'Failed to reject withdrawal' });
+    res.status(500).json({ ok: false, error: (err as Error).message || 'Failed to reject withdrawal' });
   }
 });
 

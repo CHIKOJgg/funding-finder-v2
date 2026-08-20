@@ -1,66 +1,54 @@
 import { ExchangeResult } from '../types/index.js';
 import { KNOWN_INTERVALS } from '../types/index.js';
-import { mapWithConcurrency, retry, getOrCreateClient, cachedRequest, safeParseFloat } from '../utils/exchangeClient.js';
+import { retry, getOrCreateClient, cachedRequest, safeParseFloat } from '../utils/exchangeClient.js';
 import { toExchangeResult } from '../utils/helpers.js';
 import { upsertContractMetadata } from '../services/contractMetadata.js';
 import { logger } from '../utils/logger.js';
 
-const APEX_BASE = 'https://omni.apex.exchange/api/v3';
-const CONCURRENCY = 3;
-const APEX_INTERVAL = KNOWN_INTERVALS.HOURLY; // 1h fixed
-
-function deriveNextHourly(): number {
-  const now = Date.now();
-  const hourMs = 3600 * 1000;
-  return Math.ceil(now / hourMs) * hourMs;
-}
+const APEX_BASE = 'https://omni.apex.exchange';
+const APEX_INTERVAL = KNOWN_INTERVALS.HOURLY; // ApeX is 1h / 8h
 
 export async function scanApex(): Promise<ExchangeResult[]> {
   try {
     logger.info('Starting ApeX Omni scan...');
     const client = getOrCreateClient(APEX_BASE, 30000);
 
-    const symbols = await cachedRequest(
-      'apex:symbols',
+    const symbolsData = await cachedRequest(
+      'apex:v1:symbols',
       async () => {
-        const res = await retry(() => client.get('/symbols'));
-        // Defensive: the endpoint has returned both `{ data: [...] }` and a bare
-        // array across versions. Normalise to an array so the later `.filter`
-        // can never throw ("symbols.filter is not a function").
-        const raw = (res?.data?.data ?? res?.data) as unknown;
-        return Array.isArray(raw) ? raw : [];
+        const res = await retry(() => client.get('/api/v1/symbols'));
+        return res.data?.data || {};
       },
-      6 * 60 * 60 * 1000
+      5 * 60 * 1000
     );
 
-    const candidates = (symbols as any[])
-      .filter((s) => s && s.symbol && s.symbol.endsWith('USDT') && s.contractType === 'PERPETUAL')
-      .slice(0, 250);
+    const contracts: any[] = symbolsData.perpetualContract || symbolsData.contractConfig?.perpetualContract || [];
+    const candidates = contracts.filter((c) => c && c.enableTrade && (c.symbol || c.crossSymbolName));
+
     logger.info(`ApeX: Processing ${candidates.length} perp symbols`);
 
-    const results = await mapWithConcurrency(candidates, { concurrency: CONCURRENCY }, async (s: any) => {
-      const symbol = s.symbol; // BTCUSDT
+    const results = candidates.map((c: any) => {
+      const symbol = (c.symbolDisplayName || c.symbol || c.crossSymbolName || '').replace('-', '');
       try {
-        const tk = await retry(() => client.get('/ticker', { params: { symbol }, timeout: 10000 }));
-        const t = Array.isArray(tk.data?.data) ? tk.data.data[0] : tk.data?.data;
-        if (!t) return null;
+        const currentFunding = safeParseFloat(c.fundingInterestRate ?? c.fundingRate ?? c.predictedFundingRate);
+        const intervalSeconds = APEX_INTERVAL;
 
-        const currentFunding = safeParseFloat(t.fundingRate);
-        const mark = safeParseFloat(t.markPrice);
-        const vol24 = safeParseFloat(t.turnover24h) || safeParseFloat(t.volume24h);
-        const nextFunding = deriveNextHourly();
-
-        upsertContractMetadata({ exchange: 'apex', contract: symbol }).catch(() => {});
+        upsertContractMetadata({
+          exchange: 'apex',
+          contract: symbol,
+          baseCurrency: c.underlyingCurrencyId,
+          quoteCurrency: c.settleCurrencyId || 'USDC',
+        }).catch(() => {});
 
         return toExchangeResult({
           exchange: 'apex',
           contract: symbol,
           currentFunding,
-          fundingIntervalSeconds: APEX_INTERVAL,
+          fundingIntervalSeconds: intervalSeconds,
           fundingIntervalSource: 'default',
-          fundingNextApply: nextFunding,
-          markPrice: mark,
-          volume24hSettle: vol24,
+          fundingNextApply: 0,
+          markPrice: 0,
+          volume24hSettle: 0,
         });
       } catch (err) {
         logger.debug(`ApeX: Error ${symbol} — ${(err as Error).message}`);

@@ -52,6 +52,14 @@ export const en: Record<string, string> = {
   'filter.risk.low': 'LOW',
   'filter.risk.medium': 'MEDIUM',
   'filter.risk.high': 'HIGH',
+  'filter.settlementTiming': 'Funding settlement timing',
+  'filter.syncFundingOnly': 'Simultaneous settlement only (same second)',
+  'filter.syncFundingHint': 'Shows arbitrage pairs where funding payout occurs at the exact same moment on both exchanges (no timing lag).',
+  'filter.syncFundingPill': 'Simultaneous funding',
+  'arb.syncBadge': '⚡ Synchronized ({hours}h)',
+  'arb.asyncBadge': '⏳ Async ({hoursA}h vs {hoursB}h)',
+  'arb.syncSettlementNotice': 'Simultaneous funding settlement',
+  'arb.untilFundingBoth': 'Until settlement on {exA} & {exB}',
 
   // ExchangeSelect
   'exchangeSelect.all': 'All exchanges',
@@ -226,7 +234,12 @@ export const en: Record<string, string> = {
   'onboarding.step4Title': 'Step 3: Subscription and features',
   'onboarding.step4Desc': 'A Pro subscription adds AI analysis, capital recommendations, arbitrage opportunities, and CSV export.',
   'onboarding.next': 'Next →',
+  'onboarding.back': '← Back',
+  'onboarding.skip': 'Skip →',
   'onboarding.start': 'Start!',
+  'onboarding.title': 'Welcome to Funding Finder',
+  'onboarding.scanHint': 'Auto-scan 4 top exchanges with one click',
+  'onboarding.trialHint': '7 days free — all Pro features included',
   'onboarding.experienceTitle': 'What\'s your experience?',
   'onboarding.experienceDesc': 'We\'ll customize your experience based on your level.',
   'onboarding.expBeginner': 'Beginner',
@@ -293,7 +306,7 @@ export const en: Record<string, string> = {
 
   // Paywall
   'paywall.exchangesTitle': 'More exchanges',
-   'paywall.exchangesDesc': 'Your plan lets you scan a limited number of exchanges. Upgrade to Pro to scan up to 9 exchanges at once and find the best funding rates.',
+   'paywall.exchangesDesc': 'Your plan lets you scan a limited number of exchanges. Upgrade to Pro to scan up to 12 exchanges at once and find the best funding rates.',
   'paywall.aiTitle': 'AI Analysis',
   'paywall.aiDesc': 'AI breakdown of funding rates by a neural network is available on the Pro plan. Learn which pairs to hold and which to close.',
   'paywall.recommendationsTitle': 'Recommendations',
@@ -314,12 +327,12 @@ export const en: Record<string, string> = {
    'paywall.freeFeat1': '4 exchanges',
   'paywall.freeFeat2': '1 AI idea / day',
   'paywall.freeFeat3': 'Basic alerts',
-   'paywall.proFeat1': '9 exchanges',
+   'paywall.proFeat1': '12 exchanges',
   'paywall.proFeat2': 'Unlimited AI ideas',
   'paywall.proFeat3': 'Portfolio + auto-PnL',
   'paywall.proFeat4': 'Unlimited watchlist',
   'paywall.proFeat5': 'Arbitrage signals',
-   'paywall.proplusFeat1': 'All 21 exchanges',
+   'paywall.proplusFeat1': 'All 31 exchanges',
   'paywall.proplusFeat2': 'Priority AI analysis',
   'paywall.proplusFeat3': 'Personal support',
   'paywall.currentPlan': 'Current',
@@ -337,7 +350,7 @@ export const en: Record<string, string> = {
   'paywall.annualSavings': 'You save ${amount}/year',
   'paywall.equivalentTo': 'Equivalent to ${price}/',
   'paywall.exitOffer': 'Pro is billed monthly and can be canceled anytime.',
-   'paywall.exitOfferDesc': 'Free — 4 exchanges, Pro — 9, Pro+ — 21.',
+   'paywall.exitOfferDesc': 'Free — 4 exchanges, Pro — 12, Pro+ — 31.',
   'paywall.claimOffer': 'View plans',
   'paywall.maybeLater': 'Maybe later',
 
@@ -417,7 +430,7 @@ export const en: Record<string, string> = {
   'profile.apply': 'Apply',
   'profile.copyLink': 'Get link',
   'profile.linkCopied': 'Link copied',
-  'profile.shareText': 'Best funding rates across 26 exchanges right now — Funding Finder. Earn with me via referral:',
+  'profile.shareText': 'Best funding rates across 31 exchanges right now — Funding Finder. Earn with me via referral:',
   'profile.openBot': 'Open bot',
   'profile.share': 'Share',
   'profile.shareTelegram': 'Telegram',
@@ -453,6 +466,7 @@ export const en: Record<string, string> = {
   'profile.paymentHistory': 'Payment history',
   'profile.noPayments': 'No payments yet',
   'profile.withdrawalHistory': 'Withdrawal history',
+  'profile.withdraw': 'Withdraw',
   'profile.noWithdrawals': 'No withdrawals yet',
   'profile.settingsLink': 'Settings',
   'profile.termsLink': 'Terms of Service',
@@ -995,13 +1009,6 @@ export const en: Record<string, string> = {
   'main.sortAriaLabel': 'Sort results',
   'main.directionFlip': 'Direction flip',
 
-  // Onboarding (first-run overlay) — used WITHOUT `|| fallback`, so a missing
-  // key would render the raw key to every new user.
-  'onboarding.title': 'Welcome to Funding Finder',
-  'onboarding.skip': 'Skip →',
-   'onboarding.scanHint': 'Auto-scan 4 top exchanges with one click',
-  'onboarding.trialHint': '7 days free — all Pro features included',
-
   // Crypto checkout
   'crypto.openCryptoBot': 'Open Crypto Bot',
 
@@ -1013,4 +1020,48 @@ export const en: Record<string, string> = {
 
   // Public page
   'public.payback': 'Payback',
+
+  // Common
+  'common.dismiss': 'Dismiss',
+
+  // Audit additions — Activation checklist & streaks
+  'activation.streak': '{total}/{all} done — {remaining} remaining',
+  'activation.dayRetention': 'Day {day} — complete activation to see everything',
+  'activation.daysSince': '{days}d since start — finish setup',
+
+  // Trial feature pills
+  'trial.featAi': 'AI Analysis',
+  'trial.featPortfolio': 'Portfolio',
+  'trial.featExchanges': '31 Exchanges',
+
+  // Arbitrage strategies & risk
+  'arb.strategyLongShort': 'LONG on {longEx}, SHORT on {shortEx}',
+  'arb.strategyShortLong': 'SHORT on {shortEx}, LONG on {longEx}',
+  'arb.risk.low': 'LOW',
+  'arb.risk.medium': 'MEDIUM',
+  'arb.risk.high': 'HIGH',
+
+  // Login
+  'login.orOther': 'or continue with',
+  'login.guestBtn': 'Continue as guest',
+
+  // Support modal
+  'support.btnTitle': 'Contact support',
+  'support.title': 'Submit a Request',
+  'support.desc': 'Describe your question or task — we will contact you shortly.',
+  'support.nameLabel': 'Name (optional)',
+  'support.namePlaceholder': 'Your name',
+  'support.contactLabel': 'Contact (Telegram / email)',
+  'support.contactPlaceholder': '@username or email',
+  'support.messageLabel': 'Message',
+  'support.messagePlaceholder': 'Describe your request…',
+  'support.sendBtn': 'Submit request',
+  'support.sending': 'Submitting…',
+  'support.emptyError': 'Please describe your request',
+  'support.sentSuccess': 'Request submitted. We will contact you shortly.',
+
+  // Spot-Futures strategies
+  'sf.strategyLong': 'Long spot + Short perp — collect funding (~{netApy}%/yr net)',
+  'sf.strategyShort': 'Short spot + Long perp — collect negative funding (~{netApy}%/yr net)',
+  'sf.strategyLow': 'Funding too low to cover fees (~{netApy}%/yr net) — not recommended',
 };

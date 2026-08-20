@@ -7,7 +7,7 @@ export { sleep };
 
 // ==================== Cache ====================
 
-export const CACHE_MAX_SIZE = 500;
+export const CACHE_MAX_SIZE = 5000;
 
 interface CacheEntry<T> {
   data: T;

@@ -6,7 +6,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { SoftPaywallBanner } from '../components/SoftPaywallBanner';
 import { apiClient } from '../api/client';
 import { getRiskColor, formatPrice } from '../utils/formatters';
-import { openExchange, exchangeLabel } from '../utils/exchanges';
+import { openExchange, exchangeLabel, getEstimatedExchangeLatency } from '../utils/exchanges';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { ExchangeSelect } from '../components/ExchangeSelect';
 import { FilterBar, FilterField, SegmentedControl } from '../components/FilterBar';
@@ -16,6 +16,7 @@ import { Heatmap } from '../components/Heatmap';
 import { openLoginModal } from '../components/WebHeader';
 import { profitCalcClient, breakEvenDays, type ClientProfit } from '../utils/profitCalc';
 import { LiquidationHeatmap } from '../components/LiquidationHeatmap';
+import { LiveIndicator } from '../components/LiveIndicator';
 import {
   IconAlertTriangle,
   IconBell,
@@ -75,12 +76,18 @@ interface LiveFunding {
   nextApply: number;
 }
 
-function useArbLivePrices(opps: any[]): {
+function useArbLivePrices(opps: any[], enabled = true): {
   prices: Record<string, number>;
   funding: Record<string, LiveFunding>;
+  exchangeLatencies: Record<string, number>;
+  latencyMs: number | null;
+  lastUpdated: number | null;
 } {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [funding, setFunding] = useState<Record<string, LiveFunding>>({});
+  const [exchangeLatencies, setExchangeLatencies] = useState<Record<string, number>>({});
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   const byExchange = useMemo(() => {
     const map: Record<string, string[]> = {};
@@ -94,19 +101,19 @@ function useArbLivePrices(opps: any[]): {
 
   // One request per tick for ALL exchanges via the unified /live/batch
   // endpoint — this is the fix that stops per-exchange polling from tripping
-  // the rate limiter when many exchanges are selected. The response is keyed by
-  // `${exchange}:${SYMBOL}` so it maps straight onto livePriceKey.
+  // the rate limiter when many exchanges are selected.
   const depKey = useMemo(
     () => Object.entries(byExchange).map(([ex, syms]) => `${ex}:${[...syms].sort().join(',')}`).sort().join('|'),
     [byExchange]
   );
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     const requests = Object.entries(byExchange).map(([ex, syms]) => ({ exchange: ex, symbols: syms }));
     const load = async () => {
       try {
-        if (requests.length === 0) return;
+        if (requests.length === 0 || !enabled || document.hidden) return;
         const res: any = await apiClient.getLiveBatch(requests);
         if (!res?.ok) return;
         const nextPrices: Record<string, number> = {};
@@ -122,20 +129,25 @@ function useArbLivePrices(opps: any[]): {
         if (!cancelled) {
           setPrices((prev) => ({ ...prev, ...nextPrices }));
           setFunding((prev) => ({ ...prev, ...nextFunding }));
+          if (res.latencies && typeof res.latencies === 'object') {
+            setExchangeLatencies((prev) => ({ ...prev, ...res.latencies }));
+          }
+          setLatencyMs(res._latencyMs || apiClient.getLastLiveLatency() || null);
+          setLastUpdated(Date.now());
         }
       } catch {
         /* keep previous data on transient error */
       }
     };
     load();
-    const id = setInterval(load, 10_000);
+    const id = setInterval(load, 15_000);
     return () => {
       cancelled = true;
       clearInterval(id);
     };
-  }, [depKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [depKey, enabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { prices, funding };
+  return { prices, funding, exchangeLatencies, latencyMs, lastUpdated };
 }
 
 export function ArbitragePage() {
@@ -153,9 +165,10 @@ export function ArbitragePage() {
   const [exchangeFilter, setExchangeFilter] = useState<string[]>([]);
   const [minApy, setMinApy] = useState(0);
   const [pairQuery, setPairQuery] = useState('');
+  const [syncSettlementOnly, setSyncSettlementOnly] = useState(false);
   const [visibleCount, setVisibleCount] = useState(15);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const isGuest = !user?.provider || user.provider === 'guest';
+  const isGuest = (!user?.provider || user.provider === 'guest') && subscription === 'free';
 
   useEffect(() => {
     // Cache-first: these only fetch if data isn't already loaded (or in-flight),
@@ -229,6 +242,14 @@ export function ArbitragePage() {
       }
       if (minApy > 0 && (o.profit?.annualReturn ?? 0) < minApy) return false;
       if (q && !o.pair.toLowerCase().includes(q)) return false;
+      if (syncSettlementOnly) {
+        const isSync = o.sameSettlementTime ?? (
+          o.nextApplyA && o.nextApplyB
+            ? Math.abs(o.nextApplyA - o.nextApplyB) < 60_000
+            : o.intervalA_hours === o.intervalB_hours
+        );
+        if (!isSync) return false;
+      }
       return true;
     });
 
@@ -253,7 +274,7 @@ export function ArbitragePage() {
     });
 
     return sorted;
-  }, [arbOpportunities, arbSortBy, riskFilter, exchangeFilter, minApy, pairQuery]);
+  }, [arbOpportunities, arbSortBy, riskFilter, exchangeFilter, minApy, pairQuery, syncSettlementOnly]);
 
   const activeFilterCount = useMemo(() => {
     let n = 0;
@@ -262,8 +283,9 @@ export function ArbitragePage() {
     if (exchangeFilter.length > 0) n++;
     if (minApy > 0) n++;
     if (pairQuery.trim()) n++;
+    if (syncSettlementOnly) n++;
     return n;
-  }, [arbSortBy, riskFilter, exchangeFilter, minApy, pairQuery]);
+  }, [arbSortBy, riskFilter, exchangeFilter, minApy, pairQuery, syncSettlementOnly]);
 
   const resetFilters = useCallback(() => {
     setArbSortBy('apy');
@@ -271,6 +293,7 @@ export function ArbitragePage() {
     setExchangeFilter([]);
     setMinApy(0);
     setPairQuery('');
+    setSyncSettlementOnly(false);
     setVisibleCount(15);
   }, []);
 
@@ -293,10 +316,10 @@ export function ArbitragePage() {
   // Live prices for the symbols the user is actually looking at. Refreshed
   // every 10s inside the hook; falls back to each opportunity's mark price.
   const visibleOpportunities = useMemo(
-    () => filteredOpportunities.slice(0, visibleCount),
-    [filteredOpportunities, visibleCount]
+    () => (isGuest ? filteredOpportunities.slice(0, 1) : filteredOpportunities.slice(0, visibleCount)),
+    [filteredOpportunities, visibleCount, isGuest]
   );
-  const { prices: priceMap, funding: fundingMap } = useArbLivePrices(visibleOpportunities);
+  const { prices: priceMap, funding: fundingMap, exchangeLatencies, latencyMs: liveLatency, lastUpdated: liveFetchedAt } = useArbLivePrices(visibleOpportunities, activeTab === 'opportunities');
 
   return (
     <div className="px-3 py-4 sm:px-4">
@@ -307,20 +330,19 @@ export function ArbitragePage() {
         >
           ff
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="text-xl font-bold leading-tight text-[var(--text)]">{t('arb.title')}</h1>
-          <p className="text-sm text-muted leading-tight">{t('arb.subtitle')}</p>
+          <p className="text-sm text-muted leading-tight truncate">{t('arb.subtitle')}</p>
         </div>
-        <div className="flex items-center gap-1.5 text-xs shrink-0" title={lastUpdated ? t('arb.liveUpdated', { time: new Date(lastUpdated).toLocaleTimeString() }) : undefined}>
-          <span className="inline-block w-2 h-2 rounded-full bg-[var(--green)] animate-pulse" aria-hidden="true" />
-          <span className="text-[var(--green)] font-medium">{t('arb.live')}</span>
+        <div className="shrink-0">
+          <LiveIndicator latencyMs={liveLatency} lastUpdated={liveFetchedAt || lastUpdated} />
         </div>
       </div>
 
-      <div className="tab-strip mb-4" role="tablist">
+      <div className="tab-strip mb-4 flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth pb-1" role="tablist">
         <button
           onClick={() => setActiveTab('opportunities')}
-          className={clsx('py-2.5 px-4 rounded-xl font-medium transition-all', activeTab === 'opportunities' ? 'btn-primary' : 'btn-secondary')}
+          className={clsx('py-2 px-3.5 sm:py-2.5 sm:px-4 rounded-xl font-medium transition-all shrink-0 text-xs sm:text-sm whitespace-nowrap', activeTab === 'opportunities' ? 'btn-primary' : 'btn-secondary')}
           role="tab"
           aria-selected={activeTab === 'opportunities'}
         >
@@ -328,7 +350,7 @@ export function ArbitragePage() {
         </button>
         <button
           onClick={() => setActiveTab('alerts')}
-          className={clsx('py-2.5 px-4 rounded-xl font-medium transition-all', activeTab === 'alerts' ? 'btn-primary' : 'btn-secondary')}
+          className={clsx('py-2 px-3.5 sm:py-2.5 sm:px-4 rounded-xl font-medium transition-all shrink-0 text-xs sm:text-sm whitespace-nowrap', activeTab === 'alerts' ? 'btn-primary' : 'btn-secondary')}
           role="tab"
           aria-selected={activeTab === 'alerts'}
         >
@@ -336,7 +358,7 @@ export function ArbitragePage() {
         </button>
         <button
           onClick={() => setActiveTab('spotfutures')}
-          className={clsx('py-2.5 px-4 rounded-xl font-medium transition-all', activeTab === 'spotfutures' ? 'btn-primary' : 'btn-secondary')}
+          className={clsx('py-2 px-3.5 sm:py-2.5 sm:px-4 rounded-xl font-medium transition-all shrink-0 text-xs sm:text-sm whitespace-nowrap', activeTab === 'spotfutures' ? 'btn-primary' : 'btn-secondary')}
           role="tab"
           aria-selected={activeTab === 'spotfutures'}
         >
@@ -344,13 +366,13 @@ export function ArbitragePage() {
         </button>
         <button
           onClick={() => setActiveTab('heatmap')}
-          className={clsx('py-2.5 px-4 rounded-xl font-medium transition-all', activeTab === 'heatmap' ? 'btn-primary' : 'btn-secondary')}
+          className={clsx('py-2 px-3.5 sm:py-2.5 sm:px-4 rounded-xl font-medium transition-all shrink-0 text-xs sm:text-sm whitespace-nowrap', activeTab === 'heatmap' ? 'btn-primary' : 'btn-secondary')}
           role="tab"
           aria-selected={activeTab === 'heatmap'}
         >
           {t('heatmap.title')}
         </button>
-       </div>
+      </div>
 
       {activeTab === 'opportunities' && (
         <div className="card">
@@ -458,12 +480,45 @@ export function ArbitragePage() {
                   />
                 </FilterField>
 
+                <FilterField label={t('filter.settlementTiming')}>
+                  <label className="flex items-start gap-2 cursor-pointer text-sm select-none py-1">
+                    <input
+                      type="checkbox"
+                      checked={syncSettlementOnly}
+                      onChange={(e) => setSyncSettlementOnly(e.target.checked)}
+                      className="w-4 h-4 mt-0.5 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+                    />
+                    <div>
+                      <span className="font-medium text-[var(--text)]">{t('filter.syncFundingOnly')}</span>
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5">{t('filter.syncFundingHint')}</p>
+                    </div>
+                  </label>
+                </FilterField>
+
                 {activeFilterCount > 0 && (
                   <button onClick={resetFilters} className="btn btn-secondary text-sm py-2 w-full">
                     {t('common.resetFilters')}
                   </button>
                 )}
               </FilterBar>
+
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setSyncSettlementOnly((prev) => !prev)}
+                  className={clsx(
+                    'text-xs font-semibold px-3 py-1.5 rounded-full border transition-all flex items-center gap-1.5 cursor-pointer',
+                    syncSettlementOnly
+                      ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-sm'
+                      : 'bg-[var(--surface-2)] text-[var(--text-secondary)] border-[var(--border)] hover:border-[var(--text-muted)]'
+                  )}
+                  title={t('filter.syncFundingHint')}
+                >
+                  <span>⚡</span>
+                  <span>{t('filter.syncFundingPill')}</span>
+                  {syncSettlementOnly && <span className="ml-0.5 text-xs">✓</span>}
+                </button>
+              </div>
 
               {filteredOpportunities.length === 0 ? (
                   <div className="text-center py-8 text-[var(--text-muted)]">
@@ -485,6 +540,8 @@ export function ArbitragePage() {
                         opportunity={opp}
                         priceMap={priceMap}
                         fundingMap={fundingMap}
+                        exchangeLatencies={exchangeLatencies}
+                        latencyMs={liveLatency}
                         onCalculate={() => {
                           setSelectedOpportunity(opp);
                           setShowModal(true);
@@ -631,11 +688,15 @@ const OpportunityCard = memo(function OpportunityCard({
   opportunity: opp,
   priceMap,
   fundingMap,
+  exchangeLatencies,
+  latencyMs,
   onCalculate,
 }: {
   opportunity: any;
   priceMap?: Record<string, number>;
   fundingMap?: Record<string, { ratePerHour: number; intervalHours: number; rawRate: number; nextApply: number }>;
+  exchangeLatencies?: Record<string, number>;
+  latencyMs?: number | null;
   onCalculate: () => void;
 }) {
   const t = useT();
@@ -662,18 +723,64 @@ const OpportunityCard = memo(function OpportunityCard({
   const fundingB = fundB ? fundB.ratePerHour : opp.fundingB_per_hour;
   const intervalA = fundA ? fundA.intervalHours : opp.intervalA_hours;
   const intervalB = fundB ? fundB.intervalHours : opp.intervalB_hours;
+
+  const nextApplyA = fundA?.nextApply || opp.nextApplyA;
+  const nextApplyB = fundB?.nextApply || opp.nextApplyB;
+  const isSync = opp.sameSettlementTime ?? (
+    nextApplyA && nextApplyB
+      ? Math.abs(nextApplyA - nextApplyB) < 60_000
+      : intervalA === intervalB
+  );
+
+  const riskLevel = (opp.risk?.level || 'low').toLowerCase();
+  const riskBadgeText = t(`arb.risk.${riskLevel}`) || opp.risk?.level || 'LOW';
+
+  const labelA = exchangeLabel(opp.exchangeA);
+  const labelB = exchangeLabel(opp.exchangeB);
+
+  const strategyText = /SHORT on/i.test(opp.opportunity)
+    ? t('arb.strategyShortLong', { shortEx: labelA, longEx: labelB }) || `SHORT on ${labelA}, LONG on ${labelB}`
+    : t('arb.strategyLongShort', { longEx: labelA, shortEx: labelB }) || `LONG on ${labelA}, SHORT on ${labelB}`;
+
   return (
     <div className="opportunity-card">
       <div className="opportunity-head">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <strong className="text-base break-words font-mono">{opp.pair}</strong>
-            <span className={clsx('text-xs px-2 py-1 rounded-full', getRiskColor(opp.risk?.level))} title={t('arb.riskLevelTitle')}>
-              {opp.risk?.level}
+            <span className={clsx('text-xs px-2 py-1 rounded-full font-semibold', getRiskColor(opp.risk?.level))} title={t('arb.riskLevelTitle')}>
+              {riskBadgeText}
             </span>
+            {isSync ? (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--green-soft)] text-[var(--green)] border border-[var(--green)]/30 font-semibold flex items-center gap-1" title={t('arb.syncSettlementNotice')}>
+                {t('arb.syncBadge', { hours: intervalA })}
+              </span>
+            ) : (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--text-muted)] border border-[var(--border)] font-medium flex items-center gap-1">
+                {t('arb.asyncBadge', { hoursA: intervalA, hoursB: intervalB })}
+              </span>
+            )}
           </div>
           <div className="text-xs text-[var(--text-muted)] mt-2 font-mono" title={t('arb.untilFundingTitle')}>
-            <CountdownTimer intervalHours={opp.intervalA_hours} className="font-medium" showProgress /> {t('arb.untilFundingEx', { ex: opp.exchangeA })}
+            {isSync ? (
+              <div className="inline-flex items-center gap-1.5 flex-wrap">
+                <CountdownTimer intervalHours={intervalA} targetTimestamp={nextApplyA} className="font-semibold text-xs text-[var(--text)]" showProgress />
+                <span className="text-[11px] text-[var(--text-muted)]">
+                  {t('arb.untilFundingBoth', { exA: labelA, exB: labelB })}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="inline-flex items-center gap-1 bg-[var(--surface-2)] border border-[var(--border)] px-2 py-0.5 rounded-md">
+                  <span className="text-[10px] text-[var(--text-muted)] font-mono uppercase font-bold">{labelA}:</span>
+                  <CountdownTimer intervalHours={intervalA} targetTimestamp={nextApplyA} className="font-semibold text-[11px] text-[var(--text)]" />
+                </div>
+                <div className="inline-flex items-center gap-1 bg-[var(--surface-2)] border border-[var(--border)] px-2 py-0.5 rounded-md">
+                  <span className="text-[10px] text-[var(--text-muted)] font-mono uppercase font-bold">{labelB}:</span>
+                  <CountdownTimer intervalHours={intervalB} targetTimestamp={nextApplyB} className="font-semibold text-[11px] text-[var(--text)]" />
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="opportunity-hero">
@@ -691,7 +798,7 @@ const OpportunityCard = memo(function OpportunityCard({
 
       <div className="strategy-summary">
         <span className="section-title">{cleanLabel(t('arb.strategy'))}</span>
-        <strong>{opp.opportunity}</strong>
+        <strong>{strategyText}</strong>
       </div>
 
       <div className="section-block mt-4">
@@ -703,6 +810,7 @@ const OpportunityCard = memo(function OpportunityCard({
           funding={fundingA}
           interval={intervalA}
           live={!!fundA}
+          latencyMs={exchangeLatencies?.[opp.exchangeA] ?? opp.latencyA ?? latencyMs ?? getEstimatedExchangeLatency(opp.exchangeA)}
         />
         <ExchangePriceCell
           exchange={opp.exchangeB}
@@ -710,6 +818,7 @@ const OpportunityCard = memo(function OpportunityCard({
           funding={fundingB}
           interval={intervalB}
           live={!!fundB}
+          latencyMs={exchangeLatencies?.[opp.exchangeB] ?? opp.latencyB ?? latencyMs ?? getEstimatedExchangeLatency(opp.exchangeB)}
         />
       </div>
       </div>
@@ -887,29 +996,43 @@ function ExchangePriceCell({
   funding,
   interval,
   live,
+  latencyMs,
 }: {
   exchange: string;
   price: { value: number; live: boolean };
   funding: number;
   interval: number;
   live: boolean;
+  latencyMs?: number | null;
 }) {
   const t = useT();
   const valid = isFinite(price.value) && price.value > 0;
   const fundingColor = funding > 0 ? 'text-[var(--green)]' : funding < 0 ? 'text-[var(--red)]' : 'text-[var(--text2)]';
+  const latencyDisplay = latencyMs && latencyMs > 0 ? (latencyMs < 1000 ? `${Math.round(latencyMs)}ms` : `${(latencyMs / 1000).toFixed(1)}s`) : null;
+
   return (
     <div className="rounded-lg bg-surface-2 px-3 py-2 border border-[var(--border)]">
       <div className="flex items-center justify-between gap-1">
         <span className="text-xs font-medium text-[var(--text-muted)] truncate" title={exchangeLabel(exchange)}>{exchangeLabel(exchange)}</span>
         <span className="flex items-center gap-1.5 shrink-0">
-          {price.live && <span className="live-label">{t('arb.live')}</span>}
+          {price.live && (
+            <span className="live-label inline-flex items-center gap-1" title={latencyDisplay ? `Задержка обновления: ${latencyDisplay}` : undefined}>
+              <span>{t('arb.live')}</span>
+              {latencyDisplay && <span className="opacity-80 text-[10px] font-mono font-medium">· {latencyDisplay}</span>}
+            </span>
+          )}
           <span className="text-sm font-semibold font-mono text-[var(--text)]">${valid ? formatPrice(price.value) : '—'}</span>
         </span>
       </div>
       <div className="flex items-center justify-between mt-1.5 gap-1">
         <span className="text-xs text-[var(--text-muted)]">{t('arb.fundingRate')}</span>
         <span className="flex items-center gap-1.5 shrink-0">
-          {live && <span className="live-label">{t('arb.live')}</span>}
+          {live && (
+            <span className="live-label inline-flex items-center gap-1" title={latencyDisplay ? `Задержка обновления: ${latencyDisplay}` : undefined}>
+              <span>{t('arb.live')}</span>
+              {latencyDisplay && <span className="opacity-80 text-[10px] font-mono font-medium">· {latencyDisplay}</span>}
+            </span>
+          )}
           <span className={clsx('text-xs font-semibold font-mono truncate max-w-full', fundingColor)} title={`${(funding * 100).toFixed(4)}%/${t('unit.hoursShort', { h: interval })}`}>
             {(funding * 100).toFixed(4)}{t('unit.pctPerHour')} ({t('unit.hoursShort', { h: interval })})
           </span>
