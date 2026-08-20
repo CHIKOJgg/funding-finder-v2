@@ -148,6 +148,12 @@ const UNMETERED_PATHS = new Set([
   '/api/ready',
   '/api/metrics',
   '/api/prometheus',
+  '/api/public/ping',
+  '/api/public/track',
+  '/public/ping',
+  '/public/track',
+  '/ping',
+  '/track',
 ]);
 
 // Shared handler so EVERY rate-limit rejection is logged with the route,
@@ -315,8 +321,8 @@ app.get('/api/feature-flags', (req, res) => {
 // unbounded text into the server log drain.
 const logLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
-  limit: 300,
+  max: 1000,
+  limit: 1000,
   standardHeaders: true,
   legacyHeaders: false,
   store: createRateLimitStore('client-log'),
@@ -324,27 +330,29 @@ const logLimiter = rateLimit({
   handler: rateLimitHandler('client-log'),
 });
 import logRoutes from './routes/log.js';
-app.use('/api', logLimiter, logRoutes);
+app.use('/api/log', logLimiter, logRoutes);
+app.use('/api', logRoutes);
 
 // Rate limit for public, unauthenticated endpoints (landing page, heatmap).
-// Tighter than global to protect the scan cache from anonymous traffic storms.
+// Sized generously for high-traffic landing browsing.
 const publicLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
-  limit: 300,
+  max: 3000,
+  limit: 3000,
   standardHeaders: true,
   legacyHeaders: false,
   store: createRateLimitStore('public'),
+  skip: (req) => UNMETERED_PATHS.has(req.path) || UNMETERED_PATHS.has(req.baseUrl + req.path),
   message: { ok: false, error: 'Rate limited' },
   handler: rateLimitHandler('public'),
 });
 
 // Rate limit for market data endpoints (OI, LSR, liquidations) — public,
-// no auth needed, but tighter than global to prevent abuse.
+// no auth needed, but structured to prevent abuse.
 const marketDataLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
-  limit: 300,
+  max: 1500,
+  limit: 1500,
   standardHeaders: true,
   legacyHeaders: false,
   store: createRateLimitStore('market-data'),

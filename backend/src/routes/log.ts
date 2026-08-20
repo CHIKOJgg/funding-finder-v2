@@ -62,7 +62,7 @@ function sanitizeData(data: unknown): unknown {
 
 const router = Router();
 
-router.post('/log', (req, res) => {
+router.post(['/', '/log'], (req, res) => {
   try {
     const body = req.body || {};
     const sessionId = sanitizeString(body.sessionId || 'unknown');
