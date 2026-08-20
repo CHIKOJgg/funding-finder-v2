@@ -71,7 +71,6 @@ export function MainPage() {
   });
   const t = useT();
   const { lang } = useI18n();
-  const [lastScanMs, setLastScanMs] = useState<number | null>(null);
   const manualScan = useRef(false);
   const prevScanLoading = useRef(scanLoading);
 
@@ -107,9 +106,7 @@ export function MainPage() {
     // Fire-and-continue: the scan runs in shared state and keeps going even if
     // the user switches tabs; results are stored centrally.
     manualScan.current = true;
-    const start = performance.now();
     await runScan(selectedExchanges);
-    setLastScanMs(performance.now() - start);
     setCalendarRefresh((n) => n + 1);
   }, [selectedExchanges, runScan, showToast, t]);
 
@@ -253,9 +250,7 @@ export function MainPage() {
 
   const handleRefresh = useCallback(async () => {
     manualScan.current = true;
-    const start = performance.now();
     await runScan(selectedExchanges);
-    setLastScanMs(performance.now() - start);
     setCalendarRefresh((n) => n + 1);
   }, [selectedExchanges, runScan]);
 
@@ -286,7 +281,7 @@ export function MainPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+      <div className="grid grid-cols-2 gap-2 mb-4">
         {[
           {
             label: t('main.kpiExchanges'),
@@ -295,11 +290,6 @@ export function MainPage() {
           {
             label: t('main.kpiPairs'),
             value: scanResults ? formatNumber(scanResults.scanned) : '—',
-          },
-          { label: t('main.kpiFee'), value: '0%' },
-          {
-            label: t('main.kpiTime'),
-            value: lastScanMs == null ? '—' : lastScanMs < 1000 ? '<1s' : `${(lastScanMs / 1000).toFixed(1)}s`,
           },
         ].map((kpi) => (
           <div key={kpi.label} className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 pt-2.5 pb-2.5 min-w-0">

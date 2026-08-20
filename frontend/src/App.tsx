@@ -38,7 +38,7 @@ const PublicPage = React.lazy(() => import('./pages/PublicPage').then(m => ({ de
 const ARB_RETRY_DELAYS = [5000, 10000, 20000, 40000];
 
 interface AppContextType {
-  user: { id: string; firstName?: string; username?: string; subscription?: string; referralCode?: string; provider?: string; authProvider?: string; email?: string | null; walletAddress?: string | null } | null;
+  user: { id: string; firstName?: string; username?: string; role?: string; subscription?: string; referralCode?: string; provider?: string; authProvider?: string; email?: string | null; walletAddress?: string | null } | null;
 
   // ---- Subscription / plan ----
   subscription: string;

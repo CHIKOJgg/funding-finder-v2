@@ -14,14 +14,15 @@ interface TrialCTAProps {
 }
 
 export function TrialCTA({ compact = false, showTimer = false, source }: TrialCTAProps) {
-  const { trialStatus, activateTrial, refreshTrial, subscription } = useApp();
+  const { trialStatus, activateTrial, refreshTrial, subscription, user } = useApp();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const t = useT();
   const [activating, setActivating] = useState(false);
 
-  const active = trialStatus?.active ?? (subscription === 'pro' && trialStatus?.used);
-  const usedUp = trialStatus?.used && !trialStatus?.active;
+  const active = Boolean(trialStatus?.active);
+  const usedUp = Boolean(trialStatus?.used && !trialStatus?.active);
+  const isPaid = user?.role === 'admin' || subscription === 'proplus' || (subscription === 'pro' && !trialStatus?.active);
   const endsAt = trialStatus?.endsAt;
 
   const urgency = useMemo(() => {
@@ -65,6 +66,10 @@ export function TrialCTA({ compact = false, showTimer = false, source }: TrialCT
       navigate('/profile#subscription');
     }
   };
+
+  if (isPaid) {
+    return null;
+  }
 
   if (active) {
     const urgencyBg = urgency === 'critical'

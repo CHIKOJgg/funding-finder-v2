@@ -124,7 +124,7 @@ const ACHIEVEMENTS: AchievementDef[] = [
 let cachedProfileData: any = null;
 
 export function ProfilePage() {
-  const { user, subscription: ctxSubscription, isWeb, refreshSubscription } = useApp();
+  const { user, subscription: ctxSubscription, trialStatus, isWeb, refreshSubscription } = useApp();
   const { openLink } = useTelegram();
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [checkout, setCheckout] = useState<{ planId: string; planName: string; price: number } | null>(null);
@@ -511,13 +511,15 @@ export function ProfilePage() {
         </div>
       </div>
 
-      {!(subscription !== 'free' && subscriptionExpiresAt) && <div className="card">
+      {subscription === 'free' && !trialStatus?.used && (
+        <div className="card">
           <h2 className="text-base font-semibold mb-1 text-[var(--text)] flex items-center gap-2">
             <IconGift size={18} style={{ color: 'var(--brand)' }} /> {t('profile.trialTitle')}
           </h2>
           <p className="text-sm text-muted mb-3">{t('profile.trialDesc')}</p>
-        <TrialCTA />
-      </div>}
+          <TrialCTA />
+        </div>
+      )}
 
       <div className="card">
           <h2 className="text-base font-semibold mb-1 text-[var(--text)] flex items-center gap-2">
