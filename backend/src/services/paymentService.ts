@@ -26,9 +26,9 @@ export function getPromoDiscount(code?: string): number {
 // the old Basic/Pro split), Pro+ is the high-value tier. Free stays free.
 export const PLANS: Record<PlanId, Plan> = {
   pro: {
-    monthlyPrice: 29,
-    annualPrice: annualFromMonthly(29),
-    price: 29,
+    monthlyPrice: 49,
+    annualPrice: annualFromMonthly(49),
+    price: 49,
     name: 'Pro',
     features: [
       '15 бирж',
@@ -40,9 +40,9 @@ export const PLANS: Record<PlanId, Plan> = {
     ],
   },
   proplus: {
-    monthlyPrice: 79,
-    annualPrice: annualFromMonthly(79),
-    price: 79,
+    monthlyPrice: 149,
+    annualPrice: annualFromMonthly(149),
+    price: 149,
     name: 'Pro+',
     features: [
       'Все 31+ бирж (включая DEX: Hyperliquid, dYdX, Drift, Paradex)',
