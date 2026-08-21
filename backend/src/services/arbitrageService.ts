@@ -447,9 +447,9 @@ export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): Arb
           const nextApplyA = resolveNextApply(a, now);
           const nextApplyB = resolveNextApply(b, now);
           const settlementDeltaMs = Math.abs(nextApplyA - nextApplyB);
-          const sameSettlementTime = nextApplyA > 0 && nextApplyB > 0 && settlementDeltaMs < 60_000;
+          const sameInterval = intervalA_hours === intervalB_hours && !intervalMismatch;
+          const sameSettlementTime = sameInterval && nextApplyA > 0 && nextApplyB > 0 && settlementDeltaMs < 60_000;
           const settlementDeltaMinutes = Math.round(settlementDeltaMs / 60_000);
-          const sameInterval = intervalA_hours === intervalB_hours;
 
           const opp: ArbitrageOpportunity = {
             pair,

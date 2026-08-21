@@ -243,11 +243,13 @@ export function ArbitragePage() {
       if (minApy > 0 && (o.profit?.annualReturn ?? 0) < minApy) return false;
       if (q && !o.pair.toLowerCase().includes(q)) return false;
       if (syncSettlementOnly) {
-        const isSync = o.sameSettlementTime ?? (
-          o.nextApplyA && o.nextApplyB
-            ? Math.abs(o.nextApplyA - o.nextApplyB) < 60_000
-            : o.intervalA_hours === o.intervalB_hours
-        );
+        const isSync = !o.intervalMismatch &&
+          (o.intervalA_hours === o.intervalB_hours) &&
+          (o.sameSettlementTime ?? (
+            o.nextApplyA && o.nextApplyB
+              ? Math.abs(o.nextApplyA - o.nextApplyB) < 60_000
+              : true
+          ));
         if (!isSync) return false;
       }
       return true;
@@ -731,11 +733,13 @@ const OpportunityCard = memo(function OpportunityCard({
 
   const nextApplyA = fundA?.nextApply || opp.nextApplyA;
   const nextApplyB = fundB?.nextApply || opp.nextApplyB;
-  const isSync = opp.sameSettlementTime ?? (
-    nextApplyA && nextApplyB
-      ? Math.abs(nextApplyA - nextApplyB) < 60_000
-      : intervalA === intervalB
-  );
+  const isSync = !opp.intervalMismatch &&
+    (intervalA === intervalB) &&
+    (opp.sameSettlementTime ?? (
+      nextApplyA && nextApplyB
+        ? Math.abs(nextApplyA - nextApplyB) < 60_000
+        : true
+    ));
 
   const riskLevel = (opp.risk?.level || 'low').toLowerCase();
   const riskBadgeText = t(`arb.risk.${riskLevel}`) || opp.risk?.level || 'LOW';
