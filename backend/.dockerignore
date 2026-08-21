@@ -1,5 +1,7 @@
 node_modules
 npm-debug.log
+opencode.json
+opencode.jsonc
 .env
 .env.local
 .env.*.local

@@ -550,7 +550,7 @@ const PortfolioRow = memo(function PortfolioRow({
         <div>
           <strong className="text-sm">{position.exchange.toUpperCase()}: {position.pair}</strong>
           <div className="text-xs text-[var(--text2)]">
-            {position.side === 'long' ? t('portfolio.long') : t('portfolio.short')} · {formatUsd(position.sizeUsd)} USDT · x{position.leverage}
+            {position.side === 'long' ? t('portfolio.long') : t('portfolio.short')} · {t('portfolio.margin')}: {formatUsd(position.sizeUsd)} USDT · x{position.leverage} (≈{formatUsd(position.sizeUsd * position.leverage)} notional)
           </div>
           {pnl && (
             <div className="text-xs text-[var(--text2)]">

@@ -95,7 +95,7 @@ export function SpotFuturesPanel() {
   }, [loadSF, loadHistory, paused]);
 
   const basisChartData = useMemo(() => ({
-    labels: (data?.series || []).map((s: any) => new Date(s.t).toLocaleTimeString()),
+    labels: (data?.series || []).map((s: any) => new Date(s.t).toLocaleTimeString(undefined, { timeZone: 'UTC', hour: '2-digit', minute: '2-digit' }) + ' UTC'),
     datasets: [
       {
         label: t('sf.basis'),
@@ -120,7 +120,7 @@ export function SpotFuturesPanel() {
   }), []);
 
   const fundingChartData = useMemo(() => ({
-    labels: history.map((h) => new Date(h.timestamp).toLocaleString()),
+    labels: history.map((h) => new Date(h.timestamp).toLocaleString(undefined, { timeZone: 'UTC', hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }) + ' UTC'),
     datasets: [
       {
         label: t('sf.fundingRate'),
@@ -221,7 +221,7 @@ export function SpotFuturesPanel() {
       ) : !proRequired && data?.supported ? (
         <>
           {lastUpdated && (
-            <div className="text-xs text-[var(--text-muted)] mb-2">{t('oi.updated', { time: new Date(lastUpdated).toLocaleTimeString() })}</div>
+            <div className="text-xs text-[var(--text-muted)] mb-2">{t('oi.updated', { time: new Date(lastUpdated).toLocaleTimeString(undefined, { timeZone: 'UTC' }) + ' UTC' })}</div>
           )}
 
           {data?.strategy && (

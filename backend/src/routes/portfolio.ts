@@ -5,6 +5,7 @@ import { AuthenticatedRequest } from '../middleware/auth.js';
 import { requireSubscription } from '../middleware/subscription.js';
 import { validate } from '../middleware/validation.js';
 import { calcFundingIncome } from '../services/portfolioPnl.js';
+import { toNative } from '../services/priceService.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
@@ -22,19 +23,30 @@ const deleteSchema = z.object({
 });
 
 // Resolve the latest known hourly funding rate for a pair from history.
+// The pair stored in the DB uses the exchange's native symbol format
+// (e.g. gate:BTC_USDT, okx:BTC-USDT-SWAP, binance:BTCUSDT) while the
+// user may enter free-form text. We try the native key first, then fall
+// back to the raw pair, so legacy records are still found.
 async function getLatestRatePerHour(exchange: string, pair: string): Promise<number> {
+  const nativePair = toNative(exchange, pair);
+  const keysToTry = [
+    `${exchange}:${nativePair}`,
+    ...(nativePair !== pair ? [`${exchange}:${pair}`] : []),
+  ];
   try {
-    const history = await prisma.fundingHistory.findUnique({
-      where: { key: `${exchange}:${pair}` },
-      include: { records: { orderBy: { timestamp: 'desc' }, take: 1 } },
-    });
-    if (history && history.records.length > 0) {
-      const record = history.records[0];
-      // Normalize to an hourly rate. Exchanges settle every 1h, 4h or 8h —
-      // the record stores the real interval; only fall back to 8h when the
-      // interval is unknown (legacy data).
-      const intervalHours = record.intervalHours || 8;
-      return record.funding / intervalHours;
+    for (const key of keysToTry) {
+      const history = await prisma.fundingHistory.findUnique({
+        where: { key },
+        include: { records: { orderBy: { timestamp: 'desc' }, take: 1 } },
+      });
+      if (history && history.records.length > 0) {
+        const record = history.records[0];
+        // Normalize to an hourly rate. Exchanges settle every 1h, 4h or 8h —
+        // the record stores the real interval; only fall back to 8h when the
+        // interval is unknown (legacy data).
+        const intervalHours = record.intervalHours || 8;
+        return record.funding / intervalHours;
+      }
     }
   } catch (err) {
     logger.debug({ err: (err as Error).message }, 'Portfolio rate lookup failed');

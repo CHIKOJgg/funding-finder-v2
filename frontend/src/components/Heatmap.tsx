@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { clsx } from 'clsx';
 import { useT } from '../i18n';
 import { exchangeLabel } from '../utils/exchanges';
-import { API_BASE } from '../api/client';
+import { apiClient } from '../api/client';
 
 interface HeatmapCell {
   exchange: string;
@@ -26,21 +26,22 @@ interface HeatmapData {
 }
 
 function rateToColor(rate: number): string {
+  // Consistent with getFundingColor: positive (longs pay shorts) = green opportunity
   const abs = Math.abs(rate);
   if (abs > 0.001) {
-    return rate > 0 ? 'bg-[var(--red)]/70' : 'bg-[var(--green)]/70';
+    return rate > 0 ? 'bg-[var(--green)]/70' : 'bg-[var(--red)]/70';
   }
   if (abs > 0.0003) {
-    return rate > 0 ? 'bg-[var(--red)]/45' : 'bg-[var(--green)]/45';
+    return rate > 0 ? 'bg-[var(--green)]/45' : 'bg-[var(--red)]/45';
   }
   if (abs > 0.0001) {
-    return rate > 0 ? 'bg-[var(--red)]/20' : 'bg-[var(--green)]/20';
+    return rate > 0 ? 'bg-[var(--green)]/20' : 'bg-[var(--red)]/20';
   }
   return 'bg-[var(--surface-2)]';
 }
 
 function rateTextColor(rate: number): string {
-  return rate > 0 ? 'text-[var(--red)]' : rate < 0 ? 'text-[var(--green)]' : 'text-[var(--text-muted)]';
+  return rate > 0 ? 'text-[var(--green)]' : rate < 0 ? 'text-[var(--red)]' : 'text-[var(--text-muted)]';
 }
 
 export function Heatmap() {
@@ -51,26 +52,21 @@ export function Heatmap() {
   const [sortBy, setSortBy] = useState<'rate' | 'volume' | 'exchange'>('rate');
   const [filterExchange, setFilterExchange] = useState<string>('');
 
-  // Shared API base from the axios client — honors VITE_API_URL / dev proxy
-  // instead of hardcoding the production host.
-  const API = API_BASE;
-
   const fetchHeatmap = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/public/heatmap`);
-      const json = await res.json();
-      if (json.ok) {
+      const json: any = await apiClient.getHeatmap();
+      if (json?.ok) {
         setData(json);
         setError(null);
       } else {
-        setError(json.error || 'Failed to load');
+        setError(json?.error || 'Failed to load');
       }
     } catch {
       setError('Network error');
     } finally {
       setLoading(false);
     }
-  }, [API]);
+  }, []);
 
   useEffect(() => {
     fetchHeatmap();
@@ -113,7 +109,7 @@ export function Heatmap() {
             <span>
               {t('heatmap.updated')}{' '}
               {data.generatedAt && !isNaN(new Date(data.generatedAt).getTime())
-                ? new Date(data.generatedAt).toLocaleTimeString()
+                ? new Date(data.generatedAt).toLocaleTimeString(undefined, { timeZone: 'UTC', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' UTC'
                 : '—'}
             </span>
           )}

@@ -84,7 +84,7 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
         const d = r.data;
         const rate = num(d?.funding_rate);
         if (rate == null) return null;
-        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: (Number(d?.funding_next_apply) || 0) * 1000 };
+        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: toMs(d?.funding_next_apply) || 0 };
       }
       case 'mexc': {
         const r = await cachedRequest(`funding:mexc:${symbol}`, () =>
@@ -274,10 +274,15 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
         const r = await cachedRequest(`funding:bitunix:${symbol}`, () =>
           axios.get('https://fapi.bitunix.com/api/v1/futures/market/funding_rate', { params: { symbol }, timeout: 10000 }), FUNDING_CACHE_TTL_MS);
         const d = r.data?.data;
-        const rate = num(d?.fundingRate);
-        if (rate == null) return null;
+        const rawRate = num(d?.fundingRate);
+        if (rawRate == null) return null;
+        // Bitunix returns fundingRate as a PERCENT (e.g. "-0.008685" = -0.008685%
+        // per https://fapi.bitunix.com/api/v1/... maxFundingRate "0.3" = 0.3%).
+        // Always divide by 100 to get fraction: -0.008685% -> -0.00008685.
+        // Scanner (exchanges/bitunix.ts) uses the same divisor for consistency.
+        const rate = rawRate / 100;
         const iv = num(d?.fundingInterval) ?? 8;
-        return { rawRate: rate / 100, intervalSeconds: iv * 3600, nextApply: toMs(d?.nextFundingTime) || 0 };
+        return { rawRate: rate, intervalSeconds: iv * 3600, nextApply: toMs(d?.nextFundingTime) || 0 };
       }
       case 'orderly': {
         const r = await cachedRequest('fundinglist:orderly', () =>

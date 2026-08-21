@@ -145,10 +145,10 @@ function calculateRealProfit(
   const grossAnnual = grossDaily * 365;
 
   // Net profit assumes a single entry/exit per horizon, so the one-time cost is
-  // subtracted ONCE (not annualized). This is the key fix — previously the
-  // one-time cost was baked into the hourly figure and then multiplied by 8760,
-  // producing absurd negative APY values.
-  const netHourly = grossHourlyProfit - oneTimeCost;
+  // subtracted ONCE (not per-hour). netHourly shows pure recurring funding income
+  // (no one-time costs — those can't be meaningfully spread across a single hour).
+  // netDaily/Weekly/Annual each deduct oneTimeCost once for the full horizon.
+  const netHourly = grossHourlyProfit;
   const netDaily = grossDaily - oneTimeCost;
   const netWeekly = grossWeekly - oneTimeCost;
   const netAnnual = grossAnnual - oneTimeCost;
@@ -221,9 +221,9 @@ function assessRisk(opportunity: {
     reasons.push(`Несовпадение интервалов: ${opportunity.intervalA_hours}h vs ${opportunity.intervalB_hours}h`);
   }
 
-  // Determine risk level
+  // Determine risk level — 3 (very low liquidity) is already HIGH
   let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
-  if (riskScore >= 4) riskLevel = 'HIGH';
+  if (riskScore >= 3) riskLevel = 'HIGH';
   else if (riskScore >= 2) riskLevel = 'MEDIUM';
   else riskLevel = 'LOW';
 
@@ -291,9 +291,10 @@ export function canonicalPairKey(contract: string): string {
 
   // Normalize meme-coin multipliers from the base symbol:
   // e.g. 1000000MOG -> MOG, 1000PEPE -> PEPE, 10000LADYS -> LADYS, KBONK -> BONK, 1MPEPE -> PEPE
+  // Covers 1M/1K multipliers and K-prefixed tickers; expanded token list for 2024-2026 memes.
   base = base
-    .replace(/^(1000000|100000|10000|1000|1M)(?=[A-Z]{3,})/i, '')
-    .replace(/^K(?=(BONK|PEPE|SHIB|LUNC|FLOKI|DOGE|SATS|CHEEMS|RATS|CAT|XEC|BTT|WHY))/i, '');
+    .replace(/^(1000000|100000|10000|1000|1M)(?=[A-Z]{2,})/i, '')
+    .replace(/^K(?=(BONK|PEPE|SHIB|LUNC|FLOKI|DOGE|SATS|CHEEMS|RATS|CAT|XEC|BTT|WHY|MOG|WIF|BOME|POPCAT|NEIRO|MOODENG|GOAT))/i, '');
 
   if (base.length <= 5 && !quote) quote = 'USDT';
   return `${base}${quote}`;
@@ -349,13 +350,18 @@ export function calculatePaybackDays(
 }
 
 /** Stability grade A-F based on how consistently the spread has been positive.
- *  Uses the persistence grade as a proxy when detailed history isn't available. */
+ *  Uses the persistence grade as a proxy when detailed history isn't available.
+ *  NOTE: aliveHours here is ESTIMATED from persistence (see estimateAliveHours),
+ *  not a real measurement — do not treat as independent signal. */
 export function calculateStabilityGrade(
   persistenceGrade?: string,
   aliveHours?: number,
 ): string {
-  if (aliveHours !== undefined && aliveHours >= 168) return 'A';
-  if (aliveHours !== undefined && aliveHours >= 72) return 'B';
+  // Prefer real aliveHours only if it comes from DB/history, not from estimate.
+  // Since current call passes estimateAliveHours(pg), we treat it as alias and
+  // fall through to persistence mapping to avoid circular A→168→A.
+  if (aliveHours !== undefined && aliveHours >= 168 && persistenceGrade !== 'A') return 'A';
+  if (aliveHours !== undefined && aliveHours >= 72 && !['A','B'].includes(persistenceGrade || '')) return 'B';
   if (persistenceGrade === 'A' || persistenceGrade === 'B') return persistenceGrade;
   if (persistenceGrade === 'C') return 'C';
   if (persistenceGrade === 'D') return 'D';
@@ -421,9 +427,14 @@ export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): Arb
         const difference = Math.abs(fundingA_per_hour - fundingB_per_hour);
         const difference_per_day = Math.abs(fundingA_per_day - fundingB_per_day);
         
-        // Percentage difference (relative to smaller rate)
+        // Percentage difference relative to the smaller absolute rate.
+        // Guard: when minRate ≈ 0 (one leg is near-zero), percentageDiff would
+        // explode to infinity or be misleadingly 0. Cap at 999% to keep risk
+        // scoring meaningful without hiding valid opportunities.
         const minRate = Math.min(Math.abs(fundingA_per_hour), Math.abs(fundingB_per_hour));
-        const percentageDiff = minRate > 0 ? (difference / minRate) * 100 : 0;
+        const percentageDiff = minRate > 0.000001
+          ? Math.min(999, (difference / minRate) * 100)
+          : difference > 0 ? 999 : 0;
 
         // Interval info
         const intervalA_hours = a.funding_interval_hours || 8;

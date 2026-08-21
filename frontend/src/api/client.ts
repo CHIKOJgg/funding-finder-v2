@@ -243,6 +243,10 @@ export const apiClient = {
     return retryRequest(() => api.post('/scan', { exchanges }, { timeout: 120000 }));
   },
 
+  async getHeatmap() {
+    return retryRequest(() => api.get('/public/heatmap'));
+  },
+
   async aiAnalyze(listText: string) {
     return retryRequest(() => api.post('/ai', { listText }));
   },

@@ -125,7 +125,9 @@ describe('arbitrageService — profit math via calculateProfit', () => {
   it('produces negative net hourly when one-time costs exceed gross hourly', async () => {
     const opp = mk({ exchange: 'binance', contract: 'BTCUSDT', funding_rate_per_hour: 0.000001, volume_24h_settle: 500_000, exchangeA: 'binance', exchangeB: 'bybit', difference: 0.000001, difference_per_day: 0.000003, percentageDiff: 0, intervalA_hours: 8, intervalB_hours: 8, intervalMismatch: false });
     const { profit } = await arb.calculateProfit(opp, 1000);
-    expect(profit.netHourly).toBeLessThan(0);
+    // netHourly is pure recurring (grossHourly) — one-time costs are only deducted at daily+ horizons
+    expect(profit.netHourly).toBeCloseTo(profit.grossHourly);
+    expect(profit.netDaily).toBeLessThan(0);
   });
 
   it('scales gross by horizon correctly', async () => {

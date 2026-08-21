@@ -84,7 +84,7 @@ export function profitCalcClient(
   const oneTime = fees + slippageCost;
 
   const grossDaily = grossHourly * 24;
-  const netHourly = grossHourly - oneTime;
+  const netHourly = grossHourly;  // pure recurring income; one-time costs deducted in daily+ horizons
   const netDaily = grossDaily - oneTime;
   const grossWeekly = grossDaily * 7;
   const netWeekly = grossWeekly - oneTime;

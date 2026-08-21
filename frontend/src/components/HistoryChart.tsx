@@ -5,7 +5,7 @@ import { useT } from '../i18n';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
-  CategoryScale,
+  TimeScale,
   LinearScale,
   PointElement,
   LineElement,
@@ -13,8 +13,9 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import 'chartjs-adapter-date-fns';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+ChartJS.register(TimeScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 interface HistoryRecord {
   timestamp: string;
@@ -71,18 +72,27 @@ export function HistoryChart({ exchange, contract, onClose }: HistoryChartProps)
     return () => { cancelled = true; };
   }, [exchange, contract]);
 
-  const chartData = useMemo(() => ({
-    labels: history.map((h) => new Date(h.timestamp).toLocaleString()),
-    datasets: [
-      {
-        label: 'Funding Rate (%)',
-        data: history.map((h) => h.funding * 100),
-        borderColor: 'rgb(51, 144, 236)',
-        backgroundColor: 'rgba(51, 144, 236, 0.5)',
-        tension: 0.1,
-      },
-    ],
-  }), [history]);
+  const chartData = useMemo(() => {
+    // Sort ascending by timestamp; filter out non-finite funding values
+    const sorted = [...history]
+      .filter((h) => isFinite(h.funding))
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    return {
+      datasets: [
+        {
+          label: 'Funding Rate (%)',
+          // Use numeric timestamp (ms) as x so TimeScale renders proportional gaps
+          data: sorted.map((h) => ({ x: new Date(h.timestamp).getTime(), y: h.funding * 100 })),
+          borderColor: 'rgb(51, 144, 236)',
+          backgroundColor: 'rgba(51, 144, 236, 0.5)',
+          tension: 0.1,
+          // Hide individual dots when there are many points (dense chart)
+          pointRadius: sorted.length > 100 ? 0 : 3,
+          spanGaps: false,
+        },
+      ],
+    };
+  }, [history]);
 
   const chartOptions = useMemo(() => ({
     responsive: true,
@@ -94,6 +104,17 @@ export function HistoryChart({ exchange, contract, onClose }: HistoryChartProps)
       title: {
         display: false,
       },
+      tooltip: {
+        callbacks: {
+          title: (items: any[]) => {
+            const v = items[0]?.parsed?.x;
+            if (!v) return '';
+            const d = new Date(v);
+            // Force UTC display
+            return d.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+          },
+        },
+      },
     },
     scales: {
       y: {
@@ -103,9 +124,30 @@ export function HistoryChart({ exchange, contract, onClose }: HistoryChartProps)
         },
       },
       x: {
+        type: 'time' as const,
+        time: {
+          tooltipFormat: 'yyyy-MM-dd HH:mm',
+          displayFormats: {
+            hour: 'MM-dd HH:mm',
+            day: 'yyyy-MM-dd',
+          },
+        },
+        adapters: {
+          date: {
+            zone: 'UTC',
+          },
+        },
+        ticks: {
+          // Force UTC label
+          callback: function (value: any) {
+            const d = new Date(value);
+            return d.toISOString().slice(5, 16).replace('T', ' ');
+          },
+          maxTicksLimit: 6,
+        },
         title: {
           display: true,
-          text: t('history.timeAxis'),
+          text: t('history.timeAxis') + ' (UTC)',
         },
       },
     },
@@ -166,4 +208,3 @@ export function HistoryChart({ exchange, contract, onClose }: HistoryChartProps)
     </div>
   );
 }
-

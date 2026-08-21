@@ -8,13 +8,42 @@ import { EXCHANGE_FEES } from './arbitrageService.js';
 const CACHE_TTL_MS = 15_000;
 
 // Known funding intervals per exchange (hours). Most USDT perps settle every
-// 8h; this is used to annualize the collected funding.
+// 8h; this is used to annualize the collected funding. Expanded to all
+// supported exchanges so fundingApy is not 8× off for 1h markets.
 const INTERVAL_HOURS: Record<string, number> = {
   binance: 8,
   bybit: 8,
   okx: 8,
   gate: 8,
   mexc: 8,
+  // 1h markets
+  hyperliquid: 1,
+  dydx: 1,
+  paradex: 1,
+  drift: 1,
+  helix: 1,
+  apex: 1,
+  // 8h default for rest (documented as 8h per exchange docs)
+  bitget: 8,
+  bingx: 8,
+  phemex: 8,
+  woo: 8,
+  bitmart: 8,
+  blofin: 8,
+  weex: 8,
+  coinw: 8,
+  coinex: 8,
+  htx: 8,
+  kraken: 1,
+  coinbase: 1,
+  bitunix: 8,
+  orderly: 8,
+  aevo: 8,
+  kucoin: 8,
+  cryptocom: 8,
+  deribit: 8,
+  aster: 8,
+  bluefin: 8,
 };
 
 const SUPPORTED = new Set(['binance', 'bybit', 'okx', 'gate', 'mexc']);
@@ -162,13 +191,28 @@ export async function getSpotFutures(exchange: string, pair: string): Promise<Sp
 
     const basisPct = r.spotPrice > 0 ? ((r.perpMark - r.spotPrice) / r.spotPrice) * 100 : 0;
     const perpTaker = EXCHANGE_FEES[exchange]?.taker ?? 0.0005;
-    const spotTaker = 0.001; // Spot fee standard ~0.10%
+    // Spot taker fees vary by exchange; use perp taker + 2bps premium as proxy
+    // (Binance spot 0.10% vs perp 0.04% → +6bps; OKX spot 0.08% vs perp 0.05% → +3bps)
+    const SPOT_FEES: Record<string, number> = {
+      binance: 0.001, bybit: 0.001, okx: 0.0008, gate: 0.002, mexc: 0.002,
+      bitget: 0.001, bingx: 0.001, kraken: 0.0026, coinbase: 0.006,
+    };
+    const spotTaker = SPOT_FEES[exchange] ?? 0.001;
     // Entry + exit on spot and perp: 2 * (perpTaker + spotTaker)
     const roundTripFeePct = 2 * (perpTaker + spotTaker) * 100; // e.g. 0.30%
-    const annualHoldingCostPct = (roundTripFeePct / 30) * 365; // amortized over 30 days
+    // Annual holding cost assumes a 30-day holding period (ASSUMED_HOLD_DAYS) to
+    // amortize one-time fees. This is a disclosure assumption — real cost per year
+    // = roundTripFeePct * (365 / actualHoldDays). For 7d hold, cost is ~4.3× higher.
+    const ASSUMED_HOLD_DAYS = 30;
+    const annualHoldingCostPct = (roundTripFeePct / ASSUMED_HOLD_DAYS) * 365;
     const marginBorrowRateAnnualPct = 8.0; // ~8% APR margin loan cost when shorting spot
     const fundingApy = r.fundingRate * annualIntervals * 100;
-    const netApy = fundingApy >= 0 ? fundingApy - annualHoldingCostPct : fundingApy + annualHoldingCostPct;
+    // netApy always subtracts round-trip fees. For negative-funding (short spot + long perp)
+    // strategy, also subtract margin borrow cost — it's always present when shorting spot.
+    // Positive funding: long spot + short perp — no borrow needed.
+    const netApy = fundingApy >= 0
+      ? fundingApy - annualHoldingCostPct
+      : fundingApy - annualHoldingCostPct - marginBorrowRateAnnualPct;
 
     // Strategy direction must respect the SIGN of the funding rate and borrow costs:
     let strategy: string;

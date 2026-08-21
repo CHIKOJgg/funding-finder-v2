@@ -573,6 +573,7 @@ export const en: Record<string, string> = {
   'portfolio.readOnly': 'Read-only',
   'portfolio.long': 'Long',
   'portfolio.short': 'Short',
+  'portfolio.margin': 'Margin',
   'portfolio.autoTitle': 'Auto-execution',
   'portfolio.autoDesc': 'Open {side} {symbol} on {exchange} via your trade key.',
   'portfolio.sizeUsdt': 'Size (USDT)',

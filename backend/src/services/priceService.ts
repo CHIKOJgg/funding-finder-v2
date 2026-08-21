@@ -21,11 +21,19 @@ function num(v: any): number | null {
 
 // Convert a human/arbitrary pair into the exchange's native perp symbol.
 export function toNative(exchange: string, pair: string): string {
-  const clean = (pair || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-  const m = clean.match(/^(.*?)(USDT|USD)$/);
-  const base = m ? m[1] : clean || 'BTC';
+  // Strip colon-suffix and perp/swap artefacts: "BTC/USDT:USDT" → "BTC/USDT", "BTC-PERP" → "BTC"
+  let stripped = (pair || '').replace(/:.*$/, '');
+  stripped = stripped.replace(/(?:-PERP|\.P|PERP|SWAP)$/i, '');
+  // Remove all non-alphanumeric chars then uppercase: "BTC/USDT" → "BTCUSDT"
+  const clean = stripped.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  // Match known quote currencies (longest first to avoid USDT matching inside USDC)
+  const m = clean.match(/^(.*?)(USDT|USDC|USD|DAI|BTC|ETH)$/);
+  const base = (m ? m[1] : clean) || 'BTC';
   const quoteRaw = m ? m[2] : 'USDT';
-  const usdt = quoteRaw === 'USD' ? 'USD' : 'USDT';
+  // Normalise USD → USDT for cross-exchange canonical consistency (arbitrageService does same).
+  // Kraken/Coinbase USD margin is treated as USDT in grouping; native USD symbol is still
+  // valid for those exchanges but we keep canonical to avoid live-price cache miss.
+  const usdt = quoteRaw === 'USD' ? 'USDT' : quoteRaw;
   switch (exchange.toLowerCase()) {
     case 'okx':
       return `${base}-${usdt}-SWAP`;

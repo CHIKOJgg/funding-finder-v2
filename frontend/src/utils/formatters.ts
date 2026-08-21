@@ -2,8 +2,9 @@ export function formatNumber(num: number | null | undefined): string {
   if (num === null || num === undefined) return 'N/A';
   if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + 'M';
   if (num >= 1_000) return (num / 1_000).toFixed(2) + 'K';
-  if (Number.isInteger(num)) return num.toLocaleString('en-US');
-  return num.toFixed(2);
+  // Use browser locale (respects ru/tr/vi) instead of hardcoded en-US
+  if (Number.isInteger(num)) return num.toLocaleString(undefined);
+  return num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 // Exact price formatting: preserves full precision even for very cheap coins
@@ -13,7 +14,7 @@ export function formatPrice(num: number | null | undefined): string {
   if (num === null || num === undefined) return '—';
   if (!isFinite(num) || num <= 0) return '—';
   if (num >= 1) {
-    return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    return num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   }
   const decimals = Math.min(12, Math.max(2, Math.ceil(-Math.log10(num)) + 3));
   return num.toFixed(decimals).replace(/0+$/, '').replace(/\.$/, '');
@@ -25,12 +26,15 @@ export function formatFunding(funding: number | null | undefined): string {
 }
 
 export function formatDate(date: string | Date): string {
-  return new Date(date).toLocaleDateString('ru-RU', {
+  // Exchange timestamps are UTC; force UTC so +3 user doesn't see +3h shift
+  return new Date(date).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'UTC',
+    timeZoneName: 'short',
   });
 }
 
