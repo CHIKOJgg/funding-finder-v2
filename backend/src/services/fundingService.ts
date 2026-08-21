@@ -51,13 +51,15 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
             axios.get('https://fapi.binance.com/fapi/v1/premiumIndex', { params: { symbol }, timeout: 10000 }), FUNDING_CACHE_TTL_MS);
           if (!fallback.data) return null;
           const rate = num(fallback.data.lastFundingRate);
+          const intervalHours = num(fallback.data.fundingIntervalHours) ?? 8;
           return rate == null
             ? null
-            : { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: Number(fallback.data.nextFundingTime) || 0 };
+            : { rawRate: rate, intervalSeconds: intervalHours * 3600, nextApply: Number(fallback.data.nextFundingTime) || 0 };
         }
         const rate = num(d.lastFundingRate);
         if (rate == null) return null;
-        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: Number(d.nextFundingTime) || 0 };
+        const intervalHours = num(d.fundingIntervalHours) ?? 8;
+        return { rawRate: rate, intervalSeconds: intervalHours * 3600, nextApply: Number(d.nextFundingTime) || 0 };
       }
       case 'bybit': {
         const d = await getCachedList('fundinglist:bybit:linear', 'https://api.bybit.com/v5/market/tickers?category=linear');
@@ -84,7 +86,8 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
         const d = r.data;
         const rate = num(d?.funding_rate);
         if (rate == null) return null;
-        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: toMs(d?.funding_next_apply) || 0 };
+        const intervalSec = num(d?.funding_interval) || KNOWN_INTERVALS.EIGHT_HOUR;
+        return { rawRate: rate, intervalSeconds: intervalSec, nextApply: toMs(d?.funding_next_apply) || 0 };
       }
       case 'mexc': {
         const r = await cachedRequest(`funding:mexc:${symbol}`, () =>
@@ -107,6 +110,16 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
         return { rawRate: rate, intervalSeconds: intervalHours * 3600 };
       }
       case 'bingx': {
+        const d = await getCachedList('fundinglist:bingx:premiumIndex', 'https://open-api.bingx.com/openApi/swap/v2/quote/premiumIndex');
+        const list = Array.isArray(d?.data) ? d.data : [];
+        const f = list.find((x: any) => x.symbol === symbol || x.symbol === symbol.replace('/', '-'));
+        if (f) {
+          const rate = num(f.lastFundingRate);
+          if (rate != null) {
+            const intervalHours = num(f.fundingIntervalHours) ?? 8;
+            return { rawRate: rate, intervalSeconds: intervalHours * 3600, nextApply: toMs(f.nextFundingTime) || 0 };
+          }
+        }
         const r = await cachedRequest(`funding:bingx:${symbol}`, () =>
           axios.get('https://open-api.bingx.com/openApi/swap/v2/quote/fundingRate', { params: { symbol }, timeout: 10000 }), FUNDING_CACHE_TTL_MS);
         const latest = Array.isArray(r.data?.data) ? r.data.data[0] : null;
@@ -171,12 +184,18 @@ async function fetchFunding(exchange: string, symbol: string): Promise<RawFundin
         };
       }
       case 'htx': {
-        const r = await cachedRequest(`funding:htx:${symbol}`, () =>
-          axios.get('https://api.hbdm.com/linear-swap-api/v1/swap_funding_rate', { params: { contract_code: symbol }, timeout: 10000 }), FUNDING_CACHE_TTL_MS);
+        const [r, contractsRes] = await Promise.all([
+          cachedRequest(`funding:htx:${symbol}`, () =>
+            axios.get('https://api.hbdm.com/linear-swap-api/v1/swap_funding_rate', { params: { contract_code: symbol }, timeout: 10000 }), FUNDING_CACHE_TTL_MS),
+          getCachedList('fundinglist:htx:contracts', 'https://api.hbdm.com/linear-swap-api/v1/swap_contract_info'),
+        ]);
         const fd = r.data?.data;
         const rate = num(fd?.funding_rate);
         if (rate == null) return null;
-        return { rawRate: rate, intervalSeconds: KNOWN_INTERVALS.EIGHT_HOUR, nextApply: toMs(fd?.funding_time) || 0 };
+        const cList = Array.isArray(contractsRes?.data) ? contractsRes.data : [];
+        const c = cList.find((x: any) => x.contract_code === symbol || x.contract_code === symbol.replace('/', '-'));
+        const intervalHours = num(c?.settlement_period) ?? 8;
+        return { rawRate: rate, intervalSeconds: intervalHours * 3600, nextApply: toMs(fd?.funding_time) || 0 };
       }
       case 'coinex': {
         const d = await getCachedList('fundinglist:coinex', 'https://api.coinex.com/v2/futures/funding-rate');

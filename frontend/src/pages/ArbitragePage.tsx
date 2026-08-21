@@ -512,7 +512,10 @@ export function ArbitragePage() {
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <button
                   type="button"
-                  onClick={() => setSyncSettlementOnly((prev) => !prev)}
+                  onClick={() => {
+                    setSyncSettlementOnly((prev) => !prev);
+                    setVisibleCount(15);
+                  }}
                   className={clsx(
                     'text-xs font-semibold px-3 py-1.5 rounded-full border transition-all flex items-center gap-1.5 cursor-pointer',
                     syncSettlementOnly
