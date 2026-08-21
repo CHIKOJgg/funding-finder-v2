@@ -97,6 +97,7 @@ export interface ScanResult {
   hourly: ExchangeResult[];
   twohour: ExchangeResult[];
   fallback: ExchangeResult[];
+  allResults?: ExchangeResult[];
   
   scanned: number;
   metrics: {

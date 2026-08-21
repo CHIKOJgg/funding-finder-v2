@@ -216,7 +216,7 @@ router.get('/arbitrage/opportunities', async (req, res) => {
   // polls this, so this is what keeps the tab responsive and API-light.
   const cachedOpp = arbOppCache.get(key);
   if (cachedOpp && Date.now() - cachedOpp.ts < ARB_OPP_CACHE_TTL_MS) {
-    const opps = isGuest ? cachedOpp.opportunities.slice(0, 1) : cachedOpp.opportunities;
+    const opps = isGuest ? cachedOpp.opportunities.slice(0, 15) : cachedOpp.opportunities;
     return res.json({
       ok: true,
       opportunities: opps,
@@ -254,11 +254,13 @@ router.get('/arbitrage/opportunities', async (req, res) => {
       scanResults = await runScan(exchanges);
     }
 
-    const allResults = [
-      ...scanResults.highYield,
-      ...scanResults.mediumYield,
-      ...scanResults.lowYield,
-    ];
+    const allResults = scanResults.allResults && scanResults.allResults.length > 0
+      ? scanResults.allResults
+      : [
+          ...scanResults.highYield,
+          ...scanResults.mediumYield,
+          ...scanResults.lowYield,
+        ];
 
     const rawOpportunities = detectArbitrageOpportunities(allResults);
     const metadata = {
@@ -268,7 +270,7 @@ router.get('/arbitrage/opportunities', async (req, res) => {
     };
     arbOppCache.set(key, { opportunities: rawOpportunities, metadata, ts: Date.now() });
 
-    const opportunities = isGuest ? rawOpportunities.slice(0, 1) : rawOpportunities;
+    const opportunities = isGuest ? rawOpportunities.slice(0, 15) : rawOpportunities;
     return res.json({
       ok: true,
       opportunities,
@@ -284,7 +286,7 @@ router.get('/arbitrage/opportunities', async (req, res) => {
     const stale = arbOppCache.get(key);
     if (stale) {
       logger.warn({ err: error.message }, 'Arbitrage opportunities served stale after scan error');
-      const opps = isGuest ? stale.opportunities.slice(0, 1) : stale.opportunities;
+      const opps = isGuest ? stale.opportunities.slice(0, 15) : stale.opportunities;
       return res.json({
         ok: true,
         opportunities: opps,

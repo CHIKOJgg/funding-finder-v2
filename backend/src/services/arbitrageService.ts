@@ -441,13 +441,8 @@ export function detectArbitrageOpportunities(scanResults: ExchangeResult[]): Arb
         const intervalB_hours = b.funding_interval_hours || 8;
         const intervalMismatch = Math.abs(intervalA_hours - intervalB_hours) > 1;
 
-        // Only compare contracts with the SAME funding interval. Comparing e.g.
-        // an 8h contract against a 24h one via per-hour normalization produces
-        // misleading, non-collectible "opportunities", so skip mismatches.
-        if (intervalMismatch) continue;
-
-        // Minimum threshold: 0.001% per hour difference
-        if (difference > 0.00001) {
+        // Minimum threshold: 0.0005% per hour difference (~4.38% APR)
+        if (difference > 0.000005) {
           const now = Date.now();
           const nextApplyA = resolveNextApply(a, now);
           const nextApplyB = resolveNextApply(b, now);

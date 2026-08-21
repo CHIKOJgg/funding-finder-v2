@@ -84,14 +84,14 @@ describe('arbitrageService — detectArbitrageOpportunities', () => {
     ]);
     expect(matched[0].risk.level).toBe('LOW');
 
-    // Interval mismatch is captured on the opportunity (penalty applied in score).
+    // Interval mismatch is captured on the opportunity (penalty applied in score and risk flagged).
     const mismatched = detectArbitrageOpportunities([
       mk({ exchange: 'binance', contract: 'BTCUSDT', funding_rate_per_hour: 0.0001, volume_24h_settle: 50_000_000, funding_interval_hours: 8 }),
       mk({ exchange: 'hyperliquid', contract: 'BTC', funding_rate_per_hour: 0.0009, volume_24h_settle: 50_000_000, funding_interval_hours: 1 }),
     ]);
-    // Mismatch is skipped entirely by the detector (non-collectible), so we
-    // assert it is absent rather than relying on a penalty path.
-    expect(mismatched).toHaveLength(0);
+    expect(mismatched).toHaveLength(1);
+    expect(mismatched[0].intervalMismatch).toBe(true);
+    expect(mismatched[0].risk.reasons.join(' ')).toContain('Несовпадение интервалов');
   });
 
   it('classifies risk across liquidity / volatility / anomaly thresholds via detected opportunities', () => {

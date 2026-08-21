@@ -31,6 +31,7 @@ export function filterScanResult(result: ScanResult, requestedExchanges: string[
   const hourly = result.hourly?.filter((i) => reqSet.has(i.exchange.toLowerCase())) || [];
   const twohour = result.twohour?.filter((i) => reqSet.has(i.exchange.toLowerCase())) || [];
   const fallback = result.fallback?.filter((i) => reqSet.has(i.exchange.toLowerCase())) || [];
+  const allResults = (result.allResults || []).filter((i) => reqSet.has(i.exchange.toLowerCase()));
 
   let scanned = 0;
   if (result.metrics?.exchangeCounts) {
@@ -39,7 +40,7 @@ export function filterScanResult(result: ScanResult, requestedExchanges: string[
     }
   }
   if (scanned === 0) {
-    scanned = highYield.length + mediumYield.length + lowYield.length;
+    scanned = allResults.length || (highYield.length + mediumYield.length + lowYield.length);
   }
 
   return {
@@ -49,6 +50,7 @@ export function filterScanResult(result: ScanResult, requestedExchanges: string[
     hourly,
     twohour,
     fallback,
+    allResults,
     scanned,
     metrics: {
       minFundingUsed: result.metrics?.minFundingUsed ?? 0,
@@ -238,12 +240,13 @@ export async function processScanResults(all: ExchangeResult[]): Promise<ScanRes
   }
 
   const result: ScanResult = {
-    highYield: highYield.slice(0, 50),
-    mediumYield: mediumYield.slice(0, 50),
-    lowYield: lowYield.slice(0, 50),
+    highYield: highYield.slice(0, 100),
+    mediumYield: mediumYield.slice(0, 100),
+    lowYield: lowYield.slice(0, 100),
     hourly: [],
     twohour: [],
     fallback: [],
+    allResults: cleaned,
     scanned: cleaned.length,
     metrics: {
       minFundingUsed: dynamicMinHourly,
