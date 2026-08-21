@@ -68,3 +68,4 @@ rltest*.js
 
 # Local opencode config (contains dev secrets — never commit)
 opencode.json
+.playwright-mcp/
