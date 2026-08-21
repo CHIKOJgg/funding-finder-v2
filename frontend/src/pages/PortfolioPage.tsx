@@ -10,8 +10,13 @@ import { CountdownTimer } from '../components/CountdownTimer';
 import { useT, useI18n } from '../i18n';
 import { IconWallet, IconChartLine, IconLink2, IconDownload, IconExternalLink, IconAlertTriangle } from '../components/icons';
 
-const EXCHANGES = ['binance', 'bybit', 'okx', 'gate', 'mexc', 'bitget', 'phemex', 'htx', 'hyperliquid', 'bingx', 'woo', 'coinex', 'weex', 'coinw', 'bitmart', 'blofin', 'apex', 'aster'] as const;
-const SIM_EXCHANGES = ['gate', 'binance', 'bybit', 'mexc', 'okx'] as const;
+const EXCHANGES = [
+  'binance', 'bybit', 'okx', 'gate', 'mexc', 'bitget', 'bingx',
+  'hyperliquid', 'dydx', 'phemex', 'woo', 'htx', 'blofin', 'weex',
+  'coinw', 'bitmart', 'coinex', 'apex', 'aster', 'kucoin', 'kraken',
+  'deribit', 'cryptocom', 'bitunix', 'aevo'
+] as const;
+const SIM_EXCHANGES = EXCHANGES;
 
 function formatUsd(n: number): string {
   return n.toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 2 });
@@ -164,7 +169,7 @@ export function PortfolioPage() {
             <h2 className="text-base font-semibold mb-3">{t('portfolio.addPosition')}</h2>
             <div className="grid grid-cols-2 gap-2 mb-2">
               <select value={exchange} onChange={(e) => setExchange(e.target.value)} className="input-field text-sm">
-                {SIM_EXCHANGES.map((ex) => <option key={ex} value={ex}>{ex}</option>)}
+                {SIM_EXCHANGES.map((ex) => <option key={ex} value={ex}>{exchangeLabel(ex)}</option>)}
               </select>
               <input
                 value={pair}

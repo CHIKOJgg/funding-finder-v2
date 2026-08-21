@@ -480,12 +480,12 @@ export function MainPage() {
             </div>
           )}
 
-{(yieldFilter === 'all' || yieldFilter === 'high') && scanResults.highYield?.length > 0 && (
+          {(yieldFilter === 'all' || yieldFilter === 'high') && scanResults.highYield?.length > 0 && (
             <ResultSection
               title={t('main.highYield')}
               count={scanResults.highYield.length}
-              items={scanResults.highYield.slice(0, 10)}
-              limit={10}
+              items={scanResults.highYield}
+              limit={15}
               colorClass="text-[var(--green)]"
               onHistory={setHistoryModal}
                onAlert={(data, pos) => setAlertModal({ ...data, ...pos })}
@@ -503,8 +503,8 @@ export function MainPage() {
             <ResultSection
               title={t('main.mediumYield')}
               count={scanResults.mediumYield.length}
-              items={scanResults.mediumYield.slice(0, 10)}
-              limit={10}
+              items={scanResults.mediumYield}
+              limit={15}
               colorClass="text-[var(--amber)]"
               onHistory={setHistoryModal}
                onAlert={(data, pos) => setAlertModal({ ...data, ...pos })}
@@ -522,8 +522,8 @@ export function MainPage() {
             <ResultSection
               title={t('main.lowYield')}
               count={scanResults.lowYield.length}
-              items={scanResults.lowYield.slice(0, 5)}
-              limit={5}
+              items={scanResults.lowYield}
+              limit={10}
               colorClass="text-[var(--text2)]"
               onHistory={setHistoryModal}
                onAlert={(data, pos) => setAlertModal({ ...data, ...pos })}
@@ -842,9 +842,11 @@ const ResultSection = memo(function ResultSection({
     }
   });
 
-  // Only the visible rows are ever shown / fetched — this is the optimization
-  // that keeps price parsing cheap (no whole-market scan on every refresh).
-  const visible = sorted.slice(0, limit);
+  const [expandedLimit, setExpandedLimit] = useState(limit || 15);
+  const effectiveLimit = searchQuery ? Math.max(expandedLimit, 30) : expandedLimit;
+
+  // Only the visible rows are ever shown / fetched — this keeps performance optimal
+  const visible = sorted.slice(0, effectiveLimit);
   const sparklineMap = useSparklines(visible);
 
   if (sorted.length === 0 && searchQuery) return null;
@@ -859,6 +861,14 @@ const ResultSection = memo(function ResultSection({
           <ResultItem key={`${item.exchange}:${item.contract}`} item={item} sparklineData={sparklineMap[`${item.exchange}:${item.contract}`]} onHistory={onHistory} onAlert={onAlert} planLimits={planLimits} watchlistCount={watchlistCount} onWatchlistLimit={onWatchlistLimit} />
         ))}
       </div>
+      {sorted.length > visible.length && (
+        <button
+          onClick={() => setExpandedLimit((c) => c + 15)}
+          className="btn btn-secondary text-xs py-1.5 px-3 w-full mt-2"
+        >
+          + {t('main.showMore') || 'Показать ещё'} ({sorted.length - visible.length})
+        </button>
+      )}
     </div>
   );
 });
